@@ -244,7 +244,7 @@ def _send_reset_otp_email(email, otp):
     If you didn't request a password reset, you can safely ignore this email.
   </p>
 </div>"""
-    send_system_email(
+    return send_system_email(
         to=email,
         subject="Reset your Books password",
         html=html,
@@ -256,12 +256,21 @@ def _send_reset_otp_email(email, otp):
 def send_password_reset_otp(email):
     """Send a 6-digit OTP to the user's email for password reset. Always returns success to prevent email enumeration."""
     email = (email or "").strip().lower()
-    if not frappe.db.exists("User", email):
+
+    # Case-insensitive lookup — Frappe stores email as-entered but MySQL compare is case-insensitive
+    canonical = frappe.db.get_value("User", {"name": email}, "name") or \
+                frappe.db.get_value("User", {"email": email}, "name")
+    if not canonical:
+        # User not found — log silently and return (don't reveal whether account exists)
+        frappe.log_error(f"Password reset requested for unknown email: {email}", "Books Auth")
         return {"success": True}
 
+    email = canonical.strip().lower()
     otp = _gen_otp()
     frappe.cache.set_value(_reset_cache_key(email), {"otp": otp}, expires_in_sec=900)
-    _send_reset_otp_email(email, otp)
+    ok = _send_reset_otp_email(email, otp)
+    if not ok:
+        frappe.log_error(f"Password reset OTP send FAILED for {email}", "Books Auth")
     return {"success": True}
 
 

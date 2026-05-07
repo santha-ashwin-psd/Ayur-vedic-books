@@ -88,3 +88,48 @@ app_include_js  = ["/assets/zoho_books_clone/js/books.js"]
 
 after_install = "zoho_books_clone.books_setup.install.after_install"
 after_migrate = "zoho_books_clone.books_setup.install.after_migrate"
+
+
+# ─── Multi-tenant data isolation ─────────────────────────────────────────────
+# Every transactional doctype with a `company` field is filtered to the user's
+# company at query time AND validated at save time (via central_validator).
+# System Manager / Administrator bypass these filters.
+_TN = "zoho_books_clone.utils.tenancy"
+
+permission_query_conditions = {
+    "Sales Invoice":     f"{_TN}.qc_sales_invoice",
+    "Purchase Invoice":  f"{_TN}.qc_purchase_invoice",
+    "Payment Entry":     f"{_TN}.qc_payment_entry",
+    "Journal Entry":     f"{_TN}.qc_journal_entry",
+    "Credit Note":       f"{_TN}.qc_credit_note",
+    "Sales Order":       f"{_TN}.qc_sales_order",
+    "Purchase Order":    f"{_TN}.qc_purchase_order",
+    "Quotation":         f"{_TN}.qc_quotation",
+    "Account":           f"{_TN}.qc_account",
+    "Cost Center":       f"{_TN}.qc_cost_center",
+    "Warehouse":         f"{_TN}.qc_warehouse",
+    "Stock Entry":       f"{_TN}.qc_stock_entry",
+    "Bank Account":      f"{_TN}.qc_bank_account",
+    "Bank Transaction":  f"{_TN}.qc_bank_transaction",
+    "Expense":           f"{_TN}.qc_expense",
+    "Expense Claim":     f"{_TN}.qc_expense_claim",
+}
+
+has_permission = {
+    "Sales Invoice":     f"{_TN}.hp_sales_invoice",
+    "Purchase Invoice":  f"{_TN}.hp_purchase_invoice",
+    "Payment Entry":     f"{_TN}.hp_payment_entry",
+    "Journal Entry":     f"{_TN}.hp_journal_entry",
+    "Credit Note":       f"{_TN}.hp_credit_note",
+    "Sales Order":       f"{_TN}.hp_sales_order",
+    "Purchase Order":    f"{_TN}.hp_purchase_order",
+    "Quotation":         f"{_TN}.hp_quotation",
+    "Account":           f"{_TN}.hp_account",
+    "Cost Center":       f"{_TN}.hp_cost_center",
+    "Warehouse":         f"{_TN}.hp_warehouse",
+    "Stock Entry":       f"{_TN}.hp_stock_entry",
+    "Bank Account":      f"{_TN}.hp_bank_account",
+    "Bank Transaction":  f"{_TN}.hp_bank_transaction",
+    "Expense":           f"{_TN}.hp_expense",
+    "Expense Claim":     f"{_TN}.hp_expense_claim",
+}

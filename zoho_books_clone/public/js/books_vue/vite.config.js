@@ -1,38 +1,16 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { resolve } from "path";
-import { writeFileSync, mkdirSync } from "fs";
 
-// Custom plugin: after build, copy the generated CSS from outDir/assets/
-// into the correct Frappe public/css/ location.
-function copyBooksCSS() {
-  return {
-    name: "copy-books-css",
-    closeBundle() {
-      const src  = resolve(__dirname, "../dist/books.css");
-      const dest = resolve(__dirname, "../../css/books.css");
-      try {
-        const { readFileSync } = require("fs");
-        const css = readFileSync(src, "utf8");
-        mkdirSync(resolve(__dirname, "../../css"), { recursive: true });
-        writeFileSync(dest, css);
-        console.log("✓ Copied books.css → public/css/books.css");
-      } catch (e) {
-        // CSS may be inline-only when there are no <style> blocks with actual output
-        console.warn("  (no separate CSS file emitted — styles are inline or empty)");
-      }
-    },
-  };
-}
-
+// Vue + Vue Router are bundled (not externalised). The legacy SPA loaded them
+// from a CDN; the new bundle is self-contained so the app works on networks
+// that block unpkg.
 export default defineConfig({
-  plugins: [vue(), copyBooksCSS()],
+  plugins: [vue()],
   build: {
-    // Output the JS bundle directly into public/js/
-    outDir:    resolve(__dirname, "../../js"),
-    // Temp asset dir (CSS lands here first before the plugin moves it)
-    assetsDir: "dist",
-    emptyOutDir: false,   // never wipe the parent js/ folder
+    outDir:      resolve(__dirname, "../../js"),
+    assetsDir:   "dist",
+    emptyOutDir: false,
     lib: {
       entry:    resolve(__dirname, "src/main.js"),
       name:     "BooksApp",
@@ -40,18 +18,11 @@ export default defineConfig({
       formats:  ["iife"],
     },
     rollupOptions: {
-      // Vue 3 + Vue Router 4 are served from CDN (declared in www/books/index.html)
-      external: ["vue", "vue-router"],
       output: {
-        globals: {
-          vue:          "Vue",
-          "vue-router": "VueRouter",
-        },
-        // CSS asset name — must be a plain filename, no path separators
         assetFileNames: "dist/[name][extname]",
       },
     },
-    minify: true,
+    minify:       true,
     cssCodeSplit: false,
   },
   resolve: {

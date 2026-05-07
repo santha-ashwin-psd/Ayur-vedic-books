@@ -1,0 +1,99 @@
+// Sidebar nav table. Single source of truth for both:
+//   1. The sidebar (which items to render, gated by `module`),
+//   2. The router (route.meta.module is hydrated from this list during phase rollout).
+//
+// `module` is a Books Company Member flag key (without the `mod_` prefix), or
+// null for routes that have no permission gate (dashboard).
+//
+// New phases append entries here. The cutover decision (Vue vs legacy) is in
+// books.html via window.BOOKS_VUE_ROUTES — items not in that list still appear
+// in the sidebar but trigger a real navigation when clicked.
+
+export const NAV = [
+  { path: "/",                              label: "Dashboard",        icon: "grid",       module: null         },
+
+  { section: "Sales" },
+  { path: "/invoices",                      label: "Invoices",         icon: "file",       module: "invoices"   },
+  { path: "/quotes",                        label: "Quotations",       icon: "quote",      module: "invoices"   },
+  { path: "/sales-orders",                  label: "Sales Orders",     icon: "order",      module: "invoices"   },
+  { path: "/recurring",                     label: "Recurring",        icon: "recurring",  module: "invoices"   },
+  { path: "/credit-notes",                  label: "Credit Notes",     icon: "creditnote", module: "invoices"   },
+  { path: "/payments-received",             label: "Payments Received",icon: "rupee",      module: "payments"   },
+  { path: "/eway-bills",                    label: "e-Way Bills",      icon: "truck",      module: "taxes"      },
+
+  { section: "Purchases" },
+  { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills"      },
+  { path: "/purchases",                     label: "Bills",            icon: "fileplus",   module: "bills"      },
+  { path: "/debit-notes",                   label: "Debit Notes",      icon: "creditnote", module: "bills"      },
+  { path: "/payments",                      label: "Payments Made",    icon: "payment",    module: "payments"   },
+  { path: "/expenses",                      label: "Expenses",         icon: "expense",    module: "bills"      },
+
+  { section: "Contacts" },
+  { path: "/customers",                     label: "Customers",        icon: "users",      module: "customers"  },
+  { path: "/vendors",                       label: "Vendors",          icon: "vendors",    module: "customers"  },
+
+  { section: "Banking" },
+  { path: "/banking/accounts",              label: "Bank Accounts",    icon: "bank",       module: "banking"    },
+  { path: "/banking/transactions",          label: "Transactions",     icon: "ledger",     module: "banking"    },
+  { path: "/banking/reconciliation",        label: "Reconciliation",   icon: "balance",    module: "banking"    },
+  { path: "/banking/transfers",             label: "Transfers",        icon: "share",      module: "banking"    },
+  { path: "/banking/cheques",               label: "Cheques",          icon: "file",       module: "banking"    },
+  { path: "/banking/cash",                  label: "Cash",             icon: "cash",       module: "banking"    },
+
+  { section: "Accounting" },
+  { path: "/accounting/chart-of-accounts",  label: "Chart of Accounts",icon: "coa",        module: "accounts"   },
+  { path: "/accounting/journal-entries",    label: "Journal Entries",  icon: "journal",    module: "accounts"   },
+  { path: "/accounting/opening-balances",   label: "Opening Balances", icon: "opening",    module: "accounts"   },
+  { path: "/accounting/cost-centers",       label: "Cost Centers",     icon: "costcenter", module: "accounts"   },
+  { path: "/accounting/fiscal-years",       label: "Fiscal Years",     icon: "fiscal",     module: "accounts"   },
+
+  { section: "Inventory" },
+  { path: "/inventory/items",               label: "Items",            icon: "box",        module: "inventory"  },
+  { path: "/inventory/item-groups",         label: "Item Groups",      icon: "folder",     module: "inventory"  },
+  { path: "/inventory/warehouses",          label: "Warehouses",       icon: "warehouse",  module: "inventory"  },
+  { path: "/inventory/stock-entries",       label: "Stock Entries",    icon: "stack",      module: "inventory"  },
+  { path: "/inventory/stock-ledger",        label: "Stock Ledger",     icon: "ledger",     module: "inventory"  },
+  { path: "/inventory/valuation",           label: "Valuation",        icon: "chart",      module: "inventory"  },
+  { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },
+
+  { section: "GST / Taxes" },
+  { path: "/gst/gstr1",                     label: "GSTR-1",           icon: "gstfile",    module: "taxes"      },
+  { path: "/gst/gstr3b",                    label: "GSTR-3B",          icon: "gstfile",    module: "taxes"      },
+  { path: "/gst/einvoice",                  label: "e-Invoice",        icon: "qr",         module: "taxes"      },
+  { path: "/gst/tds",                       label: "TDS",              icon: "percent",    module: "taxes"      },
+
+  { section: "Reports" },
+  { path: "/reports",                       label: "All Reports",      icon: "chart",      module: "reports"    },
+
+  { section: "Settings" },
+  { path: "/settings/users",                label: "Users",            icon: "users",      module: "admin"      },
+  { path: "/settings/profile",              label: "My Profile",       icon: "user",       module: null         },
+  { path: "/settings/company",              label: "Company",          icon: "building",   module: "admin"      },
+  { path: "/settings/email",                label: "Email & SMTP",     icon: "mail",       module: "admin"      },
+  { path: "/settings/email-templates",      label: "Email Templates",  icon: "mail",       module: "admin"      },
+  { path: "/settings/number-series",        label: "Number Series",    icon: "hash",       module: "admin"      },
+  { path: "/settings/payment-terms",        label: "Payment Terms",    icon: "calendar",   module: "admin"      },
+  { path: "/settings/currency-exchange",    label: "Currency",         icon: "currency",   module: "admin"      },
+  { path: "/settings/security",             label: "Security",         icon: "lock",       module: "admin"      },
+  { path: "/settings/audit-log",            label: "Audit Log",        icon: "audit",      module: "admin"      },
+  { path: "/settings/integrations",         label: "Integrations",     icon: "webhook",    module: "admin"      },
+];
+
+// Returns a label for the topbar given a route path. Falls back to "Books".
+const TITLES = Object.fromEntries(
+  NAV.filter((n) => n.path).map((n) => [n.path, n.label])
+);
+export function titleFor(path) {
+  if (TITLES[path]) return TITLES[path];
+  // Match nearest prefix for nested/dynamic routes (e.g. /invoices/INV-001).
+  const hit = Object.keys(TITLES)
+    .filter((p) => path.startsWith(p) && p !== "/")
+    .sort((a, b) => b.length - a.length)[0];
+  return TITLES[hit] || "Books";
+}
+
+// True when the route is owned by the new Vue bundle (per books.html cutover list).
+export function isVueOwned(path) {
+  const owned = window.BOOKS_VUE_ROUTES || [];
+  return owned.some((p) => path === p || path.startsWith(p + "/"));
+}

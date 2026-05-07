@@ -8,6 +8,8 @@ import string
 import frappe
 from frappe import _
 
+from zoho_books_clone.utils.email_system import send_system_email
+
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -20,11 +22,7 @@ def _signup_cache_key(email):
 
 
 def _send_otp_email(email, first_name, otp):
-    try:
-        frappe.sendmail(
-            recipients=[email],
-            subject="Verify your Books account",
-            message=f"""
+    html = f"""
 <div style="font-family:'DM Sans',sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
     <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#3949AB,#1A237E);
@@ -40,30 +38,60 @@ def _send_otp_email(email, first_name, otp):
     This code expires in <strong>30 minutes</strong>.<br>
     If you didn't request this, you can safely ignore this email.
   </p>
-</div>""",
-            now=True,
-        )
-    except Exception:
-        pass  # Don't block signup in dev environments without email configured
+</div>"""
+    send_system_email(
+        to=email,
+        subject="Verify your Books account",
+        html=html,
+        text_fallback=f"Hi {first_name}, your Books verification code is {otp}. It expires in 30 minutes.",
+    )
 
 
 # ─── Signup ───────────────────────────────────────────────────────────────────
 
+def _normalize_company_name(name: str) -> str:
+    """Trim and collapse internal whitespace."""
+    return " ".join((name or "").strip().split())
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+def check_company_name(company_name):
+    """Live availability check for the signup form. Returns {available: bool, name: str}."""
+    name = _normalize_company_name(company_name)
+    if not name:
+        return {"available": False, "reason": "empty", "name": name}
+    if len(name) < 2:
+        return {"available": False, "reason": "too_short", "name": name}
+    taken = bool(frappe.db.exists("Books Company", name))
+    return {"available": not taken, "reason": "taken" if taken else "ok", "name": name}
+
+
 @frappe.whitelist(allow_guest=True, methods=["POST"])
 def signup_user(first_name, email, password, company_name="", last_name=""):
-    """Store signup data in cache and send a 6-digit verification OTP."""
+    """Store signup data in cache and send a 6-digit verification OTP.
+    Company name is mandatory and must be globally unique."""
     email = (email or "").strip().lower()
     first_name = (first_name or "").strip()
     password = password or ""
+    company_name = _normalize_company_name(company_name)
 
     if not email or not first_name or not password:
         frappe.throw(_("Name, email, and password are required."))
+
+    if not company_name:
+        frappe.throw(_("Company name is required."))
+
+    if len(company_name) < 2:
+        frappe.throw(_("Company name must be at least 2 characters."))
 
     if "@" not in email or "." not in email.split("@")[-1]:
         frappe.throw(_("Please enter a valid email address."))
 
     if frappe.db.exists("User", email):
         frappe.throw(_("An account with this email already exists. Please sign in instead."))
+
+    if frappe.db.exists("Books Company", company_name):
+        frappe.throw(_("This company name is already registered. Please choose a different name."))
 
     if len(password) < 8:
         frappe.throw(_("Password must be at least 8 characters."))
@@ -76,7 +104,7 @@ def signup_user(first_name, email, password, company_name="", last_name=""):
             "last_name": (last_name or "").strip(),
             "email": email,
             "password": password,
-            "company_name": (company_name or "").strip(),
+            "company_name": company_name,
             "otp": otp,
         },
         expires_in_sec=1800,
@@ -104,7 +132,8 @@ def resend_signup_otp(email):
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
 def verify_signup_otp(email, otp):
-    """Verify the OTP; on success create the User and Company."""
+    """Verify the OTP; on success create the Books Company, the User, and the
+    Books Company Member row that makes the signing-up user the company admin."""
     email = (email or "").strip().lower()
     otp = (otp or "").strip()
 
@@ -117,7 +146,23 @@ def verify_signup_otp(email, otp):
     if data.get("otp") != otp:
         frappe.throw(_("Invalid verification code. Please try again."))
 
+    company_name = _normalize_company_name(data.get("company_name", ""))
+    if not company_name:
+        frappe.throw(_("Signup is missing a company name. Please start over."))
+
+    if frappe.db.exists("Books Company", company_name):
+        frappe.throw(_("This company name was registered while you were verifying. Please choose a different name."))
+
     try:
+        # ── Create Books Company ────────────────────────────────────
+        company_doc = frappe.new_doc("Books Company")
+        company_doc.company_name = company_name
+        company_doc.is_active = 1
+        company_doc.currency = "INR"
+        company_doc.fiscal_year_start_month = "April"
+        company_doc.email = email
+        company_doc.insert(ignore_permissions=True)
+
         # ── Create User ──────────────────────────────────────────────
         user = frappe.new_doc("User")
         user.email = email
@@ -127,49 +172,51 @@ def verify_signup_otp(email, otp):
         user.send_welcome_email = 0
         user.enabled = 1
         user.new_password = data["password"]
-        # Guard: only add the role if it isn't already in the list
-        # (Frappe may seed default roles; appending duplicates causes
-        # IntegrityError on the child table's unique index).
         existing_roles = {r.role for r in (user.roles or [])}
-        if "Books Manager" not in existing_roles:
-            user.append("roles", {"role": "Books Manager"})
+        if "Books Admin" not in existing_roles:
+            user.append("roles", {"role": "Books Admin"})
         user.insert(ignore_permissions=True)
 
-        # ── Register Company (string-based, no Company DocType in this app) ──
-        company_name = data.get("company_name", "").strip()
-        created_company = ""
-        if company_name:
-            created_company = company_name
+        # ── Link User → Company as the Admin ────────────────────────
+        member = frappe.new_doc("Books Company Member")
+        member.user = email
+        member.company = company_name
+        member.books_role = "Books Admin"
+        member.is_company_admin = 1
+        for f in ("mod_invoices", "mod_bills", "mod_payments", "mod_banking",
+                  "mod_inventory", "mod_accounts", "mod_reports",
+                  "mod_customers", "mod_taxes", "mod_admin"):
+            member.set(f, 1)
+        member.invited_by = email  # self-registered
+        member.insert(ignore_permissions=True)
 
-            # Store as per-user default — gives each user their own scope.
-            try:
-                frappe.defaults.set_user_default("company", created_company, user=email)
-            except Exception:
-                pass
+        # Per-user company default — keeps Frappe's default-company aware of tenancy.
+        try:
+            frappe.defaults.set_user_default("company", company_name, user=email)
+        except Exception:
+            pass
 
-            # Seed Books Settings.default_company only when nothing is set yet,
-            # so first signup populates the global default but later signups don't overwrite.
-            try:
-                cur = frappe.db.get_single_value("Books Settings", "default_company")
-                if not cur:
-                    frappe.db.set_single_value("Books Settings", "default_company", created_company)
-            except Exception:
-                pass
-
-            # Best-effort: bootstrap a minimal Chart of Accounts + Fiscal Year for this company.
-            try:
-                from zoho_books_clone.books_setup.bootstrap import bootstrap_company_data
-                bootstrap_company_data(created_company)
-            except Exception as exc:
-                frappe.log_error(f"Books signup — bootstrap skipped: {exc}", "Books Auth")
+        # Best-effort: bootstrap a minimal Chart of Accounts + Fiscal Year.
+        try:
+            from zoho_books_clone.books_setup.bootstrap import bootstrap_company_data
+            bootstrap_company_data(company_name)
+        except Exception as exc:
+            frappe.log_error(f"Books signup — bootstrap skipped: {exc}", "Books Auth")
 
         frappe.db.commit()
         frappe.cache.delete_value(key)
 
-        return {"success": True, "user": email, "company": created_company or company_name}
+        return {"success": True, "user": email, "company": company_name}
 
     except Exception as exc:
         frappe.db.rollback()
+        # Clean up any partial Books Company row to avoid blocking re-signup.
+        try:
+            if frappe.db.exists("Books Company", company_name):
+                frappe.delete_doc("Books Company", company_name, ignore_permissions=True, force=True)
+                frappe.db.commit()
+        except Exception:
+            pass
         frappe.throw(str(exc))
 
 
@@ -180,11 +227,7 @@ def _reset_cache_key(email):
 
 
 def _send_reset_otp_email(email, otp):
-    try:
-        frappe.sendmail(
-            recipients=[email],
-            subject="Reset your Books password",
-            message=f"""
+    html = f"""
 <div style="font-family:'DM Sans',sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
     <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#3949AB,#1A237E);
@@ -200,11 +243,13 @@ def _send_reset_otp_email(email, otp):
     This code expires in <strong>15 minutes</strong>.<br>
     If you didn't request a password reset, you can safely ignore this email.
   </p>
-</div>""",
-            now=True,
-        )
-    except Exception:
-        pass
+</div>"""
+    send_system_email(
+        to=email,
+        subject="Reset your Books password",
+        html=html,
+        text_fallback=f"Your Books password reset code is {otp}. It expires in 15 minutes.",
+    )
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])

@@ -1,0 +1,57 @@
+{
+ "name": "Books Company",
+ "module": "Books Setup",
+ "doctype": "DocType",
+ "naming_rule": "By fieldname",
+ "autoname": "field:company_name",
+ "track_changes": 1,
+ "fields": [
+  {"fieldname": "sec_identity", "fieldtype": "Section Break", "label": "Identity", "idx": 1},
+  {"fieldname": "company_name", "fieldtype": "Data", "label": "Company Name", "reqd": 1, "unique": 1, "in_list_view": 1, "idx": 2},
+  {"fieldname": "company_abbr", "fieldtype": "Data", "label": "Abbreviation", "in_list_view": 1, "idx": 3},
+  {"fieldname": "col_identity", "fieldtype": "Column Break", "idx": 4},
+  {"fieldname": "logo_url", "fieldtype": "Attach Image", "label": "Logo", "idx": 5},
+  {"fieldname": "is_active", "fieldtype": "Check", "label": "Active", "default": "1", "idx": 6},
+
+  {"fieldname": "sec_locale", "fieldtype": "Section Break", "label": "Locale & Fiscal", "idx": 10},
+  {"fieldname": "currency", "fieldtype": "Link", "options": "Currency", "label": "Default Currency", "default": "INR", "idx": 11},
+  {"fieldname": "fiscal_year_start_month", "fieldtype": "Select", "label": "Fiscal Year Start Month", "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember", "default": "April", "idx": 12},
+  {"fieldname": "col_locale", "fieldtype": "Column Break", "idx": 13},
+  {"fieldname": "gstin", "fieldtype": "Data", "label": "GSTIN", "idx": 14},
+  {"fieldname": "gst_state", "fieldtype": "Data", "label": "GST State", "idx": 15},
+
+  {"fieldname": "sec_address", "fieldtype": "Section Break", "label": "Address & Contact", "collapsible": 1, "idx": 20},
+  {"fieldname": "address_line", "fieldtype": "Small Text", "label": "Address", "idx": 21},
+  {"fieldname": "city", "fieldtype": "Data", "label": "City", "idx": 22},
+  {"fieldname": "state", "fieldtype": "Data", "label": "State", "idx": 23},
+  {"fieldname": "pincode", "fieldtype": "Data", "label": "Pincode", "idx": 24},
+  {"fieldname": "col_address", "fieldtype": "Column Break", "idx": 25},
+  {"fieldname": "phone", "fieldtype": "Data", "label": "Phone", "idx": 26},
+  {"fieldname": "email", "fieldtype": "Data", "label": "Email", "options": "Email", "idx": 27},
+  {"fieldname": "website", "fieldtype": "Data", "label": "Website", "idx": 28},
+
+  {"fieldname": "sec_smtp", "fieldtype": "Section Break", "label": "Outgoing Email (SMTP)", "description": "Configured by company admin. Used for invoices, reminders, and business email. The system OTP SMTP is separate.", "collapsible": 1, "idx": 40},
+  {"fieldname": "smtp_enabled", "fieldtype": "Check", "label": "Enable Company SMTP", "default": "0", "idx": 41},
+  {"fieldname": "smtp_server", "fieldtype": "Data", "label": "SMTP Server", "depends_on": "eval:doc.smtp_enabled", "idx": 42},
+  {"fieldname": "smtp_port", "fieldtype": "Int", "label": "SMTP Port", "default": "587", "depends_on": "eval:doc.smtp_enabled", "idx": 43},
+  {"fieldname": "smtp_use_tls", "fieldtype": "Check", "label": "Use TLS", "default": "1", "depends_on": "eval:doc.smtp_enabled", "idx": 44},
+  {"fieldname": "smtp_use_ssl", "fieldtype": "Check", "label": "Use SSL", "default": "0", "depends_on": "eval:doc.smtp_enabled", "idx": 45},
+  {"fieldname": "col_smtp", "fieldtype": "Column Break", "idx": 46},
+  {"fieldname": "smtp_login", "fieldtype": "Data", "label": "SMTP Username", "depends_on": "eval:doc.smtp_enabled", "idx": 47},
+  {"fieldname": "smtp_password", "fieldtype": "Password", "label": "SMTP Password / App Password", "depends_on": "eval:doc.smtp_enabled", "idx": 48},
+  {"fieldname": "smtp_from_email", "fieldtype": "Data", "label": "From Email", "options": "Email", "depends_on": "eval:doc.smtp_enabled", "idx": 49},
+  {"fieldname": "smtp_from_name", "fieldtype": "Data", "label": "From Name", "depends_on": "eval:doc.smtp_enabled", "idx": 50}
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "report": 1, "share": 1, "permlevel": 0},
+  {"role": "Books Admin", "read": 1, "write": 1, "create": 0, "delete": 0, "email": 1, "export": 1, "print": 1, "report": 1, "share": 1, "permlevel": 0},
+  {"role": "Books Manager", "read": 1, "write": 0, "permlevel": 0},
+  {"role": "Accountant", "read": 1, "permlevel": 0},
+  {"role": "Books Viewer", "read": 1, "permlevel": 0}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1,
+ "search_fields": "company_name,company_abbr,gstin",
+ "title_field": "company_name"
+}

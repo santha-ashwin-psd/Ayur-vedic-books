@@ -19055,14 +19055,6 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
   /* ═══════════════════════════════════════════════════════════════
      INVENTORY — ITEMS
   ═══════════════════════════════════════════════════════════════ */
-  const ITEM_MOCK = [
-    { name:"ITEM-001", item_code:"ITEM-001", item_name:"Laptop 15\"", item_group:"Products", item_type:"Product", stock_uom:"Nos", standard_rate:55000, gst_rate:18, disabled:0, is_stock_item:1 },
-    { name:"ITEM-002", item_code:"ITEM-002", item_name:"Wireless Mouse", item_group:"Products", item_type:"Product", stock_uom:"Nos", standard_rate:1200, gst_rate:18, disabled:0, is_stock_item:1 },
-    { name:"ITEM-003", item_code:"ITEM-003", item_name:"Office Chair", item_group:"Furniture", item_type:"Product", stock_uom:"Nos", standard_rate:8500, gst_rate:12, disabled:0, is_stock_item:1 },
-    { name:"ITEM-004", item_code:"ITEM-004", item_name:"Annual Maintenance", item_group:"Services", item_type:"Service", stock_uom:"Nos", standard_rate:15000, gst_rate:18, disabled:0, is_stock_item:0 },
-    { name:"ITEM-005", item_code:"ITEM-005", item_name:"USB-C Hub", item_group:"Products", item_type:"Product", stock_uom:"Nos", standard_rate:2500, gst_rate:18, disabled:0, is_stock_item:1 },
-    { name:"ITEM-006", item_code:"ITEM-006", item_name:"Consulting (per hour)", item_group:"Services", item_type:"Service", stock_uom:"Hrs", standard_rate:3000, gst_rate:18, disabled:1, is_stock_item:0 },
-  ];
 
   const InventoryItems = defineComponent({
     name: "InventoryItems",
@@ -19102,8 +19094,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             fields: ["name","item_code","item_name","item_group","item_type","stock_uom","standard_rate","gst_rate","disabled","is_stock_item"],
             order: "item_name asc", limit: 500
           });
-          list.value = rows && rows.length ? rows : ITEM_MOCK;
-        } catch { list.value = ITEM_MOCK; }
+          list.value = rows || [];
+        } catch { list.value = []; }
         try {
           const g = await apiList("Item Group", { fields:["name"], order:"name asc", limit:200 });
           itemGroups.value = (g||[]).map(r=>r.name);
@@ -25646,11 +25638,42 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
       const saving      = ref(false);
       const showInvite  = ref(false);
       const step        = ref(1);
-      const inviteForm  = Vue.reactive({ email:'', first_name:'', last_name:'', role:'Books Viewer', password:'', confirm_password:'' });
-      const inviteError = ref('');
       const editUser    = ref(null);
       const editRole    = ref('');
       const showRemoveConfirm = ref(null);
+
+      // ── Module-level permission catalog (toggles set per-user) ──
+      const MODULES = [
+        { key:'invoices',  label:'Sales Invoices'        },
+        { key:'bills',     label:'Bills & Purchases'     },
+        { key:'payments',  label:'Payments'              },
+        { key:'banking',   label:'Banking'               },
+        { key:'inventory', label:'Inventory'             },
+        { key:'accounts',  label:'Chart of Accounts'     },
+        { key:'reports',   label:'Reports'               },
+        { key:'customers', label:'Customers & Suppliers' },
+        { key:'taxes',     label:'Taxes & GST'           },
+        { key:'admin',     label:'Admin / Settings'      },
+      ];
+      const DEFAULT_MODULES_BY_ROLE = {
+        'Books Admin':    Object.fromEntries(MODULES.map(m=>[m.key, true])),
+        'Books Manager':  { invoices:true, bills:true, payments:true, banking:true, inventory:true, accounts:true, reports:true, customers:true, taxes:false, admin:false },
+        'Accountant':     { invoices:true, bills:true, payments:true, banking:true, inventory:false, accounts:true, reports:true, customers:true, taxes:true, admin:false },
+        'Books Viewer':   { invoices:true, bills:true, payments:true, banking:false, inventory:false, accounts:false, reports:true, customers:true, taxes:false, admin:false },
+      };
+      function defaultModulesFor(role) { return { ...(DEFAULT_MODULES_BY_ROLE[role] || {}) }; }
+
+      const inviteForm  = Vue.reactive({
+        email:'', first_name:'', last_name:'',
+        role:'Books Viewer', password:'', confirm_password:'',
+        modules: defaultModulesFor('Books Viewer'),
+      });
+      const inviteError = ref('');
+
+      // Per-user "Module Access" modal state
+      const permsUser   = ref(null);
+      const permsDraft  = Vue.reactive(defaultModulesFor('Books Viewer'));
+      const permsSaving = ref(false);
 
       const ROLES = ['Books Admin','Accountant','Books Manager','Books Viewer'];
       const ROLE_COLORS = { 'Books Admin':'#7048E8','Accountant':'#1971C2','Books Manager':'#2F9E44','Books Viewer':'#868E96' };
@@ -25670,36 +25693,97 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
       }
 
       function openInvite() {
-        Object.assign(inviteForm, { email:'', first_name:'', last_name:'', role:'Books Viewer', password:'', confirm_password:'' });
+        Object.assign(inviteForm, {
+          email:'', first_name:'', last_name:'',
+          role:'Books Viewer', password:'', confirm_password:'',
+          modules: defaultModulesFor('Books Viewer'),
+        });
         inviteError.value = '';
         step.value = 1;
         showInvite.value = true;
       }
 
+      function selectRole(role) {
+        inviteForm.role = role;
+        // Reset module defaults to match the newly selected role
+        inviteForm.modules = defaultModulesFor(role);
+      }
+
       function nextStep() {
         inviteError.value = '';
-        if (!inviteForm.role) { inviteError.value = 'Please select a role.'; return; }
-        step.value = 2;
+        if (step.value === 1) {
+          if (!inviteForm.role) { inviteError.value = 'Please select a role.'; return; }
+          step.value = inviteForm.role === 'Books Admin' ? 3 : 2;  // Admins skip module step
+          return;
+        }
+        if (step.value === 2) { step.value = 3; return; }
+      }
+
+      function prevStep() {
+        if (step.value === 3) {
+          step.value = inviteForm.role === 'Books Admin' ? 1 : 2;
+          return;
+        }
+        if (step.value === 2) { step.value = 1; return; }
       }
 
       async function sendInvite() {
         inviteError.value = '';
         if (!inviteForm.email || !inviteForm.first_name) { inviteError.value = 'Email and first name are required.'; return; }
-        if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(inviteForm.email)) { inviteError.value = 'Please enter a valid email address.'; return; }
-        if (!inviteForm.password) { inviteError.value = 'Please set a password for this member.'; return; }
-        if (inviteForm.password.length < 8) { inviteError.value = 'Password must be at least 8 characters.'; return; }
-        if (inviteForm.password !== inviteForm.confirm_password) { inviteError.value = 'Passwords do not match.'; return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteForm.email)) { inviteError.value = 'Please enter a valid email address.'; return; }
+        // Note: the backend ignores the password field (sends a temp password via system SMTP),
+        // but we still validate on the client for consistency with the existing flow.
+        if (inviteForm.password) {
+          if (inviteForm.password.length < 8) { inviteError.value = 'Password must be at least 8 characters.'; return; }
+          if (inviteForm.password !== inviteForm.confirm_password) { inviteError.value = 'Passwords do not match.'; return; }
+        }
         saving.value = true;
         try {
+          // Backend expects modules as {key: 1|0}
+          const modulePayload = Object.fromEntries(MODULES.map(m => [m.key, inviteForm.modules[m.key] ? 1 : 0]));
           await apiPOST('zoho_books_clone.api.admin.invite_member', {
             email: inviteForm.email, first_name: inviteForm.first_name,
-            last_name: inviteForm.last_name, role: inviteForm.role, password: inviteForm.password,
+            last_name: inviteForm.last_name, role: inviteForm.role,
+            password: inviteForm.password || '',
+            modules: modulePayload,
           });
-          toast('Member added — ' + inviteForm.email + ' can now log in.');
+          toast('Invite sent — ' + inviteForm.email + ' will receive an email with sign-in details.');
           showInvite.value = false;
           load();
         } catch(e) { inviteError.value = e.message || 'Failed to add member.'; }
         saving.value = false;
+      }
+
+      function openPerms(u) {
+        if (u.is_company_admin) { toast('Admins always have full module access.', 'info'); return; }
+        permsUser.value = u;
+        // Reset draft to user's current modules (or defaults if not set)
+        const current = u.modules || defaultModulesFor(u.books_role);
+        for (const m of MODULES) permsDraft[m.key] = !!current[m.key];
+      }
+
+      async function savePerms() {
+        if (!permsUser.value) return;
+        permsSaving.value = true;
+        try {
+          const modulePayload = Object.fromEntries(MODULES.map(m => [m.key, permsDraft[m.key] ? 1 : 0]));
+          await apiPOST('zoho_books_clone.api.admin.set_user_permissions', {
+            user: permsUser.value.email || permsUser.value.name,
+            modules: modulePayload,
+          });
+          toast('Module access updated');
+          permsUser.value = null;
+          load();
+        } catch(e) { toast(e.message || 'Failed to update access', 'error'); }
+        permsSaving.value = false;
+      }
+
+      function modulesSummary(modules) {
+        if (!modules) return '—';
+        const enabled = MODULES.filter(m => modules[m.key]).length;
+        if (enabled === 0) return 'No access';
+        if (enabled === MODULES.length) return 'All modules';
+        return enabled + ' of ' + MODULES.length + ' modules';
       }
 
       async function changeRole() {
@@ -25729,7 +25813,9 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
       return { users, loading, saving, showInvite, inviteForm, inviteError, step,
                editUser, editRole, showRemoveConfirm,
                ROLES, ROLE_COLORS, ROLE_BG, ROLE_DESC,
-               openInvite, nextStep, sendInvite, changeRole, toggleActive, confirmRemove, userInitials, load };
+               MODULES, selectRole,
+               permsUser, permsDraft, permsSaving, openPerms, savePerms, modulesSummary,
+               openInvite, nextStep, prevStep, sendInvite, changeRole, toggleActive, confirmRemove, userInitials, load };
     },
     template: `<div class="cust-page">
 
@@ -25779,6 +25865,7 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
           <td style="padding:12px 14px;text-align:right">
             <div style="display:flex;gap:6px;justify-content:flex-end">
               <button v-if="!u.is_owner" class="nim-btn nim-btn-ghost" style="padding:4px 10px;font-size:12px" @click="editUser=u;editRole=u.books_role">Change Role</button>
+              <button v-if="!u.is_owner && !u.is_company_admin" class="nim-btn nim-btn-ghost" style="padding:4px 10px;font-size:12px" @click="openPerms(u)">Module Access</button>
               <button v-if="!u.is_owner" class="nim-btn nim-btn-ghost" style="padding:4px 10px;font-size:12px" @click="toggleActive(u)">{{u.enabled?'Deactivate':'Activate'}}</button>
               <button v-if="!u.is_owner" class="nim-btn nim-btn-ghost" style="padding:4px 10px;font-size:12px;color:#C92A2A;border-color:#ffd0d0" @click="showRemoveConfirm=u">Remove</button>
             </div>
@@ -25789,24 +25876,28 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
     </table>
   </div>
 
-  <!-- Invite Drawer (2-step) -->
+  <!-- Invite Drawer (3-step: role → modules → credentials) -->
   <teleport to="body">
     <div v-if="showInvite" class="nim-overlay" @click.self="showInvite=false">
-      <div class="nim-dialog" style="width:520px">
+      <div class="nim-dialog" style="width:560px">
         <div class="nim-header">
           <div>
             <span style="font-weight:700;font-size:15px">Add Team Member</span>
-            <div style="font-size:11.5px;color:#868e96;margin-top:2px">Step {{step}} of 2 — {{step===1?'Assign a Role':'Set Credentials'}}</div>
+            <div style="font-size:11.5px;color:#868e96;margin-top:2px">
+              Step {{inviteForm.role==='Books Admin'?(step===1?1:2):step}} of {{inviteForm.role==='Books Admin'?2:3}} —
+              {{step===1?'Assign a Role':(step===2?'Module Access':'Set Credentials')}}
+            </div>
           </div>
           <button class="nim-close" @click="showInvite=false">✕</button>
         </div>
         <div style="display:flex;gap:0;padding:0 24px;margin-bottom:-1px">
-          <div v-for="s in [1,2]" :key="s" :style="'flex:1;height:3px;border-radius:2px;margin:0 2px;background:'+(step>=s?'#7048E8':'#e4e8f0')"></div>
+          <div v-for="s in (inviteForm.role==='Books Admin'?[1,3]:[1,2,3])" :key="s" :style="'flex:1;height:3px;border-radius:2px;margin:0 2px;background:'+(step>=s?'#7048E8':'#e4e8f0')"></div>
         </div>
+
         <!-- Step 1: Role selection -->
         <div v-if="step===1" class="nim-body" style="display:grid;gap:12px">
           <div style="font-size:13px;color:#4a5568">Select the role this member will have in your company:</div>
-          <div v-for="r in ROLES" :key="r" @click="inviteForm.role=r"
+          <div v-for="r in ROLES" :key="r" @click="selectRole(r)"
             :style="'padding:14px 16px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;'+(inviteForm.role===r?'border:2px solid #7048E8;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
             <div :style="'width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+ROLE_COLORS[r]"></div>
             <div style="flex:1">
@@ -25817,8 +25908,24 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
           </div>
           <div v-if="inviteError" style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:8px;padding:10px 14px;color:#C92A2A;font-size:12.5px">{{inviteError}}</div>
         </div>
-        <!-- Step 2: Credentials -->
+
+        <!-- Step 2: Module access (skipped for Books Admin) -->
         <div v-if="step===2" class="nim-body" style="display:grid;gap:14px">
+          <div style="background:#f5f0ff;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
+            <span :style="'background:'+ROLE_COLORS[inviteForm.role]+';color:#fff;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700'">{{inviteForm.role}}</span>
+            <span style="font-size:12.5px;color:#3b4a7a">Selected — <a href="#" @click.prevent="step=1" style="color:#7048E8;text-decoration:none">Change</a></span>
+          </div>
+          <div style="font-size:13px;color:#4a5568">Choose which modules this member can access. Defaults are based on the selected role.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#f8f9fc;border-radius:8px;padding:14px">
+            <label v-for="m in MODULES" :key="m.key" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#3b4a7a;transition:background .12s" @mouseenter="$event.currentTarget.style.background='#eef2ff'" @mouseleave="$event.currentTarget.style.background=''">
+              <input type="checkbox" :checked="inviteForm.modules[m.key]" @change="inviteForm.modules[m.key] = $event.target.checked" style="width:14px;height:14px;cursor:pointer"/>
+              <span>{{m.label}}</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Step 3: Credentials -->
+        <div v-if="step===3" class="nim-body" style="display:grid;gap:14px">
           <div style="background:#f5f0ff;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
             <span :style="'background:'+ROLE_COLORS[inviteForm.role]+';color:#fff;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700'">{{inviteForm.role}}</span>
             <span style="font-size:12.5px;color:#3b4a7a">Selected — <a href="#" @click.prevent="step=1" style="color:#7048E8;text-decoration:none">Change</a></span>
@@ -25828,15 +25935,36 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
             <div class="nim-field"><label class="nim-label">First Name *</label><input class="nim-input" v-model="inviteForm.first_name" placeholder="First"/></div>
             <div class="nim-field"><label class="nim-label">Last Name</label><input class="nim-input" v-model="inviteForm.last_name" placeholder="Last"/></div>
           </div>
-          <div class="nim-field"><label class="nim-label">Set Password *</label><input class="nim-input" v-model="inviteForm.password" type="password" placeholder="Min. 8 characters"/></div>
-          <div class="nim-field"><label class="nim-label">Confirm Password *</label><input class="nim-input" v-model="inviteForm.confirm_password" type="password" placeholder="Re-enter password"/></div>
-          <div style="background:#f0f9ff;border-radius:8px;padding:10px 14px;font-size:12px;color:#1971C2">💡 The member will log in with this email &amp; password. They will only see your company's data.</div>
+          <div style="background:#f0f9ff;border:1px solid #c5d9fa;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#1971C2;line-height:1.5">
+            <strong>📧 Invite by email</strong> — Books will email <em>{{inviteForm.email||'this user'}}</em> a temporary password and a sign-in link. They should change it on first login.
+          </div>
           <div v-if="inviteError" style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:8px;padding:10px 14px;color:#C92A2A;font-size:12.5px">{{inviteError}}</div>
         </div>
+
         <div class="nim-footer">
-          <button class="nim-btn" @click="step===1?showInvite=false:step=1">{{step===1?'Cancel':'Back'}}</button>
-          <button v-if="step===1" class="nim-btn nim-btn-primary" @click="nextStep">Next: Set Credentials →</button>
-          <button v-else class="nim-btn nim-btn-primary" @click="sendInvite" :disabled="saving">{{saving?'Adding…':'Add Member'}}</button>
+          <button class="nim-btn" @click="step===1?showInvite=false:prevStep()">{{step===1?'Cancel':'Back'}}</button>
+          <button v-if="step!==3" class="nim-btn nim-btn-primary" @click="nextStep">{{step===1?(inviteForm.role==='Books Admin'?'Next: Set Credentials →':'Next: Module Access →'):'Next: Set Credentials →'}}</button>
+          <button v-else class="nim-btn nim-btn-primary" @click="sendInvite" :disabled="saving">{{saving?'Sending…':'Send Invite'}}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Module Access (per-user) modal -->
+    <div v-if="permsUser" class="nim-overlay" @click.self="permsUser=null">
+      <div class="nim-dialog" style="width:520px">
+        <div class="nim-header"><span style="font-weight:700">Module Access — {{permsUser.full_name||permsUser.name}}</span><button class="nim-close" @click="permsUser=null">✕</button></div>
+        <div class="nim-body" style="display:grid;gap:14px">
+          <div style="font-size:13px;color:#4a5568">Toggle which modules this member can access. Changes apply immediately on save.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#f8f9fc;border-radius:8px;padding:14px">
+            <label v-for="m in MODULES" :key="m.key" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#3b4a7a">
+              <input type="checkbox" :checked="permsDraft[m.key]" @change="permsDraft[m.key] = $event.target.checked" style="width:14px;height:14px;cursor:pointer"/>
+              <span>{{m.label}}</span>
+            </label>
+          </div>
+        </div>
+        <div class="nim-footer">
+          <button class="nim-btn" @click="permsUser=null">Cancel</button>
+          <button class="nim-btn nim-btn-primary" @click="savePerms" :disabled="permsSaving">{{permsSaving?'Saving…':'Save Access'}}</button>
         </div>
       </div>
     </div>
@@ -26002,8 +26130,8 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
         if (!file) return;
         const fd = new FormData();
         fd.append("file", file);
-        fd.append("doctype", "Books Settings");
-        fd.append("docname", "Books Settings");
+        fd.append("doctype", "Books Company");
+        fd.append("docname", form.default_company || "");
         fd.append("fieldname", "logo_url");
         fd.append("csrf_token", window.frappe?.csrf_token || "");
         fetch("/api/method/upload_file", { method:"POST", credentials:"same-origin", body:fd })
@@ -26291,45 +26419,141 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
 </div>`
   });
 
-  /* ── P2-5: Email / SMTP ─────────────────────────────────────────────────── */
+  /* ── P2-5: Email / SMTP (per-company, configured by company admin) ──────── */
   const SettingsEmail = defineComponent({ name: "SettingsEmail",
     setup() {
-      const accounts = ref([]);
-      const testEmail = ref("");
+      const form = Vue.reactive({
+        company: "",
+        smtp_enabled: 0,
+        smtp_server: "",
+        smtp_port: 587,
+        smtp_use_tls: 1,
+        smtp_use_ssl: 0,
+        smtp_login: "",
+        smtp_password: "",
+        smtp_password_set: false,
+        smtp_from_email: "",
+        smtp_from_name: "",
+      });
+      const loading = ref(true);
+      const saving  = ref(false);
       const testing = ref(false);
+      const testEmail = ref("");
 
       async function load() {
-        try { const d = await apiGET("zoho_books_clone.api.admin.get_email_settings"); accounts.value = d.accounts || []; }
-        catch { }
+        loading.value = true;
+        try {
+          const d = await apiGET("zoho_books_clone.api.admin.get_company_smtp");
+          Object.assign(form, d || {}, { smtp_password: "" });
+        } catch(e) { toast(e.message || "Could not load SMTP settings", "error"); }
+        loading.value = false;
+      }
+
+      async function save() {
+        saving.value = true;
+        try {
+          const payload = { ...form };
+          if (!payload.smtp_password) delete payload.smtp_password;
+          delete payload.smtp_password_set; delete payload.company;
+          await apiPOST("zoho_books_clone.api.admin.save_company_smtp", payload);
+          toast("SMTP settings saved");
+          form.smtp_password = "";
+          await load();
+        } catch(e) { toast(e.message || "Could not save", "error"); }
+        saving.value = false;
       }
 
       async function sendTest() {
         if (!testEmail.value) return toast("Enter a recipient email", "error");
         testing.value = true;
         try {
-          await apiPOST("zoho_books_clone.api.admin.send_test_email", { to_email: testEmail.value });
+          // If user typed a fresh password in the form, test those creds without saving.
+          // Otherwise test the saved config.
+          const payload = { to_email: testEmail.value };
+          if (form.smtp_password) {
+            Object.assign(payload, {
+              use_overrides: 1,
+              smtp_server: form.smtp_server, smtp_port: form.smtp_port,
+              smtp_use_tls: form.smtp_use_tls, smtp_use_ssl: form.smtp_use_ssl,
+              smtp_login: form.smtp_login, smtp_password: form.smtp_password,
+              smtp_from_email: form.smtp_from_email, smtp_from_name: form.smtp_from_name,
+            });
+          }
+          await apiPOST("zoho_books_clone.api.admin.send_test_email", payload);
           toast("Test email sent to " + testEmail.value);
-        } catch(e) { toast(e.message, "error"); }
+        } catch(e) { toast(e.message || "Test failed", "error"); }
         testing.value = false;
       }
 
       onMounted(load);
-      return { accounts, testEmail, testing, sendTest };
+      return { form, loading, saving, testing, testEmail, save, sendTest };
     },
     template: `<div class="cust-page">
-  <div class="cust-toolbar"><span style="font-size:18px;font-weight:700;color:#1a1a2e">Email Settings</span></div>
-  <div style="max-width:680px;display:grid;gap:16px">
+  <div class="cust-toolbar">
+    <span style="font-size:18px;font-weight:700;color:#1a1a2e">Email Settings (SMTP)</span>
+    <span v-if="form.company" style="background:#F3F0FF;color:#7048E8;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-left:10px">{{form.company}}</span>
+  </div>
+
+  <div style="background:#f0f4ff;border:1px solid #c5d0fa;border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#3b4a7a;display:flex;gap:12px;align-items:flex-start">
+    <span style="font-size:18px;margin-top:-1px">✉️</span>
+    <div><strong>How email works in Books:</strong> This SMTP is used to send invoices, payment reminders, and customer email from <em>your</em> company. Sign-up and password-reset OTPs use the platform-level SMTP and are not affected by these settings.</div>
+  </div>
+
+  <div v-if="loading" style="padding:40px;text-align:center;color:#868E96">Loading…</div>
+
+  <div v-else style="max-width:760px;display:grid;gap:16px">
     <div style="background:#fff;border:1px solid #e4e8f0;border-radius:12px;padding:24px">
-      <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:4px">Outgoing Email Accounts</div>
-      <div style="font-size:12.5px;color:#868e96;margin-bottom:16px">Configured in Frappe Email Account settings. Manage via <a href="/app/email-account" target="_blank" style="color:#7048E8">Frappe Desk → Email Account</a></div>
-      <div v-if="!accounts.length" style="padding:20px;text-align:center;color:#868e96;background:#f8f9fc;border-radius:8px">No outgoing email accounts configured</div>
-      <div v-for="a in accounts" :key="a.name" style="padding:14px;background:#f8f9fc;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-        <div><div style="font-weight:600;font-size:13px">{{a.email_account_name||a.name}}</div><div style="font-size:12px;color:#868e96">{{a.email_id}} · {{a.smtp_server}}:{{a.smtp_port}}</div></div>
-        <span style="background:#ebfbee;color:#2f9e44;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600">Active</span>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:18px">
+        <input type="checkbox" :checked="form.smtp_enabled" @change="form.smtp_enabled = $event.target.checked ? 1 : 0" style="width:16px;height:16px;cursor:pointer"/>
+        <span style="font-size:14px;font-weight:600;color:#1a1a2e">Enable Company SMTP</span>
+      </label>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 18px">
+        <div>
+          <div style="font-size:11.5px;color:#6b7db3;font-weight:600;margin-bottom:6px">SMTP Server</div>
+          <input class="nim-input" v-model="form.smtp_server" placeholder="smtp.gmail.com" :disabled="!form.smtp_enabled"/>
+        </div>
+        <div>
+          <div style="font-size:11.5px;color:#6b7db3;font-weight:600;margin-bottom:6px">Port</div>
+          <input class="nim-input" type="number" v-model.number="form.smtp_port" placeholder="587" :disabled="!form.smtp_enabled"/>
+        </div>
+        <div>
+          <div style="font-size:11.5px;color:#6b7db3;font-weight:600;margin-bottom:6px">Username (login)</div>
+          <input class="nim-input" v-model="form.smtp_login" placeholder="you@company.com" :disabled="!form.smtp_enabled"/>
+        </div>
+        <div>
+          <div style="font-size:11.5px;color:#6b7db3;font-weight:600;margin-bottom:6px">
+            Password / App Password
+            <span v-if="form.smtp_password_set && !form.smtp_password" style="color:#868e96;font-weight:500;font-size:11px">— stored, leave blank to keep</span>
+          </div>
+          <input class="nim-input" type="password" v-model="form.smtp_password" placeholder="••••••••" :disabled="!form.smtp_enabled"/>
+        </div>
+        <div>
+          <div style="font-size:11.5px;color:#6b7db3;font-weight:600;margin-bottom:6px">From Email</div>
+          <input class="nim-input" v-model="form.smtp_from_email" placeholder="invoices@company.com" :disabled="!form.smtp_enabled"/>
+        </div>
+        <div>
+          <div style="font-size:11.5px;color:#6b7db3;font-weight:600;margin-bottom:6px">From Name</div>
+          <input class="nim-input" v-model="form.smtp_from_name" :placeholder="form.company" :disabled="!form.smtp_enabled"/>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3b4a7a;cursor:pointer">
+          <input type="checkbox" :checked="form.smtp_use_tls" @change="form.smtp_use_tls = $event.target.checked ? 1 : 0" :disabled="!form.smtp_enabled"/>
+          Use TLS (port 587)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3b4a7a;cursor:pointer">
+          <input type="checkbox" :checked="form.smtp_use_ssl" @change="form.smtp_use_ssl = $event.target.checked ? 1 : 0" :disabled="!form.smtp_enabled"/>
+          Use SSL (port 465)
+        </label>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="nim-btn nim-btn-primary" @click="save" :disabled="saving">{{saving?'Saving…':'Save SMTP Settings'}}</button>
       </div>
     </div>
+
     <div style="background:#fff;border:1px solid #e4e8f0;border-radius:12px;padding:24px">
-      <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:12px">Send Test Email</div>
+      <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:4px">Send Test Email</div>
+      <div style="font-size:12px;color:#868e96;margin-bottom:12px">Tip: if you've typed a new password above, the test will use that without saving — verify before persisting.</div>
       <div style="display:flex;gap:10px">
         <input class="nim-input" v-model="testEmail" placeholder="recipient@example.com" style="flex:1"/>
         <button class="nim-btn nim-btn-primary" @click="sendTest" :disabled="testing">{{testing?'Sending…':'Send Test'}}</button>

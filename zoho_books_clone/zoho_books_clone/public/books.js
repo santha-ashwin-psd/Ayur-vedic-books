@@ -3622,8 +3622,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
         }
         if (field === "pan_no" && s && !PAN_REGEX.test(s))
           formErrors.pan_no = "Invalid PAN format (e.g. ABCDE1234F)";
-        if (field === "place_of_supply" && rule.requirePlaceOfSupply && !v)
-          formErrors.place_of_supply = "Place of Supply is required";
+
         if (field === "pincode" && s && s.length !== 6)
           formErrors.pincode = "Pincode must be exactly 6 digits";
         if (field === "ship_pincode" && s && s.length !== 6)
@@ -3673,8 +3672,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           formErrors.pan_no = "Invalid PAN format (e.g. ABCDE1234F)";
 
         // Other
-        if (rule.requirePlaceOfSupply && !form.place_of_supply)
-          formErrors.place_of_supply = "Place of Supply is required";
+
         if (form.opening_balance < 0) formErrors.opening_balance = "Opening balance cannot be negative";
 
         // Address
@@ -4549,15 +4547,11 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                 <div v-if="activeRule.showPlaceOfSupply">
                   <label class="nim-label">
                     Place of Supply
-                    <span v-if="activeRule.requirePlaceOfSupply" class="nim-req">*</span>
                   </label>
-                  <select v-model="form.place_of_supply" class="nim-input" style="cursor:pointer"
-                    :style="formErrors.place_of_supply?'border-color:#dc2626;background:#fff5f5':''"
-                    @change="delete formErrors.place_of_supply">
+                  <select v-model="form.place_of_supply" class="nim-input" style="cursor:pointer">
                     <option value="">— Select State —</option>
                     <option v-for="s in ['01-Jammu and Kashmir','02-Himachal Pradesh','03-Punjab','04-Chandigarh','05-Uttarakhand','06-Haryana','07-Delhi','08-Rajasthan','09-Uttar Pradesh','10-Bihar','11-Sikkim','12-Arunachal Pradesh','13-Nagaland','14-Manipur','15-Mizoram','16-Tripura','17-Meghalaya','18-Assam','19-West Bengal','20-Jharkhand','21-Odisha','22-Chhattisgarh','23-Madhya Pradesh','24-Gujarat','25-Daman and Diu','26-Dadra and Nagar Haveli','27-Maharashtra','28-Andhra Pradesh','29-Karnataka','30-Goa','31-Lakshadweep','32-Kerala','33-Tamil Nadu','34-Puducherry','35-Andaman and Nicobar Islands','36-Telangana','37-Andhra Pradesh (New)','38-Ladakh']" :key="s" :value="s">{{s}}</option>
                   </select>
-                  <div v-if="formErrors.place_of_supply" style="margin-top:4px;font-size:12px;color:#dc2626">{{formErrors.place_of_supply}}</div>
                 </div>
               </transition>
               <div v-if="!activeRule.showPlaceOfSupply" style="padding:12px 14px;border-radius:8px;background:#f0f9ff;border:1px solid #bae6fd;font-size:12.5px;color:#0369a1;line-height:1.5;display:flex;align-items:flex-start;gap:8px">

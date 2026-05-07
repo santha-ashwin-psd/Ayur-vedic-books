@@ -16,10 +16,17 @@ def on_validate(doc, _method=None):
     Runs checks that apply across all document types.
     """
     _check_company(doc)
+    _check_company_tenancy(doc)    # Multi-tenant guard: doc.company must match user's company
     _check_posting_date(doc)
     _check_positive_amounts(doc)
     _check_period_not_closed(doc)
     _check_lock_date(doc)          # Audit: strict period lock
+
+
+def _check_company_tenancy(doc):
+    """User can only save documents for their own Books Company."""
+    from zoho_books_clone.utils.tenancy import assert_doc_in_user_company
+    assert_doc_in_user_company(doc)
 
 
 def on_submit(doc, _method=None):

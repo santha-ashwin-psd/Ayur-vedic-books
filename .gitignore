@@ -59,7 +59,7 @@ config/pids/
 *.min.js.map
 
 # ─── Claude internal ──────────────────────────────────────────────────────────
-.claude/settings.json
+.claude/
 
 # ─── Audit / Report documents (kept locally only) ─────────────────────────────
 *.docx

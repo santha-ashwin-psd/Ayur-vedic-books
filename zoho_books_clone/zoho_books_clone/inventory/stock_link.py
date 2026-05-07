@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Stock Link — Audit fixes P2/Audit-2 and P2/Audit-3.
 

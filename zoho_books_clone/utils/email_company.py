@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Per-company SMTP — used for all BUSINESS email:
   invoices, payment reminders, statements, customer notifications, etc.

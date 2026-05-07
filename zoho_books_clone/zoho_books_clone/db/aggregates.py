@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 High-level aggregate helpers used by the dashboard and reports.
 Wraps queries.py into structured summaries.

@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Workflow Service — Missing Business Logic Layer (Audit Part 3).
 

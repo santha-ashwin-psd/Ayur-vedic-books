@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Accounting Engine — P2/Issue 3
 Central module that owns all GL map construction logic.

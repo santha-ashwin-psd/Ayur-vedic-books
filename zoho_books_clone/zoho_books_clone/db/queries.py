@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Central query library for Zoho Books Clone.
 All raw SQL lives here — controllers import from this module

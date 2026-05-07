@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Central Validation Layer — P2/Issue 10
 Wired via hooks.py doc_events so every financial document passes through

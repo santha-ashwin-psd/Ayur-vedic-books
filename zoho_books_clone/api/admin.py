@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Administration API — users, roles, profile, notifications, audit log.
 All endpoints require an authenticated session (allow_guest=False by default).

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import frappe
 from frappe.utils import flt, today, get_first_day, get_last_day
 from zoho_books_clone.db import queries

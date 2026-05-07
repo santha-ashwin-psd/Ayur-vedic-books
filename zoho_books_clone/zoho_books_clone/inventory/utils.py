@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Inventory utility functions — stock balance, valuation, reorder detection.
 All business logic lives here; controllers are kept thin.

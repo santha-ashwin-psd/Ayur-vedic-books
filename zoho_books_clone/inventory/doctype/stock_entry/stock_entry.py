@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Stock Entry — records every physical stock movement.
 On submit: creates Stock Ledger Entries → Bin is updated automatically.

@@ -4,9 +4,9 @@ System-level SMTP — used ONLY for pre-auth or cross-tenant emails:
   - password reset OTP
   - new-user invite (sent before the invitee has any company SMTP)
 
-Reads credentials from common_site_config.json (mail_server / mail_login / mail_password / mail_port / use_tls).
-Bypasses frappe.sendmail() and the Email Queue so it never accidentally
-routes through a per-company Email Account.
+Uses wecode18@gmail.com as the hardcoded OTP sender. common_site_config.json
+values override these defaults if present, but the app works on any device
+without manual SMTP configuration.
 """
 import smtplib
 import ssl
@@ -16,38 +16,42 @@ from email.utils import formataddr
 
 import frappe
 
+# ── Hardcoded OTP SMTP (wecode18@gmail.com) ───────────────────────────────────
+# This is the single, fixed sender for all system OTPs (signup, password reset,
+# invites). It never changes per-company. On a new device this works out of the
+# box without any configuration. common_site_config.json values override these.
+_DEFAULT_SMTP = {
+    "server":     "smtp.gmail.com",
+    "port":       587,
+    "login":      "wecode18@gmail.com",
+    "password":   "jznv fhwc gzkz wvpg",
+    "use_tls":    True,
+    "use_ssl":    False,
+    "from_email": "wecode18@gmail.com",
+    "from_name":  "Books by PS Digitise",
+}
+
 
 def _conf() -> dict:
-    """Pull the system-level SMTP config from common_site_config.json."""
+    """Return SMTP config: common_site_config.json values take priority,
+    hardcoded wecode18 defaults fill any missing keys."""
     c = frappe.conf
     return {
-        "server":   c.get("mail_server"),
-        "port":     int(c.get("mail_port") or 587),
-        "login":    c.get("mail_login"),
-        "password": c.get("mail_password"),
-        "use_tls":  bool(c.get("use_tls", 1)),
-        "use_ssl":  bool(c.get("use_ssl", 0)),
-        "from_email": c.get("auto_email_id") or c.get("mail_login"),
-        "from_name":  c.get("email_sender_name") or "Books",
+        "server":     c.get("mail_server")   or _DEFAULT_SMTP["server"],
+        "port":       int(c.get("mail_port") or _DEFAULT_SMTP["port"]),
+        "login":      c.get("mail_login")    or _DEFAULT_SMTP["login"],
+        "password":   c.get("mail_password") or _DEFAULT_SMTP["password"],
+        "use_tls":    bool(c.get("use_tls", _DEFAULT_SMTP["use_tls"])),
+        "use_ssl":    bool(c.get("use_ssl",  _DEFAULT_SMTP["use_ssl"])),
+        "from_email": c.get("auto_email_id") or _DEFAULT_SMTP["from_email"],
+        "from_name":  c.get("email_sender_name") or _DEFAULT_SMTP["from_name"],
     }
-
-
-def is_configured() -> bool:
-    cfg = _conf()
-    return bool(cfg["server"] and cfg["login"] and cfg["password"])
 
 
 def send_system_email(to: str, subject: str, html: str, text_fallback: str = "") -> bool:
     """Send a single email via the system SMTP. Returns True on success.
     Never raises — logs errors and returns False so callers can degrade gracefully."""
     cfg = _conf()
-    if not is_configured():
-        frappe.log_error(
-            "System SMTP is not configured in common_site_config.json "
-            "(mail_server / mail_login / mail_password). OTP emails will not be sent.",
-            "Books System SMTP",
-        )
-        return False
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject

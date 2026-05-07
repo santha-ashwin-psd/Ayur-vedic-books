@@ -932,6 +932,11 @@ function setAvatar(email) {
 function nextStep(to) {
   if (to === "password") {
     const email = document.getElementById("email-input").value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFiErr("email-input", true);
+      showErr("email-err", "Please enter a valid email address");
+      return;
+    }
     setFiErr("email-input", false);
     clearErr("email-err");
     setAvatar(email);
@@ -1215,8 +1220,35 @@ function _setCompanyStatus(html, color) {
 
 function onCompanyInput(rawValue) {
   const value = (rawValue || "").trim().replace(/\s+/g, " ");
-  _companyAvailable = true;
-  _setCompanyStatus("", "var(--muted)");
+  _companyAvailable = null;
+  if (!value) { _setCompanyStatus("", "var(--muted)"); return; }
+  if (value.length < 2) { _setCompanyStatus("Must be at least 2 characters", "#C92A2A"); _companyAvailable = false; return; }
+  _setCompanyStatus("Checking availability…", "var(--muted)");
+  if (_companyCheckTimer) clearTimeout(_companyCheckTimer);
+  const mySeq = ++_companyCheckSeq;
+  _companyCheckTimer = setTimeout(async () => {
+    try {
+      const res = await postFrappe("/api/method/zoho_books_clone.api.auth.check_company_name", { company_name: value });
+      if (mySeq !== _companyCheckSeq) return;
+      const m = res || {};
+      if (m.available) {
+        _companyAvailable = true;
+        _setCompanyStatus("✓ Available", "#2F9E44");
+      } else if (m.reason === "taken") {
+        _companyAvailable = false;
+        _setCompanyStatus("✗ This company name is already registered", "#C92A2A");
+      } else if (m.reason === "too_short") {
+        _companyAvailable = false;
+        _setCompanyStatus("Must be at least 2 characters", "#C92A2A");
+      } else {
+        _companyAvailable = false;
+        _setCompanyStatus("Please enter a valid company name", "#C92A2A");
+      }
+    } catch (e) {
+      _companyAvailable = null;
+      _setCompanyStatus("Could not check availability. We'll re-validate on submit.", "var(--muted)");
+    }
+  }, 350);
 }
 
 async function nextSignupStep() {
@@ -1224,6 +1256,24 @@ async function nextSignupStep() {
   const email = document.getElementById("signup-email").value.trim();
   const company = document.getElementById("signup-company").value.trim().replace(/\s+/g, " ");
   clearErr("signup-err");
+  if (!fname) { showErr("signup-err", "Please enter your first name"); return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showErr("signup-err", "Please enter a valid work email address"); return;
+  }
+  if (!company || company.length < 2) {
+    showErr("signup-err", "Please enter your company name (minimum 2 characters)"); return;
+  }
+  if (_companyAvailable === null) {
+    try {
+      const res = await postFrappe("/api/method/zoho_books_clone.api.auth.check_company_name", { company_name: company });
+      const m = res || {};
+      _companyAvailable = !!m.available;
+    } catch (e) { /* server-side will enforce */ }
+  }
+  if (_companyAvailable === false) {
+    showErr("signup-err", "This company name is already registered. Please choose a different name.");
+    return;
+  }
   signupData.first_name = fname;
   signupData.last_name = document.getElementById("signup-lname").value.trim();
   signupData.email = email;
@@ -1262,7 +1312,13 @@ function updatePasswordStrength(val, inputEl) {
 
 async function submitSignupPw() {
   const pwd = document.getElementById("signup-password").value;
+  const pwd2 = document.getElementById("signup-password2").value;
   clearErr("signup-pw-err");
+  if (pwd.length < 8) { showErr("signup-pw-err", "Password must be at least 8 characters"); return; }
+  if (pwd !== pwd2) { showErr("signup-pw-err", "Passwords do not match"); return; }
+  if (!document.getElementById("signup-terms").checked) {
+    showErr("signup-pw-err", "Please accept the Terms of Service to continue"); return;
+  }
   signupData.password = pwd;
   setLoading("signup-pw-btn", true);
   try {

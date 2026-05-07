@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# IDEs / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment / secrets
+.env
+.env.*
+*.env
+secrets.json
+
+# Session / credentials — never commit
+cookies.txt
+*.cookies.txt
+
+# Audit / report documents — keep locally, not in repo
+*.docx
+*.xlsx
+*.pdf
+*_Audit*.docx
+*_Report*.docx
+
+# Logs
+*.log
+
+# Node
+node_modules/
+
+# Frappe / ERPNext build artefacts
+*.min.js.map
+.claude/settings.json

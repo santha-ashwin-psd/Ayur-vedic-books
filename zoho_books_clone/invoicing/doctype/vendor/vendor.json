@@ -1,0 +1,217 @@
+{
+  "name": "Vendor",
+  "module": "Invoicing",
+  "doctype": "DocType",
+  "custom": 1,
+  "issingle": 0,
+  "istable": 0,
+  "track_changes": 1,
+  "is_submittable": 0,
+  "autoname": "naming_series:",
+  "naming_rule": "By \"Naming Series\" field",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "creation": "2026-04-27 13:25:00.000000",
+  "modified": "2026-04-27 13:25:00.000000",
+  "modified_by": "Administrator",
+  "owner": "Administrator",
+  "docstatus": 0,
+  "fields": [
+    {
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Series",
+      "no_copy": 1,
+      "set_only_once": 1,
+      "in_list_view": 0,
+      "options": "VEND-.YYYY.-.#####\nVEND-.#####",
+      "default": "VEND-.YYYY.-.#####"
+    },
+    {
+      "fieldname": "supplier_name",
+      "fieldtype": "Data",
+      "label": "Vendor Name",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_global_search": 1
+    },
+    {
+      "fieldname": "supplier_type",
+      "fieldtype": "Select",
+      "label": "Vendor Type",
+      "options": "Company\nIndividual",
+      "default": "Company"
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "default_currency",
+      "fieldtype": "Link",
+      "label": "Default Currency",
+      "options": "Currency",
+      "default": "INR"
+    },
+    {
+      "fieldname": "payment_terms",
+      "fieldtype": "Link",
+      "label": "Payment Terms",
+      "options": "Payment Terms"
+    },
+    {
+      "fieldname": "tax_id",
+      "fieldtype": "Data",
+      "label": "GSTIN / Tax ID"
+    },
+    {
+      "fieldname": "section_contact",
+      "fieldtype": "Section Break",
+      "label": "Contact"
+    },
+    {
+      "fieldname": "email_id",
+      "fieldtype": "Data",
+      "label": "Email",
+      "options": "Email",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "mobile_no",
+      "fieldtype": "Data",
+      "label": "Mobile"
+    },
+    {
+      "fieldname": "phone",
+      "fieldtype": "Data",
+      "label": "Phone"
+    },
+    {
+      "fieldname": "column_break_2",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "website",
+      "fieldtype": "Data",
+      "label": "Website"
+    },
+    {
+      "fieldname": "section_address",
+      "fieldtype": "Section Break",
+      "label": "Address"
+    },
+    {
+      "fieldname": "address_line1",
+      "fieldtype": "Data",
+      "label": "Address Line 1"
+    },
+    {
+      "fieldname": "address_line2",
+      "fieldtype": "Data",
+      "label": "Address Line 2"
+    },
+    {
+      "fieldname": "city",
+      "fieldtype": "Data",
+      "label": "City"
+    },
+    {
+      "fieldname": "state",
+      "fieldtype": "Data",
+      "label": "State"
+    },
+    {
+      "fieldname": "pincode",
+      "fieldtype": "Data",
+      "label": "Pincode"
+    },
+    {
+      "fieldname": "country",
+      "fieldtype": "Data",
+      "label": "Country",
+      "default": "India"
+    },
+    {
+      "fieldname": "section_accounts",
+      "fieldtype": "Section Break",
+      "label": "Accounts"
+    },
+    {
+      "fieldname": "default_payable_account",
+      "fieldtype": "Link",
+      "label": "Default Payable Account",
+      "options": "Account",
+      "description": "Auto-filled on Purchase Invoice"
+    },
+    {
+      "fieldname": "disabled",
+      "fieldtype": "Check",
+      "label": "Disabled"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Books Admin",
+      "permlevel": 0,
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "report": 1,
+      "share": 1
+    },
+    {
+      "role": "Accountant",
+      "permlevel": 0,
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "report": 1,
+      "share": 1
+    },
+    {
+      "role": "Books Manager",
+      "permlevel": 0,
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "report": 1,
+      "share": 1
+    },
+    {
+      "role": "Books Viewer",
+      "permlevel": 0,
+      "read": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "report": 1,
+      "share": 1
+    },
+    {
+      "role": "System Manager",
+      "permlevel": 0,
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "import_": 1,
+      "print": 1,
+      "report": 1,
+      "select": 1,
+      "set_user_permissions": 1,
+      "share": 1
+    }
+  ]
+}

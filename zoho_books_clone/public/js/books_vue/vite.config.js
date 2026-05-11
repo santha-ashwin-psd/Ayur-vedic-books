@@ -7,6 +7,15 @@ import { resolve } from "path";
 // that block unpkg.
 export default defineConfig({
   plugins: [vue()],
+  // Vite's `lib` build mode does NOT auto-replace process.env.NODE_ENV
+  // the way an app build does, so Vue's runtime references a non-existent
+  // `process` global at runtime. Inline the production constants here.
+  define: {
+    "process.env.NODE_ENV":            JSON.stringify("production"),
+    "__VUE_OPTIONS_API__":             "true",
+    "__VUE_PROD_DEVTOOLS__":           "false",
+    "__VUE_PROD_HYDRATION_MISMATCH_DETAILS__": "false",
+  },
   build: {
     outDir:      resolve(__dirname, "../../js"),
     assetsDir:   "dist",

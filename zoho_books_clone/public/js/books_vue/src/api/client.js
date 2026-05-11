@@ -184,3 +184,19 @@ export async function apiLinkValues(doctype, txt, filters) {
 
 // Legacy alias kept for any direct api() calls still in ported code.
 export async function api(method, args) { return await apiGET(method, args); }
+
+// Resolves the current company. Mirrors books.js:258-271.
+export async function resolveCompany() {
+  if (window.__booksCompany) return window.__booksCompany;
+  try {
+    const r = await apiGET("frappe.client.get_value", {
+      doctype:   "Books Settings",
+      filters:   JSON.stringify({ name: "Books Settings" }),
+      fieldname: JSON.stringify(["default_company"]),
+    });
+    const c = r?.default_company || "";
+    window.__booksCompany = c;
+    if (window.frappe?.boot?.sysdefaults) window.frappe.boot.sysdefaults.company = c;
+    return c;
+  } catch { return window.__booksCompany || ""; }
+}

@@ -25,7 +25,8 @@ html,body{height:100%;overflow:hidden;background:#f0f2f5}
 // and ship. To roll back any single route: remove it from this list. The
 // `?legacy=1` query string forces the legacy bundle regardless.
 window.BOOKS_VUE_ROUTES = [
-  // Phase A: shell only — new bundle owns nothing yet.
+  // Only routes that have been migrated to the Vite bundle (js/books.js)
+  // belong here. Inventory routes are still served by the legacy bundle.
 ];
 
 window.frappe={session:{},boot:{sysdefaults:{company:''}}};

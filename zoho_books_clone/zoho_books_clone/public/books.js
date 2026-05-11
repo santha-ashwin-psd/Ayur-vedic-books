@@ -20038,10 +20038,30 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
       async function load() {
         loading.value = true;
         try {
-          list.value = await apiList("Warehouse", {
-            fields:["name","warehouse_name","warehouse_type","parent_warehouse","city","is_group","disabled"],
-            limit:500,
-          }) || [];
+          const co = window.__booksCompany || "";
+          // Fetch warehouses for current company AND those with no company set
+          // Use direct API call to bypass auto company scoping and handle null company
+          const whFields = ["name","warehouse_name","warehouse_type","parent_warehouse","city","is_group","disabled","company"];
+          const params = {
+            doctype: "Warehouse",
+            fields: JSON.stringify(whFields),
+            order_by: "modified desc",
+            limit_page_length: 500,
+          };
+          if (co) {
+            // Include warehouses belonging to this company OR with no company set
+            params.filters = JSON.stringify([["company","in",[co,""]]]);
+          }
+          const all = await apiGET("frappe.client.get_list", params) || [];
+          list.value = all;
+
+          // Auto-fix orphaned warehouses (no company) by assigning the current company
+          if (co) {
+            all.filter(w => !w.company).forEach(async (w) => {
+              try { await apiSave({doctype:"Warehouse", name:w.name, company:co}); } catch {}
+            });
+          }
+
           list.value.filter(w => w.is_group && !w.parent_warehouse).forEach(w => {
             const s = new Set(expanded.value); s.add(w.name); expanded.value = s;
           });
@@ -20095,6 +20115,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             warehouse_name: form.warehouse_name,
             warehouse_type: form.warehouse_type,
             parent_warehouse: form.parent_warehouse || "",
+            company: window.__booksCompany || "",
             city: form.city, state: form.state,
             address_line1: form.address_line1, pincode: form.pincode,
             is_group: form.is_group ? 1 : 0,

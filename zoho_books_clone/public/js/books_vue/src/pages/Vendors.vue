@@ -1,0 +1,714 @@
+<template>
+<div>
+
+  <!-- ── FLAT TABLE VIEW (default, nothing selected) ── -->
+  <div v-if="!selectedVendor" class="b-page cust-page">
+    <div class="cust-toolbar">
+      <div class="cust-toolbar-left">
+        <div class="cust-filters">
+          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='all'}" @click="activeFilter='all'">All <span class="zb-pill-cnt" :class="activeFilter==='all'?'':'zb-pc-muted'">{{counts.all}}</span></button>
+          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='active'}" @click="activeFilter='active'">Active <span class="zb-pill-cnt" :class="activeFilter==='active'?'':'zb-pc-muted'">{{counts.active}}</span></button>
+          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='disabled'}" @click="activeFilter='disabled'">Disabled <span class="zb-pill-cnt" :class="activeFilter==='disabled'?'':'zb-pc-muted'">{{counts.disabled}}</span></button>
+        </div>
+      </div>
+      <div class="cust-toolbar-right">
+        <div class="cust-search">
+          <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+          <input v-model="search" placeholder="Search vendors…" class="cust-search-input" autocomplete="off"/>
+        </div>
+        <button class="zb-tb-btn" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
+        <button class="zb-tb-btn zb-tb-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
+      </div>
+    </div>
+    <div class="b-card cust-table-card">
+      <div class="cust-table-wrap">
+        <table class="cust-table">
+          <thead><tr>
+            <th>Vendor</th><th>Type</th><th>GSTIN</th><th>Email</th>
+            <th>Mobile</th><th>City / State</th><th>Status</th>
+            <th style="text-align:center;width:100px">Actions</th>
+          </tr></thead>
+          <tbody>
+            <template v-if="loading">
+              <tr v-for="n in 6" :key="n"><td colspan="8" style="padding:12px 14px"><div class="b-shimmer" style="height:13px;border-radius:4px;width:70%"></div></td></tr>
+            </template>
+            <tr v-else-if="!filtered.length">
+              <td colspan="8" class="cust-empty">
+                <div class="cust-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                <div class="cust-empty-title">{{search ? 'No results found' : 'No vendors yet'}}</div>
+                <div class="cust-empty-sub">{{search ? 'Try a different search term' : 'Add your first vendor to get started'}}</div>
+                <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:12px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
+              </td>
+            </tr>
+            <tr v-else v-for="v in filtered" :key="v.name" class="cust-row" :class="v.disabled?'cust-row-disabled':''" @click="selectVendor(v)">
+              <td><div class="cust-name">{{v.supplier_name||v.name}}</div><div class="cust-id">{{v.name}}</div></td>
+              <td><span class="b-badge" :class="v.supplier_type==='Company'?'b-badge-blue':'b-badge-muted'">{{v.supplier_type||'—'}}</span></td>
+              <td class="cust-mono">{{v.tax_id||'—'}}</td>
+              <td class="cust-secondary">{{v.email_id||'—'}}</td>
+              <td class="cust-secondary">{{v.mobile_no||'—'}}</td>
+              <td class="cust-secondary">{{v.city ? (v.city + (v.state ? ', '+v.state : '')) : '—'}}</td>
+              <td><span class="b-badge" :class="v.disabled?'b-badge-red':'b-badge-green'">{{v.disabled?'Disabled':'Active'}}</span></td>
+              <td @click.stop style="text-align:center">
+                <div style="display:flex;gap:4px;justify-content:center">
+                  <button class="cust-act-btn cust-act-edit" @click="openEdit(v.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                  <button class="cust-act-btn cust-act-del" @click="confirmDelete(v)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div v-if="!loading && filtered.length" class="cust-row-count">Showing {{filtered.length}} of {{list.length}} vendors</div>
+    </div>
+  </div>
+
+  <!-- ── TWO-PANEL DETAIL VIEW (when vendor selected) ── -->
+  <div v-else class="zb-master-detail" style="height:calc(100vh - 56px)">
+
+    <!-- LEFT PANEL -->
+    <div class="zb-list-pane" style="width:320px;min-width:260px;border-right:1px solid #e4e8f0;display:flex;flex-direction:column;overflow:hidden">
+
+      <div style="padding:16px 16px 10px;border-bottom:1px solid #f0f2f5;flex-shrink:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:14px;font-weight:700;color:#111827">Vendors</span>
+          <button class="nim-btn nim-btn-primary" style="padding:5px 10px;font-size:12px" @click="openAdd">
+            <span v-html="icon('plus',12)"></span> New Vendor
+          </button>
+        </div>
+        <div class="cust-search" style="width:100%">
+          <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+          <input v-model="search" placeholder="Search vendors…" class="cust-search-input" autocomplete="off"/>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">
+          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='all'}" @click="activeFilter='all'" style="font-size:11.5px">All <span class="zb-pill-cnt" :class="activeFilter==='all'?'':'zb-pc-muted'">{{counts.all}}</span></button>
+          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='active'}" @click="activeFilter='active'" style="font-size:11.5px">Active <span class="zb-pill-cnt" :class="activeFilter==='active'?'':'zb-pc-muted'">{{counts.active}}</span></button>
+          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='disabled'}" @click="activeFilter='disabled'" style="font-size:11.5px">Disabled <span class="zb-pill-cnt" :class="activeFilter==='disabled'?'':'zb-pc-muted'">{{counts.disabled}}</span></button>
+        </div>
+      </div>
+
+      <div style="flex:1;overflow-y:auto">
+        <template v-if="loading">
+          <div v-for="n in 6" :key="n" style="padding:14px 16px;border-bottom:1px solid #f0f2f5">
+            <div class="b-shimmer" style="height:12px;border-radius:4px;width:70%;margin-bottom:6px"></div>
+            <div class="b-shimmer" style="height:10px;border-radius:4px;width:40%"></div>
+          </div>
+        </template>
+        <div v-else-if="!filtered.length" style="text-align:center;padding:40px 16px">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 10px;display:block"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:4px">{{search?'No matches':'No vendors yet'}}</div>
+          <div style="font-size:12px;color:#9ca3af">{{search?'Try different keywords':'Add your first vendor'}}</div>
+          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:12px;font-size:12px" @click="openAdd">New Vendor</button>
+        </div>
+        <div v-else v-for="v in filtered" :key="v.name"
+          @click="selectVendor(v)"
+          :style="{
+            padding:'12px 16px',
+            borderBottom:'1px solid #f0f2f5',
+            cursor:'pointer',
+            background: selectedVendor && selectedVendor.name===v.name ? '#FFF7ED' : 'transparent',
+            borderLeft: selectedVendor && selectedVendor.name===v.name ? '3px solid #E67700' : '3px solid transparent',
+            transition:'background 0.15s',
+          }">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div :style="{
+              width:'34px',height:'34px',borderRadius:'50%',flexShrink:0,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontWeight:700,fontSize:'12px',color:'#fff',
+              background: v.disabled ? '#9CA3AF' : 'linear-gradient(135deg,#E67700,#C96200)'
+            }">{{vendorInitials(v.supplier_name)}}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {{v.supplier_name||v.name}}
+              </div>
+              <div style="font-size:11.5px;color:#6B7280;margin-top:2px">
+                ₹0.00 outstanding
+                <span v-if="v.disabled" style="margin-left:6px;font-size:10px;font-weight:600;color:#6B7280;background:#F3F4F6;padding:1px 5px;border-radius:10px">Disabled</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="!loading && filtered.length" style="padding:8px 16px;border-top:1px solid #f0f2f5;font-size:11.5px;color:#9ca3af;display:flex;justify-content:space-between;flex-shrink:0">
+        <span>{{filtered.length}} of {{list.length}} vendors</span>
+        <button @click="load" style="background:none;border:none;cursor:pointer;color:#6B7280;font-size:11.5px;display:flex;align-items:center;gap:3px"><span v-html="icon('refresh',11)"></span> Refresh</button>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div style="flex:1;overflow-y:auto;background:#F9FAFB">
+
+      <div style="max-width:960px;margin:0 auto;padding:24px">
+
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div :style="{
+              width:'46px',height:'46px',borderRadius:'50%',flexShrink:0,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontWeight:700,fontSize:'16px',color:'#fff',
+              background: selectedVendor.disabled ? '#9CA3AF' : 'linear-gradient(135deg,#E67700,#C96200)'
+            }">{{vendorInitials(selectedVendor.supplier_name)}}</div>
+            <div>
+              <div style="font-size:19px;font-weight:700;color:#111827">{{selectedVendor.supplier_name}}</div>
+              <div style="font-size:12px;color:#6B7280">{{selectedVendor.name}}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="nim-btn" style="background:#fff;color:#374151;border:1px solid #E5E7EB;font-size:13px" @click="openEdit(selectedVendor.name)">
+              <span v-html="icon('edit',13)"></span> Edit
+            </button>
+            <button class="nim-btn nim-btn-primary" style="font-size:13px;background:#E67700;border-color:#E67700" @click="openAdd">
+              <span v-html="icon('plus',13)"></span> New Transaction
+            </button>
+            <button class="nim-btn" style="background:none;color:#9CA3AF;border:1px solid #E5E7EB;width:32px;height:32px;padding:0;display:grid;place-items:center" @click="closeVendor" title="Close">
+              <span v-html="icon('x',14)"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div style="display:flex;border-bottom:2px solid #E5E7EB;margin-bottom:22px;gap:0">
+          <button @click="activeVendorTab='overview'"
+            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
+              color:activeVendorTab==='overview'?'#E67700':'#6B7280',
+              borderBottom:activeVendorTab==='overview'?'2px solid #E67700':'2px solid transparent',marginBottom:'-2px'}">
+            Overview
+          </button>
+          <button @click="activeVendorTab='transactions'"
+            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
+              color:activeVendorTab==='transactions'?'#E67700':'#6B7280',
+              borderBottom:activeVendorTab==='transactions'?'2px solid #E67700':'2px solid transparent',marginBottom:'-2px'}">
+            Transactions
+          </button>
+        </div>
+
+        <!-- Overview tab -->
+        <div v-if="activeVendorTab==='overview'" style="display:flex;gap:20px;align-items:flex-start">
+
+          <!-- Left column ~55% -->
+          <div style="flex:0 0 55%;min-width:0;display:flex;flex-direction:column;gap:14px">
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:18px">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F3F4F6">
+                <div :style="{
+                  width:'44px',height:'44px',borderRadius:'50%',flexShrink:0,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontWeight:700,fontSize:'16px',color:'#fff',
+                  background: selectedVendor.disabled ? '#9CA3AF' : 'linear-gradient(135deg,#E67700,#C96200)'
+                }">{{vendorInitials(selectedVendor.supplier_name)}}</div>
+                <div>
+                  <div style="font-size:14px;font-weight:700;color:#111827">{{selectedVendor.supplier_name}}</div>
+                  <div v-if="selectedVendor.email_id" style="font-size:12px;color:#6B7280;margin-top:2px">{{selectedVendor.email_id}}</div>
+                </div>
+                <div style="margin-left:auto">
+                  <a href="#" style="font-size:12px;color:#E67700;text-decoration:none">Invite to Portal</a>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <div v-if="selectedVendor.mobile_no" style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6A16 16 0 0 0 15.4 16.1l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <span>{{selectedVendor.mobile_no}}</span>
+                </div>
+                <div v-else style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#9CA3AF">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6A16 16 0 0 0 15.4 16.1l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <span>No phone number</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F3F4F6">
+                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">ADDRESS</span>
+                <span style="font-size:12px;color:#9CA3AF">▲</span>
+              </div>
+              <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px">
+                <div>
+                  <div style="font-size:11.5px;font-weight:600;color:#6B7280;margin-bottom:6px">Billing Address</div>
+                  <div v-if="selectedVendor.city||selectedVendor.address_line1" style="font-size:13px;color:#374151;line-height:1.6">
+                    <div v-if="selectedVendor.address_line1">{{selectedVendor.address_line1}}</div>
+                    <div v-if="selectedVendor.address_line2">{{selectedVendor.address_line2}}</div>
+                    <div>{{[selectedVendor.city,selectedVendor.state,selectedVendor.pincode].filter(Boolean).join(', ')}}</div>
+                    <div>{{selectedVendor.country||'India'}}</div>
+                  </div>
+                  <div v-else style="font-size:12.5px;color:#9CA3AF">
+                    No Billing Address — <a href="#" @click.prevent="openEdit(selectedVendor.name)" style="color:#E67700;text-decoration:none">New Address</a>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size:11.5px;font-weight:600;color:#6B7280;margin-bottom:6px">Shipping Address</div>
+                  <div style="font-size:12.5px;color:#9CA3AF">No Shipping Address — <a href="#" @click.prevent="openEdit(selectedVendor.name)" style="color:#E67700;text-decoration:none">New Address</a></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F3F4F6">
+                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">OTHER DETAILS</span>
+                <span style="font-size:12px;color:#9CA3AF">▲</span>
+              </div>
+              <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">Default Currency</span>
+                  <span style="font-weight:600;color:#111827">{{selectedVendor.default_currency||'INR'}}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
+                  <span style="color:#6B7280">Portal Status</span>
+                  <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280">● Disabled</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">Vendor Type</span>
+                  <span style="font-weight:600;color:#111827">{{selectedVendor.supplier_type||'Company'}}</span>
+                </div>
+                <div v-if="selectedVendor.tax_id" style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">GSTIN / Tax ID</span>
+                  <span style="font-weight:600;color:#111827;font-family:monospace">{{selectedVendor.tax_id}}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">CONTACT PERSONS</span>
+                <button @click="openEdit(selectedVendor.name)" style="background:none;border:none;cursor:pointer;color:#E67700;font-size:12px">+ Add</button>
+              </div>
+              <div style="padding:10px 16px 14px;font-size:12.5px;color:#9CA3AF">No contacts added yet.</div>
+            </div>
+          </div>
+
+          <!-- Right column ~45% -->
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px">
+              <div style="font-size:11.5px;color:#6B7280;margin-bottom:4px">Payment due period</div>
+              <div style="font-size:14px;font-weight:600;color:#111827">{{selectedVendor.payment_terms||'Due on Receipt'}}</div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6">
+                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">PAYABLES</span>
+              </div>
+              <table style="width:100%;border-collapse:collapse">
+                <thead>
+                  <tr style="border-bottom:1px solid #F3F4F6">
+                    <th style="text-align:left;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px">CURRENCY</th>
+                    <th style="text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 12px">OUTSTANDING PAYABLES</th>
+                    <th style="text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px">UNUSED CREDITS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px">INR</td>
+                    <td style="font-size:13px;font-weight:600;color:#E67700;text-align:right;padding:10px 12px;font-family:monospace">₹0.00</td>
+                    <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;font-family:monospace">₹0.00</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style="padding:10px 16px">
+                <a href="#" style="font-size:12.5px;color:#2563EB;text-decoration:none">Enter Opening Balance</a>
+              </div>
+            </div>
+
+            <div style="padding:4px 0">
+              <button @click="confirmDelete(selectedVendor)" style="background:none;border:none;cursor:pointer;color:#DC2626;font-size:12.5px;display:flex;align-items:center;gap:6px">
+                <span v-html="icon('trash',13)"></span> Delete Vendor
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transactions tab -->
+        <div v-else-if="activeVendorTab==='transactions'" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5" style="margin:0 auto 12px;display:block"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
+          <div style="font-size:12.5px;color:#9CA3AF">Bills and payments for {{selectedVendor.supplier_name}} will appear here.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer -->
+  <Teleport to="body">
+    <div v-if="showDrawer" class="cust-backdrop" @click.self="showDrawer=false">
+      <div class="cust-drawer">
+
+        <div class="cust-drawer-header">
+          <div class="cust-drawer-header-left">
+            <div class="cust-drawer-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div>
+              <div class="cust-drawer-title">{{drawerMode==='add'?'New Vendor':'Edit Vendor'}}</div>
+              <div class="cust-drawer-sub">{{drawerMode==='edit'?form.name:'Fill in vendor details'}}</div>
+            </div>
+          </div>
+          <button class="nim-close" @click="showDrawer=false" v-html="icon('x',15)"></button>
+        </div>
+
+        <div v-if="drawerLoading" style="flex:1;display:grid;place-items:center;color:#9ca3af;font-size:13px">
+          <div>Loading vendor…</div>
+        </div>
+
+        <div v-else class="cust-drawer-body">
+
+          <div class="cust-sec-label">Basic Information</div>
+          <div class="nim-grid-3 nim-mb">
+            <div class="nim-field" style="grid-column:span 3">
+              <label class="nim-label">Vendor Name <span class="nim-req">*</span></label>
+              <input v-model="form.supplier_name" class="nim-input" placeholder="Company or individual name"
+                @input="form.supplier_name=form.supplier_name.replace(/[^a-zA-Z\s.'&-]/g,'')"/>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">Vendor Type</label>
+              <select v-model="form.supplier_type" class="nim-select">
+                <option>Company</option><option>Individual</option>
+              </select>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">GSTIN / Tax ID</label>
+              <input v-model="form.tax_id" class="nim-input" placeholder="27AAPFU0939F1ZV"/>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">Currency</label>
+              <select v-model="form.default_currency" class="nim-select">
+                <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option>
+              </select>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">Payment Terms</label>
+              <select v-model="form.payment_terms" class="nim-select">
+                <option value="">Select</option>
+                <option>Net 30</option><option>Net 15</option><option>Net 7</option>
+                <option>Due on Receipt</option><option>End of Month</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="cust-sec-label">Contact</div>
+          <div class="nim-grid-2 nim-mb">
+            <div class="nim-field">
+              <label class="nim-label">Email</label>
+              <input v-model="form.email_id" type="email" class="nim-input" placeholder="email@vendor.com"/>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">Mobile</label>
+              <div style="display:flex">
+                <select v-model="form.mobile_code" style="width:75px;border-right:none;border-top-right-radius:0;border-bottom-right-radius:0;text-align:center;background:#f9fafb;padding:0 5px" class="nim-input">
+                  <option value="+91">🇮🇳 +91</option><option value="+1">🇺🇸 +1</option>
+                  <option value="+44">🇬🇧 +44</option><option value="+61">🇦🇺 +61</option>
+                  <option value="+971">🇦🇪 +971</option><option value="+65">🇸🇬 +65</option>
+                </select>
+                <input v-model="form.mobile_no" class="nim-input" style="border-top-left-radius:0;border-bottom-left-radius:0;flex:1" placeholder="98765 43210"
+                  @input="form.mobile_no=form.mobile_no.replace(/\D/g,'')"/>
+              </div>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">Phone</label>
+              <input v-model="form.phone" class="nim-input" placeholder="Landline"
+                @input="form.phone=form.phone.replace(/[^\d+\-\s()]/g,'')"/>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">Website</label>
+              <input v-model="form.website" class="nim-input" placeholder="https://"/>
+            </div>
+          </div>
+
+          <div class="cust-sec-label">Address</div>
+          <div class="nim-grid-2 nim-mb">
+            <div class="nim-field" style="grid-column:span 2">
+              <label class="nim-label">Address Line 1</label>
+              <input v-model="form.address_line1" class="nim-input" placeholder="Street, building no."/>
+            </div>
+            <div class="nim-field" style="grid-column:span 2">
+              <label class="nim-label">Address Line 2</label>
+              <input v-model="form.address_line2" class="nim-input" placeholder="Area, landmark"/>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">City</label>
+              <input v-model="form.city" class="nim-input" placeholder="Mumbai"
+                @input="form.city=form.city.replace(/[^a-zA-Z\s]/g,'')"/>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">State</label>
+              <input v-model="form.state" class="nim-input" placeholder="Maharashtra"
+                @input="form.state=form.state.replace(/[^a-zA-Z\s]/g,'')"/>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">Pincode</label>
+              <input v-model="form.pincode" class="nim-input" placeholder="400001" maxlength="6"
+                @input="form.pincode=form.pincode.replace(/\D/g,'').slice(0,6)"/>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">Country</label>
+              <select v-model="form.country" class="nim-select">
+                <option>India</option><option>United States</option><option>United Kingdom</option>
+                <option>Canada</option><option>Australia</option><option>Singapore</option>
+                <option>United Arab Emirates</option><option>Saudi Arabia</option>
+                <option>Germany</option><option>France</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="cust-sec-label">Account Settings</div>
+          <div class="nim-grid-1 nim-mb">
+            <div class="nim-field">
+              <label class="nim-label">Default Payable Account</label>
+              <select v-model="form.default_payable_account" class="nim-select">
+                <option value="">Select</option>
+                <option v-for="a in accounts" :key="a.name" :value="a.name">{{a.name}}</option>
+              </select>
+            </div>
+          </div>
+
+          <div v-if="drawerMode==='edit'" class="cust-disable-box" @click="form.disabled=form.disabled?0:1">
+            <input type="checkbox" :checked="!!form.disabled" @click.stop="form.disabled=form.disabled?0:1" style="width:16px;height:16px;accent-color:#dc2626;cursor:pointer"/>
+            <label style="font-size:13px;color:#dc2626;cursor:pointer">Disable this vendor (won't appear in bill dropdowns)</label>
+          </div>
+
+        </div>
+
+        <div class="nim-footer">
+          <button class="nim-btn nim-btn-ghost" @click="showDrawer=false">Cancel</button>
+          <button class="nim-btn nim-btn-primary" @click="saveVendor" :disabled="saving">
+            <span v-if="saving" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
+            {{saving ? 'Saving…' : (drawerMode==='add' ? 'Create Vendor' : 'Save Changes')}}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Delete Confirm -->
+  <Teleport to="body">
+    <div v-if="showDelete" class="nim-overlay" @click.self="showDelete=false">
+      <div class="nim-dialog" style="max-width:420px">
+        <div class="nim-header" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
+          <div class="nim-header-left">
+            <div class="nim-header-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </div>
+            <div class="nim-header-title">Delete Vendor?</div>
+          </div>
+          <button class="nim-close" @click="showDelete=false" v-html="icon('x',15)"></button>
+        </div>
+        <div class="nim-body" style="padding:20px 24px">
+          <p style="font-size:14px;color:#374151;line-height:1.6">
+            Are you sure you want to delete <strong>{{deleteTarget?.supplier_name}}</strong>?
+            This action cannot be undone.
+          </p>
+        </div>
+        <div class="nim-footer">
+          <button class="nim-btn nim-btn-ghost" @click="showDelete=false">Cancel</button>
+          <button @click="doDelete" :disabled="deleting"
+            style="height:37px;padding:0 18px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;border:none;background:#dc2626;color:#fff;display:inline-flex;align-items:center;gap:7px">
+            <span v-if="deleting" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
+            {{deleting ? 'Deleting…' : 'Yes, Delete'}}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+</div>
+</template>
+
+<script setup>
+import { ref, reactive, computed, onMounted } from "vue";
+import { apiList, apiGET, apiSave, apiDelete } from "../api/client.js";
+import { useToast } from "../composables/useToast.js";
+import { fmt, fmtDate } from "../utils/format.js";
+import { icon } from "../utils/icons.js";
+
+const { toast } = useToast();
+
+const list          = ref([]);
+const loading       = ref(true);
+const search        = ref("");
+const activeFilter  = ref("all");
+const showDrawer    = ref(false);
+const drawerMode    = ref("add");
+const drawerLoading = ref(false);
+const saving        = ref(false);
+const showDelete    = ref(false);
+const deleteTarget  = ref(null);
+const deleting      = ref(false);
+const accounts      = ref([]);
+
+const form = reactive({
+  name: "",
+  supplier_name: "", supplier_type: "Company",
+  tax_id: "", default_currency: "INR", payment_terms: "",
+  email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
+  address_line1: "", address_line2: "",
+  city: "", state: "", pincode: "", country: "India",
+  default_payable_account: "", disabled: 0,
+});
+
+const counts = computed(() => ({
+  all:      list.value.length,
+  active:   list.value.filter((v) => !v.disabled).length,
+  disabled: list.value.filter((v) =>  v.disabled).length,
+}));
+
+const filtered = computed(() => {
+  let r = list.value;
+  if (activeFilter.value === "active")   r = r.filter((v) => !v.disabled);
+  if (activeFilter.value === "disabled") r = r.filter((v) =>  v.disabled);
+  const q = search.value.toLowerCase().trim();
+  if (q) r = r.filter((v) =>
+    (v.supplier_name || "").toLowerCase().includes(q) ||
+    (v.name          || "").toLowerCase().includes(q) ||
+    (v.email_id      || "").toLowerCase().includes(q) ||
+    (v.mobile_no     || "").toLowerCase().includes(q) ||
+    (v.tax_id        || "").toLowerCase().includes(q)
+  );
+  return r;
+});
+
+async function load() {
+  loading.value = true;
+  try {
+    const rows = await apiList("Supplier", {
+      fields: ["name","supplier_name","supplier_type","email_id","mobile_no",
+        "tax_id","city","state","disabled","default_currency"],
+      order: "supplier_name asc", limit: 300,
+    });
+    list.value = rows || [];
+  } catch (e) {
+    toast("Failed to load vendors: " + (e.message || e), "error");
+  } finally { loading.value = false; }
+}
+
+async function loadAccounts() {
+  try {
+    const rows = await apiList("Account", {
+      fields: ["name"],
+      filters: [["account_type", "=", "Payable"], ["is_group", "=", 0]],
+      limit: 50,
+    });
+    accounts.value = rows || [];
+  } catch { accounts.value = []; }
+}
+
+function resetForm() {
+  Object.assign(form, {
+    name: "", supplier_name: "", supplier_type: "Company",
+    tax_id: "", default_currency: "INR", payment_terms: "",
+    email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
+    address_line1: "", address_line2: "",
+    city: "", state: "", pincode: "", country: "India",
+    default_payable_account: "", disabled: 0,
+  });
+}
+
+function openAdd() {
+  resetForm();
+  drawerMode.value = "add";
+  showDrawer.value = true;
+}
+
+async function openEdit(name) {
+  resetForm();
+  drawerMode.value = "edit";
+  drawerLoading.value = true;
+  showDrawer.value = true;
+  try {
+    const doc = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Supplier", name });
+    const mno = doc.mobile_no || "";
+    Object.assign(form, {
+      name: doc.name,
+      supplier_name: doc.supplier_name || "",
+      supplier_type: doc.supplier_type || "Company",
+      tax_id: doc.tax_id || "",
+      default_currency: doc.default_currency || "INR",
+      payment_terms: doc.payment_terms || "",
+      email_id: doc.email_id || "",
+      mobile_code: mno.startsWith("+") && mno.includes(" ") ? mno.split(" ")[0] : "+91",
+      mobile_no:   mno.startsWith("+") && mno.includes(" ") ? mno.substring(mno.indexOf(" ") + 1) : mno,
+      phone: doc.phone || "",
+      website: doc.website || "",
+      address_line1: doc.address_line1 || "",
+      address_line2: doc.address_line2 || "",
+      city: doc.city || "",
+      state: doc.state || "",
+      pincode: doc.pincode || "",
+      country: doc.country || "India",
+      default_payable_account: doc.default_payable_account || "",
+      disabled: doc.disabled || 0,
+    });
+  } catch (e) {
+    toast("Could not load vendor: " + (e.message || e), "error");
+    showDrawer.value = false;
+  } finally { drawerLoading.value = false; }
+}
+
+async function saveVendor() {
+  if (!form.supplier_name.trim()) { toast("Vendor Name is required", "error"); return; }
+  if (form.email_id && !form.email_id.includes("@")) { toast("Invalid email address", "error"); return; }
+  saving.value = true;
+  try {
+    const doc = {
+      doctype: "Supplier",
+      ...(drawerMode.value === "edit" ? { name: form.name } : { naming_series: "SUPP-.YYYY.-.#####" }),
+      supplier_name: form.supplier_name.trim(),
+      supplier_type: form.supplier_type,
+      tax_id: form.tax_id.trim(),
+      default_currency: form.default_currency,
+      payment_terms: form.payment_terms,
+      email_id: form.email_id.trim(),
+      mobile_no: form.mobile_no.trim() ? (form.mobile_code + " " + form.mobile_no.trim()) : "",
+      phone: form.phone.trim(),
+      website: form.website.trim(),
+      address_line1: form.address_line1.trim(),
+      address_line2: form.address_line2.trim(),
+      city: form.city.trim(),
+      state: form.state.trim(),
+      pincode: form.pincode.trim(),
+      country: form.country.trim() || "India",
+      default_payable_account: form.default_payable_account,
+      disabled: form.disabled ? 1 : 0,
+    };
+    let doc_to_save = doc;
+    if (drawerMode.value === "edit") {
+      const fresh = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Supplier", name: form.name });
+      doc_to_save = { ...fresh, ...doc };
+    }
+    await apiSave(doc_to_save);
+    toast(drawerMode.value === "edit" ? "Vendor updated!" : "Vendor created!");
+    showDrawer.value = false;
+    await load();
+  } catch (e) {
+    toast(e.message || "Could not save vendor", "error");
+  } finally { saving.value = false; }
+}
+
+function confirmDelete(v) {
+  deleteTarget.value = v;
+  showDelete.value = true;
+}
+
+async function doDelete() {
+  if (!deleteTarget.value) return;
+  deleting.value = true;
+  try {
+    await apiDelete("Supplier", deleteTarget.value.name);
+    toast("Vendor deleted");
+    showDelete.value = false;
+    deleteTarget.value = null;
+    await load();
+  } catch (e) {
+    toast(e.message || "Could not delete vendor", "error");
+  } finally { deleting.value = false; }
+}
+
+const selectedVendor  = ref(null);
+const activeVendorTab = ref("overview");
+function selectVendor(v) { selectedVendor.value = v; activeVendorTab.value = "overview"; }
+function closeVendor()   { selectedVendor.value = null; }
+function vendorInitials(name) {
+  return (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+onMounted(() => { load(); loadAccounts(); });
+</script>

@@ -44,25 +44,16 @@ const route  = useRoute();
 const router = useRouter();
 const { can } = usePermissions();
 
-// Drop section dividers whose entire run of children is hidden.
+// Hold the latest section header until we see an item that passes the
+// permission filter; then flush it once. Sections with no visible
+// children never appear.
 const visibleNav = computed(() => {
   const out = [];
   let pendingSection = null;
-  let sectionHasItem = false;
   for (const item of NAV) {
-    if (item.section) {
-      if (pendingSection && sectionHasItem) out.push(pendingSection);
-      pendingSection = item;
-      sectionHasItem = false;
-      continue;
-    }
+    if (item.section) { pendingSection = item; continue; }
     if (!can(item.module)) continue;
-    if (pendingSection && !sectionHasItem) {
-      out.push(pendingSection);
-      sectionHasItem = true;
-    } else if (pendingSection) {
-      sectionHasItem = true;
-    }
+    if (pendingSection) { out.push(pendingSection); pendingSection = null; }
     out.push(item);
   }
   return out;

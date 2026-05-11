@@ -4,7 +4,12 @@
 // window.BOOKS_VUE_ROUTES.
 
 import { createRouter, createWebHashHistory } from "vue-router";
-import PhaseAHome from "./pages/PhaseAHome.vue";
+import PhaseAHome           from "./pages/PhaseAHome.vue";
+import Customers            from "./pages/Customers.vue";
+import Vendors              from "./pages/Vendors.vue";
+import InventoryItems       from "./pages/InventoryItems.vue";
+import InventoryItemGroups  from "./pages/InventoryItemGroups.vue";
+import InventoryWarehouses  from "./pages/InventoryWarehouses.vue";
 
 import { useToast } from "./composables/useToast.js";
 import { usePermissions } from "./composables/usePermissions.js";
@@ -17,7 +22,37 @@ const routes = [
     component: PhaseAHome,
     meta: { module: null },
   },
-  // Phase B and beyond append entries here.
+  {
+    path: "/customers",
+    name: "customers",
+    component: Customers,
+    meta: { module: "customers" },
+  },
+  {
+    path: "/vendors",
+    name: "vendors",
+    component: Vendors,
+    meta: { module: "customers" },  // Vendors share the customers module flag in Books Company Member
+  },
+  {
+    path: "/inventory/items",
+    name: "inventory-items",
+    component: InventoryItems,
+    meta: { module: "inventory" },
+  },
+  {
+    path: "/inventory/item-groups",
+    name: "inventory-item-groups",
+    component: InventoryItemGroups,
+    meta: { module: "inventory" },
+  },
+  {
+    path: "/inventory/warehouses",
+    name: "inventory-warehouses",
+    component: InventoryWarehouses,
+    meta: { module: "inventory" },
+  },
+  // Future phases append entries here.
   {
     path: "/:pathMatch(.*)*",
     name: "not-found",

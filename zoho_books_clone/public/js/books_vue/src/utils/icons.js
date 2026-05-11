@@ -2,6 +2,14 @@
 // Each entry is the inner SVG content (paths/lines/circles); the wrapper is
 // added by IconSvg.vue so callers don't repeat width/height/stroke attrs.
 
+// Returns a complete SVG string — used in legacy ports via v-html so the
+// original `icon('foo', 16)` template pattern keeps working without rewriting
+// every template into <IconSvg> components.
+export function icon(k, s) {
+  s = s || 16;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k] || ""}</svg>`;
+}
+
 export const ICONS = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',

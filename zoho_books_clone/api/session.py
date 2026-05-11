@@ -14,7 +14,8 @@ _MODULE_FIELDS = (
 def _get_company(user: str) -> str:
     """
     Resolve the active company for this specific user.
-    Returns the per-user default company, or empty string if not set.
+    Order: per-user default → Books Company Member row → Books Settings default.
+    Returns empty string if none of those resolve.
     """
     try:
         val = frappe.defaults.get_user_default("company", user)
@@ -22,6 +23,21 @@ def _get_company(user: str) -> str:
             return val
     except Exception:
         pass
+
+    try:
+        val = frappe.db.get_value("Books Company Member", {"user": user}, "company")
+        if val:
+            return val
+    except Exception:
+        pass
+
+    try:
+        val = frappe.db.get_single_value("Books Settings", "default_company")
+        if val:
+            return val
+    except Exception:
+        pass
+
     return ""
 
 

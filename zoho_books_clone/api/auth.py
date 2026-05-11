@@ -299,6 +299,63 @@ def reset_password_with_otp(email, otp, new_password):
     return {"success": True}
 
 
+# ─── Login via OTP ("Use one-time code instead") ─────────────────────────────
+
+def _login_otp_cache_key(email):
+    return f"books_login_otp:{email.strip().lower()}"
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def send_login_otp(email):
+    """Send a 6-digit login OTP so users can sign in without their password."""
+    email = (email or "").strip().lower()
+    if not frappe.db.exists("User", {"name": email}):
+        # Don't reveal whether account exists
+        return {"success": True}
+    otp = _gen_otp()
+    frappe.cache.set_value(_login_otp_cache_key(email), {"otp": otp}, expires_in_sec=600)
+    html = f"""
+<div style="font-family:'DM Sans',sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
+    <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#3949AB,#1A237E);
+      display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:18px">B</div>
+    <span style="font-size:18px;font-weight:700;color:#0D1117">Books</span>
+  </div>
+  <h2 style="color:#1A237E;font-size:22px;margin-bottom:8px">Your sign-in code</h2>
+  <p style="color:#555;margin-bottom:24px;line-height:1.6">Use this 6-digit code to sign in to Books:</p>
+  <div style="background:#E8EAF6;border-radius:12px;padding:28px;text-align:center;margin-bottom:24px">
+    <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#1A237E;font-family:monospace">{otp}</span>
+  </div>
+  <p style="color:#888;font-size:13px;line-height:1.6">
+    This code expires in <strong>10 minutes</strong>.<br>
+    If you didn't request this, you can safely ignore this email.
+  </p>
+</div>"""
+    send_system_email(
+        to=email,
+        subject="Your Books sign-in code",
+        html=html,
+        text_fallback=f"Your Books sign-in code is {otp}. It expires in 10 minutes.",
+    )
+    return {"success": True}
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def verify_login_otp(email, otp):
+    """Verify the login OTP and create a Frappe session."""
+    email = (email or "").strip().lower()
+    otp = (otp or "").strip()
+    key = _login_otp_cache_key(email)
+    data = frappe.cache.get_value(key)
+    if not data or data.get("otp") != otp:
+        frappe.throw(_("Invalid or expired code. Please try again."))
+    frappe.cache.delete_value(key)
+    # Create a real Frappe session for this user
+    frappe.local.login_manager.login_as(email)
+    frappe.db.commit()
+    return {"success": True, "user": email}
+
+
 # ─── Onboarding ───────────────────────────────────────────────────────────────
 
 @frappe.whitelist(methods=["POST"])

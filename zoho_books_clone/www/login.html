@@ -378,7 +378,7 @@ input,button,select,textarea{font-family:var(--font)}
           <div class="spinner"></div>
         </button>
         <div class="auth-footer" style="margin-top:20px">
-          Need MFA? <button class="link" onclick="goStep('otp');startResendTimer()">Use one-time code instead</button>
+          Need MFA? <button class="link" onclick="sendLoginOTP()">Use one-time code instead</button>
         </div>
       </div>
 
@@ -932,14 +932,24 @@ function setAvatar(email) {
 function nextStep(to) {
   if (to === "password") {
     const email = document.getElementById("email-input").value.trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const isAdmin = email.toLowerCase() === "administrator";
+    if (!email || (!isAdmin && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
       setFiErr("email-input", true);
       showErr("email-err", "Please enter a valid email address");
       return;
     }
     setFiErr("email-input", false);
     clearErr("email-err");
-    setAvatar(email);
+    if (isAdmin) {
+      const av = document.getElementById("user-avatar");
+      if (av) { av.textContent = "A"; av.style.background = "linear-gradient(135deg,#C92A2A,#E03131)"; }
+      const nameEl = document.getElementById("user-display-name");
+      if (nameEl) nameEl.textContent = "Administrator";
+      const emailEl = document.getElementById("user-display-email");
+      if (emailEl) emailEl.textContent = "System Administrator";
+    } else {
+      setAvatar(email);
+    }
     const resetEl = document.getElementById("reset-email");
     if (resetEl && !resetEl.value) resetEl.value = email;
     goStep("password");
@@ -1024,19 +1034,33 @@ function otpPaste(e, wrapId) {
   } else if (digits[text.length]) digits[text.length].focus();
 }
 
+async function sendLoginOTP() {
+  const email = document.getElementById("email-input").value.trim();
+  if (!email) { alert("Please enter your email first."); return; }
+  try {
+    await postFrappe("/api/method/zoho_books_clone.api.auth.send_login_otp", {email});
+  } catch(e) { /* silent — don't reveal if user exists */ }
+  document.getElementById("otp-sub").textContent = "Enter the 6-digit code sent to " + email;
+  Array.from(document.querySelectorAll("#otp-wrap .otp-digit")).forEach(d => { d.value = ""; d.classList.remove("filled"); });
+  clearErr("otp-err");
+  goStep("otp");
+  startResendTimer();
+}
+
 async function submitOTP() {
   const digits = Array.from(document.querySelectorAll("#otp-wrap .otp-digit"));
   const code = digits.map(d => d.value).join("");
   if (code.length < 6) return;
   clearErr("otp-err");
   setLoading("otp-btn", true);
-  // Frappe's MFA endpoint (try; fall through on error for apps without MFA configured)
+  const email = document.getElementById("email-input").value.trim();
   try {
-    await postFrappe("/api/method/frappe.twofactor.validate_otp", {otp: code});
+    await postFrappe("/api/method/zoho_books_clone.api.auth.verify_login_otp", {email, otp: code});
     loginSuccess();
   } catch(e) {
-    // Try confirming via a simple re-login flow if MFA not strictly configured
-    loginSuccess();
+    showErr("otp-err", e.message || "Invalid code. Please try again.");
+    digits.forEach(d => { d.value = ""; d.classList.remove("filled"); });
+    if (digits[0]) digits[0].focus();
   } finally {
     setLoading("otp-btn", false);
   }
@@ -1065,9 +1089,11 @@ function startResendTimer() {
   }, 1000);
 }
 
-function resendOTP() {
+async function resendOTP() {
   startResendTimer();
   Array.from(document.querySelectorAll("#otp-wrap .otp-digit")).forEach(d => { d.value = ""; d.classList.remove("filled"); });
+  const email = document.getElementById("email-input").value.trim();
+  try { await postFrappe("/api/method/zoho_books_clone.api.auth.send_login_otp", {email}); } catch(e) {}
   const first = document.querySelector("#otp-wrap .otp-digit");
   if (first) first.focus();
 }
@@ -1288,7 +1314,8 @@ async function nextSignupStep() {
 // ─── Signup — Password ──────────────────────────────────────────────
 
 function updatePasswordStrength(val, inputEl) {
-  const scope = (inputEl && inputEl.closest) ? inputEl.closest(".pw-strength") : null;
+  const fg = (inputEl && inputEl.closest) ? inputEl.closest(".fg") : null;
+  const scope = fg ? fg.querySelector(".pw-strength") : null;
   const bars = scope ? scope.querySelectorAll(".pw-bar") : document.querySelectorAll(".pw-bars .pw-bar");
   const label = scope ? scope.querySelector(".pw-label") : document.querySelector(".pw-label");
   let score = 0;

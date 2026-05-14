@@ -28,6 +28,7 @@ import JournalEntries         from "./pages/JournalEntries.vue";
 import OpeningBalances        from "./pages/OpeningBalances.vue";
 import CostCenters            from "./pages/CostCenters.vue";
 import FiscalYears            from "./pages/FiscalYears.vue";
+import Invoices               from "./pages/Invoices.vue";
 
 import { useToast } from "./composables/useToast.js";
 import { usePermissions } from "./composables/usePermissions.js";
@@ -123,6 +124,7 @@ const routes = [
   { path: "/accounting/opening-balances",  name: "opening-balances",  component: OpeningBalances,  meta: { module: "accounts" } },
   { path: "/accounting/cost-centers",      name: "cost-centers",      component: CostCenters,      meta: { module: "accounts" } },
   { path: "/accounting/fiscal-years",      name: "fiscal-years",      component: FiscalYears,      meta: { module: "accounts" } },
+  { path: "/invoices",                     name: "invoices",          component: Invoices,         meta: { module: "invoices" } },
   // Future phases append entries here.
   {
     path: "/:pathMatch(.*)*",

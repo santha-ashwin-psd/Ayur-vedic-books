@@ -55,6 +55,18 @@ def _normalize_company_name(name: str) -> str:
 
 
 @frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+def check_email(email):
+    """Live availability check for signup email. Returns {available: bool, reason}."""
+    email = (email or "").strip().lower()
+    if not email:
+        return {"available": False, "reason": "empty", "email": email}
+    if "@" not in email or "." not in email.split("@")[-1]:
+        return {"available": False, "reason": "invalid", "email": email}
+    taken = bool(frappe.db.exists("User", {"name": email}))
+    return {"available": not taken, "reason": "taken" if taken else "ok", "email": email}
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
 def check_company_name(company_name):
     """Live availability check for the signup form. Returns {available: bool, name: str}."""
     name = _normalize_company_name(company_name)
@@ -171,11 +183,17 @@ def verify_signup_otp(email, otp):
         user.user_type = "System User"
         user.send_welcome_email = 0
         user.enabled = 1
-        user.new_password = data["password"]
+        # Bypass Frappe's zxcvbn password policy — our app enforces its own minimum (8 chars).
+        # Without this, signup fails with cryptic errors like "Capitalization doesn't help very much".
+        user.flags.ignore_password_policy = True
         existing_roles = {r.role for r in (user.roles or [])}
         if "Books Admin" not in existing_roles:
             user.append("roles", {"role": "Books Admin"})
         user.insert(ignore_permissions=True)
+        # Set the password AFTER insert using the raw update_password helper,
+        # which doesn't re-run the policy check.
+        from frappe.utils.password import update_password as _update_password
+        _update_password(email, data["password"])
 
         # ── Link User → Company as the Admin ────────────────────────
         member = frappe.new_doc("Books Company Member")

@@ -91,22 +91,22 @@
         </div>
       </div>
 
-      <div class="dn-sum-strip" style="margin-bottom:20px">
-        <div class="dn-sum-card">
-          <div class="dn-sum-lbl">Stock Value</div>
-          <div class="dn-sum-val" style="color:#7048E8">{{fmt(whStats.value)}}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Stock Value</div>
+          <div style="font-size:18px;font-weight:700;color:#7048E8;font-family:var(--mono,'JetBrains Mono',monospace)">{{fmt(whStats.value)}}</div>
         </div>
-        <div class="dn-sum-card">
-          <div class="dn-sum-lbl">Items in Stock</div>
-          <div class="dn-sum-val">{{whStats.items}}</div>
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Items in Stock</div>
+          <div style="font-size:18px;font-weight:700;color:#111827;font-family:var(--mono,'JetBrains Mono',monospace)">{{whStats.items}}</div>
         </div>
-        <div class="dn-sum-card">
-          <div class="dn-sum-lbl">Reserved Qty</div>
-          <div class="dn-sum-val" style="color:#E67700">{{whStats.reserved.toFixed(2)}}</div>
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Reserved Qty</div>
+          <div style="font-size:18px;font-weight:700;color:#E67700;font-family:var(--mono,'JetBrains Mono',monospace)">{{whStats.reserved.toFixed(2)}}</div>
         </div>
-        <div class="dn-sum-card">
-          <div class="dn-sum-lbl">Projected Qty</div>
-          <div class="dn-sum-val" style="color:#1971C2">{{whStats.projected.toFixed(2)}}</div>
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
+          <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Projected Qty</div>
+          <div style="font-size:18px;font-weight:700;color:#1971C2;font-family:var(--mono,'JetBrains Mono',monospace)">{{whStats.projected.toFixed(2)}}</div>
         </div>
       </div>
 
@@ -440,11 +440,19 @@ async function saveWarehouse() {
       address_line1: form.address_line1, pincode: form.pincode,
       is_group: form.is_group ? 1 : 0,
       disabled: form.disabled ? 1 : 0,
-      company,  // ← required so the warehouse passes the tenancy list filter
+      company,
     };
     if (drawerMode.value === "edit") doc.name = form.name;
-    await apiSave(doc);
+    const saved = await apiSave(doc);
     await load();
+
+    // Optimistic insert: if the reloaded list doesn't contain the saved doc
+    // (because the tenancy filter excludes it, or because of indexing lag),
+    // splice it in so the UI reflects the user's action.
+    if (saved && !list.value.some((w) => w.name === saved.name)) {
+      list.value = [saved, ...list.value];
+    }
+
     toast(drawerMode.value === "edit" ? "Warehouse updated" : "Warehouse created");
     showDrawer.value = false;
   } catch (e) { toast("Save failed: " + e.message, "error"); }

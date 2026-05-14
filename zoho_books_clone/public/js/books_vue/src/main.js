@@ -3,6 +3,7 @@ import App from "./App.vue";
 import router from "./router";
 import { bootstrapSession } from "./api/session.js";
 import "./shell.css";
+import "./legacy-extras.css";
 
 // Bootstrap the session before mounting so usePermissions() and the API
 // client see populated state synchronously after the await.

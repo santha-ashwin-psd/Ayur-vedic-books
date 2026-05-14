@@ -10,26 +10,27 @@
     </div>
     <div v-if="loading" style="padding:20px"><div class="b-shimmer" style="height:12px;margin-bottom:8px"></div><div class="b-shimmer" style="height:12px;width:70%"></div></div>
     <div v-else style="padding:6px 0;max-height:calc(100vh - 200px);overflow-y:auto">
-      <template v-for="node in tree" :key="node.name">
-        <div @click="selectGroup(node)" style="display:flex;align-items:center;gap:6px;padding:7px 14px;cursor:pointer;transition:background .1s;border-left:3px solid transparent"
-          :style="selected===node.name?{background:'#EEF2FF',borderLeftColor:'#3B5BDB',color:'#3B5BDB'}:{color:'#374151'}">
-          <span v-if="node.children&&node.children.length" @click.stop="toggleExpand(node.name)"
-            style="font-size:10px;color:#868E96;width:14px;text-align:center">{{expanded.has(node.name)?'▼':'▶'}}</span>
-          <span v-else style="width:14px"></span>
-          <span v-html="icon(node.is_group?'folder':'file',13)" style="flex-shrink:0;opacity:.7"></span>
-          <span style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{node.name}}</span>
-          <span v-if="node.children&&node.children.length" style="font-size:10px;color:#ADB5BD;background:#F1F3F5;padding:1px 6px;border-radius:8px">{{node.children.length}}</span>
-        </div>
-        <template v-if="expanded.has(node.name)">
-          <div v-for="child in (node.children||[])" :key="child.name"
-            @click="selectGroup(child)" style="display:flex;align-items:center;gap:6px;padding:6px 14px 6px 36px;cursor:pointer;transition:background .1s;border-left:3px solid transparent"
-            :style="selected===child.name?{background:'#EEF2FF',borderLeftColor:'#3B5BDB',color:'#3B5BDB'}:{color:'#495057'}">
-            <span v-html="icon('file',12)" style="flex-shrink:0;opacity:.6"></span>
-            <span style="font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{child.name}}</span>
-            <button @click.stop="newGroup(child.name)" style="background:none;border:none;cursor:pointer;color:#3B5BDB;font-size:10px;padding:2px 4px" title="Add child group">+</button>
-          </div>
-        </template>
-      </template>
+      <div v-for="node in flatTree" :key="node.name"
+        @click="selectGroup(node)"
+        :style="{
+          paddingLeft: (14 + node.depth * 18) + 'px',
+          paddingRight: '14px', paddingTop: '7px', paddingBottom: '7px',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+          borderLeft: selected===node.name ? '3px solid #3B5BDB' : '3px solid transparent',
+          background: selected===node.name ? '#EEF2FF' : 'transparent',
+          color: selected===node.name ? '#3B5BDB' : '#374151',
+          transition: 'background .1s',
+        }">
+        <span v-if="hasChildren(node.name)" @click.stop="toggleExpand(node.name)"
+          style="font-size:10px;color:#868E96;width:14px;text-align:center;flex-shrink:0">{{expanded.has(node.name)?'▼':'▶'}}</span>
+        <span v-else style="width:14px;flex-shrink:0"></span>
+        <span v-html="icon(node.is_group?'folder':'file',13)" style="flex-shrink:0;opacity:.7"></span>
+        <span style="font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{node.name}}</span>
+        <span v-if="hasChildren(node.name)" style="font-size:10px;color:#ADB5BD;background:#F1F3F5;padding:1px 6px;border-radius:8px;flex-shrink:0">{{childCount(node.name)}}</span>
+        <button @click.stop="newGroup(node.name)"
+          style="background:none;border:none;cursor:pointer;color:#3B5BDB;font-size:10px;padding:2px 4px;flex-shrink:0"
+          title="Add child group">+</button>
+      </div>
     </div>
   </div>
 
@@ -115,16 +116,36 @@ async function load() {
   loading.value = false;
 }
 
-const tree = computed(() => {
-  const map = {};
-  allGroups.value.forEach((g) => { map[g.name] = { ...g, children: [] }; });
-  const roots = [];
+// Build a tree with arbitrary depth, then flatten it for rendering.
+// Only expanded subtrees are walked, so collapsed children stay hidden.
+const flatTree = computed(() => {
+  const byParent = {};
   allGroups.value.forEach((g) => {
-    if (!g.parent_item_group || !map[g.parent_item_group]) roots.push(map[g.name]);
-    else map[g.parent_item_group].children.push(map[g.name]);
+    const p = g.parent_item_group || "";
+    if (!byParent[p]) byParent[p] = [];
+    byParent[p].push(g);
   });
-  return roots;
+  // A node is a "root" when its parent isn't in the loaded list.
+  const known = new Set(allGroups.value.map((g) => g.name));
+  const roots = allGroups.value.filter((g) => !g.parent_item_group || !known.has(g.parent_item_group));
+
+  const out = [];
+  function walk(node, depth) {
+    out.push({ ...node, depth });
+    if (!expanded.value.has(node.name)) return;
+    const kids = byParent[node.name] || [];
+    kids.forEach((k) => walk(k, depth + 1));
+  }
+  roots.forEach((r) => walk(r, 0));
+  return out;
 });
+
+function hasChildren(name) {
+  return allGroups.value.some((g) => g.parent_item_group === name);
+}
+function childCount(name) {
+  return allGroups.value.filter((g) => g.parent_item_group === name).length;
+}
 
 function toggleExpand(name) {
   const s = new Set(expanded.value);

@@ -557,14 +557,20 @@ input,button,select,textarea{font-family:var(--font)}
           <div class="fi-wrap">
             <svg class="fi-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             <input class="fi has-icon" id="signup-email" type="email" placeholder="you@company.com" autocomplete="email"
+              oninput="onSignupEmailInput(this.value)"
+              onchange="onSignupEmailInput(this.value)"
+              onblur="onSignupEmailInput(this.value)"
               onkeydown="if(event.key==='Enter')document.getElementById('signup-company').focus()"/>
           </div>
+          <div id="signup-email-status" style="font-size:12px;margin-top:6px;min-height:16px;color:var(--muted)"></div>
         </div>
 
         <div class="fg">
           <label class="fl">Company Name *</label>
           <input class="fi" id="signup-company" type="text" placeholder="Your company"
             oninput="onCompanyInput(this.value)"
+            onchange="onCompanyInput(this.value)"
+            onblur="onCompanyInput(this.value)"
             onkeydown="if(event.key==='Enter')nextSignupStep()"/>
           <div id="signup-company-status" style="font-size:12px;margin-top:6px;min-height:16px;color:var(--muted)"></div>
         </div>
@@ -599,7 +605,7 @@ input,button,select,textarea{font-family:var(--font)}
           <div class="fi-wrap">
             <svg class="fi-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             <input class="fi has-icon" id="signup-password" type="password" placeholder="Min 8 characters"
-              autocomplete="new-password" oninput="updatePasswordStrength(this.value, this)"
+              autocomplete="new-password" oninput="updatePasswordStrength(this.value, this);onSignupPwInput()"
               onkeydown="if(event.key==='Enter')document.getElementById('signup-password2').focus()"/>
             <button class="fi-toggle" onclick="togglePw('signup-password','spw-eye')" type="button">
               <svg id="spw-eye" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -619,8 +625,10 @@ input,button,select,textarea{font-family:var(--font)}
           <div class="fi-wrap">
             <svg class="fi-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             <input class="fi has-icon" id="signup-password2" type="password" placeholder="Re-enter password"
-              autocomplete="new-password" onkeydown="if(event.key==='Enter')submitSignupPw()"/>
+              autocomplete="new-password" oninput="onSignupPwInput()"
+              onkeydown="if(event.key==='Enter')submitSignupPw()"/>
           </div>
+          <div id="signup-pw-status" style="font-size:12px;margin-top:6px;min-height:16px;color:var(--muted)"></div>
         </div>
 
         <label class="check-row">
@@ -883,6 +891,12 @@ function goStep(step) {
   if (next) {
     const inp = next.querySelector("input:not([type=checkbox]):not([readonly])");
     if (inp) setTimeout(() => inp.focus(), 60);
+  }
+  // Catch values populated by browser autofill on the signup step
+  if (step === "signup") {
+    setTimeout(_recheckSignupFields, 80);
+    setTimeout(_recheckSignupFields, 600);
+    setTimeout(_recheckSignupFields, 1500);
   }
 }
 
@@ -1230,12 +1244,90 @@ function startSignup() {
   if (email) document.getElementById("signup-email").value = email;
   clearErr("signup-err");
   goStep("signup");
+  // Re-check anything the browser may have autofilled
+  setTimeout(_recheckSignupFields, 80);
+  setTimeout(_recheckSignupFields, 600);
+}
+
+function _recheckSignupFields() {
+  const em = document.getElementById("signup-email");
+  const co = document.getElementById("signup-company");
+  if (em && em.value) onSignupEmailInput(em.value);
+  if (co && co.value) onCompanyInput(co.value);
 }
 
 // Live company-name availability check (debounced)
 let _companyCheckTimer = null;
 let _companyCheckSeq = 0;
 let _companyAvailable = null;  // null=unknown, true=ok, false=taken/invalid
+
+// Live email availability check (debounced)
+let _emailCheckTimer = null;
+let _emailCheckSeq = 0;
+let _emailAvailable = null;
+
+function _setEmailStatus(html, color) {
+  const el = document.getElementById("signup-email-status");
+  if (!el) return;
+  el.innerHTML = html;
+  el.style.color = color || "var(--muted)";
+}
+
+function onSignupEmailInput(rawValue) {
+  const value = (rawValue || "").trim().toLowerCase();
+  _emailAvailable = null;
+  if (!value) { _setEmailStatus("", "var(--muted)"); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    _setEmailStatus("Enter a valid email address", "#C92A2A");
+    _emailAvailable = false; return;
+  }
+  _setEmailStatus("Checking availability…", "var(--muted)");
+  if (_emailCheckTimer) clearTimeout(_emailCheckTimer);
+  const mySeq = ++_emailCheckSeq;
+  _emailCheckTimer = setTimeout(async () => {
+    try {
+      const res = await postFrappe("/api/method/zoho_books_clone.api.auth.check_email", { email: value });
+      if (mySeq !== _emailCheckSeq) return;
+      const m = res || {};
+      if (m.available) {
+        _emailAvailable = true;
+        _setEmailStatus("✓ Available", "#2F9E44");
+      } else if (m.reason === "taken") {
+        _emailAvailable = false;
+        _setEmailStatus("✗ An account with this email already exists", "#C92A2A");
+      } else if (m.reason === "invalid") {
+        _emailAvailable = false;
+        _setEmailStatus("Enter a valid email address", "#C92A2A");
+      } else {
+        _emailAvailable = false;
+        _setEmailStatus("Enter a valid email address", "#C92A2A");
+      }
+    } catch (e) {
+      _emailAvailable = null;
+      _setEmailStatus("Could not check availability. We'll re-validate on submit.", "var(--muted)");
+    }
+  }, 350);
+}
+
+// Live password validation (length + match)
+function onSignupPwInput() {
+  const pwd = (document.getElementById("signup-password") || {}).value || "";
+  const pwd2 = (document.getElementById("signup-password2") || {}).value || "";
+  const el = document.getElementById("signup-pw-status");
+  if (!el) return;
+  if (!pwd) { el.textContent = ""; el.style.color = "var(--muted)"; return; }
+  if (pwd.length < 8) {
+    el.textContent = "✗ Password must be at least 8 characters";
+    el.style.color = "#C92A2A"; return;
+  }
+  if (!pwd2) { el.textContent = ""; el.style.color = "var(--muted)"; return; }
+  if (pwd !== pwd2) {
+    el.textContent = "✗ Passwords do not match";
+    el.style.color = "#C92A2A"; return;
+  }
+  el.textContent = "✓ Passwords match";
+  el.style.color = "#2F9E44";
+}
 
 function _setCompanyStatus(html, color) {
   const el = document.getElementById("signup-company-status");
@@ -1288,6 +1380,18 @@ async function nextSignupStep() {
   }
   if (!company || company.length < 2) {
     showErr("signup-err", "Please enter your company name (minimum 2 characters)"); return;
+  }
+  // Resolve email availability if check hasn't completed yet
+  if (_emailAvailable === null) {
+    try {
+      const res = await postFrappe("/api/method/zoho_books_clone.api.auth.check_email", { email });
+      const m = res || {};
+      _emailAvailable = !!m.available;
+    } catch (e) { /* server-side will enforce */ }
+  }
+  if (_emailAvailable === false) {
+    showErr("signup-err", "An account with this email already exists. Please sign in instead.");
+    return;
   }
   if (_companyAvailable === null) {
     try {

@@ -25,8 +25,30 @@ html,body{height:100%;overflow:hidden;background:#f0f2f5}
 // and ship. To roll back any single route: remove it from this list. The
 // `?legacy=1` query string forces the legacy bundle regardless.
 window.BOOKS_VUE_ROUTES = [
-  // Only routes that have been migrated to the Vite bundle (js/books.js)
-  // belong here. Inventory routes are still served by the legacy bundle.
+  // Routes migrated to the Vite bundle (js/books.js).
+  "/customers",                // Phase B
+  "/vendors",                  // Phase C
+  "/inventory/items",          // Phase D
+  "/inventory/item-groups",    // Phase D
+  "/inventory/warehouses",     // Phase D
+  "/settings/profile",         // Phase E.1
+  "/settings/company",         // Phase E.1
+  "/settings/number-series",   // Phase E.1
+  "/settings/payment-terms",   // Phase E.1
+  "/settings/users",           // Phase E.2 — adds Custom role
+  "/settings/email",           // Phase E.2
+  "/settings/email-templates", // Phase E.2
+  "/settings/roles",           // Phase E.3
+  "/settings/audit-log",       // Phase E.3
+  "/settings/organization",    // Phase E.3
+  "/settings/security",        // Phase E.3
+  "/settings/integrations",    // Phase E.3
+  "/settings/currency-exchange", // Phase E.3
+  "/accounting/chart-of-accounts", // Phase F
+  "/accounting/journal-entries",   // Phase F
+  "/accounting/opening-balances",  // Phase F
+  "/accounting/cost-centers",      // Phase F
+  "/accounting/fiscal-years",      // Phase F
 ];
 
 window.frappe={session:{},boot:{sysdefaults:{company:''}}};

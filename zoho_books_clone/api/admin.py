@@ -20,6 +20,36 @@ MODULE_FIELDS = (
 )
 
 
+def _is_global_admin(user: str | None = None) -> bool:
+    """True for Administrator or System Manager — these users bypass the
+    Books-Company-Member tenant check and operate against the first / default company."""
+    user = user or frappe.session.user
+    if user == "Administrator":
+        return True
+    return "System Manager" in set(frappe.get_roles(user))
+
+
+def _resolve_company_for(user: str | None = None) -> str:
+    """Resolve the effective company for the given user. For global admins (no
+    Books Company Member row required), falls back to Books Settings default_company,
+    then to the first Books Company that exists. Returns "" if none can be resolved."""
+    user = user or frappe.session.user
+    co = frappe.db.get_value("Books Company Member", {"user": user}, "company")
+    if co:
+        return co
+    if _is_global_admin(user):
+        try:
+            co = frappe.db.get_single_value("Books Settings", "default_company") or ""
+        except Exception:
+            co = ""
+        if co and frappe.db.exists("Books Company", co):
+            return co
+        # Last-resort: any Books Company that exists.
+        rows = frappe.get_all("Books Company", fields=["name"], limit=1, ignore_permissions=True)
+        return rows[0]["name"] if rows else ""
+    return ""
+
+
 def _require_admin():
     """Allow Books Admin, System Manager, or Administrator."""
     if frappe.session.user == "Administrator":
@@ -32,11 +62,14 @@ def _require_admin():
 
 
 def _require_company_admin() -> str:
-    """Stricter check: must be flagged as company admin in Books Company Member.
-    Returns the admin's company name."""
+    """Stricter check: must be flagged as company admin in Books Company Member,
+    or be a global admin (Administrator / System Manager). Returns the company name."""
     user = frappe.session.user
-    if user == "Administrator":
-        return frappe.db.get_value("Books Company Member", {}, "company") or ""
+    if _is_global_admin(user):
+        co = _resolve_company_for(user)
+        if not co:
+            frappe.throw(_("No Books Company exists yet. Create one first."), frappe.PermissionError)
+        return co
     row = frappe.db.get_value(
         "Books Company Member",
         {"user": user},
@@ -466,8 +499,7 @@ def get_audit_log(page=0, page_len=50):
 @frappe.whitelist()
 def get_company_settings():
     """Return company profile from Books Company + invoice/reminder settings from Books Settings."""
-    user = frappe.session.user
-    company_name = frappe.db.get_value("Books Company Member", {"user": user}, "company") or ""
+    company_name = _resolve_company_for()
 
     result = {
         "default_company": company_name,
@@ -529,9 +561,7 @@ def get_company_settings():
 def save_company_settings(**kwargs):
     """Save profile fields to Books Company; invoice/reminder settings to Books Settings."""
     _require_admin()
-
-    user = frappe.session.user
-    company_name = frappe.db.get_value("Books Company Member", {"user": user}, "company") or ""
+    company_name = _resolve_company_for()
 
     # Save profile fields to Books Company
     if company_name and frappe.db.exists("Books Company", company_name):
@@ -583,9 +613,9 @@ def save_company_settings(**kwargs):
 # ─── SMTP / Email Settings (per-company) ──────────────────────────────────────
 
 def _admin_company() -> str:
-    """Return the Books Company managed by the current admin. Throws if none."""
-    user = frappe.session.user
-    company = frappe.db.get_value("Books Company Member", {"user": user}, "company")
+    """Return the Books Company managed by the current admin. Throws if none.
+    Global admins (Administrator / System Manager) fall back via _resolve_company_for."""
+    company = _resolve_company_for()
     if not company:
         frappe.throw(_("Your user is not linked to any Books Company."))
     return company

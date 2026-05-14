@@ -16,12 +16,20 @@ export function useToast() {
     }, ttl);
   }
 
+  // Attach convenience methods so both patterns work:
+  //   const { toast } = useToast();  toast.error("msg")
+  //   const { error } = useToast();  error("msg")
+  push.success = (m) => push(m, "success");
+  push.error   = (m) => push(m, "error");
+  push.warn    = (m) => push(m, "warning");
+  push.info    = (m) => push(m, "info");
+
   return {
     items:   state.items,
     toast:   push,
-    success: (m) => push(m, "success"),
-    error:   (m) => push(m, "error"),
-    warn:    (m) => push(m, "warning"),
-    info:    (m) => push(m, "info"),
+    success: push.success,
+    error:   push.error,
+    warn:    push.warn,
+    info:    push.info,
   };
 }

@@ -92,8 +92,7 @@ export function titleFor(path) {
   return TITLES[hit] || "Books";
 }
 
-// True when the route is owned by the new Vue bundle (per books.html cutover list).
-export function isVueOwned(path) {
-  const owned = window.BOOKS_VUE_ROUTES || [];
-  return owned.some((p) => path === p || path.startsWith(p + "/"));
+// All routes are Vue-owned — the legacy bundle is retired.
+export function isVueOwned(_path) {
+  return true;
 }

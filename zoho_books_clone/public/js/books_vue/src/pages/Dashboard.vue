@@ -224,15 +224,17 @@ const areaPath = computed(() => {
 });
 
 // ── Aging config ──
-const agingRows = [
-  { key: "current", label: "Current",  color: "var(--books-green)" },
-  { key: "1_30",    label: "1–30 days",color: "var(--books-accent)" },
-  { key: "31_60",   label: "31–60 days",color: "var(--books-amber)"},
-  { key: "61_90",   label: "61–90 days",color: "#fb923c"           },
-  { key: "over_90", label: ">90 days",  color: "var(--books-red)"  },
-].map(b => {
-  const total = Object.values(aging.value || {}).reduce((a, v) => a + (v || 0), 0) || 1;
-  return { ...b, pct: Math.min(100, (((aging.value || {})[b.key] || 0) / total) * 100) };
+const agingRows = computed(() => {
+  const buckets = [
+    { key: "current", label: "Current",   color: "var(--books-green)"  },
+    { key: "1_30",    label: "1–30 days", color: "var(--books-accent)" },
+    { key: "31_60",   label: "31–60 days",color: "var(--books-amber)"  },
+    { key: "61_90",   label: "61–90 days",color: "#fb923c"             },
+    { key: "over_90", label: ">90 days",  color: "var(--books-red)"    },
+  ];
+  const data  = aging.value || {};
+  const total = Object.values(data).reduce((a, v) => a + (v || 0), 0) || 1;
+  return buckets.map(b => ({ ...b, pct: Math.min(100, ((data[b.key] || 0) / total) * 100) }));
 });
 
 // ── Icons ──

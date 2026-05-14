@@ -204,7 +204,7 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { apiGET, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
-import { fmt, flt } from "../utils/format.js";
+import { flt } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();

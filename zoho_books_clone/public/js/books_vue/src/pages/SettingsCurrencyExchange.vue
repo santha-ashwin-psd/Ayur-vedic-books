@@ -495,7 +495,7 @@ async function saveCurrency() {
       if (c) Object.assign(c, { name: currForm.name, symbol: currForm.symbol, flag: currForm.flag, buy: currForm.buy, mid: currForm.mid, sell: currForm.sell, active: currForm.active });
     }
     try {
-      await apiSave({ doctype: "Currency Exchange", currency_code: currForm.code, buy_rate: currForm.buy, exchange_rate: currForm.mid, sell_rate: currForm.sell });
+      await apiSave({ doctype: "Currency Exchange", from_currency: currForm.code, to_currency: "INR", exchange_rate: currForm.mid });
     } catch {}
     toast("Currency saved", "success");
     showCurrDrawer.value = false;
@@ -559,5 +559,20 @@ function exportPnlCSV() {
   a.click();
 }
 
-onMounted(() => { calcConv(); });
+onMounted(async () => {
+  calcConv();
+  // Load real rates from Frappe silently; merge into the default currency list
+  try {
+    const { apiList } = await import("../api/client.js");
+    const rows = await apiList("Currency Exchange", { fields: ["from_currency","exchange_rate","date"], limit: 200, order: "date desc" });
+    const seen = {};
+    rows.forEach(r => { if (!seen[r.from_currency]) seen[r.from_currency] = r; });
+    currencies.value.forEach(c => {
+      const r = seen[c.code];
+      if (r) c.mid = r.exchange_rate;
+    });
+    // populate rate history from real records
+    rateHistory.value = rows.slice(0, 50).map((r, i) => ({ id: i+1, date: r.date, currency: r.from_currency, buy: r.exchange_rate, mid: r.exchange_rate, sell: r.exchange_rate, source: "Frappe", chg: 0 }));
+  } catch {}
+});
 </script>

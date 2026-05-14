@@ -125,7 +125,7 @@ const { data: cf,  loading: cfLoading,  execute: loadCf  } = useFrappeCall("zoho
 const { data: gst, loading: gstLoading, execute: loadGst } = useFrappeCall("zoho_books_clone.db.queries.get_gst_summary");
 
 async function runReport() {
-  const company = frappe?.boot?.sysdefaults?.company || "";
+  const company = window.frappe?.boot?.sysdefaults?.company || window.__booksCompany || "";
   const args = { company, from_date: fromDate.value, to_date: toDate.value };
   if (activeReport.value === "pl")  await loadPl(args);
   if (activeReport.value === "bs")  await loadBs({ company, as_of_date: toDate.value });

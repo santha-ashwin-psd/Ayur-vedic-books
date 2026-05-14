@@ -8,7 +8,7 @@ import string
 
 import frappe
 from frappe import _
-from frappe.utils import today, now_datetime, getdate, flt
+from frappe.utils import today, flt
 from frappe.utils.password import update_password, check_password
 
 
@@ -405,7 +405,12 @@ def get_notifications():
     notifs = []
 
     try:
-        company = frappe.db.get_single_value("Books Settings", "default_company") or ""
+        member = frappe.db.get_value(
+            "Books Company Member",
+            {"user": frappe.session.user},
+            "company",
+        )
+        company = member or frappe.db.get_single_value("Books Settings", "default_company") or ""
     except Exception:
         company = ""
 
@@ -912,3 +917,31 @@ def delete_payment_term(name):
     frappe.delete_doc("Payment Term", name, ignore_permissions=True, force=True)
     frappe.db.commit()
     return {"success": True}
+
+
+@frappe.whitelist()
+def get_currency_rates():
+    """Return the most recent exchange rate for each currency pair from Currency Exchange."""
+    try:
+        rows = frappe.get_all(
+            "Currency Exchange",
+            fields=["from_currency", "to_currency", "exchange_rate", "date"],
+            order_by="date desc",
+            limit=200,
+            ignore_permissions=True,
+        )
+        # Keep only the latest entry per from_currency
+        seen = {}
+        for r in rows:
+            key = r["from_currency"]
+            if key not in seen:
+                seen[key] = {
+                    "currency_code": r["from_currency"],
+                    "from_currency": r["from_currency"],
+                    "to_currency":   r["to_currency"],
+                    "exchange_rate": flt(r["exchange_rate"]),
+                    "date":          str(r["date"]),
+                }
+        return list(seen.values())
+    except Exception:
+        return []

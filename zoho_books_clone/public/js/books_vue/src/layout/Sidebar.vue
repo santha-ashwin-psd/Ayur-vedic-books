@@ -34,7 +34,7 @@
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import IconSvg from "../components/IconSvg.vue";
-import { NAV, isVueOwned } from "./nav.js";
+import { NAV } from "./nav.js";
 import { usePermissions } from "../composables/usePermissions.js";
 
 defineProps({ collapsed: { type: Boolean, default: false } });
@@ -65,12 +65,6 @@ function isActive(path) {
 }
 
 function goTo(item) {
-  // Vue-owned routes: stay in-app via router-push.
-  // Legacy routes: full navigation so books.html's loader picks the legacy bundle.
-  if (isVueOwned(item.path)) {
-    router.push(item.path);
-  } else {
-    window.location.href = `/books#${item.path}`;
-  }
+  router.push(item.path);
 }
 </script>

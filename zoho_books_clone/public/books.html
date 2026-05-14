@@ -17,92 +17,34 @@ html,body{height:100%;overflow:hidden;background:#f0f2f5}
 <body>
 <div id="books-app"></div>
 <script>
-// Cutover loader. Routes listed in BOOKS_VUE_ROUTES are owned by the new
-// Vue/Vite bundle (assets/zoho_books_clone/js/books.js). Everything else
-// stays on the legacy hand-written SPA at assets/zoho_books_clone/books.js.
-//
-// To migrate a route to the new bundle: add its prefix to BOOKS_VUE_ROUTES
-// and ship. To roll back any single route: remove it from this list. The
-// `?legacy=1` query string forces the legacy bundle regardless.
-window.BOOKS_VUE_ROUTES = [
-  // Routes migrated to the Vite bundle (js/books.js).
-  "/customers",                // Phase B
-  "/vendors",                  // Phase C
-  "/inventory/items",          // Phase D
-  "/inventory/item-groups",    // Phase D
-  "/inventory/warehouses",     // Phase D
-  "/settings/profile",         // Phase E.1
-  "/settings/company",         // Phase E.1
-  "/settings/number-series",   // Phase E.1
-  "/settings/payment-terms",   // Phase E.1
-  "/settings/users",           // Phase E.2 — adds Custom role
-  "/settings/email",           // Phase E.2
-  "/settings/email-templates", // Phase E.2
-  "/settings/roles",           // Phase E.3
-  "/settings/audit-log",       // Phase E.3
-  "/settings/organization",    // Phase E.3
-  "/settings/security",        // Phase E.3
-  "/settings/integrations",    // Phase E.3
-  "/settings/currency-exchange", // Phase E.3
-  "/accounting/chart-of-accounts", // Phase F
-  "/accounting/journal-entries",   // Phase F
-  "/accounting/opening-balances",  // Phase F
-  "/accounting/cost-centers",      // Phase F
-  "/accounting/fiscal-years",      // Phase F
-  "/invoices",                       // Phase G
-];
+// All routes are now fully owned by the Vue/Vite bundle.
+// The legacy bundle is no longer used. Keep ?legacy=1 as an emergency escape hatch.
 
-window.frappe={session:{},boot:{sysdefaults:{company:''}}};
-window.__booksCompany='';
+window.BOOKS_VUE_ROUTES = ["/"]; // kept for isVueOwned() in nav.js — "/" prefix matches everything
+window.frappe = { session: {}, boot: { sysdefaults: { company: "" } } };
+window.__booksCompany = "";
 
 (function () {
-  function pathFromHash() {
-    var h = window.location.hash || "";
-    if (h.charAt(0) === "#") h = h.slice(1);
-    return h || "/";
-  }
-  function routeOwnedByVue(p) {
-    var owned = window.BOOKS_VUE_ROUTES || [];
-    for (var i = 0; i < owned.length; i++) {
-      var r = owned[i];
-      if (p === r || p.indexOf(r + "/") === 0) return true;
-    }
-    return false;
-  }
   var forceLegacy = /[?&]legacy=1\b/.test(window.location.search);
-  var path = pathFromHash();
-  var useVue = !forceLegacy && routeOwnedByVue(path);
 
-  // Dynamically-inserted scripts default to async=true, which lets them
-  // execute out of order. The legacy bundle requires Vue and VueRouter to
-  // be defined before it runs, so we force in-order execution explicitly.
   function appendScript(src) {
     var el = document.createElement("script");
-    el.src   = src;
+    el.src = src;
     el.async = false;
     document.body.appendChild(el);
-    return el;
   }
 
-  if (useVue) {
-    var css = document.createElement("link");
-    css.rel  = "stylesheet";
-    css.href = "/assets/zoho_books_clone/js/dist/style.css?v=1";
-    document.head.appendChild(css);
-    appendScript("/assets/zoho_books_clone/js/books.js?v=1");
-  } else {
-    // Legacy bundle still loads Vue + Router from CDN.
+  if (forceLegacy) {
     appendScript("https://unpkg.com/vue@3/dist/vue.global.js");
     appendScript("https://unpkg.com/vue-router@4/dist/vue-router.global.js");
     appendScript("/assets/zoho_books_clone/books.js?v=141");
+  } else {
+    var css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "/assets/zoho_books_clone/js/dist/style.css?v=2";
+    document.head.appendChild(css);
+    appendScript("/assets/zoho_books_clone/js/books.js?v=2");
   }
-
-  // If the user navigates to a route owned by the OTHER bundle within the
-  // same session, hash routing alone won't switch bundles — force a reload.
-  window.addEventListener("hashchange", function () {
-    var nowOwned = routeOwnedByVue(pathFromHash());
-    if (nowOwned !== useVue) window.location.reload();
-  });
 })();
 </script>
 </body>

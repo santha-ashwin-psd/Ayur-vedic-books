@@ -29,6 +29,31 @@ import OpeningBalances        from "./pages/OpeningBalances.vue";
 import CostCenters            from "./pages/CostCenters.vue";
 import FiscalYears            from "./pages/FiscalYears.vue";
 import Invoices               from "./pages/Invoices.vue";
+import Quotes                 from "./pages/Quotes.vue";
+import SalesOrders            from "./pages/SalesOrders.vue";
+import CreditNotes            from "./pages/CreditNotes.vue";
+import Bills                  from "./pages/Bills.vue";
+import PurchaseOrders         from "./pages/PurchaseOrders.vue";
+import Expenses               from "./pages/Expenses.vue";
+import Payments               from "./pages/Payments.vue";
+import DebitNotes             from "./pages/DebitNotes.vue";
+import Recurring              from "./pages/Recurring.vue";
+import EwayBills              from "./pages/EwayBills.vue";
+import BankAccounts           from "./pages/BankAccounts.vue";
+import BankTransactions       from "./pages/BankTransactions.vue";
+import BankReconciliation     from "./pages/BankReconciliation.vue";
+import BankTransfers          from "./pages/BankTransfers.vue";
+import BankCheques            from "./pages/BankCheques.vue";
+import BankCash               from "./pages/BankCash.vue";
+import StockEntries           from "./pages/StockEntries.vue";
+import StockLedger            from "./pages/StockLedger.vue";
+import StockValuation         from "./pages/StockValuation.vue";
+import ReorderAlerts          from "./pages/ReorderAlerts.vue";
+import GSTReturn1             from "./pages/GSTReturn1.vue";
+import GSTReturn3B            from "./pages/GSTReturn3B.vue";
+import EInvoice               from "./pages/EInvoice.vue";
+import TDS                    from "./pages/TDS.vue";
+import Reports                from "./pages/Reports.vue";
 
 import { useToast } from "./composables/useToast.js";
 import { usePermissions } from "./composables/usePermissions.js";
@@ -124,7 +149,33 @@ const routes = [
   { path: "/accounting/opening-balances",  name: "opening-balances",  component: OpeningBalances,  meta: { module: "accounts" } },
   { path: "/accounting/cost-centers",      name: "cost-centers",      component: CostCenters,      meta: { module: "accounts" } },
   { path: "/accounting/fiscal-years",      name: "fiscal-years",      component: FiscalYears,      meta: { module: "accounts" } },
-  { path: "/invoices",                     name: "invoices",          component: Invoices,         meta: { module: "invoices" } },
+  { path: "/invoices",          name: "invoices",         component: Invoices,       meta: { module: "invoices" } },
+  { path: "/quotes",            name: "quotes",           component: Quotes,         meta: { module: "invoices" } },
+  { path: "/sales-orders",      name: "sales-orders",     component: SalesOrders,    meta: { module: "invoices" } },
+  { path: "/credit-notes",      name: "credit-notes",     component: CreditNotes,    meta: { module: "invoices" } },
+  { path: "/purchases",         name: "purchases",        component: Bills,          meta: { module: "bills"    } },
+  { path: "/purchase-orders",   name: "purchase-orders",  component: PurchaseOrders, meta: { module: "bills"    } },
+  { path: "/expenses",          name: "expenses",         component: Expenses,       meta: { module: "bills"    } },
+  { path: "/payments",          name: "payments",         component: Payments,       meta: { module: "payments" } },
+  { path: "/payments-received", name: "payments-received",component: Payments,       meta: { module: "payments" } },
+  { path: "/debit-notes",       name: "debit-notes",      component: DebitNotes,     meta: { module: "bills"    } },
+  { path: "/recurring",         name: "recurring",        component: Recurring,      meta: { module: "invoices" } },
+  { path: "/eway-bills",        name: "eway-bills",       component: EwayBills,      meta: { module: "invoices" } },
+  { path: "/banking/accounts",       name: "banking-accounts",       component: BankAccounts,       meta: { module: "accounts" } },
+  { path: "/banking/transactions",   name: "banking-transactions",   component: BankTransactions,   meta: { module: "accounts" } },
+  { path: "/banking/reconciliation", name: "banking-reconciliation", component: BankReconciliation, meta: { module: "accounts" } },
+  { path: "/banking/transfers",      name: "banking-transfers",      component: BankTransfers,      meta: { module: "accounts" } },
+  { path: "/banking/cheques",        name: "banking-cheques",        component: BankCheques,        meta: { module: "accounts" } },
+  { path: "/banking/cash",           name: "banking-cash",           component: BankCash,           meta: { module: "accounts" } },
+  { path: "/inventory/stock-entries",  name: "stock-entries",   component: StockEntries,   meta: { module: "inventory" } },
+  { path: "/inventory/stock-ledger",   name: "stock-ledger",    component: StockLedger,    meta: { module: "inventory" } },
+  { path: "/inventory/valuation",      name: "stock-valuation", component: StockValuation, meta: { module: "inventory" } },
+  { path: "/inventory/reorder-alerts", name: "reorder-alerts",  component: ReorderAlerts,  meta: { module: "inventory" } },
+  { path: "/gst/gstr1",    name: "gstr1",    component: GSTReturn1,  meta: { module: "accounts" } },
+  { path: "/gst/gstr3b",   name: "gstr3b",   component: GSTReturn3B, meta: { module: "accounts" } },
+  { path: "/gst/einvoice", name: "einvoice", component: EInvoice,    meta: { module: "invoices" } },
+  { path: "/gst/tds",      name: "tds",      component: TDS,         meta: { module: "accounts" } },
+  { path: "/reports",      name: "reports",  component: Reports,     meta: { module: null       } },
   // Future phases append entries here.
   {
     path: "/:pathMatch(.*)*",

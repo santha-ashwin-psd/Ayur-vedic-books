@@ -18,7 +18,7 @@ export default defineConfig({
   },
   build: {
     outDir:      resolve(__dirname, "../../js"),
-    assetsDir:   "dist",
+    assetsDir:   "",
     emptyOutDir: false,
     lib: {
       entry:    resolve(__dirname, "src/main.js"),
@@ -28,7 +28,7 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        assetFileNames: "dist/[name][extname]",
+        assetFileNames: "[name][extname]",
       },
     },
     minify:       true,

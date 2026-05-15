@@ -77,7 +77,7 @@
           </div>
           <div class="btr-field" style="grid-column:1/-1">
             <label class="btr-label">Remarks</label>
-            <textarea v-model="form.user_remark" rows="2" class="btr-input" placeholder="Optional…"></textarea>
+            <textarea v-model="form.remark" rows="2" class="btr-input" placeholder="Optional…"></textarea>
           </div>
         </div>
       </div>
@@ -107,7 +107,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany } from "../api/client.js";
+import { apiList, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -119,26 +119,26 @@ const drawerOpen=ref(false),drawerSaving=ref(false);
 const viewOpen=ref(false),viewDoc=ref(null);
 const accounts=ref([]);
 const sortCol=ref("posting_date"),sortDir=ref("desc");
-const form=reactive({posting_date:new Date().toISOString().slice(0,10),amount:0,from_account:"",to_account:"",user_remark:""});
+const form=reactive({posting_date:new Date().toISOString().slice(0,10),amount:0,from_account:"",to_account:"",remark:""});
 const now=new Date();
 const monthStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
 
-async function load(){loading.value=true;try{list.value=await apiList("Journal Entry",{fields:["name","posting_date","voucher_type","total_debit","docstatus","user_remark"],filters:[["voucher_type","=","Bank Entry"]],limit:200,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load transfers");}finally{loading.value=false;}}
-const filtered=computed(()=>{if(!search.value.trim())return list.value;const q=search.value.toLowerCase();return list.value.filter(t=>(t.name||"").toLowerCase().includes(q)||(t.user_remark||"").toLowerCase().includes(q));});
+async function load(){loading.value=true;try{const co=await resolveCompany();const rows=await apiList("Journal Entry",{fields:["name","posting_date","voucher_type","total_debit","docstatus","remark"],filters:[["company","=",co],["voucher_type","=","Bank Entry"]],limit:200,order:"posting_date desc"});if(rows.length){const names=rows.map(r=>r.name);const accs=await apiList("Journal Entry Account",{fields:["parent","account","debit_in_account_currency","credit_in_account_currency"],filters:[["parent","in",names]],limit:rows.length*3});for(const je of rows){je.accounts=accs.filter(a=>a.parent===je.name);}}list.value=rows;}catch(e){toast.error(e.message||"Failed to load transfers");}finally{loading.value=false;}}
+const filtered=computed(()=>{if(!search.value.trim())return list.value;const q=search.value.toLowerCase();return list.value.filter(t=>(t.name||"").toLowerCase().includes(q)||(t.remark||"").toLowerCase().includes(q));});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
 function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}
 const totalAmount=computed(()=>list.value.filter(t=>t.docstatus===1).reduce((s,t)=>s+flt(t.total_debit),0));
 const monthAmount=computed(()=>list.value.filter(t=>t.posting_date>=monthStart&&t.docstatus===1).reduce((s,t)=>s+flt(t.total_debit),0));
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
-function openNew(){Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),amount:0,from_account:"",to_account:"",user_remark:""});accounts.value=[];fetchAccounts("");drawerOpen.value=true;}
+function openNew(){Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),amount:0,from_account:"",to_account:"",remark:""});accounts.value=[];fetchAccounts("");drawerOpen.value=true;}
 function openView(t){viewDoc.value=t;viewOpen.value=true;}
 async function fetchAccounts(q=""){try{const co=await resolveCompany();const r=await apiList("Account",{fields:["name"],filters:[["account_type","in",["Bank","Cash"]],["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});accounts.value=r.map(x=>({label:x.name,value:x.name}));}catch{accounts.value=[];}}
-async function saveTransfer(docstatus){
+async function saveTransfer(submit){
   if(!form.from_account||!form.to_account)return toast.error("Both accounts are required");
   if(!flt(form.amount))return toast.error("Amount is required");
   drawerSaving.value=true;
-  try{const company=await resolveCompany();const doc={doctype:"Journal Entry",company,posting_date:form.posting_date,voucher_type:"Bank Entry",user_remark:form.user_remark||"",docstatus,accounts:[{doctype:"Journal Entry Account",account:form.from_account,credit_in_account_currency:flt(form.amount),debit_in_account_currency:0},{doctype:"Journal Entry Account",account:form.to_account,debit_in_account_currency:flt(form.amount),credit_in_account_currency:0}]};const saved=await apiSave(doc);toast.success(`Transfer ${saved?.name||""} ${docstatus?"submitted":"saved"}`);drawerOpen.value=false;await load();}
+  try{const company=await resolveCompany();const doc={doctype:"Journal Entry",company,posting_date:form.posting_date,voucher_type:"Bank Entry",remark:form.remark||"",accounts:[{doctype:"Journal Entry Account",account:form.from_account,credit_in_account_currency:flt(form.amount),debit_in_account_currency:0},{doctype:"Journal Entry Account",account:form.to_account,debit_in_account_currency:flt(form.amount),credit_in_account_currency:0}]};const saved=await apiSave(doc);if(submit)await apiSubmit("Journal Entry",saved.name);toast.success(`Transfer ${saved?.name||""} ${submit?"submitted":"saved"}`);drawerOpen.value=false;await load();}
   catch(e){toast.error(e.message||"Failed to save transfer");}finally{drawerSaving.value=false;}
 }
 onMounted(load);

@@ -251,7 +251,7 @@ import { icon } from "../utils/icons.js";
 
 const { toast } = useToast();
 
-const CC_COLORS = ["#3B5BDB","#0C8599","#2F9E44","#E67700","#C92A2A","#7048E8","#D4537E","#1098AD","#495057"];
+const CC_COLORS = ["#3B5BDB","#0C8599","#2F9E44","#E67700","#C92A2A","#2563eb","#D4537E","#1098AD","#495057"];
 const CC_TYPE_ICONS = { Department: "🏢", Project: "📄", Product: "📦", Region: "🌍", Group: "📁" };
 const CC_DEFAULTS = [
   { name: "Main",        code: "MAIN", parent: "",     type: "Group",      color: "#495057", budget: 0,       budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 1, status: "Active", desc: "Root cost center" },

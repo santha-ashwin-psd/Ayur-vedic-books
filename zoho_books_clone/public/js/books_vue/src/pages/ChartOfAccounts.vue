@@ -212,7 +212,7 @@ const { toast } = useToast();
 const TYPE_META_COA = {
   Asset:     { color: "#0C8599", bg: "#E0F7FA", dr: true  },
   Liability: { color: "#C92A2A", bg: "#FFE3E3", dr: false },
-  Equity:    { color: "#7048E8", bg: "#F3F0FF", dr: false },
+  Equity:    { color: "#2563eb", bg: "#F3F0FF", dr: false },
   Income:    { color: "#2F9E44", bg: "#EBFBEE", dr: false },
   Expense:   { color: "#E67700", bg: "#FFF3BF", dr: true  },
 };

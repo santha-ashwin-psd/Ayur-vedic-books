@@ -110,6 +110,7 @@
 <script setup>
 import { ref } from "vue";
 import { useFrappeCall, formatCurrency } from "../composables/useFrappe.js";
+import { resolveCompany } from "../api/client.js";
 
 const fmt = formatCurrency;
 
@@ -125,7 +126,7 @@ const { data: cf,  loading: cfLoading,  execute: loadCf  } = useFrappeCall("zoho
 const { data: gst, loading: gstLoading, execute: loadGst } = useFrappeCall("zoho_books_clone.db.queries.get_gst_summary");
 
 async function runReport() {
-  const company = window.frappe?.boot?.sysdefaults?.company || window.__booksCompany || "";
+  const company = await resolveCompany();
   const args = { company, from_date: fromDate.value, to_date: toDate.value };
   if (activeReport.value === "pl")  await loadPl(args);
   if (activeReport.value === "bs")  await loadBs({ company, as_of_date: toDate.value });
@@ -142,56 +143,55 @@ const reports = [
 </script>
 
 <style scoped>
-.page-reports { display: flex; flex-direction: column; gap: 16px; }
+.page-reports { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
 .report-tabs  { display: flex; gap: 8px; flex-wrap: wrap; }
 .report-tab {
   display: flex; align-items: center; gap: 7px;
   padding: 8px 16px; border-radius: var(--radius-sm);
-  border: 1px solid var(--books-border); background: var(--books-surface);
-  color: var(--books-muted); cursor: pointer; font-size: 13px; font-weight: 600;
-  transition: all .15s; font-family: var(--font-body);
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-3); cursor: pointer; font-size: 13px; font-weight: 600;
+  transition: all .15s; font-family: var(--font);
 }
-.report-tab:hover { border-color: var(--books-accent); color: var(--books-text); }
-.report-tab.active { background: var(--books-accent-soft); border-color: var(--books-accent); color: var(--books-accent); }
+.report-tab:hover { border-color: var(--accent); color: var(--text); }
+.report-tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
 .date-range-bar {
   display: flex; align-items: center; gap: 12px; padding: 14px 20px; flex-wrap: wrap;
 }
-.dr-label { font-size: 12px; font-family: var(--font-display); color: var(--books-muted); letter-spacing: .06em; }
+.dr-label { font-size: 12px; font-family: var(--font); color: var(--text-3); letter-spacing: .06em; }
 .dr-input {
-  background: var(--books-surface-2); border: 1px solid var(--books-border);
-  border-radius: var(--radius-sm); padding: 6px 10px; color: var(--books-text);
-  font-size: 12.5px; font-family: var(--font-display); outline: none;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 6px 10px; color: var(--text);
+  font-size: 12.5px; font-family: var(--font); outline: none;
 }
-.dr-input:focus { border-color: var(--books-accent); }
+.dr-input:focus { border-color: var(--accent); }
 
-.report-card { }
 .pl-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 12px 0; border-bottom: 1px solid var(--books-border);
+  padding: 12px 0; border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
 .pl-row.net { border-bottom: none; font-size: 16px; font-weight: 700; margin-top: 4px; }
-.pl-row.profit .mono { color: var(--books-green); }
-.pl-row.loss   .mono { color: var(--books-red);   }
-.pl-divider { height: 2px; background: var(--books-border); margin: 4px 0; }
+.pl-row.profit .mono { color: var(--green); }
+.pl-row.loss   .mono { color: var(--red);   }
+.pl-divider { height: 2px; background: var(--border); margin: 4px 0; }
 
 .bs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 @media (max-width: 700px) { .bs-grid { grid-template-columns: 1fr; } }
-.bs-block { background: var(--books-surface-2); border-radius: var(--radius-sm); padding: 18px; }
-.bs-section-title { font-family: var(--font-display); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--books-muted); margin-bottom: 10px; }
-.assets .bs-amount    { color: var(--books-accent); font-family: var(--font-display); font-size: 20px; font-weight: 700; }
-.liabilities .bs-amount { color: var(--books-red);    font-family: var(--font-display); font-size: 20px; font-weight: 700; }
-.equity .bs-amount    { color: var(--books-amber);  font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+.bs-block { background: var(--surface-2); border-radius: var(--radius-sm); padding: 18px; }
+.bs-section-title { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+.assets .bs-amount    { color: var(--accent); font-family: var(--mono); font-size: 20px; font-weight: 700; }
+.liabilities .bs-amount { color: var(--red);    font-family: var(--mono); font-size: 20px; font-weight: 700; }
+.equity .bs-amount    { color: var(--amber);  font-family: var(--mono); font-size: 20px; font-weight: 700; }
 
 .cf-rows { display: flex; flex-direction: column; gap: 0; }
-.cf-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--books-border); font-size: 14px; }
+.cf-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
 .cf-row.net { border-bottom: none; font-weight: 700; font-size: 15px; margin-top: 4px; }
 
-.mono     { font-family: var(--font-display); }
-.mono-sm  { font-family: var(--font-display); font-size: 12.5px; }
-.green    { color: var(--books-green); }
-.red      { color: var(--books-red);   }
+.mono     { font-family: var(--mono); }
+.mono-sm  { font-family: var(--mono); font-size: 12.5px; }
+.green    { color: var(--green); }
+.red      { color: var(--red);   }
 .ta-r     { text-align: right; }
-.empty-msg { text-align: center; padding: 32px; color: var(--books-muted); font-size: 13px; }
+.empty-msg { text-align: center; padding: 32px; color: var(--text-3); font-size: 13px; }
 </style>

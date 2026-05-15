@@ -184,7 +184,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiSave, apiGet, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -197,7 +197,7 @@ const tabs=[{key:"all",label:"All"},{key:"draft",label:"Draft"},{key:"unpaid",la
 const list=ref([]),loading=ref(false),search=ref(""),selected=ref(new Set());
 const drawerOpen=ref(false),drawerSaving=ref(false),editingName=ref("");
 const viewOpen=ref(false),viewDoc=ref(null);
-const vendors=ref([]),items=ref([]),lines=ref([]);
+const vendors=ref([]),items=ref([]),lines=ref([]),taxAccountHead=ref("");
 const sortCol=ref("posting_date"),sortDir=ref("desc");
 
 let _id=1;
@@ -209,6 +209,12 @@ async function load(){
   try{list.value=await apiList("Purchase Invoice",{fields:["name","supplier","supplier_name","posting_date","due_date","bill_no","grand_total","outstanding_amount","docstatus","status"],limit:200,order:"posting_date desc"});}
   catch(e){toast.error(e.message||"Failed to load bills");}
   finally{loading.value=false;}
+}
+async function loadTaxAccount(){
+  try{
+    const r=await apiList("Account",{fields:["name"],filters:[["account_type","=","Tax"],["is_group","=",0]],limit:1});
+    if(r?.length) taxAccountHead.value=r[0].name;
+  }catch{}
 }
 
 const today=new Date().toISOString().slice(0,10);
@@ -248,7 +254,19 @@ function toggle(n){const s=new Set(selected.value);s.has(n)?s.delete(n):s.add(n)
 function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(b=>b.name)):new Set();}
 
 function openNew(){editingName.value="";Object.assign(form,{supplier:"",posting_date:new Date().toISOString().slice(0,10),due_date:"",bill_no:"",bill_date:"",tax_rate:0,remarks:""});lines.value=[blankLine()];fetchVendors("");fetchItems("");drawerOpen.value=true;}
-function openEdit(b){editingName.value=b.name;Object.assign(form,{supplier:b.supplier||"",posting_date:b.posting_date||"",due_date:b.due_date||"",bill_no:b.bill_no||"",bill_date:b.bill_date||"",tax_rate:0,remarks:b.remarks||""});lines.value=[blankLine()];fetchVendors("");fetchItems("");drawerOpen.value=true;}
+async function openEdit(b){
+  editingName.value=b.name;
+  Object.assign(form,{supplier:b.supplier||"",posting_date:b.posting_date||"",due_date:b.due_date||"",bill_no:b.bill_no||"",bill_date:b.bill_date||"",tax_rate:0,remarks:b.remarks||""});
+  lines.value=[blankLine()];
+  fetchVendors("");fetchItems("");
+  drawerOpen.value=true;
+  try{
+    const doc=await apiGet("Purchase Invoice",b.name);
+    if(doc?.items?.length) lines.value=doc.items.map(i=>({id:_id++,item_code:i.item_code||"",description:i.description||"",qty:i.qty||1,rate:i.rate||0,amount:i.amount||0}));
+    if(doc?.taxes?.[0]?.rate) form.tax_rate=doc.taxes[0].rate;
+    if(doc?.taxes?.[0]?.account_head) taxAccountHead.value=doc.taxes[0].account_head;
+  }catch{}
+}
 function openView(b){viewDoc.value=b;viewOpen.value=true;}
 async function fetchVendors(q=""){try{const r=await apiLinkValues("Supplier",q);vendors.value=r.map(x=>({label:x.name,value:x.name}));}catch{vendors.value=[];}}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
@@ -259,22 +277,23 @@ function calcLine(l){l.amount=Math.round(flt(l.qty)*flt(l.rate)*100)/100;}
 const subtotal=computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
 const taxAmount=computed(()=>Math.round(subtotal.value*flt(form.tax_rate)/100*100)/100);
 
-async function saveBill(docstatus){
+async function saveBill(submit){
   if(!form.supplier) return toast.error("Vendor is required");
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
-    const taxes=form.tax_rate>0?[{doctype:"Purchase Taxes and Charges",charge_type:"On Net Total",rate:form.tax_rate,tax_amount:taxAmount.value,total:subtotal.value+taxAmount.value}]:[];
-    const doc={doctype:"Purchase Invoice",company,supplier:form.supplier,posting_date:form.posting_date,due_date:form.due_date||null,bill_no:form.bill_no||"",bill_date:form.bill_date||null,remarks:form.remarks||"",docstatus,
+    const taxes=form.tax_rate>0&&taxAccountHead.value?[{doctype:"Purchase Taxes and Charges",charge_type:"On Net Total",account_head:taxAccountHead.value,description:taxAccountHead.value,rate:form.tax_rate}]:[];
+    const doc={doctype:"Purchase Invoice",company,supplier:form.supplier,posting_date:form.posting_date,due_date:form.due_date||null,bill_no:form.bill_no||"",bill_date:form.bill_date||null,remarks:form.remarks||"",
       items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Purchase Invoice Item",item_code:l.item_code,description:l.description||l.item_code,qty:flt(l.qty)||1,rate:flt(l.rate),amount:flt(l.amount)})),taxes};
     if(editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
-    toast.success(`Bill ${saved?.name||""} ${docstatus?"submitted":"saved"}`);
+    if(submit&&saved?.name) await apiSubmit("Purchase Invoice",saved.name);
+    toast.success(`Bill ${saved?.name||""} ${submit?"submitted":"saved"}`);
     drawerOpen.value=false;await load();
   }catch(e){toast.error(e.message||"Failed to save bill");}
   finally{drawerSaving.value=false;}
 }
-onMounted(load);
+onMounted(()=>{load();loadTaxAccount();});
 </script>
 
 <style scoped>

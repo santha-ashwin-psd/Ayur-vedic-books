@@ -28,7 +28,7 @@
       <tbody>
         <tr v-for="s in series" :key="s.prefix" style="border-bottom:1px solid #f0f2f7">
           <td style="padding:12px 16px">
-            <span style="background:#F3F0FF;color:#7048E8;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{s.doctype}}</span>
+            <span style="background:#F3F0FF;color:#2563eb;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{s.doctype}}</span>
           </td>
           <td style="padding:12px 16px;font-family:monospace;font-weight:700;color:#1a1a2e;font-size:13.5px">{{s.prefix}}</td>
           <td style="padding:12px 16px;color:#4a5568;text-align:center">{{s.padding||4}}</td>

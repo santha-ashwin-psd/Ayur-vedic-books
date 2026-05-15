@@ -194,13 +194,15 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const taxAccountHead=ref("");
+async function loadTaxAccount(){try{const co=await resolveCompany();const r=await apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Tax"],["is_group","=",0]],limit:1});taxAccountHead.value=r[0]?.name||"";}catch{}}
 const activeTab = ref("all");
 const tabs = [
   { key:"all",       label:"All"       },
@@ -235,8 +237,10 @@ const form = reactive({
 async function load() {
   loading.value = true;
   try {
+    const co=await resolveCompany();
     list.value = await apiList("Quotation", {
-      fields:["name","party_name","customer_name","transaction_date","valid_till","grand_total","docstatus","status"],
+      fields:["name","customer","customer_name","transaction_date","valid_till","grand_total","status"],
+      filters:[["company","=",co]],
       limit:200, order:"transaction_date desc",
     });
   } catch(e) { toast.error(e.message||"Failed to load quotations"); }
@@ -309,11 +313,18 @@ function openNew() {
   fetchCustomers(""); fetchItems("");
   drawerOpen.value=true;
 }
-function openEdit(q) {
+async function openEdit(q) {
   editingName.value=q.name;
-  Object.assign(form,{party_name:q.party_name||q.customer_name||"",transaction_date:q.transaction_date||"",valid_till:q.valid_till||"",tax_rate:0,terms:q.terms||""});
-  lines.value=[blankLine()];
   fetchCustomers(""); fetchItems("");
+  try{
+    const doc=await apiGet("Quotation",q.name);
+    Object.assign(form,{party_name:doc.party_name||doc.customer_name||"",transaction_date:doc.transaction_date||"",valid_till:doc.valid_till||"",tax_rate:doc.taxes?.[0]?.rate||0,terms:doc.terms||""});
+    lines.value=(doc.items||[]).map(it=>({id:_lineId++,item_code:it.item_code||"",description:it.description||"",qty:flt(it.qty)||1,rate:flt(it.rate),amount:flt(it.amount)}));
+    if(!lines.value.length)lines.value=[blankLine()];
+  }catch{
+    Object.assign(form,{party_name:q.party_name||q.customer_name||"",transaction_date:q.transaction_date||"",valid_till:q.valid_till||"",tax_rate:0,terms:q.terms||""});
+    lines.value=[blankLine()];
+  }
   drawerOpen.value=true;
 }
 function openView(q){viewDoc.value=q;viewOpen.value=true;}
@@ -338,31 +349,32 @@ function calcLine(l){l.amount=Math.round(flt(l.qty)*flt(l.rate)*100)/100;}
 const subtotal  = computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
 const taxAmount = computed(()=>Math.round(subtotal.value*flt(form.tax_rate)/100*100)/100);
 
-async function saveQuote(docstatus) {
+async function saveQuote(submit) {
   if (!form.party_name) return toast.error("Customer is required");
   if (!form.transaction_date) return toast.error("Date is required");
   drawerSaving.value=true;
   try {
     const company=await resolveCompany();
-    const taxes=form.tax_rate>0?[{doctype:"Sales Taxes and Charges",charge_type:"On Net Total",rate:form.tax_rate,tax_amount:taxAmount.value,total:subtotal.value+taxAmount.value}]:[];
+    const taxes=form.tax_rate>0?[{doctype:"Sales Taxes and Charges",charge_type:"On Net Total",rate:form.tax_rate,account_head:taxAccountHead.value,description:`Tax @ ${form.tax_rate}%`}]:[];
     const doc={
       doctype:"Quotation", company,
       quotation_to:"Customer", party_name:form.party_name,
       transaction_date:form.transaction_date, valid_till:form.valid_till||null,
-      terms:form.terms||"", docstatus,
+      terms:form.terms||"",
       items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Quotation Item",item_code:l.item_code,description:l.description||l.item_code,qty:flt(l.qty)||1,rate:flt(l.rate),amount:flt(l.amount)})),
       taxes,
     };
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
-    toast.success(`Quotation ${saved?.name||""} ${docstatus?"submitted":"saved"}`);
+    if(submit) await apiSubmit("Quotation",saved.name);
+    toast.success(`Quotation ${saved?.name||""} ${submit?"submitted":"saved"}`);
     drawerOpen.value=false;
     await load();
   } catch(e) { toast.error(e.message||"Failed to save quotation"); }
   finally { drawerSaving.value=false; }
 }
 
-onMounted(load);
+onMounted(()=>{load();loadTaxAccount();});
 </script>
 
 <style scoped>

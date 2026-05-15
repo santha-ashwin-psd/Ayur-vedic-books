@@ -84,7 +84,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { apiList } from "../api/client.js";
+import { apiList, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -99,8 +99,11 @@ const sortCol=ref("date"),sortDir=ref("desc");
 async function load(){
   loading.value=true;
   try{
-    if(!bankAccounts.value.length){bankAccounts.value=await apiList("Bank Account",{fields:["name","account_name"],limit:50});}
-    const filters=[];
+    const co=await resolveCompany();
+    if(!bankAccounts.value.length){bankAccounts.value=await apiList("Bank Account",{fields:["name","account_name"],filters:[["company","=",co]],limit:50});}
+    const whNames=bankAccounts.value.map(a=>a.name);
+    if(!whNames.length&&!selectedAccount.value){list.value=[];loading.value=false;return;}
+    const filters=whNames.length?[["bank_account","in",whNames]]:[];
     if(selectedAccount.value)filters.push(["bank_account","=",selectedAccount.value]);
     list.value=await apiList("Bank Transaction",{fields:["name","date","bank_account","description","reference_number","deposit","withdrawal","status","currency"],filters,limit:300,order:"date desc"});
   }catch(e){toast.error(e.message||"Failed to load transactions");}

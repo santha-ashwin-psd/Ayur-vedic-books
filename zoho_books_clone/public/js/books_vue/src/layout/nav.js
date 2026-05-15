@@ -19,7 +19,7 @@ export const NAV = [
   { path: "/recurring",                     label: "Recurring",        icon: "recurring",  module: "invoices"   },
   { path: "/credit-notes",                  label: "Credit Notes",     icon: "creditnote", module: "invoices"   },
   { path: "/payments-received",             label: "Payments Received",icon: "rupee",      module: "payments"   },
-  { path: "/eway-bills",                    label: "e-Way Bills",      icon: "truck",      module: "taxes"      },
+  { path: "/eway-bills",                    label: "e-Way Bills",      icon: "truck",      module: "invoices"   },
 
   { section: "Purchases" },
   { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills"      },
@@ -57,10 +57,10 @@ export const NAV = [
   { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },
 
   { section: "GST / Taxes" },
-  { path: "/gst/gstr1",                     label: "GSTR-1",           icon: "gstfile",    module: "taxes"      },
-  { path: "/gst/gstr3b",                    label: "GSTR-3B",          icon: "gstfile",    module: "taxes"      },
-  { path: "/gst/einvoice",                  label: "e-Invoice",        icon: "qr",         module: "taxes"      },
-  { path: "/gst/tds",                       label: "TDS",              icon: "percent",    module: "taxes"      },
+  { path: "/gst/gstr1",                     label: "GSTR-1",           icon: "gstfile",    module: "accounts"   },
+  { path: "/gst/gstr3b",                    label: "GSTR-3B",          icon: "gstfile",    module: "accounts"   },
+  { path: "/gst/einvoice",                  label: "e-Invoice",        icon: "qr",         module: "accounts"   },
+  { path: "/gst/tds",                       label: "TDS",              icon: "percent",    module: "accounts"   },
 
   { section: "Reports" },
   { path: "/reports",                       label: "All Reports",      icon: "chart",      module: "reports"    },
@@ -74,7 +74,9 @@ export const NAV = [
   { path: "/settings/number-series",        label: "Number Series",    icon: "hash",       module: "admin"      },
   { path: "/settings/payment-terms",        label: "Payment Terms",    icon: "calendar",   module: "admin"      },
   { path: "/settings/currency-exchange",    label: "Currency",         icon: "currency",   module: "admin"      },
-  { path: "/settings/security",             label: "Security",         icon: "lock",       module: "admin"      },
+  { path: "/settings/roles",                label: "Roles",            icon: "shield",     module: "admin"      },
+  { path: "/settings/organization",         label: "Organization",     icon: "org",        module: "admin"      },
+  { path: "/settings/security",             label: "Security",         icon: "lock",       module: null         },
   { path: "/settings/audit-log",            label: "Audit Log",        icon: "audit",      module: "admin"      },
   { path: "/settings/integrations",         label: "Integrations",     icon: "webhook",    module: "admin"      },
 ];

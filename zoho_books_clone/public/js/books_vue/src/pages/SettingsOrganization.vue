@@ -11,7 +11,7 @@
     <div v-for="c in companies" :key="c.name" style="background:#fff;border:1px solid #e4e8f0;border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:40px;height:40px;border-radius:8px;background:#F3F0FF;display:flex;align-items:center;justify-content:center;font-size:18px">🏢</div>
-        <div><div style="font-weight:700;color:#1a1a2e">{{c.company_name||c.name}}</div><div style="font-size:12px;color:#868e96">{{c.default_currency}} · {{c.country}}</div></div>
+        <div><div style="font-weight:700;color:#1a1a2e">{{c.company_name||c.name}}</div><div style="font-size:12px;color:#868e96">{{c.currency||'INR'}}</div></div>
       </div>
       <span style="background:#ebfbee;color:#2f9e44;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600">Active</span>
     </div>
@@ -28,11 +28,13 @@ const companies = ref([]);
 
 async function load() {
   try {
-    companies.value = await apiList("Company", {
-      fields: ["name", "company_name", "default_currency", "country"],
+    companies.value = await apiList("Books Company", {
+      fields: ["name", "company_name", "currency"],
       limit: 50,
     });
-  } catch {}
+  } catch (e) {
+    console.error("Failed to load companies", e);
+  }
 }
 onMounted(load);
 </script>

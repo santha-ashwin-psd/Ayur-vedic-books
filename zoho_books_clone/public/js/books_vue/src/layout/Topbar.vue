@@ -21,9 +21,10 @@
       <div class="bv-topbar-avatar">{{ initials }}</div>
       <span class="bv-topbar-username">{{ session.fullname || session.user }}</span>
       <div v-if="userOpen" class="bv-topbar-user-menu">
-        <a href="#/settings/profile">My Profile</a>
-        <a href="#/settings/users" v-if="isAdmin">Users</a>
-        <a href="/logout">Sign out</a>
+        <a href="#" @click.prevent="router.push('/settings/profile'); userOpen=false">My Profile</a>
+        <a href="#" v-if="isAdmin" @click.prevent="router.push('/settings/users'); userOpen=false">Users</a>
+        <hr />
+        <a href="#" @click.prevent="doLogout">Sign out</a>
       </div>
     </div>
   </header>
@@ -31,7 +32,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import IconSvg from "../components/IconSvg.vue";
 import NotificationsBell from "./NotificationsBell.vue";
 import { titleFor } from "./nav.js";
@@ -41,6 +42,7 @@ import { usePermissions } from "../composables/usePermissions.js";
 defineEmits(["toggle-ai"]);
 
 const route   = useRoute();
+const router  = useRouter();
 const query   = ref("");
 const userOpen = ref(false);
 const { isAdmin } = usePermissions();
@@ -53,6 +55,14 @@ const initials = computed(() => {
   if (!parts.length) return "?";
   return ((parts[0][0] || "") + (parts[1]?.[0] || "")).toUpperCase();
 });
+
+async function doLogout() {
+  userOpen.value = false;
+  try {
+    await fetch("/api/method/logout", { method: "POST", credentials: "same-origin" });
+  } catch {}
+  window.location.href = "/login";
+}
 
 function doSearch() {
   // Topbar search is preserved as a feature stub — the legacy SPA never built

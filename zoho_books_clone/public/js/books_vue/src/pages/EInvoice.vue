@@ -82,7 +82,7 @@ const list=ref([]),loading=ref(false),search=ref(""),tab=ref("all");
 const sortCol=ref("posting_date"),sortDir=ref("desc");
 const viewing=ref(null);
 const tabs=[{v:"all",l:"All"},{v:"generated",l:"IRN Generated"},{v:"pending",l:"Pending"},{v:"cancelled",l:"Cancelled"}];
-async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Sales Invoice",{fields:["name","posting_date","customer","customer_name","customer_gstin","grand_total","irn","ack_no","ack_date","einvoice_status"],filters:[["company","=",co],["docstatus","=",1],["is_return","=",0]],limit:500,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load invoices");}finally{loading.value=false;}}
+async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Sales Invoice",{fields:["name","posting_date","customer","customer_name","grand_total"],filters:[["company","=",co],["docstatus","=",1],["is_return","=",0]],limit:500,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load invoices");}finally{loading.value=false;}}
 function irnStatusLabel(inv){if(inv.einvoice_status==="Cancelled")return"Cancelled";if(inv.irn)return"IRN Generated";return"Pending";}
 function irnStatusClass(inv){if(inv.einvoice_status==="Cancelled")return"badge-grey";if(inv.irn)return"badge-green";return"badge-orange";}
 const irnGenerated=computed(()=>list.value.filter(i=>i.irn&&i.einvoice_status!=="Cancelled"));

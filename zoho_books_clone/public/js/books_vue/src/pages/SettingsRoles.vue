@@ -25,7 +25,7 @@
 
 <script setup>
 const BUILTIN = [
-  { name: "Books Admin",   desc: "Full access — can manage users, settings, all transactions", color: "#7048E8", bg: "#F3F0FF",
+  { name: "Books Admin",   desc: "Full access — can manage users, settings, all transactions", color: "#2563eb", bg: "#F3F0FF",
     perms: { sales: true,  purchases: true,  banking: true,  reports: true, settings: true,  users: true } },
   { name: "Accountant",    desc: "Create & edit transactions, view reports. Cannot manage users or settings", color: "#1971C2", bg: "#E7F5FF",
     perms: { sales: true,  purchases: true,  banking: true,  reports: true, settings: false, users: false } },

@@ -59,29 +59,41 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList } from "../api/client.js";
+import { apiList, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 
 const { toast } = useToast();
 const bankAccounts=ref([]),transactions=ref([]),loading=ref(false),ran=ref(false);
+const systemBalance=ref(0);
 const now=new Date();
 const firstOfMonth=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
 const form=reactive({bank_account:"",from_date:firstOfMonth,to_date:now.toISOString().slice(0,10)});
 
-async function loadAccounts(){try{bankAccounts.value=await apiList("Bank Account",{fields:["name","account_name"],limit:50});}catch{}}
+async function loadAccounts(){try{const co=await resolveCompany();bankAccounts.value=await apiList("Bank Account",{fields:["name","account_name"],filters:[["company","=",co]],limit:50});}catch{}}
 async function load(){
   if(!form.bank_account)return;
-  loading.value=true;ran.value=true;
-  try{transactions.value=await apiList("Bank Transaction",{fields:["name","date","description","reference_number","deposit","withdrawal","status"],filters:[["bank_account","=",form.bank_account],["date",">=",form.from_date],["date","<=",form.to_date]],limit:500,order:"date asc"});}
-  catch(e){toast.error(e.message||"Failed to load");}finally{loading.value=false;}
+  loading.value=true;ran.value=true;systemBalance.value=0;
+  try{
+    const[txRows,baRows]=await Promise.all([
+      apiList("Bank Transaction",{fields:["name","date","description","reference_number","deposit","withdrawal","status"],filters:[["bank_account","=",form.bank_account],["date",">=",form.from_date],["date","<=",form.to_date]],limit:500,order:"date asc"}),
+      apiList("Bank Account",{fields:["account"],filters:[["name","=",form.bank_account]],limit:1}),
+    ]);
+    transactions.value=txRows;
+    const linkedAccount=baRows[0]?.account;
+    if(linkedAccount){
+      const gl=await apiList("GL Entry",{fields:["debit","credit"],filters:[["account","=",linkedAccount],["posting_date","<=",form.to_date],["is_cancelled","=",0]],limit:2000});
+      systemBalance.value=gl.reduce((s,e)=>s+flt(e.debit)-flt(e.credit),0);
+    }
+  }catch(e){toast.error(e.message||"Failed to load");}finally{loading.value=false;}
 }
 const summary=computed(()=>{
   const dep=transactions.value.reduce((s,t)=>s+flt(t.deposit),0);
   const wd=transactions.value.reduce((s,t)=>s+flt(t.withdrawal),0);
+  const stmtBal=dep-wd;
   const unmatched=transactions.value.filter(t=>t.status!=="Reconciled").length;
-  return{statementBalance:dep-wd,systemBalance:dep-wd,diff:0,unmatched};
+  return{statementBalance:stmtBal,systemBalance:systemBalance.value,diff:systemBalance.value-stmtBal,unmatched};
 });
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 onMounted(loadAccounts);

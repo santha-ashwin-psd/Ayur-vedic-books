@@ -3,7 +3,7 @@
   <div class="cust-toolbar">
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:18px;font-weight:700;color:#1a1a2e">Email Templates</span>
-      <span style="background:#F3F0FF;color:#7048E8;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{list.length}}</span>
+      <span style="background:#F3F0FF;color:#2563eb;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{list.length}}</span>
     </div>
     <button class="nim-btn nim-btn-primary" @click="openAdd"><span v-html="icon('plus',13)" style="vertical-align:-2px;margin-right:4px"/>New Template</button>
   </div>
@@ -63,7 +63,7 @@
             <input class="nim-input" v-model="form.subject" :placeholder="subjectPlaceholder"/>
           </div>
           <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8f9fc;border-radius:8px;cursor:pointer" @click="form.use_html=form.use_html?0:1">
-            <div :style="'width:34px;height:18px;border-radius:9px;transition:.2s;position:relative;background:'+(form.use_html?'#7048E8':'#cbd5e0')">
+            <div :style="'width:34px;height:18px;border-radius:9px;transition:.2s;position:relative;background:'+(form.use_html?'#2563eb':'#cbd5e0')">
               <div :style="'width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:.2s;left:'+(form.use_html?'18px':'2px')"></div>
             </div>
             <span style="font-size:13px;font-weight:600">HTML format</span>

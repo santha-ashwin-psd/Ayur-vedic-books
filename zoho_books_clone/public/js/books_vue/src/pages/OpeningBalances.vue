@@ -51,8 +51,8 @@
       </div>
       <div style="font-size:20px;font-weight:700;color:#868E96;padding:0 12px;align-self:center">+</div>
       <div style="flex:1;min-width:140px;padding:12px 16px;border-radius:8px;text-align:center;background:#F3F0FF">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#7048E8;margin-bottom:4px">Equity</div>
-        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:#7048E8">{{fmtINR(eq.equity)}}</div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#2563eb;margin-bottom:4px">Equity</div>
+        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:#2563eb">{{fmtINR(eq.equity)}}</div>
       </div>
     </div>
     <div class="ob-eq-diff" :class="!eq.assets&&!eq.liabilities&&!eq.equity?'ob-eq-zero':Math.abs(eq.diff)<0.01?'ob-eq-ok':'ob-eq-err'">
@@ -143,7 +143,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiGET, apiPOST, resolveCompany } from "../api/client.js";
+import { apiGET, apiPOST, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 
@@ -152,7 +152,7 @@ const { toast } = useToast();
 const OB_TYPE_META = {
   Asset:     { color: "#0C8599", bg: "#E0F7FA", label: "Assets",      balType: "Debit"  },
   Liability: { color: "#C92A2A", bg: "#FFE3E3", label: "Liabilities", balType: "Credit" },
-  Equity:    { color: "#7048E8", bg: "#F3F0FF", label: "Equity",      balType: "Credit" },
+  Equity:    { color: "#2563eb", bg: "#F3F0FF", label: "Equity",      balType: "Credit" },
   Income:    { color: "#2F9E44", bg: "#EBFBEE", label: "Income",      balType: "Credit" },
   Expense:   { color: "#E67700", bg: "#FFF3BF", label: "Expenses",    balType: "Debit"  },
 };
@@ -264,13 +264,25 @@ async function doSubmit() {
     const v = r2(Number(balances[a.name] || 0));
     if (!v) return;
     const dc = drCrMap[a.name] || "Debit";
-    lines.push({ account: a.name, debit: dc === "Debit" ? v : 0, credit: dc === "Credit" ? v : 0 });
+    lines.push({
+      doctype: "Journal Entry Account",
+      account: a.name,
+      debit_in_account_currency:  dc === "Debit"  ? v : 0,
+      credit_in_account_currency: dc === "Credit" ? v : 0,
+    });
   });
   try {
-    const doc = { doctype: "Journal Entry", voucher_type: "Opening Entry", posting_date: date, remark: "Opening Balances as at " + date, accounts: lines };
-    const saved = await apiPOST("frappe.client.save", { doc: JSON.stringify(doc) });
-    const fresh = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Journal Entry", name: saved.name });
-    await apiPOST("frappe.client.submit", { doc: JSON.stringify({ doctype: "Journal Entry", name: saved.name, modified: fresh.modified }) });
+    const company = await resolveCompany();
+    const doc = {
+      doctype: "Journal Entry",
+      company,
+      voucher_type: "Opening Entry",
+      posting_date: date,
+      remark: "Opening Balances as at " + date,
+      accounts: lines,
+    };
+    const saved = await apiSave(doc);
+    await apiSubmit("Journal Entry", saved.name);
     toast("Opening entry posted: " + saved.name);
   } catch (e) {
     toast("Submitted locally — " + e.message, "info");

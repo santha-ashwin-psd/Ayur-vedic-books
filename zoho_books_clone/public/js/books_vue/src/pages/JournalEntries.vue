@@ -319,7 +319,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, apiDelete, resolveCompany } from "../api/client.js";
+import { apiList, apiSave, apiDelete, apiSubmit, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt } from "../utils/format.js";
@@ -506,17 +506,20 @@ async function saveEntry(status) {
       voucher_type: form.type,
       remark: form.narration,
       accounts: lines.value.filter((l) => l.account).map((l) => ({
+        doctype: "Journal Entry Account",
         account: l.account,
         party: l.party || null,
         cost_center: l.cost_center || form.cost_center || null,
-        debit: flt(l.dr),
-        credit: flt(l.cr),
+        debit_in_account_currency: flt(l.dr),
+        credit_in_account_currency: flt(l.cr),
       })),
-      docstatus: status === "Submitted" ? 1 : 0,
     };
     const frappeDoc = { doctype: "Journal Entry", naming_series: "JV-.YYYY.-.#####", company, ...payload };
     if (editingName.value) frappeDoc.name = editingName.value;
-    await apiSave(frappeDoc);
+    const saved = await apiSave(frappeDoc);
+    if (status === "Submitted" && saved?.name) {
+      await apiSubmit("Journal Entry", saved.name);
+    }
     await load();
     toast(editingName.value ? "Journal entry updated" : "Journal entry created", "success");
     drawerOpen.value = false;
@@ -539,7 +542,7 @@ async function doAction() {
       allEntries.value = allEntries.value.filter((e) => e.name !== name);
       toast("Entry deleted", "success");
     } else if (confType.value === "cancel") {
-      await apiSave({ doctype: "Journal Entry", name, docstatus: 2 });
+      await apiPOST("frappe.client.cancel", { doctype: "Journal Entry", name });
       const idx = allEntries.value.findIndex((e) => e.name === name);
       if (idx >= 0) allEntries.value[idx] = { ...allEntries.value[idx], status: "Cancelled" };
       toast("Entry cancelled", "success");

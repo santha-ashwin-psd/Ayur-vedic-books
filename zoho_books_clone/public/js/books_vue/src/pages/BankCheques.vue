@@ -56,7 +56,7 @@
 </template>
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { apiList } from "../api/client.js";
+import { apiList, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -66,7 +66,7 @@ const tabs=[{key:"all",label:"All"},{key:"Receive",label:"Received"},{key:"Pay",
 const list=ref([]),loading=ref(false),search=ref("");
 const viewOpen=ref(false),viewDoc=ref(null);
 const sortCol=ref("payment_date"),sortDir=ref("desc");
-async function load(){loading.value=true;try{list.value=await apiList("Payment Entry",{fields:["name","party","payment_type","reference_no","reference_date","payment_date","paid_amount","docstatus"],filters:[["mode_of_payment","=","Cheque"]],limit:200,order:"payment_date desc"});}catch(e){toast.error(e.message||"Failed to load cheques");}finally{loading.value=false;}}
+async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Payment Entry",{fields:["name","party","payment_type","reference_no","reference_date","payment_date","paid_amount","docstatus"],filters:[["mode_of_payment","=","Cheque"],["company","=",co]],limit:200,order:"payment_date desc"});}catch(e){toast.error(e.message||"Failed to load cheques");}finally{loading.value=false;}}
 const filtered=computed(()=>{let r=list.value;if(activeTab.value!=="all")r=r.filter(p=>p.payment_type===activeTab.value);if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(p=>(p.party||"").toLowerCase().includes(q)||(p.reference_no||"").toLowerCase().includes(q));}return r;});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}

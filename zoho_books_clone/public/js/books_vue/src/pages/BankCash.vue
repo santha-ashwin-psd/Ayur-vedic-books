@@ -54,7 +54,7 @@
           </div>
           <div class="cash-field"><label class="cash-label">Date <span class="req">*</span></label><input v-model="form.payment_date" type="date" class="cash-input" /></div>
           <div class="cash-field"><label class="cash-label">Amount <span class="req">*</span></label><input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="cash-input" /></div>
-          <div class="cash-field" style="grid-column:1/-1"><label class="cash-label">Party</label><input v-model="form.party" type="text" class="cash-input" placeholder="Customer / vendor name" /></div>
+          <div class="cash-field" style="grid-column:1/-1"><label class="cash-label">Party <span class="req">*</span></label><input v-model="form.party" type="text" class="cash-input" :placeholder="form.payment_type==='Receive'?'Customer name':'Vendor / supplier name'" /></div>
           <div class="cash-field" style="grid-column:1/-1"><label class="cash-label">Remarks</label><textarea v-model="form.remarks" rows="2" class="cash-input" placeholder="Optional…"></textarea></div>
         </div>
       </div>
@@ -83,11 +83,13 @@
 </template>
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany } from "../api/client.js";
+import { apiList, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 const { toast } = useToast();
+const cashAccount=ref(""),receivableAccount=ref(""),payableAccount=ref(""),companyCurrency=ref("INR");
+async function loadAccounts(){try{const co=await resolveCompany();const[cashAcc,recvAcc,payAcc,comp]=await Promise.all([apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Cash"],["is_group","=",0]],limit:1}),apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Receivable"],["is_group","=",0]],limit:1}),apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Payable"],["is_group","=",0]],limit:1}),apiList("Books Company",{fields:["currency"],filters:[["name","=",co]],limit:1})]);cashAccount.value=cashAcc[0]?.name||"";receivableAccount.value=recvAcc[0]?.name||"";payableAccount.value=payAcc[0]?.name||"";companyCurrency.value=comp[0]?.currency||"INR";}catch(e){console.error("Failed to load accounts",e);}}
 const activeTab=ref("all");
 const tabs=[{key:"all",label:"All"},{key:"Receive",label:"Cash In"},{key:"Pay",label:"Cash Out"}];
 const list=ref([]),loading=ref(false),search=ref("");
@@ -95,7 +97,7 @@ const drawerOpen=ref(false),drawerSaving=ref(false);
 const viewOpen=ref(false),viewDoc=ref(null);
 const sortCol=ref("payment_date"),sortDir=ref("desc");
 const form=reactive({payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",remarks:""});
-async function load(){loading.value=true;try{list.value=await apiList("Payment Entry",{fields:["name","party","payment_type","payment_date","paid_amount","remarks","docstatus"],filters:[["mode_of_payment","=","Cash"]],limit:200,order:"payment_date desc"});}catch(e){toast.error(e.message||"Failed to load cash entries");}finally{loading.value=false;}}
+async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Payment Entry",{fields:["name","party","payment_type","payment_date","paid_amount","remarks","docstatus"],filters:[["company","=",co],["mode_of_payment","=","Cash"],["docstatus","=",1]],limit:200,order:"payment_date desc"});}catch(e){toast.error(e.message||"Failed to load cash entries");}finally{loading.value=false;}}
 const filtered=computed(()=>{let r=list.value;if(activeTab.value!=="all")r=r.filter(p=>p.payment_type===activeTab.value);if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(p=>(p.party||"").toLowerCase().includes(q));}return r;});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
@@ -105,8 +107,8 @@ const cashOut=computed(()=>list.value.filter(p=>p.payment_type==="Pay").reduce((
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 function openNew(){Object.assign(form,{payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",remarks:""});drawerOpen.value=true;}
 function openView(p){viewDoc.value=p;viewOpen.value=true;}
-async function saveCash(){if(!flt(form.paid_amount))return toast.error("Amount is required");drawerSaving.value=true;try{const company=await resolveCompany();const doc={doctype:"Payment Entry",company,payment_type:form.payment_type,party_type:form.payment_type==="Receive"?"Customer":"Supplier",party:form.party||"",mode_of_payment:"Cash",paid_amount:flt(form.paid_amount),received_amount:flt(form.paid_amount),payment_date:form.payment_date,remarks:form.remarks||"",docstatus:1};const saved=await apiSave(doc);toast.success(`Cash entry ${saved?.name||""} created`);drawerOpen.value=false;await load();}catch(e){toast.error(e.message||"Failed to save");}finally{drawerSaving.value=false;}}
-onMounted(load);
+async function saveCash(){if(!flt(form.paid_amount))return toast.error("Amount is required");if(!form.party.trim())return toast.error("Party name is required");if(!cashAccount.value)return toast.error("Cash account not configured — check chart of accounts");drawerSaving.value=true;try{const company=await resolveCompany();const isCashIn=form.payment_type==="Receive";const doc={doctype:"Payment Entry",company,payment_type:form.payment_type,party_type:isCashIn?"Customer":"Supplier",party:form.party,mode_of_payment:"Cash",paid_from:isCashIn?(receivableAccount.value||cashAccount.value):cashAccount.value,paid_to:isCashIn?cashAccount.value:(payableAccount.value||cashAccount.value),paid_from_account_currency:companyCurrency.value,paid_to_account_currency:companyCurrency.value,source_exchange_rate:1,target_exchange_rate:1,paid_amount:flt(form.paid_amount),received_amount:flt(form.paid_amount),payment_date:form.payment_date,remarks:form.remarks||""};const saved=await apiSave(doc);await apiSubmit("Payment Entry",saved.name);toast.success(`Cash entry ${saved?.name||""} created`);drawerOpen.value=false;await load();}catch(e){toast.error(e.message||"Failed to save");}finally{drawerSaving.value=false;}}
+onMounted(()=>{load();loadAccounts();});
 </script>
 <style scoped>
 .cash-page{display:flex;flex-direction:column;gap:16px;padding:24px;}

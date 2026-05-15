@@ -397,7 +397,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGET, apiPOST, apiSave, resolveCompany } from "../api/client.js";
+import { apiList, apiGET, apiPOST, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -535,7 +535,7 @@ async function load() {
   try {
     list.value = await apiList("Sales Invoice", {
       fields: ["name","customer","customer_name","posting_date","due_date",
-               "grand_total","outstanding_amount","status","docstatus","po_no"],
+               "grand_total","outstanding_amount","status"],
       limit: 200,
       order: "posting_date desc",
     }) || [];
@@ -556,6 +556,15 @@ async function loadItems() {
     items.value = await apiList("Item", {
       fields: ["name","item_name","standard_rate","stock_uom"], limit: 500, order: "item_name asc",
     }) || [];
+  } catch {}
+}
+
+const taxAccountHead = ref("");
+async function loadTaxAccount() {
+  try {
+    const co = await resolveCompany();
+    const r = await apiList("Account", {fields:["name"],filters:[["company","=",co],["account_type","=","Tax"],["is_group","=",0]],limit:1});
+    taxAccountHead.value = r[0]?.name || "";
   } catch {}
 }
 
@@ -656,8 +665,9 @@ async function saveInvoice(docstatus) {
       }));
 
     const taxes = form.tax_rate > 0 ? [{
+      doctype: "Sales Taxes and Charges",
       charge_type: "On Net Total",
-      account_head: "Output Tax - " + (company || ""),
+      account_head: taxAccountHead.value,
       description: "GST @ " + form.tax_rate + "%",
       rate: form.tax_rate,
     }] : [];
@@ -671,12 +681,12 @@ async function saveInvoice(docstatus) {
       remarks: form.remarks || "",
       items: invItems,
       taxes,
-      docstatus,
       company,
     };
     if (editingName.value) doc.name = editingName.value;
 
-    await apiSave(doc);
+    const saved = await apiSave(doc);
+    if (docstatus === 1) await apiSubmit("Sales Invoice", saved.name);
     await load();
     toast(docstatus === 1 ? "Invoice submitted" : "Invoice saved as draft");
     drawerOpen.value = false;
@@ -710,7 +720,7 @@ async function submitPayment() {
   if (!payForm.amount || payForm.amount <= 0) { toast("Enter a valid amount", "error"); return; }
   payModal.saving = true;
   try {
-    const res = await apiGET("zoho_books_clone.api.books_data.record_payment", {
+    const res = await apiPOST("zoho_books_clone.api.books_data.record_payment", {
       invoice_name:    payModal.invName,
       amount_received: payForm.amount,
       payment_date:    payForm.date,
@@ -728,7 +738,7 @@ async function submitPayment() {
   payModal.saving = false;
 }
 
-onMounted(() => { load(); loadCustomers(); loadItems(); });
+onMounted(() => { load(); loadCustomers(); loadItems(); loadTaxAccount(); });
 </script>
 
 <style scoped>

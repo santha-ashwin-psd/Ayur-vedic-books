@@ -2,7 +2,7 @@
 <div class="cust-page">
   <div class="cust-toolbar">
     <span style="font-size:18px;font-weight:700;color:#1a1a2e">Email Settings (SMTP)</span>
-    <span v-if="form.company" style="background:#F3F0FF;color:#7048E8;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-left:10px">{{form.company}}</span>
+    <span v-if="form.company" style="background:#F3F0FF;color:#2563eb;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-left:10px">{{form.company}}</span>
   </div>
 
   <div style="background:#f0f4ff;border:1px solid #c5d0fa;border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#3b4a7a;display:flex;gap:12px;align-items:flex-start">

@@ -74,13 +74,17 @@ def get_account_balances_bulk(
     if not accounts:
         return {}
     placeholders = ", ".join(["%s"] * len(accounts))
-    date_cond = f"AND posting_date <= '{as_of_date}'" if as_of_date else ""
+    params: list = list(accounts)
+    date_cond = ""
+    if as_of_date:
+        date_cond = "AND posting_date <= %s"
+        params.append(as_of_date)
     rows = frappe.db.sql(f"""
         SELECT account, COALESCE(SUM(debit) - SUM(credit), 0) AS balance
         FROM `tabGeneral Ledger Entry`
         WHERE account IN ({placeholders}) AND docstatus = 1 {date_cond}
         GROUP BY account
-    """, accounts, as_dict=True)
+    """, params, as_dict=True)
     return {r.account: flt(r.balance) for r in rows}
 
 
@@ -348,17 +352,27 @@ def get_cash_flow(company: str, from_date: str, to_date: str) -> dict:
 def get_gst_summary(company: str, from_date: str, to_date: str) -> list[dict]:
     """GST collected by tax type (CGST, SGST, IGST) for a period."""
     return frappe.db.sql("""
-        SELECT t.tax_type,
-               COUNT(DISTINCT t.parent) AS invoice_count,
-               SUM(t.tax_amount)        AS total_tax
-        FROM `tabTax Line` t
+        SELECT
+            CASE
+                WHEN UPPER(t.description) LIKE '%%IGST%%' OR UPPER(t.account_head) LIKE '%%IGST%%' THEN 'IGST'
+                WHEN UPPER(t.description) LIKE '%%CGST%%' OR UPPER(t.account_head) LIKE '%%CGST%%' THEN 'CGST'
+                WHEN UPPER(t.description) LIKE '%%SGST%%' OR UPPER(t.account_head) LIKE '%%SGST%%' THEN 'SGST'
+                ELSE t.description
+            END AS tax_type,
+            COUNT(DISTINCT t.parent) AS invoice_count,
+            SUM(t.tax_amount)        AS total_tax
+        FROM `tabSales Taxes and Charges` t
         JOIN `tabSales Invoice` si ON si.name = t.parent
         WHERE si.company    = %(company)s
           AND si.docstatus   = 1
           AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
-          AND t.tax_type IN ("CGST", "SGST", "IGST")
-        GROUP BY t.tax_type
-        ORDER BY t.tax_type
+          AND (
+              UPPER(t.description)  LIKE '%%CGST%%' OR UPPER(t.account_head) LIKE '%%CGST%%' OR
+              UPPER(t.description)  LIKE '%%SGST%%' OR UPPER(t.account_head) LIKE '%%SGST%%' OR
+              UPPER(t.description)  LIKE '%%IGST%%' OR UPPER(t.account_head) LIKE '%%IGST%%'
+          )
+        GROUP BY tax_type
+        ORDER BY tax_type
     """, {"company": company, "from_date": from_date, "to_date": to_date}, as_dict=True)
 
 
@@ -609,36 +623,46 @@ def get_gstr_summary(company: str, from_date: str, to_date: str) -> dict:
     # ── Output tax (from Sales Invoices) ──────────────────────────────────────
     output_rows = frappe.db.sql("""
         SELECT
-            tl.tax_type,
+            CASE
+                WHEN UPPER(tl.description) LIKE '%%IGST%%' OR UPPER(tl.account_head) LIKE '%%IGST%%' THEN 'IGST'
+                WHEN UPPER(tl.description) LIKE '%%CGST%%' OR UPPER(tl.account_head) LIKE '%%CGST%%' THEN 'CGST'
+                WHEN UPPER(tl.description) LIKE '%%SGST%%' OR UPPER(tl.account_head) LIKE '%%SGST%%' THEN 'SGST'
+                ELSE tl.description
+            END AS tax_type,
             tl.description,
             SUM(tl.tax_amount)  AS amount,
             COUNT(DISTINCT si.name) AS invoice_count
-        FROM `tabTax Line` tl
+        FROM `tabSales Taxes and Charges` tl
         JOIN `tabSales Invoice` si
           ON si.name = tl.parent
         WHERE si.company    = %(company)s
           AND si.docstatus  = 1
           AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
-        GROUP BY tl.tax_type, tl.description
-        ORDER BY tl.tax_type
+        GROUP BY tax_type, tl.description
+        ORDER BY tax_type
     """, {"company": company, "from_date": from_date, "to_date": to_date},
     as_dict=True)
 
     # ── Input Tax Credit (from Purchase Invoices) ─────────────────────────────
     itc_rows = frappe.db.sql("""
         SELECT
-            tl.tax_type,
+            CASE
+                WHEN UPPER(tl.description) LIKE '%%IGST%%' OR UPPER(tl.account_head) LIKE '%%IGST%%' THEN 'IGST'
+                WHEN UPPER(tl.description) LIKE '%%CGST%%' OR UPPER(tl.account_head) LIKE '%%CGST%%' THEN 'CGST'
+                WHEN UPPER(tl.description) LIKE '%%SGST%%' OR UPPER(tl.account_head) LIKE '%%SGST%%' THEN 'SGST'
+                ELSE tl.description
+            END AS tax_type,
             tl.description,
             SUM(tl.tax_amount)  AS amount,
             COUNT(DISTINCT pi.name) AS invoice_count
-        FROM `tabTax Line` tl
+        FROM `tabPurchase Taxes and Charges` tl
         JOIN `tabPurchase Invoice` pi
           ON pi.name = tl.parent
         WHERE pi.company    = %(company)s
           AND pi.docstatus  = 1
           AND pi.posting_date BETWEEN %(from_date)s AND %(to_date)s
-        GROUP BY tl.tax_type, tl.description
-        ORDER BY tl.tax_type
+        GROUP BY tax_type, tl.description
+        ORDER BY tax_type
     """, {"company": company, "from_date": from_date, "to_date": to_date},
     as_dict=True)
 
@@ -842,9 +866,11 @@ def get_party_ledger(
     party_fld  = "customer"         if party_type == "Customer" else "supplier"
 
     inv_filters = {party_fld: party, "company": company, "docstatus": 1}
-    if from_date:
+    if from_date and to_date:
+        inv_filters["posting_date"] = ["between", [from_date, to_date]]
+    elif from_date:
         inv_filters["posting_date"] = [">=", from_date]
-    if to_date:
+    elif to_date:
         inv_filters["posting_date"] = ["<=", to_date]
 
     invoices = frappe.get_all(
@@ -893,12 +919,17 @@ def get_itc_ledger(company: str, from_date: str, to_date: str) -> list[dict]:
             pi.supplier,
             pi.bill_no,
             pi.bill_date,
-            tl.tax_type,
+            CASE
+                WHEN UPPER(tl.description) LIKE '%%IGST%%' OR UPPER(tl.account_head) LIKE '%%IGST%%' THEN 'IGST'
+                WHEN UPPER(tl.description) LIKE '%%CGST%%' OR UPPER(tl.account_head) LIKE '%%CGST%%' THEN 'CGST'
+                WHEN UPPER(tl.description) LIKE '%%SGST%%' OR UPPER(tl.account_head) LIKE '%%SGST%%' THEN 'SGST'
+                ELSE tl.description
+            END AS tax_type,
             tl.description,
             tl.rate            AS tax_rate,
             tl.tax_amount,
             tl.account_head
-        FROM `tabTax Line` tl
+        FROM `tabPurchase Taxes and Charges` tl
         JOIN `tabPurchase Invoice` pi
           ON pi.name = tl.parent
         WHERE pi.company    = %(company)s

@@ -32,7 +32,7 @@
           paddingLeft: (14 + node.depth * 20) + 'px',
           paddingRight:'12px', paddingTop:'8px', paddingBottom:'8px',
           cursor:'pointer', display:'flex', alignItems:'center', gap:'6px',
-          borderLeft: selectedWH && selectedWH.name===node.name ? '3px solid #7048E8' : '3px solid transparent',
+          borderLeft: selectedWH && selectedWH.name===node.name ? '3px solid #2563eb' : '3px solid transparent',
           background: selectedWH && selectedWH.name===node.name ? '#F3F0FF' : 'transparent',
           transition:'background 0.12s',
         }">
@@ -94,7 +94,7 @@
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
         <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
           <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Stock Value</div>
-          <div style="font-size:18px;font-weight:700;color:#7048E8;font-family:var(--mono,'JetBrains Mono',monospace)">{{fmt(whStats.value)}}</div>
+          <div style="font-size:18px;font-weight:700;color:#2563eb;font-family:var(--mono,'JetBrains Mono',monospace)">{{fmt(whStats.value)}}</div>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
           <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Items in Stock</div>
@@ -276,7 +276,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGET, apiSave, apiDelete, resolveCompany } from "../api/client.js";
+import { apiList, apiGET, apiSave, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, fmtDate, flt } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
@@ -285,7 +285,7 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 const { toast } = useToast();
 
 const WH_TYPE_META = {
-  "Stores":             { icon: "🏪", color: "#7048E8", bg: "#F3F0FF" },
+  "Stores":             { icon: "🏪", color: "#2563eb", bg: "#F3F0FF" },
   "Finished Goods":     { icon: "📦", color: "#1971C2", bg: "#E7F5FF" },
   "Raw Material":       { icon: "🧲", color: "#2F9E44", bg: "#EBFBEE" },
   "Work In Progress":   { icon: "🔧", color: "#E67700", bg: "#FFF3BF" },
@@ -473,13 +473,17 @@ async function doTransfer() {
   }
   transferSaving.value = true;
   try {
-    await apiSave({
+    const company = await resolveCompany();
+    const saved = await apiSave({
       doctype: "Stock Entry",
+      company,
       stock_entry_type: "Material Transfer",
+      posting_date: new Date().toISOString().slice(0,10),
       from_warehouse: transferForm.from_warehouse,
       to_warehouse: transferForm.to_warehouse,
-      items: [{ item_code: transferForm.item_code, qty: flt(transferForm.qty) }],
+      items: [{ doctype: "Stock Entry Detail", item_code: transferForm.item_code, qty: flt(transferForm.qty), s_warehouse: transferForm.from_warehouse, t_warehouse: transferForm.to_warehouse }],
     });
+    await apiSubmit("Stock Entry", saved.name);
     toast("Stock transfer created");
     showTransfer.value = false;
     loadStockForWarehouse(selectedWH.value.name);

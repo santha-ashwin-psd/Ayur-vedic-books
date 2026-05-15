@@ -163,7 +163,7 @@ const refDocs=ref([]);
 const sortCol=ref("next_schedule_date"),sortDir=ref("asc");
 const form=reactive({reference_doctype:"Sales Invoice",reference_document:"",frequency:"Monthly",start_date:new Date().toISOString().slice(0,10),end_date:"",submit_on_creation:1,notify_by_email:""});
 
-async function load(){loading.value=true;try{list.value=await apiList("Auto Repeat",{fields:["name","reference_doctype","reference_document","frequency","start_date","end_date","next_schedule_date","last_scheduled_date","status"],limit:200,order:"next_schedule_date asc"});}catch(e){toast.error(e.message||"Failed to load subscriptions");}finally{loading.value=false;}}
+async function load(){loading.value=true;try{list.value=await apiList("Auto Repeat",{fields:["name","reference_doctype","reference_document","frequency","start_date","end_date","next_schedule_date","status"],limit:200,order:"next_schedule_date asc"});}catch(e){console.warn("Auto Repeat load failed (may need System Manager role):",e.message);list.value=[];}finally{loading.value=false;}}
 
 const today=new Date().toISOString().slice(0,10);
 function isDue(r){return r.next_schedule_date&&r.next_schedule_date<=today&&(r.status||"Active")==="Active";}

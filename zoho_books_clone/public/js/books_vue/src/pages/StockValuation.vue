@@ -56,7 +56,18 @@ const list=ref([]),loading=ref(false);
 const warehouses=ref([]),itemGroups=ref([]);
 const sortCol=ref("stock_value"),sortDir=ref("desc");
 const filters=reactive({warehouse:"",item_group:""});
-async function load(){loading.value=true;try{const co=await resolveCompany();const f=[["company","=",co]];if(filters.warehouse)f.push(["warehouse","=",filters.warehouse]);if(filters.item_group)f.push(["item_group","=",filters.item_group]);list.value=await apiList("Bin",{fields:["item_code","item_name","item_group","warehouse","actual_qty","valuation_rate","stock_value","projected_qty","reserved_qty","stock_uom"],filters:f,limit:500,order:"stock_value desc"});}catch(e){toast.error(e.message||"Failed to load valuation");}finally{loading.value=false;}}
+async function load(){
+  loading.value=true;
+  try{
+    const co=await resolveCompany();
+    const whs=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0]],limit:200});
+    const whNames=whs.map(w=>w.name);
+    const f=whNames.length?[["warehouse","in",whNames]]:[];
+    if(filters.warehouse)f.push(["warehouse","=",filters.warehouse]);
+    if(f.length===0&&!filters.warehouse){list.value=[];return;}
+    list.value=await apiList("Bin",{fields:["item_code","warehouse","actual_qty","valuation_rate","stock_value","projected_qty","reserved_qty","stock_uom"],filters:f,limit:500,order:"stock_value desc"});
+  }catch(e){toast.error(e.message||"Failed to load valuation");}finally{loading.value=false;}
+}
 const sorted=computed(()=>{const col=sortCol.value;return[...list.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
 function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}

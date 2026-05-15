@@ -68,6 +68,10 @@
       </div>
       <div class="exp-dbody">
         <div class="exp-fields-grid">
+          <div class="exp-field" style="grid-column:1/-1">
+            <label class="exp-label">Employee <span class="req">*</span></label>
+            <input v-model="form.employee_name" class="exp-input" placeholder="Employee name" />
+          </div>
           <div class="exp-field">
             <label class="exp-label">Expense Date <span class="req">*</span></label>
             <input v-model="form.posting_date" type="date" class="exp-input" />
@@ -150,10 +154,11 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
 const activeTab=ref("all");
@@ -167,9 +172,11 @@ const lines=ref([]);
 const sortCol=ref("posting_date"),sortDir=ref("desc");
 let _id=1;
 const blankLine=()=>({id:_id++,expense_type:"",description:"",amount:0});
-const form=reactive({posting_date:new Date().toISOString().slice(0,10),expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});
+const employees=ref([]);
+async function fetchEmployees(q=""){try{const r=await apiLinkValues("Employee",q);employees.value=r.map(x=>({label:x.name,value:x.name}));}catch{employees.value=[];}}
+const form=reactive({posting_date:new Date().toISOString().slice(0,10),employee_name:"",employee_email:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});
 
-async function load(){loading.value=true;try{list.value=await apiList("Expense Claim",{fields:["name","employee","employee_name","posting_date","expense_type","total_claimed_amount","grand_total","docstatus","status"],limit:200,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load expenses");}finally{loading.value=false;}}
+async function load(){loading.value=true;try{const co=await resolveCompany();const raw=await apiList("Expense Claim",{fields:["name","employee_name","employee_email","claim_date","total_claimed_amount","status"],filters:[["company","=",co]],limit:200,order:"claim_date desc"});list.value=raw.map(e=>({...e,posting_date:e.claim_date,employee:e.employee_name}));}catch(e){toast.error(e.message||"Failed to load expenses");}finally{loading.value=false;}}
 
 function statusLabel(e){if(e.docstatus===2)return"Cancelled";if(e.docstatus===0)return"Draft";const s=e.status||"";if(s==="Paid")return"Paid";return"Submitted";}
 function statusClass(e){if(e.docstatus===2)return"badge-grey";if(e.docstatus===0)return"badge-orange";if(statusLabel(e)==="Paid")return"badge-green";return"badge-blue";}
@@ -186,24 +193,26 @@ function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db
 const allChecked=computed(()=>sorted.value.length>0&&sorted.value.every(e=>selected.value.has(e.name)));
 function toggle(n){const s=new Set(selected.value);s.has(n)?s.delete(n):s.add(n);selected.value=s;}
 function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(x=>x.name)):new Set();}
-function openNew(){editingName.value="";Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});lines.value=[blankLine()];drawerOpen.value=true;}
-function openEdit(e){editingName.value=e.name;Object.assign(form,{posting_date:e.posting_date||"",expense_type:e.expense_type||"",total_claimed_amount:flt(e.total_claimed_amount||e.grand_total),currency:e.currency||"INR",remark:e.remark||""});lines.value=[blankLine()];drawerOpen.value=true;}
+function openNew(){editingName.value="";Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",employee_email:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});lines.value=[blankLine()];drawerOpen.value=true;}
+async function openEdit(e){editingName.value=e.name;try{const doc=await apiGet("Expense Claim",e.name);Object.assign(form,{posting_date:doc.claim_date||doc.posting_date||"",employee_name:doc.employee_name||"",employee_email:doc.employee_email||"",expense_type:"",total_claimed_amount:flt(doc.total_claimed_amount),currency:doc.currency||"INR",remark:doc.notes||""});lines.value=(doc.expenses||[]).map(l=>({id:_id++,expense_type:l.expense_type||"",description:l.description||"",amount:flt(l.amount)}));if(!lines.value.length)lines.value=[blankLine()];}catch{Object.assign(form,{posting_date:e.posting_date||"",employee_name:e.employee_name||"",employee_email:"",expense_type:"",total_claimed_amount:flt(e.total_claimed_amount),currency:"INR",remark:""});lines.value=[blankLine()];}drawerOpen.value=true;}
 function openView(e){viewDoc.value=e;viewOpen.value=true;}
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
 const lineTotal=computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
 
-async function saveExpense(docstatus){
+async function saveExpense(submit){
+  if(!form.employee_name) return toast.error("Employee name is required");
   const amount=flt(form.total_claimed_amount)||lineTotal.value;
   if(!amount||amount<=0) return toast.error("Amount is required");
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
-    const expLines=lines.value.filter(l=>l.amount>0).map(l=>({doctype:"Expense Claim Detail",expense_type:l.expense_type||form.expense_type||"Miscellaneous",description:l.description||"",amount:flt(l.amount)}));
-    const doc={doctype:"Expense Claim",company,posting_date:form.posting_date,expense_type:form.expense_type||"Miscellaneous",remark:form.remark||"",total_claimed_amount:amount,currency:form.currency||"INR",docstatus,expenses:expLines.length?expLines:[{doctype:"Expense Claim Detail",expense_type:form.expense_type||"Miscellaneous",description:form.remark||"",amount}]};
+    const expLines=lines.value.filter(l=>l.amount>0).map(l=>({doctype:"Expense Claim Detail",expense_type:l.expense_type||form.expense_type||"Miscellaneous",description:l.description||"",amount:flt(l.amount),sanctioned_amount:flt(l.amount)}));
+    const doc={doctype:"Expense Claim",company,employee_name:form.employee_name,employee_email:form.employee_email||"",claim_date:form.posting_date,notes:form.remark||"",total_claimed_amount:amount,currency:form.currency||"INR",expenses:expLines.length?expLines:[{doctype:"Expense Claim Detail",expense_type:form.expense_type||"Miscellaneous",description:form.notes||"",amount,sanctioned_amount:amount}]};
     if(editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
-    toast.success(`Expense ${saved?.name||""} ${docstatus?"submitted":"saved"}`);
+    if(submit) await apiSubmit("Expense Claim",saved.name);
+    toast.success(`Expense ${saved?.name||""} ${submit?"submitted":"saved"}`);
     drawerOpen.value=false;await load();
   }catch(e){toast.error(e.message||"Failed to save expense");}finally{drawerSaving.value=false;}
 }

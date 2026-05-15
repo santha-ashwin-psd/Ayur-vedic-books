@@ -539,6 +539,20 @@ input[type=date].b-input { color-scheme: light; }
   .nim-modal-body{padding:12px!important;}
 }
 
+/* ══ Settings / List page scaffold ══ */
+.cust-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
+.cust-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.cust-toolbar-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.cust-toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cust-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cust-table-card{background:#fff;border:1px solid #e4e8f0;border-radius:12px;overflow:hidden;}
+.cust-table-wrap{overflow-x:auto;}
+.cust-table{width:100%;border-collapse:collapse;font-size:13px;}
+.cust-table th{background:#f8f9fb;border-bottom:1px solid #e4e8f0;padding:10px 14px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.cust-table td{padding:11px 14px;border-bottom:1px solid #f3f4f6;color:#111827;vertical-align:middle;}
+.cust-table tr:last-child td{border-bottom:none;}
+.cust-table tr:hover td{background:#f9fafb;}
+
 /* ══ Modal Overlay & Dialog (fallback — also injected via JS) ══ */
 .nim-overlay{
   position:fixed;inset:0;z-index:9000;
@@ -599,3 +613,82 @@ input[type=date].b-input { color-scheme: light; }
 .nim-btn-ghost:hover:not(:disabled){background:#f1f3f7;}
 .nim-btn-primary{background:#2563eb;color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.3);}
 .nim-btn-primary:hover:not(:disabled){background:#1d4ed8;box-shadow:0 4px 12px rgba(37,99,235,.4);}
+
+/* ══ nim extras — used by Vendors / Customers drawers ══ */
+.nim-header-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0;}
+.nim-header-icon{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.nim-field{display:flex;flex-direction:column;gap:4px;margin-bottom:16px;}
+.nim-select{height:36px;padding:0 11px;border:1.5px solid #e4e8f0;border-radius:7px;font-size:13.5px;color:#111827;background:#fff;outline:none;width:100%;box-sizing:border-box;transition:border-color .15s;font-family:inherit;cursor:pointer;}
+.nim-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+.nim-grid-1{display:grid;grid-template-columns:1fr;gap:14px;}
+
+/* ══ Toolbar buttons — used across list pages ══ */
+.zb-tb-btn{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e4e8f0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:500;color:#374151;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
+.zb-tb-btn:hover{background:#f8f9fb;border-color:#d1d5db;color:#111827;}
+.zb-tb-primary{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important;font-weight:600!important;}
+.zb-tb-primary:hover{background:#1d4ed8!important;border-color:#1d4ed8!important;box-shadow:0 2px 8px rgba(37,99,235,.25)!important;}
+
+/* ══ Filter pills — used across list pages ══ */
+.zb-inv-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12.5px;font-weight:600;border:1px solid #e4e8f0;background:#fff;color:#6b7280;cursor:pointer;font-family:inherit;transition:all .15s;}
+.zb-inv-pill:hover{border-color:#2563eb;color:#2563eb;}
+.zb-inv-pill-active{background:#eff6ff!important;border-color:#2563eb!important;color:#2563eb!important;}
+.zb-pill-cnt{font-size:11px;font-weight:700;background:#e5e7eb;color:#374151;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;transition:all .15s;}
+.zb-inv-pill-active .zb-pill-cnt,.zb-inv-pill:hover .zb-pill-cnt{background:#dbeafe;color:#1d4ed8;}
+.zb-pc-muted{background:#f3f4f6!important;color:#9ca3af!important;}
+
+/* ══ Search box — list pages ══ */
+.cust-search{display:flex;align-items:center;gap:8px;background:#f3f4f6;border-radius:8px;padding:6px 12px;min-width:200px;border:1px solid transparent;transition:.15s;}
+.cust-search:focus-within{background:#fff;border-color:#2563eb;}
+.cust-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
+
+/* ══ Table row & action buttons ══ */
+.cust-row{cursor:pointer;}
+.cust-row:hover td{background:#f9fafb!important;}
+.cust-row-disabled td{opacity:.6;}
+.cust-row-count{padding:10px 14px;font-size:12px;color:#9ca3af;border-top:1px solid #f3f4f6;background:#fafafa;}
+.cust-act-btn{background:transparent;border:1px solid #e4e8f0;border-radius:6px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
+.cust-act-edit:hover{background:#eff6ff;border-color:#bfdbfe;color:#2563eb;}
+.cust-act-del:hover{background:#fef2f2;border-color:#fecaca;color:#dc2626;}
+
+/* ══ Empty state ══ */
+.cust-empty{padding:48px 14px;text-align:center;}
+.cust-empty-icon{display:flex;justify-content:center;margin-bottom:10px;}
+.cust-empty-title{font-size:14px;font-weight:600;color:#374151;margin-bottom:4px;}
+.cust-empty-sub{font-size:13px;color:#9ca3af;}
+
+/* ══ Table cell helpers ══ */
+.cust-name{font-size:13px;font-weight:600;color:#111827;}
+.cust-id{font-size:11.5px;color:#9ca3af;margin-top:2px;font-family:monospace;}
+.cust-mono{font-family:monospace;font-size:12.5px;color:#374151;}
+.cust-secondary{font-size:13px;color:#6b7280;}
+
+/* ══ Section label inside drawer ══ */
+.cust-sec-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;margin-bottom:12px;margin-top:20px;}
+
+/* ══ Drawer backdrop & panel ══ */
+.cust-backdrop{position:fixed;inset:0;z-index:9000;background:rgba(15,23,42,.45);display:flex;align-items:stretch;justify-content:flex-end;}
+.cust-drawer{display:flex;flex-direction:column;background:#fff;height:100%;box-shadow:-12px 0 40px rgba(0,0,0,.15);overflow:hidden;}
+.cust-drawer-header{display:flex;align-items:center;gap:12px;flex-shrink:0;color:#fff;}
+.cust-drawer-header-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0;}
+.cust-drawer-icon{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cust-drawer-title{font-size:16px;font-weight:700;color:#fff;}
+.cust-drawer-sub{font-size:12px;color:rgba(255,255,255,.7);margin-top:1px;}
+.cust-drawer-body{flex:1;overflow-y:auto;}
+.cust-disable-box{padding:14px 16px;background:#fff5f5;border-radius:8px;border:1px solid #fecaca;display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:4px;}
+
+/* ══ Master-detail split layout ══ */
+.zb-master-detail{display:flex;align-items:stretch;overflow:hidden;}
+.zb-list-pane{display:flex;flex-direction:column;overflow:hidden;}
+.zb-split-list{flex:1;overflow-y:auto;}
+
+/* ══ books-* aliases used by Reports page ══ */
+.books-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:20px;}
+.books-card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;}
+.books-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-xs);font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;font-family:inherit;transition:all .15s;}
+.books-btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.25);}
+.books-btn-primary:hover{background:var(--accent-text);border-color:var(--accent-text);}
+.books-table{width:100%;border-collapse:collapse;font-size:13px;}
+.books-table th{background:#f8f9fb;border-bottom:1px solid #e4e8f0;padding:10px 14px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.books-table td{padding:10px 14px;border-bottom:1px solid #f3f4f6;color:#111827;vertical-align:middle;}
+.books-table tr:last-child td{border-bottom:none;}
+.books-table tr:hover td{background:#f9fafb;}

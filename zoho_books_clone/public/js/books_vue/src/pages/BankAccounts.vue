@@ -18,10 +18,10 @@
           <span class="ba-badge" :class="acc.is_default?'badge-blue':'badge-grey'">{{ acc.is_default?'Default':acc.account_type||'Bank' }}</span>
         </div>
         <div class="ba-card-name">{{ acc.account_name||acc.name }}</div>
-        <div class="ba-card-bank text-muted">{{ acc.bank||'—' }}</div>
-        <div class="ba-card-num mono-sm">{{ acc.bank_account_no ? maskAcct(acc.bank_account_no) : '—' }}</div>
+        <div class="ba-card-bank text-muted">{{ acc.bank_name||'—' }}</div>
+        <div class="ba-card-num mono-sm">{{ acc.account_number ? maskAcct(acc.account_number) : '—' }}</div>
         <div class="ba-card-footer">
-          <span class="text-muted" style="font-size:11px">{{ acc.branch||'' }}</span>
+          <span class="text-muted" style="font-size:11px">{{ acc.ifsc_code||'' }}</span>
           <button class="ba-edit-btn" @click.stop="openEdit(acc)"><span v-html="icon('edit',12)"></span></button>
         </div>
       </div>
@@ -53,7 +53,7 @@
           </div>
           <div class="ba-field">
             <label class="ba-label">Bank <span class="req">*</span></label>
-            <input v-model="form.bank" class="ba-input" placeholder="e.g. HDFC Bank" />
+            <input v-model="form.bank_name" class="ba-input" placeholder="e.g. HDFC Bank" />
           </div>
           <div class="ba-field">
             <label class="ba-label">Account Type</label>
@@ -67,19 +67,15 @@
           </div>
           <div class="ba-field">
             <label class="ba-label">Account Number</label>
-            <input v-model="form.bank_account_no" class="ba-input" placeholder="Account number" />
+            <input v-model="form.account_number" class="ba-input" placeholder="Account number" />
           </div>
           <div class="ba-field">
             <label class="ba-label">IFSC Code</label>
-            <input v-model="form.branch_code" class="ba-input" placeholder="e.g. HDFC0001234" />
-          </div>
-          <div class="ba-field">
-            <label class="ba-label">Branch</label>
-            <input v-model="form.branch" class="ba-input" placeholder="Branch name" />
+            <input v-model="form.ifsc_code" class="ba-input" placeholder="e.g. HDFC0001234" />
           </div>
           <div class="ba-field" style="grid-column:1/-1">
             <label class="ba-label">GL Account</label>
-            <SearchableSelect v-model="form.account" :options="glAccounts" placeholder="Link to chart of accounts…" @search="fetchGLAccounts" />
+            <SearchableSelect v-model="form.gl_account" :options="glAccounts" placeholder="Link to chart of accounts…" @search="fetchGLAccounts" />
           </div>
           <div class="ba-field">
             <label class="ba-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -104,17 +100,16 @@
           <div class="ba-view-icon"><span v-html="icon('bank',24)"></span></div>
           <div>
             <div class="ba-view-name">{{ viewDoc.account_name||viewDoc.name }}</div>
-            <div class="text-muted" style="font-size:12px">{{ viewDoc.bank }}</div>
+            <div class="text-muted" style="font-size:12px">{{ viewDoc.bank_name }}</div>
           </div>
           <button class="ba-dclose ba-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
         <div class="ba-dbody">
           <div class="ba-meta-grid">
             <div><div class="ba-meta-lbl">Account Type</div><div>{{ viewDoc.account_type||'—' }}</div></div>
-            <div><div class="ba-meta-lbl">Account No</div><div class="mono-sm">{{ viewDoc.bank_account_no||'—' }}</div></div>
-            <div><div class="ba-meta-lbl">IFSC</div><div class="mono-sm">{{ viewDoc.branch_code||'—' }}</div></div>
-            <div><div class="ba-meta-lbl">Branch</div><div>{{ viewDoc.branch||'—' }}</div></div>
-            <div><div class="ba-meta-lbl">GL Account</div><div>{{ viewDoc.account||'—' }}</div></div>
+            <div><div class="ba-meta-lbl">Account No</div><div class="mono-sm">{{ viewDoc.account_number||'—' }}</div></div>
+            <div><div class="ba-meta-lbl">IFSC</div><div class="mono-sm">{{ viewDoc.ifsc_code||'—' }}</div></div>
+            <div><div class="ba-meta-lbl">GL Account</div><div>{{ viewDoc.gl_account||'—' }}</div></div>
             <div><div class="ba-meta-lbl">Default</div><div>{{ viewDoc.is_default?'Yes':'No' }}</div></div>
           </div>
         </div>
@@ -139,16 +134,16 @@ const list=ref([]),loading=ref(false),search=ref("");
 const drawerOpen=ref(false),drawerSaving=ref(false),editingName=ref("");
 const viewOpen=ref(false),viewDoc=ref(null);
 const glAccounts=ref([]);
-const form=reactive({account_name:"",bank:"",account_type:"Current",bank_account_no:"",branch_code:"",branch:"",account:"",is_default:false});
+const form=reactive({account_name:"",bank_name:"",account_type:"Current",account_number:"",ifsc_code:"",gl_account:"",is_default:false});
 
-async function load(){loading.value=true;try{list.value=await apiList("Bank Account",{fields:["name","account_name","bank","account_type","bank_account_no","branch_code","branch","account","is_default","company"],limit:100,order:"account_name asc"});}catch(e){toast.error(e.message||"Failed to load bank accounts");}finally{loading.value=false;}}
-const filtered=computed(()=>{if(!search.value.trim())return list.value;const q=search.value.toLowerCase();return list.value.filter(a=>(a.account_name||a.name||"").toLowerCase().includes(q)||(a.bank||"").toLowerCase().includes(q));});
+async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Bank Account",{fields:["name","account_name","bank_name","account_type","account_number","ifsc_code","gl_account","is_default","company"],filters:[["company","=",co]],limit:100,order:"account_name asc"});}catch(e){toast.error(e.message||"Failed to load bank accounts");}finally{loading.value=false;}}
+const filtered=computed(()=>{if(!search.value.trim())return list.value;const q=search.value.toLowerCase();return list.value.filter(a=>(a.account_name||a.name||"").toLowerCase().includes(q)||(a.bank_name||"").toLowerCase().includes(q));});
 function maskAcct(n){if(!n||n.length<4)return n;return"•".repeat(Math.max(0,n.length-4))+n.slice(-4);}
-function openNew(){editingName.value="";Object.assign(form,{account_name:"",bank:"",account_type:"Current",bank_account_no:"",branch_code:"",branch:"",account:"",is_default:false});glAccounts.value=[];drawerOpen.value=true;}
-function openEdit(a){editingName.value=a.name;Object.assign(form,{account_name:a.account_name||"",bank:a.bank||"",account_type:a.account_type||"Current",bank_account_no:a.bank_account_no||"",branch_code:a.branch_code||"",branch:a.branch||"",account:a.account||"",is_default:!!a.is_default});glAccounts.value=[];drawerOpen.value=true;}
+function openNew(){editingName.value="";Object.assign(form,{account_name:"",bank_name:"",account_type:"Current",account_number:"",ifsc_code:"",gl_account:"",is_default:false});glAccounts.value=[];drawerOpen.value=true;}
+function openEdit(a){editingName.value=a.name;Object.assign(form,{account_name:a.account_name||"",bank_name:a.bank_name||"",account_type:a.account_type||"Current",account_number:a.account_number||"",ifsc_code:a.ifsc_code||"",gl_account:a.gl_account||"",is_default:!!a.is_default});glAccounts.value=[];drawerOpen.value=true;}
 function openView(a){viewDoc.value=a;viewOpen.value=true;}
 async function fetchGLAccounts(q=""){try{const co=await resolveCompany();const r=await apiList("Account",{fields:["name"],filters:[["account_type","in",["Bank","Cash"]],["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});glAccounts.value=r.map(x=>({label:x.name,value:x.name}));}catch{glAccounts.value=[];}}
-async function saveAccount(){if(!form.account_name)return toast.error("Account name is required");if(!form.bank)return toast.error("Bank is required");drawerSaving.value=true;try{const co=await resolveCompany();const doc={doctype:"Bank Account",company:co,account_name:form.account_name,bank:form.bank,account_type:form.account_type,bank_account_no:form.bank_account_no||"",branch_code:form.branch_code||"",branch:form.branch||"",account:form.account||"",is_default:form.is_default?1:0};if(editingName.value)doc.name=editingName.value;const saved=await apiSave(doc);toast.success(`Bank account ${saved?.name||""} saved`);drawerOpen.value=false;await load();}catch(e){toast.error(e.message||"Failed to save bank account");}finally{drawerSaving.value=false;}}
+async function saveAccount(){if(!form.account_name)return toast.error("Account name is required");if(!form.bank_name)return toast.error("Bank name is required");drawerSaving.value=true;try{const co=await resolveCompany();const doc={doctype:"Bank Account",company:co,account_name:form.account_name,bank_name:form.bank_name,account_type:form.account_type,account_number:form.account_number||"",ifsc_code:form.ifsc_code||"",gl_account:form.gl_account||"",is_default:form.is_default?1:0};if(editingName.value)doc.name=editingName.value;const saved=await apiSave(doc);toast.success(`Bank account ${saved?.name||""} saved`);drawerOpen.value=false;await load();}catch(e){toast.error(e.message||"Failed to save bank account");}finally{drawerSaving.value=false;}}
 onMounted(load);
 </script>
 

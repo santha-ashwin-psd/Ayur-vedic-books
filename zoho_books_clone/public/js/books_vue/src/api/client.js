@@ -128,33 +128,26 @@ export async function apiSave(doc) {
 }
 
 export async function apiSubmit(doctype, name) {
-  return await apiGET("zoho_books_clone.api.docs.submit_doc", { doctype, name });
+  return await apiPOST("zoho_books_clone.api.docs.submit_doc", { doctype, name });
 }
 
 export async function apiDelete(doctype, name) {
-  return await apiGET("zoho_books_clone.api.docs.delete_doc", { doctype, name });
+  return await apiPOST("zoho_books_clone.api.docs.delete_doc", { doctype, name });
 }
 
 const _CO_SCOPED = new Set([
   "Sales Invoice", "Purchase Invoice", "Quotation", "Sales Order", "Purchase Order",
   "Payment Entry", "Stock Entry", "Journal Entry", "Account", "Warehouse", "Cost Center",
-  "Bank Account", "Bank Transaction", "Expense", "Expense Claim", "Credit Note", "Debit Note",
+  "Bank Account", "Expense Claim",
 ]);
-
-const _OWN_SCOPED = new Set(["Customer", "Supplier"]);
 
 export async function apiList(dt, opts = {}) {
   const filters = [...(opts.filters || [])];
-  const co  = window.__booksCompany || "";
-  const usr = window.frappe?.session?.user || "";
+  const co = window.__booksCompany || "";
 
   if (co && _CO_SCOPED.has(dt)) {
     const already = filters.some(f => Array.isArray(f) && f[0] === "company");
     if (!already) filters.push(["company", "=", co]);
-  }
-  if (usr && usr !== "Administrator" && _OWN_SCOPED.has(dt)) {
-    const already = filters.some(f => Array.isArray(f) && f[0] === "owner");
-    if (!already) filters.push(["owner", "=", usr]);
   }
 
   return await apiGET("frappe.client.get_list", {
@@ -170,10 +163,6 @@ export async function apiLinkValues(doctype, txt, filters) {
   const f = filters
     ? [...filters, ["name", "like", "%" + txt + "%"]]
     : [["name", "like", "%" + txt + "%"]];
-  const usr = window.frappe?.session?.user || "";
-  if (usr && usr !== "Administrator" && _OWN_SCOPED.has(doctype)) {
-    if (!f.some(x => Array.isArray(x) && x[0] === "owner")) f.push(["owner", "=", usr]);
-  }
   return await apiGET("frappe.client.get_list", {
     doctype,
     fields:            JSON.stringify(["name"]),

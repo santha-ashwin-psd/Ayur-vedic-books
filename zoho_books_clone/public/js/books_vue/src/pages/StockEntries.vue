@@ -16,7 +16,7 @@
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
           <th>From Warehouse</th><th>To Warehouse</th>
           <th>Status</th>
-          <th @click="sort('total_amount')" class="sortable ta-r">Value <span v-html="sortArrow('total_amount')"></span></th>
+          <th @click="sort('value_difference')" class="sortable ta-r">Value <span v-html="sortArrow('value_difference')"></span></th>
           <th style="width:40px"></th>
         </tr></thead>
         <tbody>
@@ -29,7 +29,7 @@
               <td class="text-muted">{{ e.from_warehouse||'—' }}</td>
               <td class="text-muted">{{ e.to_warehouse||'—' }}</td>
               <td><span class="se-badge" :class="e.docstatus===0?'badge-orange':e.docstatus===1?'badge-green':'badge-grey'">{{ e.docstatus===0?'Draft':e.docstatus===1?'Submitted':'Cancelled' }}</span></td>
-              <td class="ta-r mono-sm">{{ fmtCur(e.total_amount) }}</td>
+              <td class="ta-r mono-sm">{{ fmtCur(e.value_difference) }}</td>
               <td @click.stop><button class="se-act-btn" @click="openView(e)"><span v-html="icon('eye',13)"></span></button></td>
             </tr>
             <tr v-if="!sorted.length"><td colspan="8" class="se-empty">No stock entries found</td></tr>
@@ -107,7 +107,7 @@
 </template>
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -124,7 +124,7 @@ let _id=1;
 const blankLine=()=>({id:_id++,item_code:"",qty:1,basic_rate:0});
 const form=reactive({stock_entry_type:"Material Receipt",posting_date:new Date().toISOString().slice(0,10),from_warehouse:"",to_warehouse:"",remarks:""});
 
-async function load(){loading.value=true;try{list.value=await apiList("Stock Entry",{fields:["name","stock_entry_type","posting_date","from_warehouse","to_warehouse","total_amount","docstatus"],limit:200,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load stock entries");}finally{loading.value=false;}}
+async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Stock Entry",{fields:["name","stock_entry_type","posting_date","from_warehouse","to_warehouse","value_difference","docstatus"],filters:[["company","=",co]],limit:200,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load stock entries");}finally{loading.value=false;}}
 const filtered=computed(()=>{let r=list.value;if(activeTab.value!=="all")r=r.filter(e=>e.stock_entry_type===activeTab.value);if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(e=>(e.name||"").toLowerCase().includes(q));}return r;});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
@@ -136,10 +136,10 @@ async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
-async function saveEntry(docstatus){
+async function saveEntry(submit){
   if(!lines.value.some(l=>l.item_code))return toast.error("At least one item is required");
   drawerSaving.value=true;
-  try{const company=await resolveCompany();const doc={doctype:"Stock Entry",company,stock_entry_type:form.stock_entry_type,posting_date:form.posting_date,from_warehouse:form.from_warehouse||null,to_warehouse:form.to_warehouse||null,remarks:form.remarks||"",docstatus,items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Stock Entry Detail",item_code:l.item_code,qty:flt(l.qty),basic_rate:flt(l.basic_rate),s_warehouse:form.from_warehouse||null,t_warehouse:form.to_warehouse||null}))};const saved=await apiSave(doc);toast.success(`Stock Entry ${saved?.name||""} ${docstatus?"submitted":"saved"}`);drawerOpen.value=false;await load();}
+  try{const company=await resolveCompany();const doc={doctype:"Stock Entry",company,stock_entry_type:form.stock_entry_type,posting_date:form.posting_date,from_warehouse:form.from_warehouse||null,to_warehouse:form.to_warehouse||null,remarks:form.remarks||"",items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Stock Entry Detail",item_code:l.item_code,qty:flt(l.qty),basic_rate:flt(l.basic_rate),s_warehouse:form.from_warehouse||null,t_warehouse:form.to_warehouse||null}))};const saved=await apiSave(doc);if(submit)await apiSubmit("Stock Entry",saved.name);toast.success(`Stock Entry ${saved?.name||""} ${submit?"submitted":"saved"}`);drawerOpen.value=false;await load();}
   catch(e){toast.error(e.message||"Failed to save stock entry");}finally{drawerSaving.value=false;}
 }
 onMounted(load);

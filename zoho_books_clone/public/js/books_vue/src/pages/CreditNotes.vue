@@ -145,7 +145,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -164,7 +164,7 @@ const form=reactive({customer:"",posting_date:new Date().toISOString().slice(0,1
 
 async function load(){
   loading.value=true;
-  try{list.value=await apiList("Sales Invoice",{fields:["name","customer","customer_name","posting_date","grand_total","return_against","docstatus"],filters:[["is_return","=",1]],limit:200,order:"posting_date desc"});}
+  try{const co=await resolveCompany();list.value=await apiList("Sales Invoice",{fields:["name","customer","customer_name","posting_date","grand_total","return_against","docstatus"],filters:[["company","=",co],["is_return","=",1]],limit:200,order:"posting_date desc"});}
   catch(e){toast.error(e.message||"Failed to load credit notes");}
   finally{loading.value=false;}
 }
@@ -191,15 +191,16 @@ function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l
 function calcLine(l){l.amount=Math.round(flt(l.qty)*flt(l.rate)*100)/100;}
 const subtotal=computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
 
-async function saveCN(docstatus){
+async function saveCN(submit){
   if(!form.customer) return toast.error("Customer is required");
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
-    const doc={doctype:"Sales Invoice",company,customer:form.customer,posting_date:form.posting_date,is_return:1,return_against:form.return_against||null,remarks:form.reason||"",docstatus,
-      items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Sales Invoice Item",item_code:l.item_code,qty:-flt(l.qty),rate:flt(l.rate),amount:-flt(l.amount)}))};
+    const doc={doctype:"Sales Invoice",company,customer:form.customer,posting_date:form.posting_date,is_return:1,return_against:form.return_against||null,remarks:form.reason||"",
+      items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Sales Invoice Item",item_code:l.item_code,description:l.item_code,qty:-flt(l.qty),rate:flt(l.rate),amount:-flt(l.amount)}))};
     const saved=await apiSave(doc);
-    toast.success(`Credit Note ${saved?.name||""} ${docstatus?"submitted":"saved"}`);
+    if(submit) await apiSubmit("Sales Invoice",saved.name);
+    toast.success(`Credit Note ${saved?.name||""} ${submit?"submitted":"saved"}`);
     drawerOpen.value=false;await load();
   }catch(e){toast.error(e.message||"Failed to save credit note");}
   finally{drawerSaving.value=false;}

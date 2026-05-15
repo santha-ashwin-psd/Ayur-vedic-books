@@ -815,7 +815,7 @@ const GST_RULES = {
     countryNote: "Set country to the customer's country (outside India).",
   },
   "SEZ": {
-    badge: { label: "SEZ", bg: "#F3F0FF", color: "#7048E8" },
+    badge: { label: "SEZ", bg: "#F3F0FF", color: "#2563eb" },
     showGstin: true, requireGstin: true,
     showPan: true, requirePan: false,
     showPlaceOfSupply: true, requirePlaceOfSupply: true,

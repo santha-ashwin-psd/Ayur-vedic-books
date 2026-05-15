@@ -94,7 +94,7 @@ const sortCol=ref("posting_date"),sortDir=ref("desc");
 const viewing=ref(null),saving=ref(false);
 const editBill=ref(""),editTransporter=ref(""),editVehicle=ref("");
 const tabs=[{v:"all",l:"All"},{v:"generated",l:"Generated"},{v:"pending",l:"Pending"}];
-async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Sales Invoice",{fields:["name","posting_date","customer","customer_name","grand_total","status","transporter_name","vehicle_no","lr_no","ewaybill"],filters:[["company","=",co],["docstatus","=",1],["is_return","=",0]],limit:500,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load e-way bills");}finally{loading.value=false;}}
+async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Sales Invoice",{fields:["name","posting_date","customer","customer_name","grand_total","status"],filters:[["company","=",co],["docstatus","=",1],["is_return","=",0]],limit:500,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load e-way bills");}finally{loading.value=false;}}
 const withBill=computed(()=>list.value.filter(i=>i.ewaybill));
 const pending=computed(()=>list.value.filter(i=>!i.ewaybill));
 const totalValue=computed(()=>list.value.reduce((s,i)=>s+flt(i.grand_total),0));
@@ -103,7 +103,7 @@ const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sor
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
 function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}
 function openView(inv){viewing.value=inv;editBill.value=inv.ewaybill||"";editTransporter.value=inv.transporter_name||"";editVehicle.value=inv.vehicle_no||"";}
-async function saveEwb(){saving.value=true;try{await apiSave({doctype:"Sales Invoice",name:viewing.value.name,ewaybill:editBill.value,transporter_name:editTransporter.value,vehicle_no:editVehicle.value});toast.success("E-Way Bill updated");viewing.value=null;await load();}catch(e){toast.error(e.message||"Save failed");}finally{saving.value=false;}}
+async function saveEwb(){saving.value=true;try{const patch={doctype:"Sales Invoice",name:viewing.value.name};if(editBill.value)patch.ewaybill=editBill.value;if(editTransporter.value)patch.transporter_name=editTransporter.value;if(editVehicle.value)patch.vehicle_no=editVehicle.value;await apiSave(patch);toast.success("E-Way Bill updated");viewing.value=null;await load();}catch(e){toast.error(e.message||"Save failed — extended e-Way Bill fields may require India Compliance app");}finally{saving.value=false;}}
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 onMounted(load);
 </script>

@@ -254,7 +254,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { apiList, apiGET, apiSave, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGET, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -464,7 +464,7 @@ async function fetchAccounts(q = "") {
 }
 
 // ── Save ─────────────────────────────────────────────────────────
-async function savePayment(docstatus) {
+async function savePayment(submit) {
   if (!form.party) return toast.error("Party is required");
   if (!form.paid_amount || flt(form.paid_amount) <= 0) return toast.error("Amount must be greater than 0");
   if (!form.payment_date) return toast.error("Payment date is required");
@@ -487,13 +487,13 @@ async function savePayment(docstatus) {
       paid_from:       form.paid_from  || "",
       paid_to:         form.paid_to    || "",
       remarks:         form.remarks    || "",
-      docstatus,
     };
     if (editingName.value) doc.name = editingName.value;
 
     const saved = await apiSave(doc);
+    if (submit) await apiSubmit("Payment Entry", saved.name);
     const name = saved?.name || doc.name;
-    toast.success(`Payment ${name} ${docstatus ? "submitted" : "saved"}`);
+    toast.success(`Payment ${name} ${submit ? "submitted" : "saved"}`);
     drawerOpen.value = false;
 
     await load();

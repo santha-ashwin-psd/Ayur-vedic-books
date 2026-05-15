@@ -178,9 +178,8 @@ def save_doc(doc):
     return d.as_dict()
 
 
-@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+@frappe.whitelist(allow_guest=False, methods=["POST"])
 def submit_doc(doctype, name):
-    """Submit a document via GET — no CSRF needed."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
 
@@ -190,7 +189,7 @@ def submit_doc(doctype, name):
     frappe.db.commit()
     return d.as_dict()
 
-@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+@frappe.whitelist(allow_guest=False, methods=["POST"])
 def delete_doc(doctype, name):
     """Delete a document via GET — no CSRF needed."""
     # Guard: only the logged-in user (session) must have at least read access.
@@ -310,12 +309,12 @@ def create_debit_note():
 
     pi_items = [
         {
-            "item_code":   it.get("item_name") or it.get("item_code") or "",
-            "item_name":   it.get("item_name") or "",
-            "description": it.get("description") or "",
-            "qty":         flt(it.get("qty", 1)),
-            "rate":        flt(it.get("rate", 0)),
-            "amount":      flt(it.get("amount", 0)),
+            "item_code":      it.get("item_name") or it.get("item_code") or "",
+            "item_name":      it.get("item_name") or "",
+            "description":    it.get("description") or it.get("item_name") or "",
+            "qty":            -abs(flt(it.get("qty", 1))),
+            "rate":           flt(it.get("rate", 0)),
+            "expense_account": expense_account,
         }
         for it in items_raw if (it.get("item_name") or it.get("item_code"))
     ]
@@ -327,9 +326,8 @@ def create_debit_note():
         "supplier":       vendor,
         "return_against": against_bill,
         "posting_date":   date,
-        "remark":         reason,
+        "remarks":        reason,
         "credit_to":      ap_account,
-        "expense_account": expense_account,
         "items":          pi_items,
     })
     pi.name = "DN-" + frappe.generate_hash(
@@ -427,12 +425,12 @@ def create_credit_note():
 
     cn_items = [
         {
-            "item_code":   it.get("item_name") or it.get("item_code") or "",
-            "item_name":   it.get("item_name") or "",
-            "description": it.get("description") or "",
-            "qty":         flt(it.get("qty", 1)),
-            "rate":        flt(it.get("rate", 0)),
-            "amount":      flt(it.get("amount", 0)),
+            "item_code":      it.get("item_name") or it.get("item_code") or "",
+            "item_name":      it.get("item_name") or "",
+            "description":    it.get("description") or it.get("item_name") or "",
+            "qty":            -abs(flt(it.get("qty", 1))),
+            "rate":           flt(it.get("rate", 0)),
+            "income_account": income_account,
         }
         for it in items_raw if (it.get("item_name") or it.get("item_code"))
     ]
@@ -445,17 +443,18 @@ def create_credit_note():
             "rate":         flt(t.get("rate", 0)),
         }
         for t in taxes_raw
+        if t.get("tax_type")
     ]
 
     cn = frappe.get_doc({
-        "doctype":        "Credit Note",
+        "doctype":        "Sales Invoice",
+        "is_return":      1,
         "company":        company,
         "customer":       customer,
         "return_against": against_inv,
         "posting_date":   date,
-        "reason":         (reason + (" — " + notes if notes else "")),
+        "remarks":        (reason + (" — " + notes if notes else "")),
         "debit_to":       ar_account,
-        "income_account": income_account,
         "items":          cn_items,
         "taxes":          cn_taxes,
     })
@@ -520,7 +519,7 @@ def create_credit_note():
     }
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=False)
 def get_accounts():
     """Safely fetch accounts filtered by company, bypassing REST get_list overrides."""
     company = frappe.form_dict.get("company") or ""

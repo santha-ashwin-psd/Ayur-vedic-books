@@ -126,7 +126,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -142,7 +142,7 @@ let _id=1;
 const blankLine=()=>({id:_id++,item_code:"",qty:1,rate:0,amount:0});
 const form=reactive({supplier:"",posting_date:new Date().toISOString().slice(0,10),return_against:"",reason:""});
 
-async function load(){loading.value=true;try{list.value=await apiList("Purchase Invoice",{fields:["name","supplier","supplier_name","posting_date","grand_total","return_against","docstatus"],filters:[["is_return","=",1]],limit:200,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load debit notes");}finally{loading.value=false;}}
+async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Purchase Invoice",{fields:["name","supplier","supplier_name","posting_date","grand_total","return_against","docstatus"],filters:[["is_return","=",1],["company","=",co]],limit:200,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load debit notes");}finally{loading.value=false;}}
 const filtered=computed(()=>{if(!search.value.trim())return list.value;const q=search.value.toLowerCase();return list.value.filter(d=>(d.name||"").toLowerCase().includes(q)||(d.supplier_name||d.supplier||"").toLowerCase().includes(q));});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
@@ -158,10 +158,10 @@ function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
 function calcLine(l){l.amount=Math.round(flt(l.qty)*flt(l.rate)*100)/100;}
 const subtotal=computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
-async function saveDN(docstatus){
+async function saveDN(submit){
   if(!form.supplier)return toast.error("Vendor is required");
   drawerSaving.value=true;
-  try{const company=await resolveCompany();const doc={doctype:"Purchase Invoice",company,supplier:form.supplier,posting_date:form.posting_date,is_return:1,return_against:form.return_against||null,remarks:form.reason||"",docstatus,items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Purchase Invoice Item",item_code:l.item_code,qty:-flt(l.qty),rate:flt(l.rate),amount:-flt(l.amount)}))};const saved=await apiSave(doc);toast.success(`Debit Note ${saved?.name||""} ${docstatus?"submitted":"saved"}`);drawerOpen.value=false;await load();}
+  try{const company=await resolveCompany();const doc={doctype:"Purchase Invoice",company,supplier:form.supplier,posting_date:form.posting_date,is_return:1,return_against:form.return_against||null,remarks:form.reason||"",items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Purchase Invoice Item",item_code:l.item_code,description:l.item_code,qty:-flt(l.qty),rate:flt(l.rate),amount:-flt(l.amount)}))};const saved=await apiSave(doc);if(submit)await apiSubmit("Purchase Invoice",saved.name);toast.success(`Debit Note ${saved?.name||""} ${submit?"submitted":"saved"}`);drawerOpen.value=false;await load();}
   catch(e){toast.error(e.message||"Failed to save debit note");}finally{drawerSaving.value=false;}
 }
 onMounted(load);

@@ -4,7 +4,7 @@
   <div class="cust-toolbar">
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:18px;font-weight:700;color:#1a1a2e">Team Members</span>
-      <span style="background:#F3F0FF;color:#7048E8;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{users.length}} members</span>
+      <span style="background:#F3F0FF;color:#2563eb;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{users.length}} members</span>
     </div>
     <button class="nim-btn nim-btn-primary" @click="openInvite"><span v-html="icon('plus',13)" style="vertical-align:-2px;margin-right:4px"/>Add Member</button>
   </div>
@@ -30,7 +30,7 @@
           <td style="padding:12px 14px">
             <div style="display:flex;align-items:center;gap:10px">
               <div v-if="u.user_image" style="width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0"><img :src="u.user_image" style="width:100%;height:100%;object-fit:cover"/></div>
-              <div v-else style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#7048E8,#5e3dc7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0">{{userInitials(u.full_name||u.name)}}</div>
+              <div v-else style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#5e3dc7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0">{{userInitials(u.full_name||u.name)}}</div>
               <div>
                 <div style="font-weight:600;color:#1a1a2e">{{u.full_name||u.name}}</div>
                 <div v-if="u.is_owner" style="font-size:10.5px;color:#f59e0b;font-weight:700;margin-top:1px">👑 Owner</div>
@@ -69,20 +69,20 @@
           <button class="nim-close" @click="showInvite=false">✕</button>
         </div>
         <div style="display:flex;gap:0;padding:0 24px;margin-bottom:-1px">
-          <div v-for="s in stepsForRole" :key="s" :style="'flex:1;height:3px;border-radius:2px;margin:0 2px;background:'+(step>=s?'#7048E8':'#e4e8f0')"></div>
+          <div v-for="s in stepsForRole" :key="s" :style="'flex:1;height:3px;border-radius:2px;margin:0 2px;background:'+(step>=s?'#2563eb':'#e4e8f0')"></div>
         </div>
 
         <!-- Step 1: Role selection -->
         <div v-if="step===1" class="nim-body" style="display:grid;gap:12px">
           <div style="font-size:13px;color:#4a5568">Select the role this member will have in your company:</div>
           <div v-for="r in ROLES" :key="r" @click="selectRole(r)"
-            :style="'padding:14px 16px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;'+(inviteForm.role===r?'border:2px solid #7048E8;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
+            :style="'padding:14px 16px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;'+(inviteForm.role===r?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
             <div :style="'width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+ROLE_COLORS[r]"></div>
             <div style="flex:1">
               <div style="font-weight:700;font-size:13px;color:#1a1a2e">{{r}}</div>
               <div style="font-size:12px;color:#868e96;margin-top:2px">{{ROLE_DESC[r]}}</div>
             </div>
-            <div v-if="inviteForm.role===r" style="color:#7048E8;font-size:16px">✓</div>
+            <div v-if="inviteForm.role===r" style="color:#2563eb;font-size:16px">✓</div>
           </div>
           <div v-if="inviteError" style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:8px;padding:10px 14px;color:#C92A2A;font-size:12.5px">{{inviteError}}</div>
         </div>
@@ -91,7 +91,7 @@
         <div v-if="step===2" class="nim-body" style="display:grid;gap:14px">
           <div style="background:#f5f0ff;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
             <span :style="'background:'+ROLE_COLORS[inviteForm.role]+';color:#fff;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700'">{{inviteForm.role}}</span>
-            <span style="font-size:12.5px;color:#3b4a7a">Selected — <a href="#" @click.prevent="step=1" style="color:#7048E8;text-decoration:none">Change</a></span>
+            <span style="font-size:12.5px;color:#3b4a7a">Selected — <a href="#" @click.prevent="step=1" style="color:#2563eb;text-decoration:none">Change</a></span>
           </div>
           <div style="font-size:13px;color:#4a5568">
             {{ inviteForm.role==='Custom' ? 'Pick exactly which modules this member can access. Nothing is granted by default.' : 'Choose which modules this member can access. Defaults are based on the selected role.' }}
@@ -108,7 +108,7 @@
         <div v-if="step===3" class="nim-body" style="display:grid;gap:14px">
           <div style="background:#f5f0ff;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
             <span :style="'background:'+ROLE_COLORS[inviteForm.role]+';color:#fff;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700'">{{inviteForm.role}}</span>
-            <span style="font-size:12.5px;color:#3b4a7a">Selected — <a href="#" @click.prevent="step=1" style="color:#7048E8;text-decoration:none">Change</a></span>
+            <span style="font-size:12.5px;color:#3b4a7a">Selected — <a href="#" @click.prevent="step=1" style="color:#2563eb;text-decoration:none">Change</a></span>
           </div>
           <div class="nim-field"><label class="nim-label">Email Address *</label><input class="nim-input" v-model="inviteForm.email" type="email" placeholder="member@company.com"/></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -153,10 +153,10 @@
         <div class="nim-header"><span style="font-weight:700">Change Role — {{editUser.full_name||editUser.name}}</span><button class="nim-close" @click="editUser=null">✕</button></div>
         <div class="nim-body" style="display:grid;gap:10px">
           <div v-for="r in CHANGEABLE_ROLES" :key="r" @click="editRole=r"
-            :style="'padding:12px 14px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;'+(editRole===r?'border:2px solid #7048E8;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
+            :style="'padding:12px 14px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;'+(editRole===r?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
             <div :style="'width:8px;height:8px;border-radius:50%;background:'+ROLE_COLORS[r]"></div>
             <div style="flex:1"><div style="font-weight:600;font-size:13px">{{r}}</div><div style="font-size:11.5px;color:#868e96">{{ROLE_DESC[r]}}</div></div>
-            <div v-if="editRole===r" style="color:#7048E8">✓</div>
+            <div v-if="editRole===r" style="color:#2563eb">✓</div>
           </div>
         </div>
         <div class="nim-footer"><button class="nim-btn" @click="editUser=null">Cancel</button><button class="nim-btn nim-btn-primary" @click="changeRole">Save Role</button></div>
@@ -203,7 +203,7 @@ const ROLES = ["Books Admin", "Accountant", "Books Manager", "Books Viewer", "Cu
 const CHANGEABLE_ROLES = ["Books Admin", "Accountant", "Books Manager", "Books Viewer"];
 
 const ROLE_COLORS = {
-  "Books Admin":   "#7048E8",
+  "Books Admin":   "#2563eb",
   "Accountant":    "#1971C2",
   "Books Manager": "#2F9E44",
   "Books Viewer":  "#868E96",

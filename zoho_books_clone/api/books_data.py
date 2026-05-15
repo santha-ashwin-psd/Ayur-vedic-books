@@ -195,9 +195,10 @@ def save_doc(doc):
     if name and frappe.db.exists(doctype, name):
         d = frappe.get_doc(doctype, name)
         d.update(doc)
+        d.save(ignore_permissions=True)
     else:
         d = frappe.get_doc(doc)
-    d.save(ignore_permissions=True)
+        d.insert(ignore_permissions=True)
     frappe.db.commit()
     return d.as_dict()
 
@@ -373,9 +374,11 @@ def record_payment(
     })
 
     if bank_charges > 0:
-        charges_account = frappe.db.get_value(
-            "Account", {"account_type": "Bank", "company": company, "is_group": 0}, "name"
-        ) or debtors_account
+        charges_account = (
+            frappe.db.get_value("Account", {"account_name": "Bank Charges", "company": company, "is_group": 0}, "name")
+            or frappe.db.get_value("Account", {"account_type": "Expense", "company": company, "is_group": 0}, "name")
+            or debtors_account
+        )
         # Resolve Cost Center from our own DocType — not the built-in Company DocType
         cost_center = frappe.db.get_value(
             "Cost Center", {"company": company, "is_group": 0}, "name"

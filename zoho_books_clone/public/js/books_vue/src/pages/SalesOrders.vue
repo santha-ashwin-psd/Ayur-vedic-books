@@ -174,13 +174,15 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const taxAccountHead=ref("");
+async function loadTaxAccount(){try{const co=await resolveCompany();const r=await apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Tax"],["is_group","=",0]],limit:1});taxAccountHead.value=r[0]?.name||"";}catch{}}
 const activeTab = ref("all");
 const tabs = [
   {key:"all",label:"All"},{key:"draft",label:"Draft"},
@@ -199,7 +201,7 @@ const form=reactive({customer:"",transaction_date:new Date().toISOString().slice
 
 async function load(){
   loading.value=true;
-  try{list.value=await apiList("Sales Order",{fields:["name","customer","customer_name","transaction_date","delivery_date","grand_total","docstatus","status"],limit:200,order:"transaction_date desc"});}
+  try{const co=await resolveCompany();list.value=await apiList("Sales Order",{fields:["name","customer","customer_name","transaction_date","delivery_date","grand_total","docstatus","status"],filters:[["company","=",co]],limit:200,order:"transaction_date desc"});}
   catch(e){toast.error(e.message||"Failed to load sales orders");}
   finally{loading.value=false;}
 }
@@ -244,7 +246,7 @@ function toggle(n){const s=new Set(selected.value);s.has(n)?s.delete(n):s.add(n)
 function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(o=>o.name)):new Set();}
 
 function openNew(){editingName.value="";Object.assign(form,{customer:"",transaction_date:new Date().toISOString().slice(0,10),delivery_date:"",tax_rate:0,terms:""});lines.value=[blankLine()];fetchCustomers("");fetchItems("");drawerOpen.value=true;}
-function openEdit(o){editingName.value=o.name;Object.assign(form,{customer:o.customer||"",transaction_date:o.transaction_date||"",delivery_date:o.delivery_date||"",tax_rate:0,terms:o.terms||""});lines.value=[blankLine()];fetchCustomers("");fetchItems("");drawerOpen.value=true;}
+async function openEdit(o){editingName.value=o.name;fetchCustomers("");fetchItems("");try{const doc=await apiGet("Sales Order",o.name);Object.assign(form,{customer:doc.customer||"",transaction_date:doc.transaction_date||"",delivery_date:doc.delivery_date||"",tax_rate:doc.taxes?.[0]?.rate||0,terms:doc.terms||""});lines.value=(doc.items||[]).map(it=>({id:_id++,item_code:it.item_code||"",description:it.description||"",qty:flt(it.qty)||1,rate:flt(it.rate),amount:flt(it.amount)}));if(!lines.value.length)lines.value=[blankLine()];}catch{Object.assign(form,{customer:o.customer||"",transaction_date:o.transaction_date||"",delivery_date:o.delivery_date||"",tax_rate:0,terms:o.terms||""});lines.value=[blankLine()];}drawerOpen.value=true;}
 function openView(o){viewDoc.value=o;viewOpen.value=true;}
 async function fetchCustomers(q=""){try{const r=await apiLinkValues("Customer",q);customers.value=r.map(x=>({label:x.name,value:x.name}));}catch{customers.value=[];}}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
@@ -255,22 +257,23 @@ function calcLine(l){l.amount=Math.round(flt(l.qty)*flt(l.rate)*100)/100;}
 const subtotal=computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
 const taxAmount=computed(()=>Math.round(subtotal.value*flt(form.tax_rate)/100*100)/100);
 
-async function saveOrder(docstatus){
+async function saveOrder(submit){
   if(!form.customer) return toast.error("Customer is required");
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
-    const taxes=form.tax_rate>0?[{doctype:"Sales Taxes and Charges",charge_type:"On Net Total",rate:form.tax_rate,tax_amount:taxAmount.value,total:subtotal.value+taxAmount.value}]:[];
-    const doc={doctype:"Sales Order",company,customer:form.customer,transaction_date:form.transaction_date,delivery_date:form.delivery_date||null,terms:form.terms||"",docstatus,
+    const taxes=form.tax_rate>0?[{doctype:"Sales Taxes and Charges",charge_type:"On Net Total",rate:form.tax_rate,account_head:taxAccountHead.value,description:`Tax @ ${form.tax_rate}%`}]:[];
+    const doc={doctype:"Sales Order",company,customer:form.customer,transaction_date:form.transaction_date,delivery_date:form.delivery_date||null,terms:form.terms||"",
       items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Sales Order Item",item_code:l.item_code,description:l.description||l.item_code,qty:flt(l.qty)||1,rate:flt(l.rate),amount:flt(l.amount),delivery_date:form.delivery_date||null})),taxes};
     if(editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
-    toast.success(`Sales Order ${saved?.name||""} ${docstatus?"submitted":"saved"}`);
+    if(submit) await apiSubmit("Sales Order",saved.name);
+    toast.success(`Sales Order ${saved?.name||""} ${submit?"submitted":"saved"}`);
     drawerOpen.value=false;await load();
   }catch(e){toast.error(e.message||"Failed to save sales order");}
   finally{drawerSaving.value=false;}
 }
-onMounted(load);
+onMounted(()=>{load();loadTaxAccount();});
 </script>
 
 <style scoped>

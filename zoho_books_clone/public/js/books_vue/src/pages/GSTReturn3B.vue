@@ -35,9 +35,9 @@
         <table class="g3-table">
           <thead><tr><th>Details</th><th class="ta-r">IGST</th><th class="ta-r">CGST</th><th class="ta-r">SGST/UTGST</th></tr></thead>
           <tbody>
-            <tr class="g3-row"><td>(A) ITC Available (B2B Purchases)</td><td class="ta-r mono-sm">{{ fmtCur(data.purchase_igst) }}</td><td class="ta-r mono-sm">—</td><td class="ta-r mono-sm">—</td></tr>
-            <tr class="g3-row"><td>(B) ITC Reversed</td><td class="ta-r mono-sm text-muted">0.00</td><td class="ta-r mono-sm text-muted">—</td><td class="ta-r mono-sm text-muted">—</td></tr>
-            <tr class="g3-row g3-total"><td><strong>Net ITC Available</strong></td><td class="ta-r mono-sm blue"><strong>{{ fmtCur(data.purchase_igst) }}</strong></td><td class="ta-r mono-sm text-muted">—</td><td class="ta-r mono-sm text-muted">—</td></tr>
+            <tr class="g3-row"><td>(A) ITC Available (B2B Purchases)</td><td class="ta-r mono-sm">{{ fmtCur(data.purchase_igst_only) }}</td><td class="ta-r mono-sm">{{ fmtCur(data.purchase_cgst) }}</td><td class="ta-r mono-sm">{{ fmtCur(data.purchase_sgst) }}</td></tr>
+            <tr class="g3-row"><td>(B) ITC Reversed</td><td class="ta-r mono-sm text-muted">0.00</td><td class="ta-r mono-sm text-muted">0.00</td><td class="ta-r mono-sm text-muted">0.00</td></tr>
+            <tr class="g3-row g3-total"><td><strong>Net ITC Available</strong></td><td class="ta-r mono-sm blue"><strong>{{ fmtCur(data.purchase_igst_only) }}</strong></td><td class="ta-r mono-sm blue"><strong>{{ fmtCur(data.purchase_cgst) }}</strong></td><td class="ta-r mono-sm blue"><strong>{{ fmtCur(data.purchase_sgst) }}</strong></td></tr>
           </tbody>
         </table>
       </div>
@@ -66,7 +66,7 @@
 </template>
 <script setup>
 import { ref, computed } from "vue";
-import { apiList, resolveCompany } from "../api/client.js";
+import { apiList, apiGET, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt } from "../utils/format.js";
@@ -76,7 +76,7 @@ const now=new Date();
 function makePeriods(){const ps=[];for(let i=0;i<12;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const v=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;const l=d.toLocaleString("en-IN",{month:"long",year:"numeric"});ps.push({v,l});}return ps;}
 const periods=makePeriods();
 const period=ref(periods[0].v);
-async function load(){loading.value=true;data.value=null;try{const co=await resolveCompany();const [yr,mo]=period.value.split("-");const from=`${yr}-${mo}-01`;const last=new Date(+yr,+mo,0).getDate();const to=`${yr}-${mo}-${String(last).padStart(2,"0")}`;const [sales,purchases]=await Promise.all([apiList("Sales Invoice",{fields:["name","net_total","total_taxes_and_charges"],filters:[["company","=",co],["posting_date",">=",from],["posting_date","<=",to],["docstatus","=",1],["is_return","=",0]],limit:500}),apiList("Purchase Invoice",{fields:["name","net_total","total_taxes_and_charges"],filters:[["company","=",co],["posting_date",">=",from],["posting_date","<=",to],["docstatus","=",1],["is_return","=",0]],limit:500})]);const taxable_value=sales.reduce((s,i)=>s+flt(i.net_total),0);const total_tax=sales.reduce((s,i)=>s+flt(i.total_taxes_and_charges),0);const purchase_igst=purchases.reduce((s,i)=>s+flt(i.total_taxes_and_charges),0);data.value={taxable_value,total_tax,igst:total_tax,cgst:0,sgst:0,purchase_igst};}catch(e){toast.error(e.message||"Failed to compute GSTR-3B");}finally{loading.value=false;}}
+async function load(){loading.value=true;data.value=null;try{const co=await resolveCompany();const [yr,mo]=period.value.split("-");const from=`${yr}-${mo}-01`;const last=new Date(+yr,+mo,0).getDate();const to=`${yr}-${mo}-${String(last).padStart(2,"0")}`;const [summary,sales]=await Promise.all([apiGET("zoho_books_clone.db.queries.get_gstr_summary",{company:co,from_date:from,to_date:to}),apiList("Sales Invoice",{fields:["name","net_total"],filters:[["company","=",co],["posting_date",">=",from],["posting_date","<=",to],["docstatus","=",1],["is_return","=",0]],limit:500})]);const byType=o=>({igst:flt((o||[]).find(r=>r.tax_type==="IGST")?.amount),cgst:flt((o||[]).find(r=>r.tax_type==="CGST")?.amount),sgst:flt((o||[]).find(r=>r.tax_type==="SGST")?.amount)});const out=byType(summary?.output||[]);const itc=byType(summary?.itc||[]);const taxable_value=sales.reduce((s,i)=>s+flt(i.net_total),0);const total_tax=(summary?.totals?.total_output)||0;const purchase_igst=(summary?.totals?.total_itc)||0;data.value={taxable_value,total_tax,igst:out.igst,cgst:out.cgst,sgst:out.sgst,purchase_igst,purchase_igst_only:itc.igst,purchase_cgst:itc.cgst,purchase_sgst:itc.sgst};}catch(e){toast.error(e.message||"Failed to compute GSTR-3B");}finally{loading.value=false;}}
 const netTax=computed(()=>data.value?flt(data.value.total_tax)-flt(data.value.purchase_igst):0);
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 </script>

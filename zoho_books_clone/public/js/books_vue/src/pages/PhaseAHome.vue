@@ -169,7 +169,7 @@ async function loadAll() {
     const co = await resolveCompany();
 
     // Load KPI data, recent invoices, and overdue in parallel
-    const [invoices, bills, paymentsIn, paymentsOut, bins] = await Promise.all([
+    const [invoices, bills, paymentsIn, paymentsOut, warehouses] = await Promise.all([
       apiList("Sales Invoice", {
         fields: ["name", "customer", "customer_name", "grand_total", "outstanding_amount", "status", "posting_date", "due_date"],
         filters: [["company", "=", co], ["docstatus", "=", 1], ["outstanding_amount", ">", 0]],
@@ -181,21 +181,23 @@ async function loadAll() {
         limit: 100
       }),
       apiList("Payment Entry", {
-        fields: ["name", "paid_amount", "posting_date"],
-        filters: [["company", "=", co], ["payment_type", "=", "Receive"], ["docstatus", "=", 1], ["posting_date", ">=", firstOfMonth], ["posting_date", "<=", todayStr]],
+        fields: ["name", "paid_amount", "payment_date"],
+        filters: [["company", "=", co], ["payment_type", "=", "Receive"], ["payment_date", ">=", firstOfMonth], ["payment_date", "<=", todayStr]],
         limit: 200
       }),
       apiList("Payment Entry", {
-        fields: ["name", "paid_amount", "posting_date"],
-        filters: [["company", "=", co], ["payment_type", "=", "Pay"], ["docstatus", "=", 1], ["posting_date", ">=", firstOfMonth], ["posting_date", "<=", todayStr]],
+        fields: ["name", "paid_amount", "payment_date"],
+        filters: [["company", "=", co], ["payment_type", "=", "Pay"], ["payment_date", ">=", firstOfMonth], ["payment_date", "<=", todayStr]],
         limit: 200
       }),
-      apiList("Bin", {
-        fields: ["item_code", "actual_qty", "re_order_level"],
-        filters: [["company", "=", co], ["re_order_level", ">", 0]],
-        limit: 500
-      }),
+      apiList("Warehouse", { fields: ["name"], filters: [["company", "=", co], ["is_group", "=", 0]], limit: 200 }),
     ]);
+    const whNames = warehouses.map(w => w.name);
+    const bins = whNames.length ? await apiList("Bin", {
+      fields: ["item_code", "actual_qty", "reorder_level"],
+      filters: [["warehouse", "in", whNames], ["reorder_level", ">", 0]],
+      limit: 500
+    }) : [];
 
     kpi.value = {
       receivables: invoices.reduce((s, i) => s + flt(i.outstanding_amount), 0),
@@ -213,7 +215,7 @@ async function loadAll() {
     invoiceLoading.value = false;
 
     overdueInvoices.value = invoices.filter(i => i.due_date && new Date(i.due_date) < now && flt(i.outstanding_amount) > 0);
-    reorderCount.value = bins.filter(b => flt(b.actual_qty) <= flt(b.re_order_level)).length;
+    reorderCount.value = bins.filter(b => flt(b.actual_qty) <= flt(b.reorder_level)).length;
     alertLoading.value = false;
 
   } catch (e) {

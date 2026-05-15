@@ -29,7 +29,7 @@
             <th @click="sort('name')" class="sortable">Order # <span v-html="sortArrow('name')"></span></th>
             <th @click="sort('supplier_name')" class="sortable">Vendor <span v-html="sortArrow('supplier_name')"></span></th>
             <th @click="sort('transaction_date')" class="sortable">Date <span v-html="sortArrow('transaction_date')"></span></th>
-            <th @click="sort('schedule_date')" class="sortable">Expected By <span v-html="sortArrow('schedule_date')"></span></th>
+            <th @click="sort('expected_delivery_date')" class="sortable">Expected By <span v-html="sortArrow('expected_delivery_date')"></span></th>
             <th>Status</th>
             <th @click="sort('grand_total')" class="sortable ta-r">Amount <span v-html="sortArrow('grand_total')"></span></th>
             <th style="width:50px"></th>
@@ -45,7 +45,7 @@
               <td @click="openView(o)"><span class="po-num">{{ o.name }}</span></td>
               <td @click="openView(o)">{{ o.supplier_name||o.supplier||'—' }}</td>
               <td @click="openView(o)" class="text-muted mono-sm">{{ fmtDate(o.transaction_date) }}</td>
-              <td @click="openView(o)" class="text-muted mono-sm">{{ fmtDate(o.schedule_date)||'—' }}</td>
+              <td @click="openView(o)" class="text-muted mono-sm">{{ fmtDate(o.expected_delivery_date)||'—' }}</td>
               <td @click="openView(o)"><span class="po-badge" :class="statusClass(o)">{{ statusLabel(o) }}</span></td>
               <td @click="openView(o)" class="ta-r mono-sm">{{ fmtCur(o.grand_total) }}</td>
               <td class="po-act-cell">
@@ -78,7 +78,7 @@
           </div>
           <div class="po-field">
             <label class="po-label">Expected Delivery</label>
-            <input v-model="form.schedule_date" type="date" class="po-input" />
+            <input v-model="form.expected_delivery_date" type="date" class="po-input" />
           </div>
         </div>
 
@@ -134,7 +134,7 @@
         <div class="po-dbody">
           <div class="po-meta-grid">
             <div><div class="po-meta-lbl">Order Date</div><div class="mono-sm">{{ fmtDate(viewDoc.transaction_date) }}</div></div>
-            <div><div class="po-meta-lbl">Expected By</div><div class="mono-sm">{{ fmtDate(viewDoc.schedule_date)||'—' }}</div></div>
+            <div><div class="po-meta-lbl">Expected By</div><div class="mono-sm">{{ fmtDate(viewDoc.expected_delivery_date)||'—' }}</div></div>
           </div>
         </div>
         <div class="po-dfooter">
@@ -148,7 +148,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiSave, apiGet, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -160,13 +160,14 @@ const tabs=[{key:"all",label:"All"},{key:"draft",label:"Draft"},{key:"to-receive
 const list=ref([]),loading=ref(false),search=ref(""),selected=ref(new Set());
 const drawerOpen=ref(false),drawerSaving=ref(false),editingName=ref("");
 const viewOpen=ref(false),viewDoc=ref(null);
-const vendors=ref([]),items=ref([]),lines=ref([]);
+const vendors=ref([]),items=ref([]),lines=ref([]),taxAccountHead=ref("");
 const sortCol=ref("transaction_date"),sortDir=ref("desc");
 let _id=1;
 const blankLine=()=>({id:_id++,item_code:"",description:"",qty:1,rate:0,amount:0});
-const form=reactive({supplier:"",transaction_date:new Date().toISOString().slice(0,10),schedule_date:"",tax_rate:0,terms:""});
+const form=reactive({supplier:"",transaction_date:new Date().toISOString().slice(0,10),expected_delivery_date:"",tax_rate:0,terms:""});
 
-async function load(){loading.value=true;try{list.value=await apiList("Purchase Order",{fields:["name","supplier","supplier_name","transaction_date","schedule_date","grand_total","docstatus","status"],limit:200,order:"transaction_date desc"});}catch(e){toast.error(e.message||"Failed to load purchase orders");}finally{loading.value=false;}}
+async function load(){loading.value=true;try{list.value=await apiList("Purchase Order",{fields:["name","supplier","supplier_name","transaction_date","expected_delivery_date","grand_total","docstatus","status"],limit:200,order:"transaction_date desc"});}catch(e){toast.error(e.message||"Failed to load purchase orders");}finally{loading.value=false;}}
+async function loadTaxAccount(){try{const r=await apiList("Account",{fields:["name"],filters:[["account_type","=","Tax"],["is_group","=",0]],limit:1});if(r?.length)taxAccountHead.value=r[0].name;}catch{}}
 function statusLabel(o){if(o.docstatus===2)return"Cancelled";if(o.docstatus===0)return"Draft";const s=o.status||"";if(s==="Completed")return"Completed";if(s.includes("Receive"))return"To Receive";return s||"Submitted";}
 function statusClass(o){if(o.docstatus===2)return"badge-grey";if(o.docstatus===0)return"badge-orange";if(statusLabel(o)==="Completed")return"badge-green";return"badge-blue";}
 const filtered=computed(()=>{let r=list.value;if(activeTab.value==="draft")r=r.filter(o=>o.docstatus===0);if(activeTab.value==="to-receive")r=r.filter(o=>o.docstatus===1&&statusLabel(o)==="To Receive");if(activeTab.value==="completed")r=r.filter(o=>statusLabel(o)==="Completed");if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(o=>(o.name||"").toLowerCase().includes(q)||(o.supplier_name||o.supplier||"").toLowerCase().includes(q));}return r;});
@@ -179,8 +180,16 @@ function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",curren
 const allChecked=computed(()=>sorted.value.length>0&&sorted.value.every(o=>selected.value.has(o.name)));
 function toggle(n){const s=new Set(selected.value);s.has(n)?s.delete(n):s.add(n);selected.value=s;}
 function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(o=>o.name)):new Set();}
-function openNew(){editingName.value="";Object.assign(form,{supplier:"",transaction_date:new Date().toISOString().slice(0,10),schedule_date:"",tax_rate:0,terms:""});lines.value=[blankLine()];fetchVendors("");fetchItems("");drawerOpen.value=true;}
-function openEdit(o){editingName.value=o.name;Object.assign(form,{supplier:o.supplier||"",transaction_date:o.transaction_date||"",schedule_date:o.schedule_date||"",tax_rate:0,terms:o.terms||""});lines.value=[blankLine()];fetchVendors("");fetchItems("");drawerOpen.value=true;}
+function openNew(){editingName.value="";Object.assign(form,{supplier:"",transaction_date:new Date().toISOString().slice(0,10),expected_delivery_date:"",tax_rate:0,terms:""});lines.value=[blankLine()];fetchVendors("");fetchItems("");drawerOpen.value=true;}
+async function openEdit(o){
+  editingName.value=o.name;Object.assign(form,{supplier:o.supplier||"",transaction_date:o.transaction_date||"",expected_delivery_date:o.expected_delivery_date||"",tax_rate:0,terms:o.terms||""});
+  lines.value=[blankLine()];fetchVendors("");fetchItems("");drawerOpen.value=true;
+  try{const doc=await apiGet("Purchase Order",o.name);
+    if(doc?.items?.length)lines.value=doc.items.map(i=>({id:_id++,item_code:i.item_code||"",description:i.description||"",qty:i.qty||1,rate:i.rate||0,amount:i.amount||0}));
+    if(doc?.taxes?.[0]?.rate)form.tax_rate=doc.taxes[0].rate;
+    if(doc?.taxes?.[0]?.account_head)taxAccountHead.value=doc.taxes[0].account_head;
+  }catch{}
+}
 function openView(o){viewDoc.value=o;viewOpen.value=true;}
 async function fetchVendors(q=""){try{const r=await apiLinkValues("Supplier",q);vendors.value=r.map(x=>({label:x.name,value:x.name}));}catch{vendors.value=[];}}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
@@ -189,13 +198,21 @@ function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l
 function calcLine(l){l.amount=Math.round(flt(l.qty)*flt(l.rate)*100)/100;}
 const subtotal=computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
 const taxAmount=computed(()=>Math.round(subtotal.value*flt(form.tax_rate)/100*100)/100);
-async function saveOrder(docstatus){
+async function saveOrder(submit){
   if(!form.supplier)return toast.error("Vendor is required");
   drawerSaving.value=true;
-  try{const company=await resolveCompany();const taxes=form.tax_rate>0?[{doctype:"Purchase Taxes and Charges",charge_type:"On Net Total",rate:form.tax_rate,tax_amount:taxAmount.value,total:subtotal.value+taxAmount.value}]:[];const doc={doctype:"Purchase Order",company,supplier:form.supplier,transaction_date:form.transaction_date,schedule_date:form.schedule_date||null,terms:form.terms||"",docstatus,items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Purchase Order Item",item_code:l.item_code,description:l.description||l.item_code,qty:flt(l.qty)||1,rate:flt(l.rate),amount:flt(l.amount),schedule_date:form.schedule_date||null})),taxes};if(editingName.value)doc.name=editingName.value;const saved=await apiSave(doc);toast.success(`Purchase Order ${saved?.name||""} ${docstatus?"submitted":"saved"}`);drawerOpen.value=false;await load();}
-  catch(e){toast.error(e.message||"Failed to save purchase order");}finally{drawerSaving.value=false;}
+  try{
+    const company=await resolveCompany();
+    const taxes=form.tax_rate>0&&taxAccountHead.value?[{doctype:"Purchase Taxes and Charges",charge_type:"On Net Total",account_head:taxAccountHead.value,description:taxAccountHead.value,rate:form.tax_rate}]:[];
+    const doc={doctype:"Purchase Order",company,supplier:form.supplier,transaction_date:form.transaction_date,expected_delivery_date:form.expected_delivery_date||null,terms:form.terms||"",
+      items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Purchase Order Item",item_code:l.item_code,description:l.description||l.item_code,qty:flt(l.qty)||1,rate:flt(l.rate),amount:flt(l.amount),expected_delivery_date:form.expected_delivery_date||null})),taxes};
+    if(editingName.value)doc.name=editingName.value;
+    const saved=await apiSave(doc);
+    if(submit&&saved?.name)await apiSubmit("Purchase Order",saved.name);
+    toast.success(`Purchase Order ${saved?.name||""} ${submit?"submitted":"saved"}`);drawerOpen.value=false;await load();
+  }catch(e){toast.error(e.message||"Failed to save purchase order");}finally{drawerSaving.value=false;}
 }
-onMounted(load);
+onMounted(()=>{load();loadTaxAccount();});
 </script>
 
 <style scoped>

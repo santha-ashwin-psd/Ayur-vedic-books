@@ -7,14 +7,14 @@
   <div style="display:flex;gap:0;border-bottom:2px solid #e4e8f0;margin-bottom:24px">
     <button v-for="t in [{k:'profile',l:'Profile'},{k:'security',l:'Security'}]" :key="t.k"
       @click="activeTab=t.k"
-      :style="'padding:10px 20px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;'+(activeTab===t.k?'color:#7048E8;border-bottom:2px solid #7048E8;margin-bottom:-2px':'color:#868E96')">
+      :style="'padding:10px 20px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;'+(activeTab===t.k?'color:#2563eb;border-bottom:2px solid #2563eb;margin-bottom:-2px':'color:#868E96')">
       {{t.l}}
     </button>
   </div>
 
   <div v-if="activeTab==='profile'" style="max-width:600px">
     <div style="display:flex;align-items:center;gap:20px;margin-bottom:28px;padding:20px;background:#f8f9fc;border-radius:12px;border:1px solid #e4e8f0">
-      <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#7048E8,#5e3dc7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700;flex-shrink:0">{{initials}}</div>
+      <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#5e3dc7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700;flex-shrink:0">{{initials}}</div>
       <div>
         <div style="font-size:16px;font-weight:700;color:#1a1a2e">{{profile.first_name}} {{profile.last_name}}</div>
         <div style="font-size:13px;color:#868e96;margin-top:2px">{{profile.email}}</div>

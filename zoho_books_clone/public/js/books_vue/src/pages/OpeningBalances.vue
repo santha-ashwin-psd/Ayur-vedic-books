@@ -267,8 +267,8 @@ async function doSubmit() {
     lines.push({
       doctype: "Journal Entry Account",
       account: a.name,
-      debit_in_account_currency:  dc === "Debit"  ? v : 0,
-      credit_in_account_currency: dc === "Credit" ? v : 0,
+      debit:  dc === "Debit"  ? v : 0,
+      credit: dc === "Credit" ? v : 0,
     });
   });
   try {

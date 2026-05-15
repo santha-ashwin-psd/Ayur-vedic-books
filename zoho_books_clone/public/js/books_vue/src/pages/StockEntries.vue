@@ -99,6 +99,21 @@
             <div><div class="se-meta-lbl">From</div><div>{{ viewDoc.from_warehouse||'—' }}</div></div>
             <div><div class="se-meta-lbl">To</div><div>{{ viewDoc.to_warehouse||'—' }}</div></div>
           </div>
+          <div v-if="viewDoc.remarks" style="font-size:13px;color:#374151;padding:10px 0;border-top:1px solid #f3f4f6;"><span style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Remarks</span>{{ viewDoc.remarks }}</div>
+          <div v-if="viewDoc.items && viewDoc.items.length">
+            <div class="se-section-title" style="margin-bottom:8px">Items</div>
+            <table class="se-view-items-tbl">
+              <thead><tr><th>Item</th><th class="ta-r">Qty</th><th class="ta-r">Rate</th><th class="ta-r">Amount</th></tr></thead>
+              <tbody>
+                <tr v-for="it in viewDoc.items" :key="it.name||it.idx">
+                  <td>{{ it.item_code }}</td>
+                  <td class="ta-r mono-sm">{{ it.qty }}</td>
+                  <td class="ta-r mono-sm">{{ fmtCur(it.basic_rate) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div class="se-dfooter"><button class="se-btn-ghost" @click="viewOpen=false">Close</button></div>
       </template>
@@ -107,7 +122,7 @@
 </template>
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -131,7 +146,7 @@ function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"d
 function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 function openNew(){Object.assign(form,{stock_entry_type:"Material Receipt",posting_date:new Date().toISOString().slice(0,10),from_warehouse:"",to_warehouse:"",remarks:""});lines.value=[blankLine()];fetchWarehouses("");fetchItems("");drawerOpen.value=true;}
-function openView(e){viewDoc.value=e;viewOpen.value=true;}
+async function openView(e){viewDoc.value=e;viewOpen.value=true;try{const full=await apiGet("Stock Entry",e.name);viewDoc.value=full;}catch{/* keep list-row data */}}
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
 function addLine(){lines.value.push(blankLine());}
@@ -202,5 +217,9 @@ textarea.se-input{resize:vertical;}
 .se-rm-line:hover{background:#fee2e2;color:#dc2626;border-color:#fca5a5;}
 .se-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .se-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.se-view-items-tbl{width:100%;border-collapse:collapse;font-size:12.5px;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;}
+.se-view-items-tbl th{background:#f9fafb;padding:7px 10px;font-size:11px;font-weight:600;color:#374151;text-align:left;border-bottom:1px solid #e5e7eb;}
+.se-view-items-tbl td{padding:7px 10px;border-bottom:1px solid #f3f4f6;color:#111827;}
+.se-view-items-tbl tr:last-child td{border-bottom:none;}
 .se-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
 </style>

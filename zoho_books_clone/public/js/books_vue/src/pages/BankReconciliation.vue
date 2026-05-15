@@ -26,16 +26,18 @@
       <table class="br-table">
         <thead>
           <tr>
+            <th style="width:32px"><input type="checkbox" :checked="allUnreconciledSelected" @change="toggleSelectAll" /></th>
             <th>Date</th><th>Description</th><th>Reference</th>
             <th class="ta-r">Deposit</th><th class="ta-r">Withdrawal</th><th>Status</th>
           </tr>
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 5" :key="n"><td colspan="6"><div class="br-shimmer"></div></td></tr>
+            <tr v-for="n in 5" :key="n"><td colspan="7"><div class="br-shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="t in transactions" :key="t.name" class="br-row">
+              <td @click.stop><input v-if="t.status!=='Reconciled'" type="checkbox" :checked="selected.has(t.name)" @change="toggleSelect(t.name)" /></td>
               <td class="mono-sm">{{ fmtDate(t.date) }}</td>
               <td>{{ t.description||'—' }}</td>
               <td class="mono-sm text-muted">{{ t.reference_number||'—' }}</td>
@@ -43,10 +45,19 @@
               <td class="ta-r mono-sm red">{{ flt(t.withdrawal)>0?fmtCur(t.withdrawal):'—' }}</td>
               <td><span class="br-badge" :class="t.status==='Reconciled'?'badge-green':'badge-orange'">{{ t.status||'Unreconciled' }}</span></td>
             </tr>
-            <tr v-if="!transactions.length"><td colspan="6" class="br-empty">No transactions in this period</td></tr>
+            <tr v-if="!transactions.length"><td colspan="7" class="br-empty">No transactions in this period</td></tr>
           </template>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="ran && selected.size>0" class="br-reconcile-bar">
+      <span style="font-size:13px;color:#374151;font-weight:600">{{ selected.size }} transaction{{ selected.size>1?'s':'' }} selected</span>
+      <label style="font-size:13px;color:#374151">Clearance Date</label>
+      <input v-model="clearanceDate" type="date" class="br-input" style="width:150px" />
+      <button class="br-btn-primary" :disabled="reconciling||!clearanceDate" @click="markReconciled">
+        <span v-html="icon('check',13)"></span> {{ reconciling?'Saving…':'Mark Reconciled' }}
+      </button>
     </div>
 
     <div v-if="!ran" class="br-placeholder">
@@ -59,7 +70,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, resolveCompany } from "../api/client.js";
+import { apiList, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -67,6 +78,9 @@ import { flt, fmtDate } from "../utils/format.js";
 const { toast } = useToast();
 const bankAccounts=ref([]),transactions=ref([]),loading=ref(false),ran=ref(false);
 const systemBalance=ref(0);
+const selected=ref(new Set());
+const clearanceDate=ref(new Date().toISOString().slice(0,10));
+const reconciling=ref(false);
 const now=new Date();
 const firstOfMonth=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
 const form=reactive({bank_account:"",from_date:firstOfMonth,to_date:now.toISOString().slice(0,10)});
@@ -75,6 +89,7 @@ async function loadAccounts(){try{const co=await resolveCompany();bankAccounts.v
 async function load(){
   if(!form.bank_account)return;
   loading.value=true;ran.value=true;systemBalance.value=0;
+  selected.value=new Set();
   try{
     const[txRows,baRows]=await Promise.all([
       apiList("Bank Transaction",{fields:["name","date","description","reference_number","deposit","withdrawal","status"],filters:[["bank_account","=",form.bank_account],["date",">=",form.from_date],["date","<=",form.to_date]],limit:500,order:"date asc"}),
@@ -96,6 +111,19 @@ const summary=computed(()=>{
   return{statementBalance:stmtBal,systemBalance:systemBalance.value,diff:systemBalance.value-stmtBal,unmatched};
 });
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
+function toggleSelect(name){const s=new Set(selected.value);if(s.has(name))s.delete(name);else s.add(name);selected.value=s;}
+const allUnreconciledSelected=computed(()=>{const unreconciled=transactions.value.filter(t=>t.status!=="Reconciled");return unreconciled.length>0&&unreconciled.every(t=>selected.value.has(t.name));});
+function toggleSelectAll(){const unreconciled=transactions.value.filter(t=>t.status!=="Reconciled");if(allUnreconciledSelected.value){selected.value=new Set();}else{selected.value=new Set(unreconciled.map(t=>t.name));}}
+async function markReconciled(){
+  if(!selected.value.size||!clearanceDate.value)return;
+  reconciling.value=true;
+  try{
+    await apiPOST("zoho_books_clone.api.banking.reconcile_transactions",{bank_account:form.bank_account,transaction_names:JSON.stringify([...selected.value]),clearance_date:clearanceDate.value});
+    toast.success(`${selected.value.size} transaction(s) marked as reconciled`);
+    await load();
+  }catch(e){toast.error(e.message||"Failed to reconcile transactions");}
+  finally{reconciling.value=false;}
+}
 onMounted(loadAccounts);
 </script>
 
@@ -127,4 +155,5 @@ onMounted(loadAccounts);
 .br-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .br-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;}
+.br-reconcile-bar{display:flex;align-items:center;gap:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;flex-wrap:wrap;}
 </style>

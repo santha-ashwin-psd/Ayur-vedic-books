@@ -353,24 +353,15 @@ def get_gst_summary(company: str, from_date: str, to_date: str) -> list[dict]:
     """GST collected by tax type (CGST, SGST, IGST) for a period."""
     return frappe.db.sql("""
         SELECT
-            CASE
-                WHEN UPPER(t.description) LIKE '%%IGST%%' OR UPPER(t.account_head) LIKE '%%IGST%%' THEN 'IGST'
-                WHEN UPPER(t.description) LIKE '%%CGST%%' OR UPPER(t.account_head) LIKE '%%CGST%%' THEN 'CGST'
-                WHEN UPPER(t.description) LIKE '%%SGST%%' OR UPPER(t.account_head) LIKE '%%SGST%%' THEN 'SGST'
-                ELSE t.description
-            END AS tax_type,
-            COUNT(DISTINCT t.parent) AS invoice_count,
-            SUM(t.tax_amount)        AS total_tax
-        FROM `tabSales Taxes and Charges` t
-        JOIN `tabSales Invoice` si ON si.name = t.parent
-        WHERE si.company    = %(company)s
-          AND si.docstatus   = 1
-          AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
-          AND (
-              UPPER(t.description)  LIKE '%%CGST%%' OR UPPER(t.account_head) LIKE '%%CGST%%' OR
-              UPPER(t.description)  LIKE '%%SGST%%' OR UPPER(t.account_head) LIKE '%%SGST%%' OR
-              UPPER(t.description)  LIKE '%%IGST%%' OR UPPER(t.account_head) LIKE '%%IGST%%'
-          )
+            COALESCE(NULLIF(t.tax_type, ''), t.description) AS tax_type,
+            COUNT(DISTINCT t.parent)                         AS invoice_count,
+            SUM(t.tax_amount)                                AS total_tax
+        FROM `tabTax Line` t
+        JOIN `tabSales Invoice` si ON si.name = t.parent AND t.parenttype = 'Sales Invoice'
+        WHERE si.company        = %(company)s
+          AND si.docstatus      = 1
+          AND si.posting_date   BETWEEN %(from_date)s AND %(to_date)s
+          AND t.tax_amount      != 0
         GROUP BY tax_type
         ORDER BY tax_type
     """, {"company": company, "from_date": from_date, "to_date": to_date}, as_dict=True)
@@ -623,21 +614,16 @@ def get_gstr_summary(company: str, from_date: str, to_date: str) -> dict:
     # ── Output tax (from Sales Invoices) ──────────────────────────────────────
     output_rows = frappe.db.sql("""
         SELECT
-            CASE
-                WHEN UPPER(tl.description) LIKE '%%IGST%%' OR UPPER(tl.account_head) LIKE '%%IGST%%' THEN 'IGST'
-                WHEN UPPER(tl.description) LIKE '%%CGST%%' OR UPPER(tl.account_head) LIKE '%%CGST%%' THEN 'CGST'
-                WHEN UPPER(tl.description) LIKE '%%SGST%%' OR UPPER(tl.account_head) LIKE '%%SGST%%' THEN 'SGST'
-                ELSE tl.description
-            END AS tax_type,
+            COALESCE(NULLIF(tl.tax_type, ''), tl.description) AS tax_type,
             tl.description,
-            SUM(tl.tax_amount)  AS amount,
+            SUM(tl.tax_amount)      AS amount,
             COUNT(DISTINCT si.name) AS invoice_count
-        FROM `tabSales Taxes and Charges` tl
+        FROM `tabTax Line` tl
         JOIN `tabSales Invoice` si
-          ON si.name = tl.parent
-        WHERE si.company    = %(company)s
-          AND si.docstatus  = 1
-          AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+          ON si.name = tl.parent AND tl.parenttype = 'Sales Invoice'
+        WHERE si.company        = %(company)s
+          AND si.docstatus      = 1
+          AND si.posting_date   BETWEEN %(from_date)s AND %(to_date)s
         GROUP BY tax_type, tl.description
         ORDER BY tax_type
     """, {"company": company, "from_date": from_date, "to_date": to_date},
@@ -646,21 +632,16 @@ def get_gstr_summary(company: str, from_date: str, to_date: str) -> dict:
     # ── Input Tax Credit (from Purchase Invoices) ─────────────────────────────
     itc_rows = frappe.db.sql("""
         SELECT
-            CASE
-                WHEN UPPER(tl.description) LIKE '%%IGST%%' OR UPPER(tl.account_head) LIKE '%%IGST%%' THEN 'IGST'
-                WHEN UPPER(tl.description) LIKE '%%CGST%%' OR UPPER(tl.account_head) LIKE '%%CGST%%' THEN 'CGST'
-                WHEN UPPER(tl.description) LIKE '%%SGST%%' OR UPPER(tl.account_head) LIKE '%%SGST%%' THEN 'SGST'
-                ELSE tl.description
-            END AS tax_type,
+            COALESCE(NULLIF(tl.tax_type, ''), tl.description) AS tax_type,
             tl.description,
-            SUM(tl.tax_amount)  AS amount,
+            SUM(tl.tax_amount)      AS amount,
             COUNT(DISTINCT pi.name) AS invoice_count
-        FROM `tabPurchase Taxes and Charges` tl
+        FROM `tabTax Line` tl
         JOIN `tabPurchase Invoice` pi
-          ON pi.name = tl.parent
-        WHERE pi.company    = %(company)s
-          AND pi.docstatus  = 1
-          AND pi.posting_date BETWEEN %(from_date)s AND %(to_date)s
+          ON pi.name = tl.parent AND tl.parenttype = 'Purchase Invoice'
+        WHERE pi.company        = %(company)s
+          AND pi.docstatus      = 1
+          AND pi.posting_date   BETWEEN %(from_date)s AND %(to_date)s
         GROUP BY tax_type, tl.description
         ORDER BY tax_type
     """, {"company": company, "from_date": from_date, "to_date": to_date},
@@ -919,22 +900,17 @@ def get_itc_ledger(company: str, from_date: str, to_date: str) -> list[dict]:
             pi.supplier,
             pi.bill_no,
             pi.bill_date,
-            CASE
-                WHEN UPPER(tl.description) LIKE '%%IGST%%' OR UPPER(tl.account_head) LIKE '%%IGST%%' THEN 'IGST'
-                WHEN UPPER(tl.description) LIKE '%%CGST%%' OR UPPER(tl.account_head) LIKE '%%CGST%%' THEN 'CGST'
-                WHEN UPPER(tl.description) LIKE '%%SGST%%' OR UPPER(tl.account_head) LIKE '%%SGST%%' THEN 'SGST'
-                ELSE tl.description
-            END AS tax_type,
+            COALESCE(NULLIF(tl.tax_type, ''), tl.description) AS tax_type,
             tl.description,
             tl.rate            AS tax_rate,
             tl.tax_amount,
             tl.account_head
-        FROM `tabPurchase Taxes and Charges` tl
+        FROM `tabTax Line` tl
         JOIN `tabPurchase Invoice` pi
-          ON pi.name = tl.parent
-        WHERE pi.company    = %(company)s
-          AND pi.docstatus  = 1
-          AND pi.posting_date BETWEEN %(from_date)s AND %(to_date)s
+          ON pi.name = tl.parent AND tl.parenttype = 'Purchase Invoice'
+        WHERE pi.company        = %(company)s
+          AND pi.docstatus      = 1
+          AND pi.posting_date   BETWEEN %(from_date)s AND %(to_date)s
         ORDER BY pi.posting_date, pi.name, tl.idx
     """, {"company": company, "from_date": from_date, "to_date": to_date},
     as_dict=True)

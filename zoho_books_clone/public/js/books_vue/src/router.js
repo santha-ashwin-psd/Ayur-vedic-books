@@ -5,6 +5,7 @@
 
 import { createRouter, createWebHashHistory } from "vue-router";
 import PhaseAHome           from "./pages/PhaseAHome.vue";
+import Dashboard            from "./pages/Dashboard.vue";
 import Customers            from "./pages/Customers.vue";
 import Vendors              from "./pages/Vendors.vue";
 import InventoryItems       from "./pages/InventoryItems.vue";
@@ -63,6 +64,12 @@ const routes = [
   {
     path: "/",
     name: "dashboard",
+    component: Dashboard,
+    meta: { module: null },
+  },
+  {
+    path: "/home",
+    name: "home",
     component: PhaseAHome,
     meta: { module: null },
   },

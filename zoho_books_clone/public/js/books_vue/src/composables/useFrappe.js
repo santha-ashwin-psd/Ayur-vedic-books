@@ -1,7 +1,9 @@
 // composables/useFrappe.js
-// Thin wrapper around frappe.call / frappe.db for use in Vue components.
+// Thin wrapper around the app's own apiGET/apiList for use in Vue components.
+// NOTE: frappe.call is NOT available in this standalone Vue bundle — use client.js instead.
 
 import { ref } from "vue";
+import { apiGET, apiList } from "../api/client.js";
 
 /**
  * Call a whitelisted Python method.
@@ -16,11 +18,8 @@ export function useFrappeCall(method, args = {}) {
     loading.value = true;
     error.value   = null;
     try {
-      const res = await frappe.call({
-        method,
-        args: { ...args, ...overrideArgs },
-      });
-      data.value = res.message;
+      const res = await apiGET(method, { ...args, ...overrideArgs });
+      data.value = res;
     } catch (e) {
       error.value = e;
       console.error(`[useFrappeCall] ${method}`, e);
@@ -34,7 +33,7 @@ export function useFrappeCall(method, args = {}) {
 }
 
 /**
- * Fetch a list of documents via frappe.db.get_list equivalent.
+ * Fetch a list of documents.
  */
 export function useFrappeList(doctype, opts = {}) {
   const list    = ref([]);
@@ -45,18 +44,7 @@ export function useFrappeList(doctype, opts = {}) {
     loading.value = true;
     error.value   = null;
     try {
-      const res = await frappe.call({
-        method: "frappe.client.get_list",
-        args: {
-          doctype,
-          fields:     opts.fields     || ["name"],
-          filters:    opts.filters    || [],
-          order_by:   opts.order_by   || "modified desc",
-          limit_page_length: opts.limit || 20,
-          ...overrideOpts,
-        },
-      });
-      list.value = res.message || [];
+      list.value = await apiList(doctype, { ...opts, ...overrideOpts });
     } catch (e) {
       error.value = e;
     } finally {

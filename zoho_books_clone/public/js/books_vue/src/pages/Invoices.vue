@@ -84,7 +84,6 @@
             </td>
             <td @click="openView(inv)" class="text-muted mono-sm">{{fmtDate(inv.posting_date)}}</td>
             <td @click="openView(inv)"><span class="inv-link">{{inv.name}}</span></td>
-            <td @click="openView(inv)" class="text-muted">{{inv.po_no||'—'}}</td>
             <td @click="openView(inv)"><span class="inv-customer">{{inv.customer_name||inv.customer}}</span></td>
             <td @click="openView(inv)">
               <span class="inv-status-badge" :class="statusCls(inv)">{{statusLabel(inv)}}</span>
@@ -150,10 +149,6 @@
             <div>
               <label class="inv-lbl">Due Date</label>
               <input v-model="form.due_date" type="date" class="inv-fi"/>
-            </div>
-            <div>
-              <label class="inv-lbl">PO Number</label>
-              <input v-model="form.po_no" class="inv-fi" placeholder="Customer PO ref"/>
             </div>
           </div>
 
@@ -397,7 +392,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGET, apiPOST, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -429,7 +424,7 @@ const drawerOpen   = ref(false);
 const editingName  = ref(null);
 const drawerSaving = ref(false);
 const form = reactive({
-  customer: "", posting_date: "", due_date: "", po_no: "",
+  customer: "", posting_date: "", due_date: "",
   tax_rate: 18, remarks: "", docstatus: 0,
 });
 const lines = ref([]);
@@ -512,7 +507,7 @@ const filtered = computed(() => {
   else if (activeFilter.value === "Overdue") r = r.filter(isOverdue);
   else if (activeFilter.value === "Unpaid")  r = r.filter(i => !isOverdue(i) && i.outstanding_amount > 0 && i.docstatus === 1);
   else if (activeFilter.value === "Paid")    r = r.filter(i => i.outstanding_amount <= 0 && i.docstatus === 1);
-  if (q) r = r.filter(i => (i.name + (i.customer_name || "") + (i.customer || "") + (i.po_no || "")).toLowerCase().includes(q));
+  if (q) r = r.filter(i => (i.name + (i.customer_name || "") + (i.customer || "")).toLowerCase().includes(q));
   return r;
 });
 
@@ -611,32 +606,43 @@ function onCustomerChange() {}  // future: auto-fill payment terms
 function openAdd() {
   editingName.value = null;
   lines.value = [{ id: Date.now(), item_code: "", item_name: "", description: "", qty: 1, rate: 0, uom: "Nos", amount: 0 }];
-  Object.assign(form, { customer: "", posting_date: todayStr(), due_date: dueDateDefault(), po_no: "", tax_rate: 18, remarks: "", docstatus: 0 });
+  Object.assign(form, { customer: "", posting_date: todayStr(), due_date: dueDateDefault(), tax_rate: 18, remarks: "", docstatus: 0 });
   drawerOpen.value = true;
 }
-function openEdit(inv) {
+async function openEdit(inv) {
   editingName.value = inv.name;
   Object.assign(form, {
     customer: inv.customer || "",
     posting_date: inv.posting_date || todayStr(),
     due_date: inv.due_date || dueDateDefault(),
-    po_no: inv.po_no || "",
     tax_rate: 18,
     remarks: inv.remarks || "",
     docstatus: inv.docstatus || 0,
   });
-  lines.value = (inv.items || []).map((it, i) => ({
-    id: Date.now() + i,
-    item_code: it.item_code || "",
-    item_name: it.item_name || "",
-    description: it.description || "",
-    qty: flt(it.qty) || 1,
-    rate: flt(it.rate) || 0,
-    uom: it.uom || "Nos",
-    amount: flt(it.amount) || 0,
-  }));
-  if (!lines.value.length) addLine();
+  lines.value = [{ id: Date.now(), item_code: "", item_name: "", description: "", qty: 1, rate: 0, uom: "Nos", amount: 0 }];
   drawerOpen.value = true;
+  try {
+    const doc = await apiGet("Sales Invoice", inv.name);
+    Object.assign(form, {
+      customer: doc.customer || "",
+      posting_date: doc.posting_date || todayStr(),
+      due_date: doc.due_date || dueDateDefault(),
+      tax_rate: doc.taxes?.[0]?.rate || 18,
+      remarks: doc.remarks || "",
+      docstatus: doc.docstatus || 0,
+    });
+    lines.value = (doc.items || []).map((it, i) => ({
+      id: Date.now() + i,
+      item_code: it.item_code || "",
+      item_name: it.item_name || "",
+      description: it.description || "",
+      qty: flt(it.qty) || 1,
+      rate: flt(it.rate) || 0,
+      uom: it.uom || "Nos",
+      amount: flt(it.amount) || 0,
+    }));
+    if (!lines.value.length) addLine();
+  } catch { /* drawer already open with partial data */ }
 }
 function openView(inv) {
   viewInv.value = inv;
@@ -677,7 +683,6 @@ async function saveInvoice(docstatus) {
       customer: form.customer,
       posting_date: form.posting_date,
       due_date: form.due_date || form.posting_date,
-      po_no: form.po_no || "",
       remarks: form.remarks || "",
       items: invItems,
       taxes,

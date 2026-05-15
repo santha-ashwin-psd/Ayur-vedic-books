@@ -510,8 +510,8 @@ async function saveEntry(status) {
         account: l.account,
         party: l.party || null,
         cost_center: l.cost_center || form.cost_center || null,
-        debit_in_account_currency: flt(l.dr),
-        credit_in_account_currency: flt(l.cr),
+        debit: flt(l.dr),
+        credit: flt(l.cr),
       })),
     };
     const frappeDoc = { doctype: "Journal Entry", naming_series: "JV-.YYYY.-.#####", company, ...payload };

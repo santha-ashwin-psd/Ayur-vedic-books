@@ -184,7 +184,7 @@ function openNew(){Object.assign(form,{customer:"",posting_date:new Date().toISO
 function openView(c){viewDoc.value=c;viewOpen.value=true;}
 async function fetchCustomers(q=""){try{const r=await apiLinkValues("Customer",q);customers.value=r.map(x=>({label:x.name,value:x.name}));}catch{customers.value=[];}}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
-async function fetchInvoices(q=""){try{const r=await apiList("Sales Invoice",{fields:["name"],filters:[["is_return","=",0],["docstatus","=",1],["customer","=",form.customer||""]],limit:20});invoices.value=r.map(x=>({label:x.name,value:x.name}));}catch{invoices.value=[];}}
+async function fetchInvoices(q=""){try{const f=[["is_return","=",0],["docstatus","=",1]];if(form.customer)f.push(["customer","=",form.customer]);if(q)f.push(["name","like",`%${q}%`]);const r=await apiList("Sales Invoice",{fields:["name"],filters:f,limit:20});invoices.value=r.map(x=>({label:x.name,value:x.name}));}catch{invoices.value=[];}}
 function onItemSelect(line,val){line.item_code=val;}
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}

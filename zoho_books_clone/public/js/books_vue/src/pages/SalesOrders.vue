@@ -262,7 +262,7 @@ async function saveOrder(submit){
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
-    const taxes=form.tax_rate>0?[{doctype:"Sales Taxes and Charges",charge_type:"On Net Total",rate:form.tax_rate,account_head:taxAccountHead.value,description:`Tax @ ${form.tax_rate}%`}]:[];
+    const taxes=form.tax_rate>0?[{doctype:"Tax Line",charge_type:"On Net Total",rate:form.tax_rate,account_head:taxAccountHead.value,description:`Tax @ ${form.tax_rate}%`}]:[];
     const doc={doctype:"Sales Order",company,customer:form.customer,transaction_date:form.transaction_date,delivery_date:form.delivery_date||null,terms:form.terms||"",
       items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Sales Order Item",item_code:l.item_code,description:l.description||l.item_code,qty:flt(l.qty)||1,rate:flt(l.rate),amount:flt(l.amount),delivery_date:form.delivery_date||null})),taxes};
     if(editingName.value) doc.name=editingName.value;

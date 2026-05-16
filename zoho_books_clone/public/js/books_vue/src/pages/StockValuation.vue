@@ -64,7 +64,7 @@ async function load(){
     const whNames=whs.map(w=>w.name);
     const f=whNames.length?[["warehouse","in",whNames]]:[];
     if(filters.warehouse)f.push(["warehouse","=",filters.warehouse]);
-    if(f.length===0&&!filters.warehouse){list.value=[];return;}
+    
     list.value=await apiList("Bin",{fields:["item_code","warehouse","actual_qty","valuation_rate","stock_value","projected_qty","reserved_qty","stock_uom"],filters:f,limit:500,order:"stock_value desc"});
   }catch(e){toast.error(e.message||"Failed to load valuation");}finally{loading.value=false;}
 }

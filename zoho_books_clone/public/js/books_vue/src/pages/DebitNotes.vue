@@ -153,7 +153,7 @@ function openNew(){Object.assign(form,{supplier:"",posting_date:new Date().toISO
 function openView(d){viewDoc.value=d;viewOpen.value=true;}
 async function fetchVendors(q=""){try{const r=await apiLinkValues("Supplier",q);vendors.value=r.map(x=>({label:x.name,value:x.name}));}catch{vendors.value=[];}}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
-async function fetchBills(q=""){try{const r=await apiList("Purchase Invoice",{fields:["name"],filters:[["is_return","=",0],["docstatus","=",1],["supplier","=",form.supplier||""]],limit:20});bills.value=r.map(x=>({label:x.name,value:x.name}));}catch{bills.value=[];}}
+async function fetchBills(q=""){try{const r=await apiList("Purchase Invoice",{fields:["name"],filters:[["is_return","=",0],["docstatus","=",1],...(form.supplier?[["supplier","=",form.supplier]]:[])],limit:20});bills.value=r.map(x=>({label:x.name,value:x.name}));}catch{bills.value=[];}}
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
 function calcLine(l){l.amount=Math.round(flt(l.qty)*flt(l.rate)*100)/100;}

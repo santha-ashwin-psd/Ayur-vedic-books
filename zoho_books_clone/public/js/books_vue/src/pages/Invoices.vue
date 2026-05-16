@@ -671,7 +671,7 @@ async function saveInvoice(docstatus) {
       }));
 
     const taxes = form.tax_rate > 0 ? [{
-      doctype: "Sales Taxes and Charges",
+      doctype: "Tax Line",
       charge_type: "On Net Total",
       account_head: taxAccountHead.value,
       description: "GST @ " + form.tax_rate + "%",

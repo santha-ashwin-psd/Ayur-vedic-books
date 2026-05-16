@@ -355,7 +355,7 @@ async function saveQuote(submit) {
   drawerSaving.value=true;
   try {
     const company=await resolveCompany();
-    const taxes=form.tax_rate>0?[{doctype:"Sales Taxes and Charges",charge_type:"On Net Total",rate:form.tax_rate,account_head:taxAccountHead.value,description:`Tax @ ${form.tax_rate}%`}]:[];
+    const taxes=form.tax_rate>0?[{doctype:"Tax Line",charge_type:"On Net Total",rate:form.tax_rate,account_head:taxAccountHead.value,description:`Tax @ ${form.tax_rate}%`}]:[];
     const doc={
       doctype:"Quotation", company,
       quotation_to:"Customer", party_name:form.party_name,

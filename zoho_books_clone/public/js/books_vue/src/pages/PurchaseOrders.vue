@@ -203,7 +203,7 @@ async function saveOrder(submit){
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
-    const taxes=form.tax_rate>0&&taxAccountHead.value?[{doctype:"Purchase Taxes and Charges",charge_type:"On Net Total",account_head:taxAccountHead.value,description:taxAccountHead.value,rate:form.tax_rate}]:[];
+    const taxes=form.tax_rate>0&&taxAccountHead.value?[{doctype:"Tax Line",charge_type:"On Net Total",account_head:taxAccountHead.value,description:taxAccountHead.value,rate:form.tax_rate}]:[];
     const doc={doctype:"Purchase Order",company,supplier:form.supplier,transaction_date:form.transaction_date,expected_delivery_date:form.expected_delivery_date||null,terms:form.terms||"",
       items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Purchase Order Item",item_code:l.item_code,description:l.description||l.item_code,qty:flt(l.qty)||1,rate:flt(l.rate),amount:flt(l.amount),expected_delivery_date:form.expected_delivery_date||null})),taxes};
     if(editingName.value)doc.name=editingName.value;

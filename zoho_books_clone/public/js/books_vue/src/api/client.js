@@ -139,10 +139,17 @@ export async function apiCancel(doctype, name) {
   return await apiPOST("zoho_books_clone.api.docs.cancel_doc", { doctype, name });
 }
 
+// Doctypes with a native `company` field — filter by the current company.
 const _CO_SCOPED = new Set([
   "Sales Invoice", "Purchase Invoice", "Quotation", "Sales Order", "Purchase Order",
   "Payment Entry", "Stock Entry", "Journal Entry", "Account", "Warehouse", "Cost Center",
   "Bank Account", "Expense Claim",
+]);
+
+// Master types with no native company field — filtered by `books_company` custom field
+// so all members of the same company share the same pool of records.
+const _BOOKS_CO_SCOPED = new Set([
+  "Customer", "Supplier", "Item", "Contact",
 ]);
 
 export async function apiList(dt, opts = {}) {
@@ -150,8 +157,13 @@ export async function apiList(dt, opts = {}) {
   const co = window.__booksCompany || "";
 
   if (co && _CO_SCOPED.has(dt)) {
-    const already = filters.some(f => Array.isArray(f) && f[0] === "company");
-    if (!already) filters.push(["company", "=", co]);
+    if (!filters.some(f => Array.isArray(f) && f[0] === "company"))
+      filters.push(["company", "=", co]);
+  }
+
+  if (co && _BOOKS_CO_SCOPED.has(dt)) {
+    if (!filters.some(f => Array.isArray(f) && f[0] === "books_company"))
+      filters.push(["books_company", "=", co]);
   }
 
   return await apiGET("frappe.client.get_list", {
@@ -167,6 +179,11 @@ export async function apiLinkValues(doctype, txt, filters) {
   const f = filters
     ? [...filters, ["name", "like", "%" + txt + "%"]]
     : [["name", "like", "%" + txt + "%"]];
+  const co = window.__booksCompany || "";
+  if (co && _BOOKS_CO_SCOPED.has(doctype)) {
+    if (!f.some(x => Array.isArray(x) && x[0] === "books_company"))
+      f.push(["books_company", "=", co]);
+  }
   return await apiGET("frappe.client.get_list", {
     doctype,
     fields:            JSON.stringify(["name"]),

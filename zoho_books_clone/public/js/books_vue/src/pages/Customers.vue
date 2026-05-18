@@ -87,7 +87,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between">
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{c.customer_name}}</div>
-              <div style="font-size:12px;color:#6B7280;margin-top:2px;font-family:monospace">₹0.00</div>
+              <div style="font-size:12px;margin-top:2px;font-family:monospace" :style="{color: c.outstanding>0 ? '#dc2626' : '#6B7280'}">{{ c.outstanding > 0 ? fmt(c.outstanding) : '₹0.00' }}</div>
             </div>
             <span class="b-badge" :class="c.disabled?'b-badge-red':'b-badge-green'" style="font-size:10px">{{c.disabled?'Disabled':'Active'}}</span>
           </div>
@@ -134,7 +134,7 @@
               {{custInitials(selectedCustomer.customer_name)}}
             </div>
             <div style="flex:1">
-              <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:4px">Mr. {{selectedCustomer.customer_name}}</div>
+              <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:4px">{{ selectedCustomer.salutation ? selectedCustomer.salutation + ' ' : '' }}{{selectedCustomer.customer_name}}</div>
               <div v-if="selectedCustomer.email_id" style="font-size:12.5px;color:#6B7280;margin-bottom:3px">{{selectedCustomer.email_id}}</div>
               <div v-if="selectedCustomer.mobile_no" style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:#374151;margin-bottom:3px">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6A16 16 0 0 0 15.4 16.1l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
@@ -218,9 +218,9 @@
               </thead>
               <tbody>
                 <tr>
-                  <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 0">INR- Indian Rupee</td>
+                  <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 0">{{ selectedCustomer.default_currency || 'INR' }}</td>
                   <td style="text-align:right;font-size:13px;font-weight:700;color:#2563EB;padding:10px 0;font-family:monospace">{{fmt(selectedCustomer.credit_limit||0)}}</td>
-                  <td style="text-align:right;font-size:13px;font-weight:700;color:#111827;padding:10px 0;font-family:monospace">₹0.00</td>
+                  <td style="text-align:right;font-size:13px;font-weight:700;padding:10px 0;font-family:monospace" :style="{color: selectedCustomer.outstanding>0?'#dc2626':'#111827'}">{{ fmt(selectedCustomer.outstanding||0) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -810,8 +810,8 @@ const GST_RULES = {
     showPan: false, requirePan: false,
     showPlaceOfSupply: false, requirePlaceOfSupply: false,
     requireIndiaCountry: false,
-    taxType: "IGST",
-    hint: "IGST will be applied. Ensure the country is set correctly.",
+    taxType: "Zero Rated (Export/LUT)",
+    hint: "Exports are zero-rated under GST. Raise invoices under LUT/Bond without charging IGST, or charge IGST and claim refund. No Indian GSTIN required.",
     countryNote: "Set country to the customer's country (outside India).",
   },
   "SEZ": {
@@ -894,9 +894,9 @@ function validateField(field) {
     else if (s.length < 2) formErrors.customer_name = "Name must be at least 2 characters";
     else if (s.length > 100) formErrors.customer_name = "Name must not exceed 100 characters";
   }
-  if (field === "first_name" && s && !/^[a-zA-Z\s.']+$/.test(s))
+  if (field === "first_name" && s && !/^[\p{L}\s.'\-]+$/u.test(s))
     formErrors.first_name = "First name must contain letters only";
-  if (field === "last_name" && s && !/^[a-zA-Z\s.']+$/.test(s))
+  if (field === "last_name" && s && !/^[\p{L}\s.'\-]+$/u.test(s))
     formErrors.last_name = "Last name must contain letters only";
   if (field === "company_name" && form.customer_type === "Company" && !s)
     formErrors.company_name = "Company name is required for Business customers";
@@ -947,9 +947,9 @@ function validateCustomerForm() {
   else if (cn.length > 100) formErrors.customer_name = "Name must not exceed 100 characters";
   if (form.customer_type === "Company" && !form.company_name.trim())
     formErrors.company_name = "Company name is required for Business customers";
-  if (form.first_name && !/^[a-zA-Z\s.']+$/.test(form.first_name.trim()))
+  if (form.first_name && !/^[\p{L}\s.'\-]+$/u.test(form.first_name.trim()))
     formErrors.first_name = "First name must contain letters only";
-  if (form.last_name && !/^[a-zA-Z\s.']+$/.test(form.last_name.trim()))
+  if (form.last_name && !/^[\p{L}\s.'\-]+$/u.test(form.last_name.trim()))
     formErrors.last_name = "Last name must contain letters only";
   if (form.email_id && !EMAIL_REGEX.test(form.email_id.trim()))
     formErrors.email_id = "Invalid email address";
@@ -1011,12 +1011,15 @@ const filtered = computed(() => {
 async function load() {
   loading.value = true;
   try {
-    const rows = await apiList("Customer", {
-      fields: ["name","customer_name","customer_type","email_id","mobile_no",
-        "tax_id","city","state","disabled","default_currency","credit_limit"],
-      order: "customer_name asc", limit: 300,
-    });
-    list.value = rows || [];
+    const [rows, balances] = await Promise.all([
+      apiList("Customer", {
+        fields: ["name","customer_name","customer_type","email_id","mobile_no",
+          "tax_id","city","state","disabled","default_currency","credit_limit","salutation","gst_treatment"],
+        order: "customer_name asc", limit: 300,
+      }),
+      apiGET("zoho_books_clone.api.books_data.get_customer_outstanding").catch(() => ({})),
+    ]);
+    list.value = (rows || []).map(c => ({ ...c, outstanding: balances[c.name] || 0 }));
   } catch (e) {
     toast("Failed to load customers: " + (e.message || e), "error");
   } finally { loading.value = false; }

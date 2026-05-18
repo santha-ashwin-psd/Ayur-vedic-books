@@ -6,15 +6,21 @@
       <span style="font-size:18px;font-weight:700;color:#1a1a2e">Team Members</span>
       <span style="background:#F3F0FF;color:#2563eb;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{users.length}} members</span>
     </div>
-    <button class="nim-btn nim-btn-primary" @click="openInvite"><span v-html="icon('plus',13)" style="vertical-align:-2px;margin-right:4px"/>Add Member</button>
+    <button v-if="!accessDenied" class="nim-btn nim-btn-primary" @click="openInvite"><span v-html="icon('plus',13)" style="vertical-align:-2px;margin-right:4px"/>Add Member</button>
   </div>
 
-  <div style="background:#f0f4ff;border:1px solid #c5d0fa;border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#3b4a7a;display:flex;gap:12px;align-items:flex-start">
+  <div v-if="!accessDenied" style="background:#f0f4ff;border:1px solid #c5d0fa;border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#3b4a7a;display:flex;gap:12px;align-items:flex-start">
     <span style="font-size:18px;margin-top:-1px">🏢</span>
     <div><strong>Company-scoped access:</strong> Members you add here will only see data belonging to your company. Each member gets their own email &amp; password. New user sign-ups always create a separate, isolated company.</div>
   </div>
 
-  <div class="cust-table-card" style="margin-top:0">
+  <div v-if="accessDenied" style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:10px;padding:24px;text-align:center;color:#C92A2A;font-size:13.5px;margin-top:0">
+    <div style="font-size:22px;margin-bottom:8px">🔒</div>
+    <strong>Access Denied</strong><br/>
+    <span style="color:#4a5568;font-size:13px">Only company admins can manage team members.</span>
+  </div>
+
+  <div v-else class="cust-table-card" style="margin-top:0">
     <div v-if="loading" style="padding:40px;text-align:center;color:#868E96">Loading members…</div>
     <table v-else style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="background:#f8f9fc;border-bottom:2px solid #e4e8f0">
@@ -53,7 +59,7 @@
         <tr v-if="!users.length"><td colspan="6" style="padding:40px;text-align:center;color:#868e96">No members yet — add your first team member above</td></tr>
       </tbody>
     </table>
-  </div>
+  </div><!-- end v-else -->
 
   <Teleport to="body">
     <div v-if="showInvite" class="nim-overlay" @click.self="showInvite=false">
@@ -236,6 +242,7 @@ function defaultModulesFor(role) { return { ...(DEFAULT_MODULES_BY_ROLE[role] ||
 const users    = ref([]);
 const loading  = ref(false);
 const saving   = ref(false);
+const accessDenied = ref(false);
 const showInvite = ref(false);
 const step     = ref(1);
 const editUser = ref(null);
@@ -275,9 +282,17 @@ function displayRole(u) {
 
 async function load() {
   loading.value = true;
+  accessDenied.value = false;
   try {
     users.value = await apiGET("zoho_books_clone.api.admin.get_company_members") || [];
-  } catch (e) { toast("Could not load members: " + (e.message || e), "error"); }
+  } catch (e) {
+    const msg = e.message || String(e);
+    if (msg.includes("permission") || msg.includes("admin") || msg.includes("linked")) {
+      accessDenied.value = true;
+    } else {
+      toast("Could not load members: " + msg, "error");
+    }
+  }
   loading.value = false;
 }
 

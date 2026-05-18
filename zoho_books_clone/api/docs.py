@@ -154,6 +154,56 @@ def save_doc(doc):
                     for mk in _CHILD_META_KEYS:
                         row.pop(mk, None)
 
+    # Auto-stamp books_company for master types that have no native company field
+    _MASTER_TYPES = {"Customer", "Supplier", "Item", "Contact"}
+    if doctype in _MASTER_TYPES and not doc.get("books_company"):
+        from zoho_books_clone.utils.tenancy import get_user_company, _is_bypass
+        if not _is_bypass(frappe.session.user):
+            _uc = get_user_company(frappe.session.user)
+            if _uc:
+                doc["books_company"] = _uc
+
+    # Auto-fill mandatory account fields Frappe requires but the UI doesn't expose
+    _company = doc.get("company") or frappe.db.get_value("Global Defaults", None, "default_company")
+
+    def _find_account(account_types, company):
+        """Find first leaf account matching any of the given account_type values."""
+        for at in account_types:
+            val = frappe.db.get_value("Account", {"account_type": at, "company": company, "is_group": 0}, "name")
+            if val:
+                return val
+        return None
+
+    if doctype == "Sales Invoice":
+        if not doc.get("debit_to"):
+            _ar = _find_account(["Receivable"], _company)
+            if _ar:
+                doc["debit_to"] = _ar
+        _income = _find_account(["Income", "Income Account", "Direct Income", "Sales"], _company)
+        if _income:
+            # Set on header (used by accounting_engine.post_sales_invoice)
+            if not doc.get("income_account"):
+                doc["income_account"] = _income
+            # Set on each item row for Frappe's own validation
+            for item in doc.get("items") or []:
+                if isinstance(item, dict) and not item.get("income_account"):
+                    item["income_account"] = _income
+
+    if doctype == "Purchase Invoice":
+        if not doc.get("credit_to"):
+            _ap = _find_account(["Payable"], _company)
+            if _ap:
+                doc["credit_to"] = _ap
+        _expense = _find_account(["Expense", "Expense Account", "Cost of Goods Sold", "Expenses Included In Valuation"], _company)
+        if _expense:
+            # Set on header (used by accounting_engine.post_purchase_invoice)
+            if not doc.get("expense_account"):
+                doc["expense_account"] = _expense
+            # Set on each item row
+            for item in doc.get("items") or []:
+                if isinstance(item, dict) and not item.get("expense_account"):
+                    item["expense_account"] = _expense
+
     name = doc.get("name")
     if name and frappe.db.exists(doctype, name):
         d = frappe.get_doc(doctype, name)
@@ -213,59 +263,54 @@ def get_party_last_items(party_type, party, limit=10):
     """
     limit = int(limit)
 
+    def _fetch_items(item_doctype, parent_name):
+        """Select item fields that exist in this table; description is optional."""
+        has_desc = frappe.db.has_column(item_doctype, "description")
+        desc_col  = ", description" if has_desc else ""
+        return frappe.db.sql("""
+            SELECT item_name, item_code{desc} , qty, rate
+            FROM `tab{idt}`
+            WHERE parent = %(parent)s
+            ORDER BY idx ASC LIMIT %(limit)s
+        """.format(desc=desc_col, idt=item_doctype),
+            {"parent": parent_name, "limit": limit}, as_dict=True)
+
+    def _latest_parent(doctype, party_field):
+        row = frappe.db.sql("""
+            SELECT name FROM `tab{dt}`
+            WHERE `{pf}` = %(party)s AND docstatus = 1
+            ORDER BY modified DESC LIMIT 1
+        """.format(dt=doctype, pf=party_field), {"party": party}, as_dict=True)
+        if not row:
+            row = frappe.db.sql("""
+                SELECT name FROM `tab{dt}`
+                WHERE `{pf}` = %(party)s
+                ORDER BY modified DESC LIMIT 1
+            """.format(dt=doctype, pf=party_field), {"party": party}, as_dict=True)
+        return row[0].name if row else None
+
     if party_type == "Customer":
-        # Try Sales Invoice first, then Quotation
         for doctype, item_doctype, party_field in [
             ("Sales Invoice", "Sales Invoice Item", "customer"),
             ("Quotation",     "Quotation Item",     "customer"),
             ("Sales Order",   "Sales Order Item",   "customer"),
         ]:
-            row = frappe.db.sql("""
-                SELECT name FROM `tab{dt}`
-                WHERE `{pf}` = %(party)s AND docstatus = 1
-                ORDER BY modified DESC LIMIT 1
-            """.format(dt=doctype, pf=party_field), {"party": party}, as_dict=True)
-            if not row:
-                row = frappe.db.sql("""
-                    SELECT name FROM `tab{dt}`
-                    WHERE `{pf}` = %(party)s
-                    ORDER BY modified DESC LIMIT 1
-                """.format(dt=doctype, pf=party_field), {"party": party}, as_dict=True)
-            if row:
-                items = frappe.db.sql("""
-                    SELECT item_name, item_code, description, qty, rate
-                    FROM `tab{idt}`
-                    WHERE parent = %(parent)s
-                    ORDER BY idx ASC LIMIT %(limit)s
-                """.format(idt=item_doctype), {"parent": row[0].name, "limit": limit}, as_dict=True)
+            parent_name = _latest_parent(doctype, party_field)
+            if parent_name:
+                items = _fetch_items(item_doctype, parent_name)
                 if items:
-                    return {"source": row[0].name, "source_doctype": doctype, "items": items}
+                    return {"source": parent_name, "source_doctype": doctype, "items": items}
 
     elif party_type == "Supplier":
         for doctype, item_doctype, party_field in [
             ("Purchase Invoice", "Purchase Invoice Item", "supplier"),
             ("Purchase Order",   "Purchase Order Item",   "supplier"),
         ]:
-            row = frappe.db.sql("""
-                SELECT name FROM `tab{dt}`
-                WHERE `{pf}` = %(party)s AND docstatus = 1
-                ORDER BY modified DESC LIMIT 1
-            """.format(dt=doctype, pf=party_field), {"party": party}, as_dict=True)
-            if not row:
-                row = frappe.db.sql("""
-                    SELECT name FROM `tab{dt}`
-                    WHERE `{pf}` = %(party)s
-                    ORDER BY modified DESC LIMIT 1
-                """.format(dt=doctype, pf=party_field), {"party": party}, as_dict=True)
-            if row:
-                items = frappe.db.sql("""
-                    SELECT item_name, item_code, description, qty, rate
-                    FROM `tab{idt}`
-                    WHERE parent = %(parent)s
-                    ORDER BY idx ASC LIMIT %(limit)s
-                """.format(idt=item_doctype), {"parent": row[0].name, "limit": limit}, as_dict=True)
+            parent_name = _latest_parent(doctype, party_field)
+            if parent_name:
+                items = _fetch_items(item_doctype, parent_name)
                 if items:
-                    return {"source": row[0].name, "source_doctype": doctype, "items": items}
+                    return {"source": parent_name, "source_doctype": doctype, "items": items}
 
     return {"source": None, "items": []}
 
@@ -320,15 +365,16 @@ def create_debit_note():
     ]
 
     pi = frappe.get_doc({
-        "doctype":        "Purchase Invoice",
-        "is_return":      1,
-        "company":        company,
-        "supplier":       vendor,
-        "return_against": against_bill,
-        "posting_date":   date,
-        "remarks":        reason,
-        "credit_to":      ap_account,
-        "items":          pi_items,
+        "doctype":          "Purchase Invoice",
+        "is_return":        1,
+        "company":          company,
+        "supplier":         vendor,
+        "return_against":   against_bill,
+        "posting_date":     date,
+        "remarks":          reason,
+        "credit_to":        ap_account,
+        "expense_account":  expense_account,
+        "items":            pi_items,
     })
     pi.name = "DN-" + frappe.generate_hash(
         txt=f"{vendor}{frappe.utils.now()}", length=8
@@ -447,16 +493,17 @@ def create_credit_note():
     ]
 
     cn = frappe.get_doc({
-        "doctype":        "Sales Invoice",
-        "is_return":      1,
-        "company":        company,
-        "customer":       customer,
-        "return_against": against_inv,
-        "posting_date":   date,
-        "remarks":        (reason + (" — " + notes if notes else "")),
-        "debit_to":       ar_account,
-        "items":          cn_items,
-        "taxes":          cn_taxes,
+        "doctype":          "Sales Invoice",
+        "is_return":        1,
+        "company":          company,
+        "customer":         customer,
+        "return_against":   against_inv,
+        "posting_date":     date,
+        "remarks":          (reason + (" — " + notes if notes else "")),
+        "debit_to":         ar_account,
+        "income_account":   income_account,
+        "items":            cn_items,
+        "taxes":            cn_taxes,
     })
     cn.name = "CN-" + frappe.generate_hash(
         txt=f"{customer}{frappe.utils.now()}", length=8

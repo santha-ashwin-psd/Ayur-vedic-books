@@ -14,8 +14,9 @@
 
     <div class="bv-topbar-spacer"></div>
 
-    <button class="bv-topbar-icon-btn" title="AI Assistant" @click="$emit('toggle-ai')">
+    <button class="bv-topbar-icon-btn bv-topbar-ai-btn" title="AI Assistant" @click="$emit('toggle-ai')">
       <IconSvg name="sparkle" :size="17" />
+      <span v-if="alertCount > 0" class="bv-ai-badge">{{ alertCount > 9 ? '9+' : alertCount }}</span>
     </button>
 
     <NotificationsBell />
@@ -55,7 +56,8 @@ import { titleFor } from "./nav.js";
 import { session } from "../api/session.js";
 import { usePermissions } from "../composables/usePermissions.js";
 
-defineEmits(["toggle-ai"]);
+defineEmits(["toggle-ai"])
+defineProps({ alertCount: { type: Number, default: 0 } });
 
 const route   = useRoute();
 const router  = useRouter();

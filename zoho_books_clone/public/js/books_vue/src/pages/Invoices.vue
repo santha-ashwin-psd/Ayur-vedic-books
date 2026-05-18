@@ -219,7 +219,10 @@
             </div>
             <div>
               <label class="inv-lbl">Place of Supply</label>
-              <select v-model="form.place_of_supply" class="inv-fi">
+              <div v-if="isOverseas" class="inv-fi" style="background:#eff6ff;color:#1d4ed8;font-size:12px;display:flex;align-items:center;gap:6px;padding:8px 10px;border-color:#bfdbfe">
+                <span>🌐</span> Outside India — Not applicable for export invoices
+              </div>
+              <select v-else v-model="form.place_of_supply" class="inv-fi">
                 <option value="">— Select State —</option>
                 <option v-for="s in INDIAN_STATES" :key="s" :value="s">{{ s }}</option>
               </select>
@@ -258,9 +261,9 @@
                     <th style="min-width:70px">HSN/SAC</th>
                     <th style="min-width:60px">Qty</th>
                     <th style="min-width:60px">UOM</th>
-                    <th style="min-width:90px;text-align:right">Rate (₹)</th>
+                    <th style="min-width:90px;text-align:right">Rate ({{ currencySymbol }})</th>
                     <th style="min-width:60px;text-align:right">Disc %</th>
-                    <th style="min-width:90px;text-align:right">Amount (₹)</th>
+                    <th style="min-width:90px;text-align:right">Amount ({{ currencySymbol }})</th>
                     <th style="width:28px"></th>
                   </tr>
                 </thead>
@@ -297,10 +300,31 @@
             <div class="inv-totals-wrap">
               <!-- Tax section -->
               <div class="inv-tax-section">
+                <!-- Overseas notice -->
+                <div v-if="isOverseas" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#1e40af;display:flex;align-items:flex-start;gap:8px">
+                  <span style="font-size:15px;flex-shrink:0">🌐</span>
+                  <div>
+                    <strong>Export Invoice — Zero Rated Supply</strong><br/>
+                    GST is not applicable on exports. Ensure you have a valid LUT (Letter of Undertaking) or pay IGST and claim refund. No tax rows needed.
+                  </div>
+                </div>
+                <!-- SEZ notice -->
+                <div v-else-if="isSEZ" style="background:#f3f0ff;border:1px solid #c4b5fd;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#4c1d95;display:flex;align-items:flex-start;gap:8px">
+                  <span style="font-size:15px;flex-shrink:0">🏭</span>
+                  <div>
+                    <strong>SEZ Supply — Zero Rated</strong><br/>
+                    Supplies to SEZ units/developers are zero-rated. Apply IGST @ 0% or supply under LUT/Bond without payment of tax.
+                  </div>
+                </div>
                 <div class="inv-tax-header">
                   <span class="inv-tax-title">Taxes</span>
                   <div class="inv-tax-presets">
-                    <button v-for="p in TAX_PRESETS" :key="p.label" class="inv-preset-btn" @click="applyTaxPreset(p)">{{ p.label }}</button>
+                    <template v-if="!isOverseas">
+                      <button v-for="p in TAX_PRESETS" :key="p.label" class="inv-preset-btn" @click="applyTaxPreset(p)">{{ p.label }}</button>
+                    </template>
+                    <template v-else>
+                      <span style="font-size:11.5px;color:#6b7280;font-style:italic">Tax presets disabled for overseas customer</span>
+                    </template>
                     <button class="inv-preset-btn inv-preset-custom" @click="addTaxRow">+ Custom</button>
                     <button v-if="taxRows.length" class="inv-preset-btn inv-preset-clear" @click="taxRows=[]">Clear</button>
                   </div>
@@ -323,7 +347,10 @@
                     </tr>
                   </tbody>
                 </table>
-                <div v-else style="font-size:12px;color:#9ca3af;padding:6px 0">No taxes — use preset buttons above or add custom row.</div>
+                <div v-else style="font-size:12px;color:#9ca3af;padding:6px 0">
+                  <span v-if="isOverseas">Zero-rated export — no taxes applicable.</span>
+                  <span v-else>No taxes — use preset buttons above or add custom row.</span>
+                </div>
               </div>
 
               <!-- Totals -->
@@ -665,7 +692,19 @@
               <input class="rp-input" v-model="emailModal.subject"/>
             </div>
             <div class="rp-field rp-field-full">
-              <label class="rp-label rp-req">Message</label>
+              <label class="rp-label rp-req" style="display:flex;align-items:center;justify-content:space-between;">
+                <span>Message</span>
+                <button
+                  type="button"
+                  class="bv-ai-enhance-btn"
+                  :disabled="emailModal.enhancing"
+                  @click="enhanceEmail"
+                  title="Enhance with AI"
+                >
+                  <span v-if="emailModal.enhancing">✨ Enhancing…</span>
+                  <span v-else>✨ AI Enhance</span>
+                </button>
+              </label>
               <textarea class="rp-input rp-textarea" v-model="emailModal.body" rows="6"></textarea>
             </div>
             <div style="font-size:12px;color:#9ca3af;background:#f8fafc;border-radius:6px;padding:8px 12px">
@@ -742,7 +781,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from "vue";
+import { ref, reactive, computed, watch, onMounted, nextTick } from "vue";
+import { useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
@@ -750,6 +790,7 @@ import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const route = useRoute();
 
 // ── Constants ─────────────────────────────────────────────────────────
 const PAY_MODES = ["Cash","Cheque","Bank Transfer","UPI","NEFT","RTGS","IMPS","Credit Card","Debit Card","DD"];
@@ -777,6 +818,12 @@ const TAX_PRESETS = [
   { label:"IGST 18%", rows:[{desc:"IGST @ 18%", rate:18}] },
   { label:"IGST 28%", rows:[{desc:"IGST @ 28%", rate:28}] },
 ];
+const IGST_PRESETS = [
+  { label:"IGST 5%",  rows:[{desc:"IGST @ 5%",  rate:5}]  },
+  { label:"IGST 12%", rows:[{desc:"IGST @ 12%", rate:12}] },
+  { label:"IGST 18%", rows:[{desc:"IGST @ 18%", rate:18}] },
+  { label:"IGST 28%", rows:[{desc:"IGST @ 28%", rate:28}] },
+];
 const INDIAN_STATES = [
   "01-Jammu and Kashmir","02-Himachal Pradesh","03-Punjab","04-Chandigarh","05-Uttarakhand",
   "06-Haryana","07-Delhi","08-Rajasthan","09-Uttar Pradesh","10-Bihar","11-Sikkim",
@@ -786,6 +833,7 @@ const INDIAN_STATES = [
   "31-Lakshadweep","32-Kerala","33-Tamil Nadu","34-Puducherry","35-Andaman and Nicobar Islands",
   "36-Telangana","37-Andhra Pradesh","38-Ladakh","97-Other Territory",
 ];
+const CURRENCY_SYMBOLS = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
 const TEMPLATES = [
   { key:"classic", label:"Classic" },
   { key:"modern",  label:"Modern"  },
@@ -821,6 +869,7 @@ const form = reactive({
   customer:"", posting_date:"", due_date:"", po_no:"",
   payment_terms:"", place_of_supply:"", billing_address:"",
   terms:"", remarks:"", docstatus:0,
+  currency:"INR", gst_treatment:"",
 });
 const lines   = ref([]);
 const taxRows = ref([]);
@@ -838,7 +887,7 @@ const payModal = reactive({ open:false, loading:false, saving:false, invName:"",
 const payForm  = reactive({ amount:0, date:"", mode:"Cash", ref:"", depositTo:"", charges:0, notes:"" });
 
 // ── Email modal ────────────────────────────────────────────────────────
-const emailModal = reactive({ open:false, loading:false, sending:false, invName:"", to:"", cc:"", subject:"", body:"" });
+const emailModal = reactive({ open:false, loading:false, sending:false, invName:"", to:"", cc:"", subject:"", body:"", enhancing:false });
 
 // ── Credit Note modal ──────────────────────────────────────────────────
 const cnModal = reactive({ open:false, saving:false, invName:"", customer:"", items:[], taxes:[], reason:"Price Adjustment", notes:"" });
@@ -847,9 +896,14 @@ const cnModal = reactive({ open:false, saving:false, invName:"", customer:"", it
 const confirmModal = reactive({ open:false, loading:false, title:"", message:"", actionLabel:"Confirm", action: null });
 
 // ── Helpers ────────────────────────────────────────────────────────────
+const currencySymbol = computed(() => CURRENCY_SYMBOLS[form.currency] || "₹");
 function fmtAmt(v) {
-  return "₹" + Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const sym = CURRENCY_SYMBOLS[form.currency] || "₹";
+  const locale = form.currency === "INR" ? "en-IN" : "en-US";
+  return sym + Number(v||0).toLocaleString(locale,{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+const isOverseas = computed(() => form.gst_treatment === "Overseas");
+const isSEZ = computed(() => form.gst_treatment === "SEZ");
 function todayStr() { return new Date().toISOString().slice(0,10); }
 function dueDateDefault() { const d=new Date(); d.setDate(d.getDate()+30); return d.toISOString().slice(0,10); }
 
@@ -1024,17 +1078,45 @@ function applyPaymentTerms() {
   form.due_date=d.toISOString().slice(0,10);
 }
 
-// ── Customer change: auto-fill address ────────────────────────────────
+// ── Customer change: auto-fill address, currency, GST treatment ───────
 async function onCustomerChange() {
   form.billing_address="";
   if (!form.customer) return;
   addressLoading.value=true;
   try {
-    const addrs=await apiList("Address",{
-      fields:["address_line1","address_line2","city","state","pincode"],
-      filters:[["Dynamic Link","link_name","=",form.customer],["Dynamic Link","link_doctype","=","Customer"]],
-      limit:1,
-    });
+    const [custDoc, addrs] = await Promise.all([
+      apiGet("Customer", form.customer),
+      apiList("Address",{
+        fields:["address_line1","address_line2","city","state","pincode"],
+        filters:[["Dynamic Link","link_name","=",form.customer],["Dynamic Link","link_doctype","=","Customer"]],
+        order:"`tabAddress`.modified desc",
+        limit:1,
+      }),
+    ]);
+
+    // Apply currency from customer
+    if (custDoc?.default_currency) form.currency = custDoc.default_currency;
+
+    // Apply payment terms from customer (only if user hasn't changed it yet)
+    if (custDoc?.payment_terms_template && !form.payment_terms) {
+      form.payment_terms = custDoc.payment_terms_template;
+      applyPaymentTerms();
+    }
+
+    // Apply GST treatment
+    form.gst_treatment = custDoc?.gst_treatment || "";
+
+    // Overseas: zero-rated export — clear any existing taxes
+    if (form.gst_treatment === "Overseas") {
+      taxRows.value = [];
+      form.place_of_supply = "";
+    }
+    // SEZ: zero-rated supply — clear taxes, keep place of supply
+    if (form.gst_treatment === "SEZ") {
+      taxRows.value = [];
+    }
+
+    // Auto-fill billing address
     if (addrs[0]) {
       const a=addrs[0];
       form.billing_address=[a.address_line1,a.address_line2,a.city,a.state,a.pincode].filter(Boolean).join(", ");
@@ -1060,7 +1142,7 @@ function openAdd() {
   editingName.value=null;
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
   taxRows.value=[];
-  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:0});
+  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:0,currency:"INR",gst_treatment:""});
   drawerOpen.value=true;
 }
 async function openEdit(inv) {
@@ -1075,6 +1157,7 @@ async function openEdit(inv) {
       customer:doc.customer||"",posting_date:doc.posting_date||todayStr(),due_date:doc.due_date||dueDateDefault(),
       po_no:doc.po_no||"",payment_terms:doc.payment_terms_template||"",place_of_supply:doc.place_of_supply||"",
       billing_address:"",terms:doc.terms||"",remarks:doc.remarks||"",docstatus:doc.docstatus||0,
+      currency:doc.currency||"INR",gst_treatment:doc.gst_category||"",
     });
     lines.value=(doc.items||[]).map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:it.hsn_code||"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:it.uom||"Nos",discount_percentage:flt(it.discount_percentage)||0,discount_amount:flt(it.discount_amount)||0,amount:flt(it.amount)||0}));
     taxRows.value=(doc.taxes||[]).map((tx,i)=>({id:Date.now()+100+i,description:tx.description||"",rate:flt(tx.rate)||0,account_head:tx.account_head||taxAccountHead.value,amount:flt(tx.tax_amount)||0}));
@@ -1097,7 +1180,7 @@ async function saveInvoice(docstatus) {
     const company=await resolveCompany();
     const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0}));
     const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>({doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate}));
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms_template:form.payment_terms||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company};
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms_template:form.payment_terms||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular"};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
     if (docstatus===1) await apiSubmit("Sales Invoice",saved.name);
@@ -1150,6 +1233,22 @@ async function sendEmail() {
     toast("Email sent to "+emailModal.to); emailModal.open=false;
   } catch(e) { toast("Failed: "+e.message,"error"); }
   emailModal.sending=false;
+}
+
+async function enhanceEmail() {
+  if (emailModal.enhancing) return;
+  emailModal.enhancing = true;
+  try {
+    const res = await apiPOST("zoho_books_clone.api.books_data.ai_enhance_email", {
+      subject: emailModal.subject,
+      body: emailModal.body,
+      invoice_name: emailModal.invName,
+    });
+    if (res?.subject) emailModal.subject = res.subject;
+    if (res?.body)    emailModal.body    = res.body;
+    toast("Email enhanced by AI ✨");
+  } catch(e) { toast("AI enhance failed: "+e.message,"error"); }
+  emailModal.enhancing = false;
 }
 
 // ── Duplicate ──────────────────────────────────────────────────────────
@@ -1343,7 +1442,62 @@ function printViewInvoice() {
   });
 }
 
-onMounted(()=>{ load(); loadCustomers(); loadItems(); loadTaxAccount(); loadBranding(); });
+onMounted(() => {
+  load(); loadCustomers(); loadItems(); loadTaxAccount(); loadBranding();
+
+  // Apply AI-driven URL params (set by AppShell AI handlers via router.push)
+  const q = route.query;
+  if (q.ai_filter) {
+    activeFilter.value = q.ai_filter;          // "Overdue" | "Unpaid" | "Draft" | "Paid"
+  }
+  if (q.ai_search) {
+    search.value = decodeURIComponent(q.ai_search);
+    activeFilter.value = "all";
+  }
+  if (q.ai_create) {
+    openAdd();
+    nextTick(() => {
+      if (q.ai_customer) form.customer = decodeURIComponent(q.ai_customer);
+      if (q.ai_item) {
+        lines.value = [{
+          id: Date.now(), item_code: "",
+          item_name:  decodeURIComponent(q.ai_item),
+          description: "", hsn_code: "",
+          qty:    Number(q.ai_qty)    || 1,
+          rate:   Number(q.ai_rate)   || 0,
+          uom:    "Nos",
+          discount_percentage: 0, discount_amount: 0,
+          amount: Number(q.ai_amount) || 0,
+        }];
+      }
+    });
+  }
+});
+
+// Re-apply AI params when query changes (user is already on page when AI fires)
+watch(() => route.query, (q) => {
+  if (!q) return;
+  if (q.ai_filter) activeFilter.value = q.ai_filter;
+  if (q.ai_search) { search.value = decodeURIComponent(q.ai_search); activeFilter.value = "all"; }
+  if (q.ai_create) {
+    openAdd();
+    nextTick(() => {
+      if (q.ai_customer) form.customer = decodeURIComponent(q.ai_customer);
+      if (q.ai_item) {
+        lines.value = [{
+          id: Date.now(), item_code: "",
+          item_name:  decodeURIComponent(q.ai_item),
+          description: "", hsn_code: "",
+          qty:    Number(q.ai_qty)    || 1,
+          rate:   Number(q.ai_rate)   || 0,
+          uom:    "Nos",
+          discount_percentage: 0, discount_amount: 0,
+          amount: Number(q.ai_amount) || 0,
+        }];
+      }
+    });
+  }
+});
 </script>
 
 <style scoped>

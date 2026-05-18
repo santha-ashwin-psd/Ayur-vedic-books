@@ -29,7 +29,8 @@ class SalesInvoice(Document):
         if not self.items:
             frappe.throw(_("Please add at least one item"))
         for item in self.items:
-            if flt(item.qty) <= 0:
+            # Return invoices (credit notes) carry negative qty by design
+            if not self.is_return and flt(item.qty) <= 0:
                 frappe.throw(_("Qty must be > 0 for {0}").format(item.item_name))
             item.amount = round(flt(item.qty) * flt(item.rate), 2)
 

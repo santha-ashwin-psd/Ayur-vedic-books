@@ -69,6 +69,21 @@ def _require_company_admin() -> str:
         co = _resolve_company_for(user)
         if not co:
             frappe.throw(_("No Books Company exists yet. Create one first."), frappe.PermissionError)
+        # Auto-create the member row so the global admin appears in the users list
+        if user not in ("Administrator", "Guest") and not frappe.db.exists("Books Company Member", {"user": user}):
+            try:
+                m = frappe.new_doc("Books Company Member")
+                m.user = user
+                m.company = co
+                m.books_role = "Books Admin"
+                m.is_company_admin = 1
+                m.invited_by = ""
+                for f in MODULE_FIELDS:
+                    m.set(f, 1)
+                m.insert(ignore_permissions=True)
+                frappe.db.commit()
+            except Exception:
+                pass
         return co
     row = frappe.db.get_value(
         "Books Company Member",
@@ -106,13 +121,19 @@ def get_users_list():
     members = frappe.get_all(
         "Books Company Member",
         filters={"company": company},
-        fields=["user", "books_role", "is_company_admin", "joined_on", *MODULE_FIELDS],
+        fields=["user", "books_role", "is_company_admin", "invited_by", "joined_on", *MODULE_FIELDS],
         ignore_permissions=True,
-        order_by="joined_on desc",
+        order_by="joined_on asc",
         limit=500,
     )
     if not members:
         return []
+
+    # The owner is the member with a blank invited_by (was never invited — created the company).
+    # Fall back to the earliest joined_on if everyone has an invited_by value.
+    owner_users = {m["user"] for m in members if not (m.get("invited_by") or "").strip()}
+    if not owner_users:
+        owner_users = {members[0]["user"]}  # oldest member by joined_on asc
 
     user_names = [m["user"] for m in members]
     user_rows = {
@@ -139,9 +160,12 @@ def get_users_list():
             "creation": u.get("creation"),
             "books_role": m["books_role"],
             "is_company_admin": bool(m["is_company_admin"]),
+            "is_owner": m["user"] in owner_users,
             "modules": {f.removeprefix("mod_"): bool(m[f]) for f in MODULE_FIELDS},
             "joined_on": m["joined_on"],
         })
+    # Sort: owner first, then by joined_on
+    out.sort(key=lambda r: (0 if r["is_owner"] else 1, r.get("joined_on") or ""))
     return out
 
 

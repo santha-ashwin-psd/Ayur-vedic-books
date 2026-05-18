@@ -36,6 +36,11 @@ doc_events = {
     "Credit Note":      {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
     "Expense":          {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
     "Expense Claim":    {"validate": f"{_CV}.on_validate"},
+    # Auto-stamp books_company on master records so they're company-isolated
+    "Customer":  {"before_insert": f"{_TN}.auto_stamp_books_company"},
+    "Supplier":  {"before_insert": f"{_TN}.auto_stamp_books_company"},
+    "Item":      {"before_insert": f"{_TN}.auto_stamp_books_company"},
+    "Contact":   {"before_insert": f"{_TN}.auto_stamp_books_company"},
 }
 
 scheduler_events = {
@@ -113,6 +118,11 @@ permission_query_conditions = {
     "Bank Transaction":  f"{_TN}.qc_bank_transaction",
     "Expense":           f"{_TN}.qc_expense",
     "Expense Claim":     f"{_TN}.qc_expense_claim",
+    # Master types — scoped by books_company custom field
+    "Customer":          f"{_TN}.qc_customer",
+    "Supplier":          f"{_TN}.qc_supplier",
+    "Item":              f"{_TN}.qc_item",
+    "Contact":           f"{_TN}.qc_contact",
 }
 
 has_permission = {
@@ -132,4 +142,9 @@ has_permission = {
     "Bank Transaction":  f"{_TN}.hp_bank_transaction",
     "Expense":           f"{_TN}.hp_expense",
     "Expense Claim":     f"{_TN}.hp_expense_claim",
+    # Master types — scoped by books_company custom field
+    "Customer":          f"{_TN}.hp_customer",
+    "Supplier":          f"{_TN}.hp_supplier",
+    "Item":              f"{_TN}.hp_item",
+    "Contact":           f"{_TN}.hp_contact",
 }

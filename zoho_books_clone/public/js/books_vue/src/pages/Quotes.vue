@@ -338,9 +338,10 @@ async function fetchItems(q="") {
   catch { items.value=[]; }
 }
 function onItemSelect(line,opt) {
-  line.item_code=val;
-  const it=items.value.find(x=>x.value===val);
-  if (opt?.rate) { line.rate=Number(opt.rate)||0; calcLine(line); }
+  line.item_code=opt?.value??opt;
+  const it=items.value.find(x=>x.value===line.item_code);
+  if (it?.rate||opt?.rate) { line.rate=Number(it?.rate||opt?.rate)||0; calcLine(line); }
+  if (it?.description||opt?.description) line.description=it?.description||opt?.description||"";
 }
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}

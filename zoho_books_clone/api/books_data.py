@@ -14,7 +14,7 @@ def get_invoice_email_defaults(invoice_name):
         f"Please find your invoice <b>{inv.name}</b> details below:<br><br>"
         f"<table style='border-collapse:collapse;font-size:14px'>"
         f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Invoice #</td><td><b>{inv.name}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>Rs.{inv.grand_total:,.2f}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{inv.grand_total:,.2f}</b></td></tr>"
         f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Due Date</td><td>{inv.due_date}</td></tr>"
         f"</table><br>"
         f"Kindly make the payment by the due date.<br><br>"
@@ -402,151 +402,452 @@ def record_payment(
         "amount":        amount_received,
     }
 
-# ─── AI Workflow Automator — Rule-based command parser (no API key needed) ───
+# ─── AI Assistant — Books AI with live DB queries (Tiers 1-3) ────────────────
+
+def _ai_parse_period(period):
+    """Convert LLM period token or free text to (from_date, to_date, label)."""
+    from frappe.utils import nowdate, getdate, add_months, get_first_day, get_last_day
+    from datetime import date as _date
+    today = getdate(nowdate())
+    p = (period or "this_month").lower().replace(" ", "_")
+
+    if "last_year" in p or "previous_year" in p:
+        fy_s = _date(today.year - 1, 4, 1) if today.month >= 4 else _date(today.year - 2, 4, 1)
+        fy_e = _date(today.year, 3, 31)     if today.month >= 4 else _date(today.year - 1, 3, 31)
+        return fy_s.strftime("%Y-%m-%d"), fy_e.strftime("%Y-%m-%d"), "Last Financial Year"
+    if "this_year" in p or "current_year" in p or "ytd" in p:
+        fy_s = _date(today.year, 4, 1) if today.month >= 4 else _date(today.year - 1, 4, 1)
+        return fy_s.strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d"), f"This Financial Year ({today.year})"
+    if "this_quarter" in p or "quarter" in p:
+        q_month = ((today.month - 1) // 3) * 3 + 1
+        q_num   = (today.month - 1) // 3 + 1
+        return _date(today.year, q_month, 1).strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d"), f"Q{q_num} {today.year}"
+    if "last_month" in p or "previous_month" in p:
+        last  = add_months(nowdate(), -1)
+        return get_first_day(last).strftime("%Y-%m-%d"), get_last_day(last).strftime("%Y-%m-%d"), "Last Month"
+    # default: this month
+    return get_first_day(nowdate()).strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d"), f"This Month ({today.strftime('%B %Y')})"
+
+
+# ── AI ASSISTANT — LLM layer ───────────────────────────────────────────────────
+
+_AI_SYSTEM_PROMPT = """\
+You are Books AI, a smart assistant embedded in a financial management app (like Zoho Books).
+Understand what the user wants and return ONLY a valid JSON object — no markdown, no text outside JSON.
+
+Response format:
+{
+  "intent": "<intent_name>",
+  "reply": "<short conversational response, 1-2 sentences>",
+  // ...extra fields depending on intent
+}
+
+CONVERSATIONAL intents (you write the full reply):
+- "greeting"    — user says hi/hello/namaste etc.
+- "help"        — user asks what you can do
+- "thanks"      — user says thanks/great/ok
+- "chitchat"    — casual smalltalk
+- "unknown"     — you genuinely don't understand
+
+DATA QUERY intents (backend fetches real numbers — write a 1-line intro in reply):
+- "revenue"          — revenue/sales total. Add: "period": "this_month|last_month|this_quarter|this_year|last_year"
+- "outstanding"      — total outstanding receivables
+- "top_customers"    — top customers by revenue. Add: "limit": 5
+- "overdue_count"    — count/amount of overdue invoices
+- "unpaid_bills"     — unpaid purchase bills
+- "business_summary" — overall business health report (revenue, outstanding, overdue, top customer)
+
+NAVIGATION intents (app navigates — write a brief confirmation):
+- "show_overdue"         — filter to overdue invoices
+- "show_unpaid"          — filter to unpaid invoices
+- "show_all_invoices"    — show all invoices
+- "find_invoices"        — search invoices for a customer. Add: "customer": "extracted name"
+- "show_bills"           — go to bills page
+- "show_quotes"          — go to quotes
+- "show_customers"       — go to customers list
+- "show_sales_orders"    — go to sales orders
+- "show_purchase_orders" — go to purchase orders
+- "show_dashboard"       — go to main dashboard
+- "navigate"             — specific area. Add: "path": "/path"
+
+CREATION WIZARD intents:
+- "ask_for_info"           — you need more details before creating. Ask one specific question in reply.
+- "create_invoice_confirm" — you have enough info, show preview for confirmation.
+                             Add: "customer": "name", "items": [{"item_name":"..","qty":N,"rate":N}]
+- "create_invoice"         — user just confirmed (said yes/ok/confirm/proceed). Same fields as above.
+
+CREATION WIZARD RULES:
+- If user wants to create invoice but no customer mentioned → use "ask_for_info", ask "Who is this invoice for?"
+- If customer given but no items/amount → use "ask_for_info", ask "What should I add? (item, qty, rate)"
+- Once you have customer + at least one item with amount → use "create_invoice_confirm" to show preview
+- If user says yes/confirm/ok/proceed after a confirm preview → use "create_invoice"
+- If user says cancel/no/never mind → use "thanks" and say it was cancelled
+
+Rules:
+- For greeting: mention 2-3 capabilities including the invoice wizard and business summary.
+- For help: list all categories (invoices wizard, data queries, summary, navigation).
+- Always reply in the same language the user wrote in.
+- Keep replies under 50 words.
+"""
+
+_SUMMARY_SYSTEM_PROMPT = """\
+You are a financial analyst assistant. Given business metrics, write a concise health summary for the business owner.
+Return ONLY valid JSON: {"reply": "your analysis here"}
+Be specific with numbers. 3-5 sentences. Mention what's going well and what needs attention. Use ₹ for amounts.
+"""
+
+_EMAIL_SYSTEM_PROMPT = """\
+You are a professional business email writer. Improve the given email to be professional, warm, and concise.
+Return ONLY valid JSON: {"subject": "improved subject line", "body": "improved email body (max 120 words)"}
+Keep the core message. Do not add unnecessary fluff. Use the invoice context if provided.
+"""
+
+
+class _RateLimit(Exception):
+    pass
+
+
+def _call_groq(conversation, system=None):
+    import requests as _req
+    api_key = frappe.conf.get("groq_api_key", "")
+    if not api_key:
+        raise Exception("groq_api_key not configured in site_config.json")
+    resp = _req.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={
+            "model": "llama-3.3-70b-versatile",
+            "messages": [{"role": "system", "content": system or _AI_SYSTEM_PROMPT}] + conversation,
+            "response_format": {"type": "json_object"},
+            "temperature": 0.2,
+            "max_tokens": 600,
+        },
+        timeout=15,
+    )
+    if resp.status_code == 429:
+        raise _RateLimit("Groq rate limit")
+    resp.raise_for_status()
+    return json.loads(resp.json()["choices"][0]["message"]["content"])
+
+
+def _call_gemini(conversation, system=None):
+    import requests as _req
+    api_key = frappe.conf.get("gemini_api_key", "")
+    if not api_key:
+        raise Exception("gemini_api_key not configured in site_config.json")
+    sys_prompt = system or _AI_SYSTEM_PROMPT
+    contents = [
+        {"role": "user",  "parts": [{"text": sys_prompt + "\n\nAcknowledge you understand."}]},
+        {"role": "model", "parts": [{"text": '{"intent":"greeting","reply":"Understood, ready."}'}]},
+    ]
+    for m in conversation:
+        role = "model" if m["role"] == "assistant" else "user"
+        contents.append({"role": role, "parts": [{"text": m["content"]}]})
+    resp = _req.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}",
+        json={
+            "contents": contents,
+            "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2, "maxOutputTokens": 600},
+        },
+        timeout=20,
+    )
+    if resp.status_code == 429:
+        raise _RateLimit("Gemini rate limit")
+    resp.raise_for_status()
+    text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+    return json.loads(text)
+
+
+def _llm_parse(conversation, system=None):
+    """Groq primary → Gemini fallback."""
+    try:
+        return _call_groq(conversation, system=system)
+    except _RateLimit:
+        frappe.log_error("Groq rate limit — using Gemini fallback", "AI Fallback")
+        return _call_gemini(conversation, system=system)
+    except Exception as exc:
+        frappe.log_error(str(exc), "Groq error — using Gemini fallback")
+        try:
+            return _call_gemini(conversation, system=system)
+        except Exception as exc2:
+            frappe.log_error(str(exc2), "Gemini fallback also failed")
+            raise
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def get_ai_alerts():
+    """Proactive business alerts — overdue invoices, due-soon, revenue drop."""
+    from frappe.utils import nowdate, add_days, get_first_day, add_months, getdate
+    import datetime
+    company = _get_company(frappe.session.user)
+    today   = nowdate()
+    alerts  = []
+    try:
+        # Overdue invoices
+        od = frappe.db.sql("""
+            SELECT COUNT(*) cnt, COALESCE(SUM(outstanding_amount),0) tot
+            FROM `tabSales Invoice`
+            WHERE docstatus=1 AND outstanding_amount>0 AND due_date<%s AND company=%s
+        """, (today, company), as_dict=True)[0]
+        if int(od.cnt or 0):
+            alerts.append({
+                "type": "overdue", "icon": "⚠️",
+                "text": f"{od.cnt} overdue invoice{'s' if int(od.cnt)!=1 else ''} — ₹{float(od.tot or 0):,.0f}",
+                "action": "show_overdue",
+            })
+        # Due within 3 days (but not overdue)
+        in3 = add_days(today, 3)
+        soon = frappe.db.sql("""
+            SELECT COUNT(*) cnt, COALESCE(SUM(outstanding_amount),0) tot
+            FROM `tabSales Invoice`
+            WHERE docstatus=1 AND outstanding_amount>0 AND due_date BETWEEN %s AND %s AND company=%s
+        """, (today, in3, company), as_dict=True)[0]
+        if int(soon.cnt or 0):
+            alerts.append({
+                "type": "due_soon", "icon": "🔔",
+                "text": f"{soon.cnt} invoice{'s' if int(soon.cnt)!=1 else ''} due within 3 days — ₹{float(soon.tot or 0):,.0f}",
+                "action": "show_unpaid",
+            })
+        # Revenue drop vs last month
+        this_start = get_first_day(today).strftime("%Y-%m-%d")
+        last_start = get_first_day(add_months(today, -1)).strftime("%Y-%m-%d")
+        last_end   = (getdate(this_start) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        this_rev = float(frappe.db.sql("""
+            SELECT COALESCE(SUM(grand_total),0) tot FROM `tabSales Invoice`
+            WHERE docstatus=1 AND company=%s AND posting_date>=%s
+        """, (company, this_start))[0][0] or 0)
+        last_rev = float(frappe.db.sql("""
+            SELECT COALESCE(SUM(grand_total),0) tot FROM `tabSales Invoice`
+            WHERE docstatus=1 AND company=%s AND posting_date BETWEEN %s AND %s
+        """, (company, last_start, last_end))[0][0] or 0)
+        if last_rev > 0 and this_rev < last_rev * 0.6:
+            drop = int((1 - this_rev / last_rev) * 100)
+            alerts.append({
+                "type": "revenue_drop", "icon": "📉",
+                "text": f"Revenue is down {drop}% vs last month",
+                "action": None,
+            })
+    except Exception as exc:
+        frappe.log_error(str(exc), "AI Alerts")
+    return {"alerts": alerts, "count": len(alerts)}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def ai_enhance_email(subject, body, invoice_name=None):
+    """AI-powered email enhancement for the email compose modal."""
+    context = ""
+    if invoice_name:
+        try:
+            inv = frappe.get_doc("Sales Invoice", invoice_name)
+            context = (f"Invoice {inv.name} for {inv.customer_name or inv.customer}, "
+                       f"amount ₹{flt(inv.grand_total):,.2f}, due date {inv.due_date or 'N/A'}.")
+        except Exception:
+            pass
+    prompt = (
+        f"Context: {context}\n"
+        f"Current subject: {subject}\n"
+        f"Current body:\n{body}\n\n"
+        "Improve this email. Make it professional, warm, and concise."
+    )
+    try:
+        result = _llm_parse([{"role": "user", "content": prompt}], system=_EMAIL_SYSTEM_PROMPT)
+        return {
+            "subject": result.get("subject") or subject,
+            "body":    result.get("body")    or body,
+        }
+    except Exception as exc:
+        frappe.log_error(str(exc), "AI Enhance Email")
+        return {"subject": subject, "body": body}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def get_customer_outstanding():
+    """Return {customer_name: outstanding_amount} for all customers with open invoices."""
+    company = _get_company(frappe.session.user)
+    rows = frappe.db.sql("""
+        SELECT customer, COALESCE(SUM(outstanding_amount), 0) AS outstanding
+        FROM `tabSales Invoice`
+        WHERE docstatus=1 AND outstanding_amount>0 AND company=%s
+        GROUP BY customer
+    """, company, as_dict=True)
+    return {r.customer: float(r.outstanding or 0) for r in rows}
+
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def ai_chat(messages, system=None):
     """
-    Rule-based command parser for the Books AI Automator.
-    Parses natural language commands and returns structured action JSON.
-    No external API required.
+    Books AI — LLM-powered (Groq primary, Gemini fallback).
+    Response: {reply: str, action: str|None, ...action_params}
     """
-    import re
-
     if isinstance(messages, str):
         messages = json.loads(messages)
 
-    # Get the latest user message
-    user_msg = ""
-    for m in reversed(messages):
-        if m.get("role") == "user":
-            user_msg = m.get("content", "").strip()
-            break
+    # Keep last 10 turns to stay within token budget
+    conversation = [
+        {"role": m["role"], "content": m["content"]}
+        for m in messages
+        if m.get("role") in ("user", "assistant") and m.get("content")
+    ][-10:]
 
-    if not user_msg:
-        return {"text": '{"action":"unknown","message":"No command received."}'}
+    if not conversation:
+        return {"reply": "I didn't catch that — what would you like to do?"}
 
-    cmd = user_msg.lower()
+    company = _get_company(frappe.session.user)
 
-    # ── CREATE INVOICE ──────────────────────────────────────────────────────
-    # Patterns: "create invoice for hari laptop 50000"
-    #           "invoice prasath ₹80,000"
-    #           "new invoice for customer Raju item Laptop qty 2 rate 25000"
-    create_patterns = [
-        r"(?:create|make|new|add)\s+(?:an?\s+)?invoice\s+(?:for\s+)?(.+)",
-        r"invoice\s+(?:for\s+)?(.+)",
-        r"bill\s+(?:for\s+)?(.+)",
-    ]
-    for pat in create_patterns:
-        m = re.search(pat, cmd, re.IGNORECASE)
-        if m:
-            rest = m.group(1).strip()
+    try:
+        parsed = _llm_parse(conversation)
+    except Exception as exc:
+        frappe.log_error(str(exc), "AI Chat — both LLMs failed")
+        return {"reply": "The AI assistant is temporarily unavailable. Please try again in a moment."}
 
-            # Extract amount — ₹1,00,000 or 50000 or rs.5000
-            amt_match = re.search(r"(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d+)?)|(?:^|\s)([\d,]+(?:\.\d+)?)(?:\s|$)", rest, re.IGNORECASE)
-            amount = 0
-            if amt_match:
-                raw_amt = (amt_match.group(1) or amt_match.group(2) or "0").replace(",", "")
-                amount = float(raw_amt)
+    intent = parsed.get("intent", "unknown")
+    reply  = (parsed.get("reply") or "").strip()
 
-            # Extract qty — "qty 2" or "2 units" or "2x"
-            qty = 1
-            qty_match = re.search(r"(?:qty|quantity|x)\s*(\d+)|(\d+)\s*(?:qty|units?|pcs?|nos?)", rest, re.IGNORECASE)
-            if qty_match:
-                qty = int(qty_match.group(1) or qty_match.group(2))
+    # ── DATA INTENTS — real DB numbers, never hallucinated ───────────────────
+    if intent == "revenue":
+        from_d, to_d, label = _ai_parse_period(parsed.get("period", "this_month"))
+        try:
+            row = frappe.db.sql("""
+                SELECT COALESCE(SUM(grand_total),0) AS total, COUNT(*) AS cnt
+                FROM `tabSales Invoice`
+                WHERE docstatus=1 AND company=%s AND posting_date BETWEEN %s AND %s
+            """, (company, from_d, to_d), as_dict=True)[0]
+            return {"reply": f"📈 Revenue — {label}\n\nTotal: ₹{float(row.total or 0):,.2f}\nInvoices: {int(row.cnt or 0)}"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Revenue")
+            return {"reply": "Couldn't fetch revenue data right now."}
 
-            # Extract item name — keywords that suggest an item
-            item_keywords = ["laptop", "computer", "phone", "mobile", "service", "product",
-                             "item", "work", "design", "consulting", "development", "repair",
-                             "maintenance", "software", "hardware", "table", "chair", "ac",
-                             "printer", "scanner", "camera", "tv", "monitor", "keyboard"]
-            item_name = "Service"
-            for kw in item_keywords:
-                if kw in cmd:
-                    item_name = kw.title()
-                    break
-            # Also try to find explicit item= or item:
-            item_explicit = re.search(r"item[:\s]+([a-z][a-z\s]+?)(?:\s+(?:qty|rate|₹|rs|for|\d)|$)", rest, re.IGNORECASE)
-            if item_explicit:
-                item_name = item_explicit.group(1).strip().title()
+    if intent == "outstanding":
+        try:
+            row = frappe.db.sql("""
+                SELECT COALESCE(SUM(outstanding_amount),0) AS total, COUNT(*) AS cnt
+                FROM `tabSales Invoice` WHERE docstatus=1 AND outstanding_amount>0 AND company=%s
+            """, company, as_dict=True)[0]
+            od = frappe.db.sql("""
+                SELECT COALESCE(SUM(outstanding_amount),0) AS total, COUNT(*) AS cnt
+                FROM `tabSales Invoice`
+                WHERE docstatus=1 AND outstanding_amount>0 AND due_date<%s AND company=%s
+            """, (nowdate(), company), as_dict=True)[0]
+            msg = f"💰 Outstanding Receivables\n\nTotal: ₹{float(row.total or 0):,.2f} ({int(row.cnt or 0)} invoices)"
+            if int(od.cnt or 0):
+                msg += f"\nOf which overdue: ₹{float(od.total or 0):,.2f} ({int(od.cnt)} invoices)"
+            return {"reply": msg, "action": "show_outstanding"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Outstanding")
+            return {"reply": "Couldn't fetch outstanding data."}
 
-            # Extract customer — everything before the item/amount keywords
-            # Remove amount, qty, item mentions to isolate customer name
-            customer_text = rest
-            customer_text = re.sub(r"(?:₹|rs\.?|inr)\s*[\d,]+(?:\.\d+)?", "", customer_text, flags=re.IGNORECASE)
-            customer_text = re.sub(r"(?:qty|quantity|x)\s*\d+|\d+\s*(?:qty|units?|pcs?)", "", customer_text, flags=re.IGNORECASE)
-            customer_text = re.sub(r"\b(?:item|product|service|for|an?|the|of|with|at|rate|price)\b", "", customer_text, flags=re.IGNORECASE)
-            for kw in item_keywords:
-                customer_text = re.sub(r"\b" + kw + r"\b", "", customer_text, flags=re.IGNORECASE)
-            customer_text = re.sub(r"\s+", " ", customer_text).strip().strip(",")
+    if intent == "top_customers":
+        limit = min(int(parsed.get("limit") or 5), 10)
+        try:
+            rows = frappe.db.sql("""
+                SELECT customer, SUM(grand_total) AS total, COUNT(*) AS cnt
+                FROM `tabSales Invoice` WHERE docstatus=1 AND company=%s
+                GROUP BY customer ORDER BY total DESC LIMIT %s
+            """, (company, limit), as_dict=True)
+            if not rows:
+                return {"reply": "No invoice data found yet."}
+            lines = "\n".join(
+                f"{i+1}. {r.customer} — ₹{float(r.total):,.0f} ({int(r.cnt)} inv)"
+                for i, r in enumerate(rows)
+            )
+            return {"reply": f"🏆 Top {limit} Customers\n\n{lines}"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Top Customers")
+            return {"reply": "Couldn't fetch customer data."}
 
-            # Use first word(s) as customer if still messy
-            customer = customer_text.title() if len(customer_text) > 1 else "Customer"
+    if intent == "overdue_count":
+        try:
+            row = frappe.db.sql("""
+                SELECT COUNT(*) AS cnt, COALESCE(SUM(outstanding_amount),0) AS total
+                FROM `tabSales Invoice`
+                WHERE docstatus=1 AND outstanding_amount>0 AND due_date<%s AND company=%s
+            """, (nowdate(), company), as_dict=True)[0]
+            cnt = int(row.cnt or 0)
+            if cnt == 0:
+                return {"reply": "✅ No overdue invoices — all caught up!"}
+            return {"reply": f"⚠️ Overdue Invoices\n\nCount: {cnt}\nTotal: ₹{float(row.total or 0):,.2f}",
+                    "action": "show_overdue"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Overdue Count")
+            return {"reply": "Couldn't fetch overdue data."}
 
-            # Calculate rate
-            rate = amount / qty if qty > 0 and amount > 0 else amount
+    if intent == "unpaid_bills":
+        try:
+            row = frappe.db.sql("""
+                SELECT COUNT(*) AS cnt, COALESCE(SUM(outstanding_amount),0) AS total
+                FROM `tabPurchase Invoice` WHERE docstatus=1 AND outstanding_amount>0 AND company=%s
+            """, company, as_dict=True)[0]
+            cnt = int(row.cnt or 0)
+            if cnt == 0:
+                return {"reply": "✅ No unpaid bills — you're all clear!", "action": "show_bills"}
+            return {"reply": f"🧾 Unpaid Bills\n\nCount: {cnt}\nTotal: ₹{float(row.total or 0):,.2f}",
+                    "action": "show_bills"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Bills")
+            return {"reply": "Couldn't fetch bills data.", "action": "show_bills"}
 
-            return {"text": json.dumps({
-                "action": "create_invoice",
-                "customer": customer,
-                "items": [{"item_name": item_name, "qty": qty, "rate": rate, "amount": amount}],
-                "due_date": nowdate(),
-                "notes": ""
-            })}
+    # ── BUSINESS SUMMARY (Tier 5-C) ──────────────────────────────────────────
+    if intent == "business_summary":
+        try:
+            today = nowdate()
+            from_m, to_m, _ = _ai_parse_period("this_month")
+            from_lm, to_lm, _ = _ai_parse_period("last_month")
+            rev_m  = float(frappe.db.sql("SELECT COALESCE(SUM(grand_total),0) FROM `tabSales Invoice` WHERE docstatus=1 AND company=%s AND posting_date BETWEEN %s AND %s", (company, from_m, to_m))[0][0] or 0)
+            rev_lm = float(frappe.db.sql("SELECT COALESCE(SUM(grand_total),0) FROM `tabSales Invoice` WHERE docstatus=1 AND company=%s AND posting_date BETWEEN %s AND %s", (company, from_lm, to_lm))[0][0] or 0)
+            outstd = frappe.db.sql("SELECT COALESCE(SUM(outstanding_amount),0) cnt_tot, COUNT(*) cnt FROM `tabSales Invoice` WHERE docstatus=1 AND outstanding_amount>0 AND company=%s", company, as_dict=True)[0]
+            overdue = frappe.db.sql("SELECT COUNT(*) cnt, COALESCE(SUM(outstanding_amount),0) tot FROM `tabSales Invoice` WHERE docstatus=1 AND outstanding_amount>0 AND due_date<%s AND company=%s", (today, company), as_dict=True)[0]
+            top_cust = frappe.db.sql("SELECT customer, SUM(grand_total) tot FROM `tabSales Invoice` WHERE docstatus=1 AND company=%s GROUP BY customer ORDER BY tot DESC LIMIT 1", company, as_dict=True)
+            bills = frappe.db.sql("SELECT COALESCE(SUM(outstanding_amount),0) tot FROM `tabPurchase Invoice` WHERE docstatus=1 AND outstanding_amount>0 AND company=%s", company)[0][0] or 0
+            trend = ""
+            if rev_lm > 0:
+                pct = int((rev_m - rev_lm) / rev_lm * 100)
+                trend = f"up {pct}%" if pct >= 0 else f"down {abs(pct)}%"
+            data_ctx = (
+                f"This month revenue: ₹{rev_m:,.0f} ({trend + ' vs last month' if trend else 'first month data'}).\n"
+                f"Last month revenue: ₹{rev_lm:,.0f}.\n"
+                f"Outstanding receivables: ₹{float(outstd.cnt_tot or 0):,.0f} ({int(outstd.cnt or 0)} invoices).\n"
+                f"Overdue: {int(overdue.cnt or 0)} invoices worth ₹{float(overdue.tot or 0):,.0f}.\n"
+                f"Top customer: {top_cust[0].customer if top_cust else 'N/A'}.\n"
+                f"Unpaid bills owed: ₹{float(bills):,.0f}."
+            )
+            summary = _llm_parse([{"role": "user", "content": data_ctx}], system=_SUMMARY_SYSTEM_PROMPT)
+            return {"reply": summary.get("reply", data_ctx)}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Business Summary")
+            return {"reply": "Couldn't generate summary right now."}
 
-    # ── OVERDUE INVOICES ────────────────────────────────────────────────────
-    if any(w in cmd for w in ["overdue", "over due", "past due", "late", "unpaid overdue"]):
-        return {"text": json.dumps({"action": "show_overdue"})}
+    # ── NAVIGATION INTENTS ────────────────────────────────────────────────────
+    _simple_nav = {"show_overdue", "show_unpaid", "show_all_invoices", "show_bills",
+                   "show_quotes", "show_customers", "show_sales_orders",
+                   "show_purchase_orders", "show_dashboard"}
+    if intent in _simple_nav:
+        return {"reply": reply or "Navigating now.", "action": intent}
 
-    # ── FIND / SEARCH CUSTOMER INVOICES ─────────────────────────────────────
-    find_match = re.search(
-        r"(?:find|search|show|get|list)\s+(?:invoices?\s+)?(?:for|of|by)\s+(.+)|"
-        r"(?:invoices?\s+(?:for|of|by))\s+(.+)|"
-        r"(.+?)(?:'s)?\s+invoices?",
-        cmd, re.IGNORECASE
-    )
-    if find_match and any(w in cmd for w in ["find", "search", "show", "list", "invoice"]):
-        customer = (find_match.group(1) or find_match.group(2) or find_match.group(3) or "").strip().title()
-        if customer and customer.lower() not in ("all", "my", "the", ""):
-            return {"text": json.dumps({"action": "find_invoices", "customer": customer})}
+    if intent == "find_invoices":
+        customer = (parsed.get("customer") or "").strip()
+        return {"reply": reply or f"Showing invoices for {customer}.", "action": "find_invoices", "customer": customer}
 
-    # ── OUTSTANDING / TOTAL ──────────────────────────────────────────────────
-    if any(w in cmd for w in ["outstanding", "total due", "total unpaid", "receivables", "how much owed"]):
-        return {"text": json.dumps({"action": "show_outstanding"})}
+    if intent == "navigate":
+        return {"reply": reply or "Navigating.", "action": "navigate", "path": parsed.get("path", "/")}
 
-    # ── ALL INVOICES / LIST ──────────────────────────────────────────────────
-    if any(w in cmd for w in ["all invoices", "list invoices", "show invoices", "show all"]):
-        return {"text": json.dumps({"action": "show_overdue"})}
+    # ── CREATION WIZARD (Tier 5-A) ────────────────────────────────────────────
+    if intent == "ask_for_info":
+        return {"reply": reply or "What details should I include?"}
 
-    # ── GREETINGS ────────────────────────────────────────────────────────────
-    greetings = ["hi", "hello", "hey", "good morning", "good afternoon", "good evening",
-                 "howdy", "hola", "namaste", "vanakkam", "sup", "yo", "greetings"]
-    if cmd.strip() in greetings or any(cmd.strip().startswith(g) for g in greetings):
-        user_name = frappe.session.user.split("@")[0].title() if frappe.session.user else ""
-        return {"text": json.dumps({
-            "action": "reply",
-            "message": f"Hello{', ' + user_name if user_name and user_name != 'Administrator' else ''}! How can I help you today?\n\nHere's what I can do:\n• Create a sales invoice\n• Show overdue invoices\n• Find invoices by customer\n• Show total outstanding amount"
-        })}
+    if intent == "create_invoice_confirm":
+        result = {"reply": reply or "Here's what I'll create — confirm to proceed.", "action": "create_invoice_confirm"}
+        if parsed.get("customer"): result["customer"] = parsed["customer"]
+        if parsed.get("items"):    result["items"]    = parsed["items"]
+        return result
 
-    # ── HELP ─────────────────────────────────────────────────────────────────
-    if any(w in cmd for w in ["help", "what can you do", "commands", "options", "how to", "?"]):
-        return {"text": json.dumps({
-            "action": "reply",
-            "message": "Here's what I can do:\n\n• Create invoice for [customer] ₹[amount]\n• Create invoice for [customer] [item] ₹[rate]\n• Show overdue invoices\n• Find invoices for [customer]\n• Show total outstanding\n\nJust type naturally — I'll understand!"
-        })}
+    if intent == "create_invoice":
+        result = {"reply": reply or "Opening new invoice.", "action": "create_invoice"}
+        if parsed.get("customer"): result["customer"] = parsed["customer"]
+        if parsed.get("items"):    result["items"]    = parsed["items"]
+        return result
 
-    # ── HOW ARE YOU / THANKS ─────────────────────────────────────────────────
-    if any(w in cmd for w in ["how are you", "how r u", "what's up", "whats up", "thank", "thanks", "ok", "okay", "great", "nice", "cool", "good", "awesome"]):
-        return {"text": json.dumps({
-            "action": "reply",
-            "message": "All good! Ready to help. What would you like to do?\n\nTry: \"Create invoice for Prasath ₹50,000\" or \"Show overdue invoices\""
-        })}
-
-    # ── UNKNOWN ──────────────────────────────────────────────────────────────
-    return {"text": json.dumps({
-        "action": "reply",
-        "message": f"I can help with invoicing tasks. Here's what I understand:\n\n• \"Create invoice for [customer] ₹[amount]\"\n• \"Show overdue invoices\"\n• \"Find invoices for [customer]\"\n• \"Show total outstanding\"\n\nTry one of these!"
-    })}
+    # ── CONVERSATIONAL + UNKNOWN ──────────────────────────────────────────────
+    return {"reply": reply or "I'm not sure about that. Type \"help\" to see what I can do."}
 
 
 # ── CHART OF ACCOUNTS ─────────────────────────────────────────────────────────

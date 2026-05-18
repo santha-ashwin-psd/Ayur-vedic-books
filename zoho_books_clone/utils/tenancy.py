@@ -167,3 +167,63 @@ hp_bank_account     = _make_hp("Bank Account")
 hp_bank_transaction = _make_hp("Bank Transaction")
 hp_expense          = _make_hp("Expense")
 hp_expense_claim    = _make_hp("Expense Claim")
+
+
+# ── Master doctypes: Customer, Supplier, Item, Contact ──────────────────────
+# These have no native `company` field in Frappe's schema, so we use a custom
+# `books_company` field seeded by install.py for company-scoped isolation.
+
+def _qc_books_company(user=None):
+    """Permission query condition for doctypes using `books_company` instead of `company`."""
+    user = user or frappe.session.user
+    if _is_bypass(user):
+        return ""
+    company = get_user_company(user)
+    if not company:
+        return "1=0"
+    safe_company = frappe.db.escape(company)
+    # Allow records with no books_company set (legacy/unseeded data) to remain visible
+    # so existing records are not suddenly hidden after the migration.
+    return f"(`books_company` = {safe_company} OR `books_company` IS NULL OR `books_company` = '')"
+
+
+def _hp_books_company(doc, ptype="read", user=None):
+    """Per-document tenancy check for doctypes using `books_company`."""
+    user = user or frappe.session.user
+    if _is_bypass(user):
+        return None
+    company = get_user_company(user)
+    if not company:
+        return False
+    doc_company = getattr(doc, "books_company", None)
+    if not doc_company:
+        return None  # unseeded legacy record — no opinion, allow
+    return doc_company == company
+
+
+def auto_stamp_books_company(doc, method=None):
+    """
+    doc_events before_insert handler.
+    Stamps `books_company` with the current user's company so every new
+    Customer / Supplier / Item / Contact is automatically isolated to the
+    right company without the UI needing to send the field explicitly.
+    """
+    if getattr(doc, "books_company", None):
+        return  # already set (e.g. sent by UI or re-insertion)
+    user = frappe.session.user
+    if _is_bypass(user):
+        return  # Administrator creates global records
+    company = get_user_company(user)
+    if company:
+        doc.books_company = company
+
+
+qc_customer = lambda user=None: _qc_books_company(user)  # noqa: E731
+qc_supplier = lambda user=None: _qc_books_company(user)  # noqa: E731
+qc_item     = lambda user=None: _qc_books_company(user)  # noqa: E731
+qc_contact  = lambda user=None: _qc_books_company(user)  # noqa: E731
+
+hp_customer = lambda doc, ptype="read", user=None: _hp_books_company(doc, ptype, user)  # noqa: E731
+hp_supplier = lambda doc, ptype="read", user=None: _hp_books_company(doc, ptype, user)  # noqa: E731
+hp_item     = lambda doc, ptype="read", user=None: _hp_books_company(doc, ptype, user)  # noqa: E731
+hp_contact  = lambda doc, ptype="read", user=None: _hp_books_company(doc, ptype, user)  # noqa: E731

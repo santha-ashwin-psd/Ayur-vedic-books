@@ -17,6 +17,7 @@ def after_install():
     seed_price_lists()
     seed_item_groups()
     seed_customer_custom_fields()
+    seed_books_company_field()
     frappe.db.commit()
     print("✅  Zoho Books Clone installed successfully!")
 
@@ -35,6 +36,7 @@ def after_migrate():
     seed_print_formats()
     seed_item_groups()
     seed_customer_custom_fields()
+    seed_books_company_field()
     _normalize_company_names()
     frappe.db.commit()
 
@@ -656,5 +658,65 @@ def seed_customer_custom_fields():
             except Exception as e:
                 # Column might already exist with a different approach — ignore
                 frappe.log_error(str(e), f"ALTER TABLE Customer add {fieldname}")
+
+    frappe.db.commit()
+
+
+# ─── books_company isolation field ───────────────────────────────────────────
+def seed_books_company_field():
+    """
+    Add the `books_company` custom field to Customer, Supplier, Item, and Contact.
+    This field is used for company-level data isolation so all members of the same
+    company share these records while different companies stay isolated.
+    """
+    TARGETS = [
+        ("Customer",  "tabCustomer"),
+        ("Supplier",  "tabSupplier"),
+        ("Item",      "tabItem"),
+        ("Contact",   "tabContact"),
+    ]
+    db_name = frappe.conf.db_name
+
+    for doctype, table in TARGETS:
+        cf_name = f"{doctype}-books_company"
+
+        # Custom Field record
+        if not frappe.db.exists("Custom Field", cf_name):
+            try:
+                frappe.get_doc({
+                    "doctype":      "Custom Field",
+                    "name":         cf_name,
+                    "dt":           doctype,
+                    "fieldname":    "books_company",
+                    "label":        "Books Company",
+                    "fieldtype":    "Link",
+                    "options":      "Books Company",
+                    "insert_after": "amended_from" if doctype != "Contact" else "last_name",
+                    "hidden":       1,
+                    "no_copy":      1,
+                    "in_list_view": 0,
+                    "in_standard_filter": 0,
+                }).insert(ignore_permissions=True)
+            except Exception as e:
+                frappe.log_error(str(e), f"Custom Field seed: {cf_name}")
+
+        # Physical column
+        existing = set(
+            r[0] for r in frappe.db.sql(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'books_company'",
+                (db_name, table),
+            )
+        )
+        if "books_company" not in existing:
+            try:
+                frappe.db.sql(
+                    f"ALTER TABLE `{table}` ADD COLUMN `books_company` varchar(140) DEFAULT NULL"
+                )
+                frappe.db.sql(
+                    f"ALTER TABLE `{table}` ADD INDEX `idx_{table.replace('tab','')}_books_company` (`books_company`)"
+                )
+            except Exception as e:
+                frappe.log_error(str(e), f"ALTER TABLE {table} add books_company")
 
     frappe.db.commit()

@@ -73,7 +73,11 @@ def _check_posting_date(doc):
 
 
 def _check_positive_amounts(doc):
-    """Key monetary fields must be ≥ 0."""
+    """Key monetary fields must be ≥ 0 (return/credit docs are exempt)."""
+    # is_return=1 means this is a credit note or debit note — grand_total
+    # will be negative by design (reversal of the original transaction).
+    if getattr(doc, "is_return", 0):
+        return
     for field in ("grand_total", "net_total", "paid_amount"):
         val = getattr(doc, field, None)
         if val is not None and flt(val) < 0:

@@ -1,9 +1,10 @@
 <template>
   <header class="bv-topbar">
     <div class="bv-topbar-title">{{ title }}</div>
+    <div class="bv-topbar-divider"></div>
 
     <div class="bv-topbar-search">
-      <IconSvg name="search" :size="14" />
+      <IconSvg name="search" :size="13" />
       <input
         v-model="query"
         placeholder="Search invoices, customers, items…"
@@ -11,8 +12,10 @@
       />
     </div>
 
-    <button class="bv-topbar-icon-btn" :title="'AI Assistant'" @click="$emit('toggle-ai')">
-      <IconSvg name="sparkle" :size="18" />
+    <div class="bv-topbar-spacer"></div>
+
+    <button class="bv-topbar-icon-btn" title="AI Assistant" @click="$emit('toggle-ai')">
+      <IconSvg name="sparkle" :size="17" />
     </button>
 
     <NotificationsBell />
@@ -20,11 +23,24 @@
     <div class="bv-topbar-user" @click.stop="userOpen = !userOpen">
       <div class="bv-topbar-avatar">{{ initials }}</div>
       <span class="bv-topbar-username">{{ session.fullname || session.user }}</span>
+      <span class="bv-topbar-chevron">
+        <IconSvg :name="userOpen ? 'chevU' : 'chevD'" :size="12" />
+      </span>
+
       <div v-if="userOpen" class="bv-topbar-user-menu">
-        <a href="#" @click.prevent="router.push('/settings/profile'); userOpen=false">My Profile</a>
-        <a href="#" v-if="isAdmin" @click.prevent="router.push('/settings/users'); userOpen=false">Users</a>
+        <a href="#" @click.prevent="router.push('/settings/profile'); userOpen=false">
+          <IconSvg name="user" :size="14" /> My Profile
+        </a>
+        <a v-if="isAdmin" href="#" @click.prevent="router.push('/settings/users'); userOpen=false">
+          <IconSvg name="users" :size="14" /> Users
+        </a>
+        <a v-if="isAdmin" href="#" @click.prevent="router.push('/settings/company'); userOpen=false">
+          <IconSvg name="building" :size="14" /> Company Settings
+        </a>
         <hr />
-        <a href="#" @click.prevent="doLogout">Sign out</a>
+        <a href="#" class="danger" @click.prevent="doLogout">
+          <IconSvg name="logout" :size="14" /> Sign out
+        </a>
       </div>
     </div>
   </header>
@@ -59,15 +75,22 @@ const initials = computed(() => {
 async function doLogout() {
   userOpen.value = false;
   try {
-    await fetch("/api/method/logout", { method: "POST", credentials: "same-origin" });
+    const csrf = window.frappe?.csrf_token ||
+      document.cookie.match(/csrf_token=([^;]+)/)?.[1] || "";
+    await fetch("/api/method/logout", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Frappe-CSRF-Token": csrf,
+      },
+      body: csrf ? "csrf_token=" + encodeURIComponent(csrf) : "",
+    });
   } catch {}
-  window.location.href = "/login";
+  window.location.replace("/login");
 }
 
 function doSearch() {
-  // Topbar search is preserved as a feature stub — the legacy SPA never built
-  // a real Cmd+K palette. Hand off to the Frappe-native search until we wire
-  // an in-SPA result page in a later phase.
   if (!query.value.trim()) return;
   window.open(`/app/search?q=${encodeURIComponent(query.value)}`, "_blank");
 }

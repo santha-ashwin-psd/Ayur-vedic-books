@@ -194,7 +194,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -330,17 +330,17 @@ async function openEdit(q) {
 function openView(q){viewDoc.value=q;viewOpen.value=true;}
 
 async function fetchCustomers(q="") {
-  try { const r=await apiLinkValues("Customer",q); customers.value=r.map(x=>({label:x.name,value:x.name})); }
+  try { const r=await apiList("Customer",{fields:["name","customer_name"],filters:q?[["customer_name","like","%"+q+"%"]]:[],limit:30,order:"customer_name asc"}); customers.value=r.map(x=>({label:x.customer_name||x.name,value:x.name})); }
   catch { customers.value=[]; }
 }
 async function fetchItems(q="") {
-  try { const r=await apiLinkValues("Item",q); items.value=r.map(x=>({label:x.name,value:x.name})); }
+  try { const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:q?[["item_name","like","%"+q+"%"]]:[],limit:30,order:"item_name asc"}); items.value=r.map(x=>({label:x.item_name||x.name,value:x.name,rate:x.standard_rate||0})); }
   catch { items.value=[]; }
 }
-function onItemSelect(line,val) {
+function onItemSelect(line,opt) {
   line.item_code=val;
   const it=items.value.find(x=>x.value===val);
-  if (it?.rate) { line.rate=flt(it.rate); calcLine(line); }
+  if (opt?.rate) { line.rate=Number(opt.rate)||0; calcLine(line); }
 }
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
@@ -435,7 +435,7 @@ onMounted(()=>{load();loadTaxAccount();});
 .qt-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .qt-field{display:flex;flex-direction:column;gap:4px;}
 .qt-label{font-size:12px;font-weight:600;color:#374151;}.req{color:#dc2626;}
-.qt-input{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
+.qt-input{width:100%;box-sizing:border-box;border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
 .qt-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08);}
 textarea.qt-input{resize:vertical;}
 .qt-section-title{font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px;border-bottom:1px solid #f3f4f6;}

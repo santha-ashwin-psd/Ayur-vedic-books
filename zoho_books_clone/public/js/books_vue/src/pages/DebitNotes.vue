@@ -80,7 +80,7 @@
         <div class="dn-items-table">
           <div class="dn-items-head"><div>Item</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div></div>
           <div v-for="line in lines" :key="line.id" class="dn-items-row">
-            <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="v=>{line.item_code=v}" /></div>
+            <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
             <div><input v-model.number="line.qty" type="number" min="1" class="dn-input ta-r" @input="calcLine(line)" /></div>
             <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="dn-input ta-r" @input="calcLine(line)" /></div>
             <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
@@ -126,7 +126,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -151,9 +151,10 @@ const totalValue=computed(()=>list.value.filter(d=>d.docstatus===1).reduce((s,d)
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(Math.abs(flt(v)));}
 function openNew(){Object.assign(form,{supplier:"",posting_date:new Date().toISOString().slice(0,10),return_against:"",reason:""});lines.value=[blankLine()];fetchVendors("");fetchItems("");drawerOpen.value=true;}
 function openView(d){viewDoc.value=d;viewOpen.value=true;}
-async function fetchVendors(q=""){try{const r=await apiLinkValues("Supplier",q);vendors.value=r.map(x=>({label:x.name,value:x.name}));}catch{vendors.value=[];}}
-async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
+async function fetchVendors(q=""){try{const r=await apiList("Supplier",{fields:["name","supplier_name"],filters:q?[["supplier_name","like","%"+q+"%"]]:[],limit:30,order:"supplier_name asc"});vendors.value=r.map(x=>({label:x.supplier_name||x.name,value:x.name}));}catch{vendors.value=[];}}
+async function fetchItems(q=""){try{const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:q?[["item_name","like","%"+q+"%"]]:[],limit:30,order:"item_name asc"});items.value=r.map(x=>({label:x.item_name||x.name,value:x.name,rate:x.standard_rate||0}));}catch{items.value=[];}}
 async function fetchBills(q=""){try{const r=await apiList("Purchase Invoice",{fields:["name"],filters:[["is_return","=",0],["docstatus","=",1],...(form.supplier?[["supplier","=",form.supplier]]:[])],limit:20});bills.value=r.map(x=>({label:x.name,value:x.name}));}catch{bills.value=[];}}
+function onItemSelect(line,opt){line.item_code=opt?.value??opt;if(opt?.rate){line.rate=Number(opt.rate)||0;calcLine(line);}}
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
 function calcLine(l){l.amount=Math.round(flt(l.qty)*flt(l.rate)*100)/100;}
@@ -211,7 +212,7 @@ onMounted(load);
 .dn-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .dn-field{display:flex;flex-direction:column;gap:4px;}
 .dn-label{font-size:12px;font-weight:600;color:#374151;}.req{color:#dc2626;}
-.dn-input{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
+.dn-input{width:100%;box-sizing:border-box;border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
 .dn-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08);}
 textarea.dn-input{resize:vertical;}
 .dn-section-title{font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px;border-bottom:1px solid #f3f4f6;}

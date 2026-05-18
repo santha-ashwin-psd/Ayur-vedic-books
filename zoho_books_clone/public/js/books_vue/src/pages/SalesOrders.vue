@@ -174,7 +174,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -248,9 +248,9 @@ function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(o
 function openNew(){editingName.value="";Object.assign(form,{customer:"",transaction_date:new Date().toISOString().slice(0,10),delivery_date:"",tax_rate:0,terms:""});lines.value=[blankLine()];fetchCustomers("");fetchItems("");drawerOpen.value=true;}
 async function openEdit(o){editingName.value=o.name;fetchCustomers("");fetchItems("");try{const doc=await apiGet("Sales Order",o.name);Object.assign(form,{customer:doc.customer||"",transaction_date:doc.transaction_date||"",delivery_date:doc.delivery_date||"",tax_rate:doc.taxes?.[0]?.rate||0,terms:doc.terms||""});lines.value=(doc.items||[]).map(it=>({id:_id++,item_code:it.item_code||"",description:it.description||"",qty:flt(it.qty)||1,rate:flt(it.rate),amount:flt(it.amount)}));if(!lines.value.length)lines.value=[blankLine()];}catch{Object.assign(form,{customer:o.customer||"",transaction_date:o.transaction_date||"",delivery_date:o.delivery_date||"",tax_rate:0,terms:o.terms||""});lines.value=[blankLine()];}drawerOpen.value=true;}
 function openView(o){viewDoc.value=o;viewOpen.value=true;}
-async function fetchCustomers(q=""){try{const r=await apiLinkValues("Customer",q);customers.value=r.map(x=>({label:x.name,value:x.name}));}catch{customers.value=[];}}
-async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
-function onItemSelect(line,val){line.item_code=val;}
+async function fetchCustomers(q=""){try{const r=await apiList("Customer",{fields:["name","customer_name"],filters:q?[["customer_name","like","%"+q+"%"]]:[],limit:30,order:"customer_name asc"});customers.value=r.map(x=>({label:x.customer_name||x.name,value:x.name}));}catch{customers.value=[];}}
+async function fetchItems(q=""){try{const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:q?[["item_name","like","%"+q+"%"]]:[],limit:30,order:"item_name asc"});items.value=r.map(x=>({label:x.item_name||x.name,value:x.name,rate:x.standard_rate||0}));}catch{items.value=[];}}
+function onItemSelect(line,opt){line.item_code=opt?.value??opt;if(opt?.rate){line.rate=Number(opt.rate)||0;calcLine(line);}}
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
 function calcLine(l){l.amount=Math.round(flt(l.qty)*flt(l.rate)*100)/100;}
@@ -325,7 +325,7 @@ onMounted(()=>{load();loadTaxAccount();});
 .so-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .so-field{display:flex;flex-direction:column;gap:4px;}
 .so-label{font-size:12px;font-weight:600;color:#374151;}.req{color:#dc2626;}
-.so-input{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
+.so-input{width:100%;box-sizing:border-box;border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
 .so-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08);}
 textarea.so-input{resize:vertical;}
 .so-section-title{font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px;border-bottom:1px solid #f3f4f6;}

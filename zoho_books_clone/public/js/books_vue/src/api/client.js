@@ -135,6 +135,10 @@ export async function apiDelete(doctype, name) {
   return await apiPOST("zoho_books_clone.api.docs.delete_doc", { doctype, name });
 }
 
+export async function apiCancel(doctype, name) {
+  return await apiPOST("zoho_books_clone.api.docs.cancel_doc", { doctype, name });
+}
+
 const _CO_SCOPED = new Set([
   "Sales Invoice", "Purchase Invoice", "Quotation", "Sales Order", "Purchase Order",
   "Payment Entry", "Stock Entry", "Journal Entry", "Account", "Warehouse", "Cost Center",

@@ -17,7 +17,6 @@
               {{ kpi.format === "currency" ? fmt(kpis?.[kpi.key]) : (kpis?.[kpi.key] ?? "—") }}
             </template>
           </div>
-          <div v-if="kpi.sub" class="kpi-sub">{{ kpi.sub }}</div>
         </div>
       </div>
     </div>
@@ -31,46 +30,63 @@
           <span class="badge badge-blue">Last 6 months</span>
         </div>
         <div v-if="trendLoading" class="chart-placeholder">
-          <div class="loading-shimmer" style="height:160px;border-radius:8px"></div>
+          <div class="loading-shimmer" style="height:180px;border-radius:8px"></div>
+        </div>
+        <div v-else-if="!points.length" class="chart-empty">
+          No revenue data yet
         </div>
         <div v-else class="chart-wrap">
           <svg class="revenue-svg" :viewBox="`0 0 ${svgW} ${svgH}`" preserveAspectRatio="none">
-            <!-- Grid lines -->
-            <line v-for="y in yLines" :key="y"
-              :x1="pad" :x2="svgW - pad" :y1="y" :y2="y"
-              stroke="var(--books-border)" stroke-width="1"
-            />
-            <!-- Area fill -->
-            <path v-if="areaPath" :d="areaPath"
-              fill="url(#rev-grad)" opacity=".35"
-            />
-            <!-- Line -->
+            <!-- Grid lines + Y-axis labels (pinned to same y) -->
+            <template v-for="(gl, i) in gridLines" :key="i">
+              <line :x1="padL" :x2="svgW - padR" :y1="gl.y" :y2="gl.y"
+                stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4 3"
+              />
+              <text :x="padL - 6" :y="gl.y + 4"
+                text-anchor="end" class="chart-label"
+              >{{ gl.label }}</text>
+            </template>
+            <!-- Area fill (2+ points) -->
+            <path v-if="areaPath" :d="areaPath" fill="url(#rev-grad)" opacity=".22" />
+            <!-- Line (2+ points) -->
             <path v-if="linePath" :d="linePath"
-              fill="none" stroke="var(--books-accent)" stroke-width="2.5"
+              fill="none" stroke="#2563eb" stroke-width="2.5"
               stroke-linecap="round" stroke-linejoin="round"
+            />
+            <!-- Single-point vertical guide -->
+            <line v-if="points.length === 1"
+              :x1="points[0].x" :x2="points[0].x"
+              :y1="svgH - padB" :y2="points[0].y + 6"
+              stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4 3"
             />
             <!-- Dots -->
             <circle v-for="(pt, i) in points" :key="i"
-              :cx="pt.x" :cy="pt.y" r="4"
-              fill="var(--books-accent)" stroke="var(--books-surface)" stroke-width="2"
-              class="chart-dot"
-            />
-            <!-- Labels -->
+              :cx="pt.x" :cy="pt.y" r="5"
+              fill="#2563eb" stroke="#ffffff" stroke-width="2.5"
+            >
+              <title>{{ pt.label }}: {{ fmt(pt.revenue) }}</title>
+            </circle>
+            <!-- Value label above single dot -->
+            <text v-if="points.length === 1"
+              :x="points[0].x" :y="points[0].y - 10"
+              text-anchor="middle" class="chart-val-label"
+            >{{ fmtShort(points[0].revenue) }}</text>
+            <!-- X-axis month labels -->
             <text v-for="(pt, i) in points" :key="'l'+i"
               :x="pt.x" :y="svgH - 4"
               text-anchor="middle" class="chart-label"
             >{{ pt.label }}</text>
             <defs>
               <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stop-color="var(--books-accent)" stop-opacity=".8"/>
-                <stop offset="100%" stop-color="var(--books-accent)" stop-opacity="0"/>
+                <stop offset="0%"   stop-color="#2563eb" stop-opacity=".8"/>
+                <stop offset="100%" stop-color="#2563eb" stop-opacity="0"/>
               </linearGradient>
             </defs>
           </svg>
         </div>
       </div>
 
-      <!-- Aging buckets -->
+      <!-- AR Aging -->
       <div class="books-card aging-card">
         <div class="card-header">
           <span class="books-card-title">AR Aging</span>
@@ -116,10 +132,10 @@
                 <div class="cust-sub">{{ c.customer }}</div>
               </td>
               <td class="ta-r mono">{{ c.invoice_count }}</td>
-              <td class="ta-r mono green">{{ fmt(c.total_revenue) }}</td>
+              <td class="ta-r mono kv-green">{{ fmt(c.total_revenue) }}</td>
             </tr>
             <tr v-if="!dash?.top_customers?.length">
-              <td colspan="3" style="text-align:center;color:var(--books-muted);padding:24px">No data</td>
+              <td colspan="3" style="text-align:center;color:#9ca3af;padding:24px">No data</td>
             </tr>
           </tbody>
         </table>
@@ -143,13 +159,13 @@
           </thead>
           <tbody>
             <tr v-for="inv in (dash?.overdue_invoices?.slice(0,5) || [])" :key="inv.name">
-              <td><a class="link-accent" :href="`/app/sales-invoice/${inv.name}`">{{ inv.name }}</a></td>
+              <td><span class="link-accent">{{ inv.name }}</span></td>
               <td class="text-muted">{{ inv.customer_name || inv.customer }}</td>
-              <td class="ta-r mono red">{{ fmtDate(inv.due_date) }}</td>
-              <td class="ta-r mono red">{{ fmt(inv.outstanding_amount) }}</td>
+              <td class="ta-r mono kv-red">{{ fmtDate(inv.due_date) }}</td>
+              <td class="ta-r mono kv-red">{{ fmt(inv.outstanding_amount) }}</td>
             </tr>
             <tr v-if="!dash?.overdue_invoices?.length">
-              <td colspan="4" style="text-align:center;color:var(--books-green);padding:24px">✓ All caught up!</td>
+              <td colspan="4" style="text-align:center;color:#16a34a;padding:24px">✓ All caught up!</td>
             </tr>
           </tbody>
         </table>
@@ -165,25 +181,34 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useFrappeCall, formatCurrency, formatDate } from "../composables/useFrappe.js";
 
-const router = useRouter();
-const fmt    = (v) => formatCurrency(v);
+const router  = useRouter();
+const fmt     = (v) => formatCurrency(v);
 const fmtDate = formatDate;
-const navTo  = (p) => router.push(p);
+const navTo   = (p) => router.push(p);
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function monthLabel(m) {
+  if (!m) return "";
+  const idx = parseInt(m.slice(5, 7)) - 1;
+  return MONTHS[idx] ?? m.slice(5);
+}
+function fmtShort(v) {
+  if (!v) return "0";
+  if (v >= 1_00_00_000) return "₹" + (v / 1_00_00_000).toFixed(1) + "Cr";
+  if (v >= 1_00_000)    return "₹" + (v / 1_00_000).toFixed(1) + "L";
+  if (v >= 1_000)       return "₹" + (v / 1_000).toFixed(0) + "K";
+  return "₹" + v;
+}
 
 // ── API calls ──
-const { data: dash,   loading: dashLoading,  execute: loadDash   } = useFrappeCall("zoho_books_clone.api.dashboard.get_home_dashboard");
-const { data: kpis,   loading: kpiLoading,   execute: loadKpis   } = useFrappeCall("zoho_books_clone.db.aggregates.get_dashboard_kpis");
-const { data: trend,  loading: trendLoading, execute: loadTrend  } = useFrappeCall("zoho_books_clone.db.aggregates.get_monthly_revenue_trend");
-const { data: aging,  loading: agingLoading, execute: loadAging  } = useFrappeCall("zoho_books_clone.db.aggregates.get_aging_buckets");
+const { data: dash,  loading: dashLoading,  execute: loadDash  } = useFrappeCall("zoho_books_clone.api.dashboard.get_home_dashboard");
+const { data: kpis,  loading: kpiLoading,   execute: loadKpis  } = useFrappeCall("zoho_books_clone.db.aggregates.get_dashboard_kpis");
+const { data: trend, loading: trendLoading, execute: loadTrend } = useFrappeCall("zoho_books_clone.db.aggregates.get_monthly_revenue_trend");
+const { data: aging, loading: agingLoading, execute: loadAging } = useFrappeCall("zoho_books_clone.db.aggregates.get_aging_buckets");
 
-onMounted(() => {
-  loadDash();
-  loadKpis();
-  loadTrend();
-  loadAging();
-});
+onMounted(() => { loadDash(); loadKpis(); loadTrend(); loadAging(); });
 
-// ── Icons (declared before kpiCards to avoid TDZ) ──
+// ── Icons ──
 const iconRevenue  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
 const iconCollect  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
 const iconOutstand = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
@@ -193,121 +218,128 @@ const iconAlert    = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none
 
 // ── KPI cards config ──
 const kpiCards = [
-  { key: "month_revenue",     label: "Month Revenue",   format: "currency", icon: iconRevenue, iconBg: "rgba(79,142,247,.12)",  valueClass: "blue",  route: "/invoices" },
-  { key: "month_collected",   label: "Collected",       format: "currency", icon: iconCollect, iconBg: "rgba(52,211,153,.12)",  valueClass: "green", route: "/payments" },
-  { key: "month_outstanding", label: "Outstanding",     format: "currency", icon: iconOutstand,iconBg: "rgba(248,113,113,.12)", valueClass: "red",   route: "/invoices" },
-  { key: "net_profit_mtd",    label: "Net Profit MTD",  format: "currency", icon: iconProfit,  iconBg: "rgba(251,191,36,.12)",  valueClass: "amber", route: "/reports"  },
-  { key: "total_assets",      label: "Total Assets",    format: "currency", icon: iconAssets,  iconBg: "rgba(79,142,247,.12)",  valueClass: "",      route: "/accounts" },
-  { key: "overdue_count",     label: "Overdue",         format: "number",   icon: iconAlert,   iconBg: "rgba(248,113,113,.12)", valueClass: "red",   route: "/invoices" },
+  { key: "month_revenue",     label: "Month Revenue",  format: "currency", icon: iconRevenue,  iconBg: "rgba(37,99,235,.1)",   valueClass: "kv-blue",  route: "/invoices" },
+  { key: "month_collected",   label: "Collected",      format: "currency", icon: iconCollect,  iconBg: "rgba(22,163,74,.1)",   valueClass: "kv-green", route: "/payments" },
+  { key: "month_outstanding", label: "Outstanding",    format: "currency", icon: iconOutstand, iconBg: "rgba(220,38,38,.1)",   valueClass: "kv-red",   route: "/invoices" },
+  { key: "net_profit_mtd",    label: "Net Profit MTD", format: "currency", icon: iconProfit,   iconBg: "rgba(245,158,11,.1)",  valueClass: "kv-amber", route: "/reports"  },
+  { key: "total_assets",      label: "Total Assets",   format: "currency", icon: iconAssets,   iconBg: "rgba(37,99,235,.1)",   valueClass: "",         route: null        },
+  { key: "overdue_count",     label: "Overdue",        format: "number",   icon: iconAlert,    iconBg: "rgba(220,38,38,.1)",   valueClass: "kv-red",   route: "/invoices" },
 ];
 
 // ── Revenue chart ──
-const svgW = 600, svgH = 200, pad = 40;
-const yLines = [40, 80, 120, 160];
+const svgW = 580, svgH = 170, padL = 52, padR = 10, padT = 16, padB = 22;
+
+const maxRevenue = computed(() => {
+  const rows = trend.value || [];
+  return Math.max(...rows.map(r => r.revenue || 0), 1);
+});
+
+const gridLines = computed(() => {
+  const max = maxRevenue.value;
+  const chartH = svgH - padT - padB;
+  return [
+    { y: padT,              label: fmtShort(max) },
+    { y: padT + chartH / 2, label: fmtShort(max / 2) },
+    { y: svgH - padB,       label: "0" },
+  ];
+});
 
 const points = computed(() => {
   const rows = trend.value || [];
   if (!rows.length) return [];
-  const maxRev = Math.max(...rows.map(r => r.revenue || 0), 1);
-  const step   = (svgW - pad * 2) / Math.max(rows.length - 1, 1);
+  const max  = maxRevenue.value;
+  const n    = rows.length;
+  const step = n > 1 ? (svgW - padL - padR) / (n - 1) : 0;
   return rows.map((r, i) => ({
-    x: pad + i * step,
-    y: svgH - 30 - ((r.revenue || 0) / maxRev) * (svgH - 70),
-    label: r.month?.slice(5) || "",
+    x:       n > 1 ? padL + i * step : svgW / 2,
+    y:       padT + (1 - (r.revenue || 0) / max) * (svgH - padT - padB),
+    label:   monthLabel(r.month),
+    revenue: r.revenue || 0,
   }));
 });
 
 const linePath = computed(() => {
   const pts = points.value;
   if (pts.length < 2) return "";
-  return pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+  return pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 });
 
 const areaPath = computed(() => {
   const pts = points.value;
   if (pts.length < 2) return "";
-  const base = svgH - 30;
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
-  return `${line} L${pts.at(-1).x},${base} L${pts[0].x},${base} Z`;
+  const base = svgH - padB;
+  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  return `${line} L${pts.at(-1).x.toFixed(1)},${base} L${pts[0].x.toFixed(1)},${base} Z`;
 });
 
 // ── Aging config ──
 const agingRows = computed(() => {
   const buckets = [
-    { key: "current", label: "Current",   color: "var(--books-green)"  },
-    { key: "1_30",    label: "1–30 days", color: "var(--books-accent)" },
-    { key: "31_60",   label: "31–60 days",color: "var(--books-amber)"  },
-    { key: "61_90",   label: "61–90 days",color: "#fb923c"             },
-    { key: "over_90", label: ">90 days",  color: "var(--books-red)"    },
+    { key: "current", label: "Current",    color: "#16a34a" },
+    { key: "1_30",    label: "1–30 days",  color: "#2563eb" },
+    { key: "31_60",   label: "31–60 days", color: "#f59e0b" },
+    { key: "61_90",   label: "61–90 days", color: "#fb923c" },
+    { key: "over_90", label: ">90 days",   color: "#dc2626" },
   ];
   const data  = aging.value || {};
   const total = Object.values(data).reduce((a, v) => a + (v || 0), 0) || 1;
   return buckets.map(b => ({ ...b, pct: Math.min(100, ((data[b.key] || 0) / total) * 100) }));
 });
-
 </script>
 
 <style scoped>
-.dashboard { display: flex; flex-direction: column; gap: 20px; }
+.dashboard { display: flex; flex-direction: column; gap: 20px; padding: 24px; }
 
 /* KPI grid */
 .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
 @media (max-width: 1400px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 900px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 
-.kpi-card { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+.kpi-card { display: flex; align-items: center; gap: 14px; padding: 16px 18px; cursor: default; }
 .kpi-card--link { cursor: pointer; transition: box-shadow .15s, transform .15s; }
 .kpi-card--link:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); transform: translateY(-1px); }
-.kpi-icon {
-  width: 42px; height: 42px; border-radius: var(--radius-sm);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; color: var(--books-text);
-}
-.kpi-label {
-  font-size: 11px; color: var(--books-muted);
-  font-family: var(--font-display); letter-spacing: .06em; text-transform: uppercase;
-}
-.kpi-value {
-  font-size: 19px; font-weight: 700; margin-top: 2px;
-  font-family: var(--font-display); letter-spacing: -.02em;
-}
-.kpi-value.green { color: var(--books-green); }
-.kpi-value.red   { color: var(--books-red);   }
-.kpi-value.amber { color: var(--books-amber); }
-.kpi-value.blue  { color: var(--books-accent);}
+.kpi-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #374151; }
+.kpi-label { font-size: 11px; color: #6b7280; letter-spacing: .06em; text-transform: uppercase; }
+.kpi-value { font-size: 19px; font-weight: 700; margin-top: 3px; letter-spacing: -.02em; color: #111827; }
+.kv-green { color: #16a34a; }
+.kv-red   { color: #dc2626; }
+.kv-amber { color: #f59e0b; }
+.kv-blue  { color: #2563eb; }
 
 /* Mid grid */
-.mid-grid { display: grid; grid-template-columns: 1fr 320px; gap: 14px; }
+.mid-grid { display: grid; grid-template-columns: 1fr 300px; gap: 14px; }
 @media (max-width: 1100px) { .mid-grid { grid-template-columns: 1fr; } }
 
-.chart-card { }
 .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.chart-wrap  { overflow: hidden; }
-.revenue-svg { width: 100%; height: 180px; display: block; overflow: visible; }
-.chart-dot   { cursor: pointer; transition: r .15s; }
-.chart-dot:hover { r: 6; }
-.chart-label { font-size: 10px; fill: var(--books-muted); font-family: var(--font-display); }
 
-.aging-bars  { display: flex; flex-direction: column; gap: 12px; }
-.aging-row   { display: grid; grid-template-columns: 80px 1fr 80px; align-items: center; gap: 10px; }
-.aging-label { font-size: 11.5px; color: var(--books-muted); }
-.aging-bar-wrap { background: var(--books-surface-2); border-radius: 20px; height: 6px; overflow: hidden; }
+/* Chart */
+.chart-wrap { width: 100%; }
+.revenue-svg { width: 100%; height: 170px; display: block; overflow: visible; }
+.chart-label { font-size: 10.5px; fill: #9ca3af; font-family: inherit; }
+.chart-val-label { font-size: 11px; fill: #2563eb; font-weight: 600; font-family: inherit; }
+.chart-placeholder { padding: 10px 0; }
+.chart-empty { height: 170px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 13px; }
+
+/* Aging */
+.aging-bars  { display: flex; flex-direction: column; gap: 14px; }
+.aging-row   { display: grid; grid-template-columns: 72px 1fr 72px; align-items: center; gap: 10px; }
+.aging-label { font-size: 11.5px; color: #6b7280; }
+.aging-bar-wrap { background: #f3f4f6; border-radius: 20px; height: 6px; overflow: hidden; }
 .aging-bar   { height: 100%; border-radius: 20px; transition: width .6s ease; }
-.aging-amount{ font-size: 12px; font-family: var(--font-display); text-align: right; }
+.aging-amount{ font-size: 12px; font-weight: 600; text-align: right; }
 
 /* Bottom grid */
 .bot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 1000px) { .bot-grid { grid-template-columns: 1fr; } }
 
 /* Table helpers */
-.ta-r    { text-align: right; }
-.mono    { font-family: var(--font-display); font-size: 12.5px; }
-.green   { color: var(--books-green); }
-.red     { color: var(--books-red); }
-.cust-name { font-weight: 600; font-size: 13px; }
-.cust-sub  { font-size: 11px; color: var(--books-muted); }
-.text-muted{ color: var(--books-muted); font-size: 12.5px; }
-.link-accent { color: var(--books-accent); text-decoration: none; font-weight: 600; }
+.ta-r      { text-align: right; }
+.mono      { font-family: monospace; font-size: 12.5px; }
+.kv-green  { color: #16a34a; }
+.kv-red    { color: #dc2626; }
+.cust-name { font-weight: 600; font-size: 13px; color: #111827; }
+.cust-sub  { font-size: 11px; color: #9ca3af; }
+.text-muted{ color: #6b7280; font-size: 12.5px; }
+.link-accent { color: #2563eb; font-weight: 600; cursor: pointer; }
 .link-accent:hover { text-decoration: underline; }
-.chart-placeholder{ padding: 10px 0; }
 </style>

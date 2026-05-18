@@ -6,6 +6,8 @@
    The new Vue shell uses .bv-app-content (no padding) so we add it here. */
 .b-page { padding: 24px; min-height: 0; }
 .b-page > * { min-width: 0; }
+.cust-page  { padding: 24px; }
+.page-banking { padding: 24px; }
 
 /* ── Generic helpers used by many pages ─────────────────────────────── */
 .fw-600   { font-weight: 600; }
@@ -244,4 +246,93 @@
 .je-s-submitted   { background: #EBFBEE; color: #2F9E44; }
 .je-s-cancelled   { background: #FFE3E3; color: #C92A2A; }
 
-.ss-cell-wrap .ss-trigger { padding: 4px 8px; font-size: 12.5px; }
+/* ══ SearchableSelect ══════════════════════════════════════════════════ */
+.ss-wrap { position: relative; width: 100%; }
+
+/* Trigger button */
+.ss-trigger {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; min-height: 34px; padding: 6px 10px;
+  border: 1px solid #e2e8f0; border-radius: 6px;
+  background: #fff; cursor: pointer; outline: none;
+  font-size: 13px; color: #1a1a2e; font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+  box-sizing: border-box; user-select: none;
+}
+.ss-trigger:hover { border-color: #94a3b8; }
+.ss-trigger:focus, .ss-trigger.open { border-color: #1a6ef7; box-shadow: 0 0 0 3px rgba(26,110,247,.1); }
+.ss-trigger.ss-disabled { background: #f8fafc; color: #9ca3af; cursor: not-allowed; }
+.ss-trigger.ss-compact { padding: 4px 8px; font-size: 12.5px; min-height: 28px; }
+
+.ss-display { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-ph { color: #9ca3af; }
+.ss-caret { flex-shrink: 0; margin-left: 6px; color: #9ca3af; display: flex; align-items: center; }
+
+/* Dropdown panel — teleported to body, positioned via inline style */
+.ss-drop-teleport {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.13), 0 2px 8px rgba(0,0,0,.07);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  max-height: 280px;
+  min-width: 180px;
+  box-sizing: border-box;
+}
+
+/* Search input inside dropdown */
+.ss-search-row { padding: 8px 10px; border-bottom: 1px solid #f0f2f5; flex-shrink: 0; }
+.ss-search-input {
+  width: 100%; border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: 5px 9px; font-size: 13px; font-family: inherit;
+  outline: none; background: #f8fafc; color: #1a1a2e;
+  box-sizing: border-box;
+}
+.ss-search-input:focus { border-color: #1a6ef7; background: #fff; }
+
+/* Option list */
+.ss-opts { overflow-y: auto; max-height: 210px; padding: 4px 0; }
+.ss-opt {
+  padding: 8px 12px; font-size: 13px; color: #374151;
+  cursor: pointer; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; transition: background .1s;
+}
+.ss-opt:hover { background: #f0f6ff; color: #1a6ef7; }
+.ss-opt-sel { background: #eaf1ff; color: #1a6ef7; font-weight: 600; }
+.ss-opt-create { color: #059669; display: flex; align-items: center; gap: 6px; border-top: 1px solid #f0f2f5; margin-top: 4px; }
+.ss-opt-create:hover { background: #f0fdf4; }
+.ss-no-match { padding: 12px; font-size: 12.5px; color: #9ca3af; text-align: center; }
+
+/* Quick-create modal */
+.ss-qc-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.4); z-index: 100000; display: flex; align-items: center; justify-content: center; }
+.ss-qc-modal { background: #fff; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.2); width: min(420px,95vw); display: flex; flex-direction: column; }
+.ss-qc-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 12px; border-bottom: 1px solid #e8ecf0; font-size: 14px; font-weight: 700; color: #1a1a2e; }
+.ss-qc-close { background: none; border: none; font-size: 16px; color: #9ca3af; cursor: pointer; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; }
+.ss-qc-close:hover { background: #f0f2f5; color: #374151; }
+.ss-qc-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.ss-qc-field { display: flex; flex-direction: column; gap: 4px; }
+.ss-qc-label { font-size: 12px; font-weight: 600; color: #374151; }
+.ss-qc-input { border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 10px; font-size: 13px; font-family: inherit; outline: none; }
+.ss-qc-input:focus { border-color: #1a6ef7; box-shadow: 0 0 0 3px rgba(26,110,247,.08); }
+.ss-qc-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 18px; border-top: 1px solid #e8ecf0; background: #f8fafc; border-radius: 0 0 10px 10px; }
+.nim-btn { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #e2e8f0; background: #fff; color: #374151; border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.nim-btn:hover { border-color: #374151; }
+.nim-btn-primary { background: #1a6ef7; border-color: #1a6ef7; color: #fff; }
+.nim-btn-primary:hover:not(:disabled) { background: #155fd4; }
+.nim-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Ensure SearchableSelect fills grid/flex cells in item tables */
+[class$="-items-row"] .ss-wrap,
+[class$="-items-row"] input {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+[class$="-items-row"] .ss-trigger {
+  min-height: 34px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.ss-cell-wrap .ss-trigger { padding: 4px 8px; font-size: 12.5px; min-height: 28px; }

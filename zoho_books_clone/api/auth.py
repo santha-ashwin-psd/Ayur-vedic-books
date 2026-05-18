@@ -293,6 +293,18 @@ def send_password_reset_otp(email):
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
+def verify_reset_otp(email, otp):
+    """Check the reset OTP without changing the password. Throws on mismatch."""
+    email = (email or "").strip().lower()
+    otp = (otp or "").strip()
+    key = _reset_cache_key(email)
+    data = frappe.cache.get_value(key)
+    if not data or data.get("otp") != otp:
+        frappe.throw(_("Invalid or expired verification code. Please try again."))
+    return {"success": True}
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
 def reset_password_with_otp(email, otp, new_password):
     """Verify the reset OTP and update the user's password."""
     email = (email or "").strip().lower()

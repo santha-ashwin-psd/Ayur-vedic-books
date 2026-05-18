@@ -312,12 +312,15 @@ input,button,select,textarea{font-family:var(--font)}
           <div class="fi-wrap">
             <svg class="fi-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             <input class="fi has-icon" id="email-input" type="email" placeholder="you@company.com" autocomplete="email"
+              oninput="onSigninEmailInput(this.value)"
+              onblur="onSigninEmailInput(this.value)"
               onkeydown="if(event.key==='Enter')nextStep('password')"/>
           </div>
           <div class="err-msg" id="email-err">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <span>Please enter a valid email address</span>
           </div>
+          <div id="email-hint" style="font-size:12px;margin-top:6px;min-height:16px;display:none;color:var(--muted)"></div>
         </div>
 
         <button class="btn-primary" onclick="nextStep('password')">
@@ -954,6 +957,8 @@ function nextStep(to) {
     }
     setFiErr("email-input", false);
     clearErr("email-err");
+    const hint = document.getElementById("email-hint");
+    if (hint) hint.style.display = "none";
     if (isAdmin) {
       const av = document.getElementById("user-avatar");
       if (av) { av.textContent = "A"; av.style.background = "linear-gradient(135deg,#C92A2A,#E03131)"; }
@@ -1168,8 +1173,9 @@ async function verifyPasswordOTP() {
   clearErr("reset-otp-err");
   setLoading("reset-otp-btn", true);
   try {
-    // We verify the code locally on the next step by submitting it with the new password.
-    // Store it for the final step.
+    await postFrappe("/api/method/zoho_books_clone.api.auth.verify_reset_otp", {
+      email: resetData.email, otp: code,
+    });
     resetData.otp = code;
     document.getElementById("new-password").value = "";
     document.getElementById("new-password2").value = "";
@@ -1294,7 +1300,10 @@ function onSignupEmailInput(rawValue) {
         _setEmailStatus("✓ Available", "#2F9E44");
       } else if (m.reason === "taken") {
         _emailAvailable = false;
-        _setEmailStatus("✗ An account with this email already exists", "#C92A2A");
+        _setEmailStatus(
+          `✗ Already registered. <button class="link" style="font-size:12px;vertical-align:baseline" onclick="goToSigninWithEmail('${value.replace(/'/g,"\\'")}')">Sign in instead →</button>`,
+          "#C92A2A"
+        );
       } else if (m.reason === "invalid") {
         _emailAvailable = false;
         _setEmailStatus("Enter a valid email address", "#C92A2A");
@@ -1307,6 +1316,46 @@ function onSignupEmailInput(rawValue) {
       _setEmailStatus("Could not check availability. We'll re-validate on submit.", "var(--muted)");
     }
   }, 350);
+}
+
+function goToSigninWithEmail(email) {
+  goStep("email");
+  setTimeout(() => {
+    const em = document.getElementById("email-input");
+    if (em) { em.value = email; onSigninEmailInput(email); }
+  }, 50);
+}
+
+function goToSignupWithEmail(email) {
+  startSignup();
+  setTimeout(() => {
+    const em = document.getElementById("signup-email");
+    if (em) { em.value = email; onSignupEmailInput(email); }
+  }, 60);
+}
+
+// Sign-in email: real-time check — if not registered, suggest sign-up
+let _signinEmailTimer = null;
+let _signinEmailSeq = 0;
+
+function onSigninEmailInput(rawValue) {
+  const value = (rawValue || "").trim().toLowerCase();
+  const hint = document.getElementById("email-hint");
+  if (hint) hint.style.display = "none";
+  if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return;
+  if (_signinEmailTimer) clearTimeout(_signinEmailTimer);
+  const mySeq = ++_signinEmailSeq;
+  _signinEmailTimer = setTimeout(async () => {
+    try {
+      const res = await postFrappe("/api/method/zoho_books_clone.api.auth.check_email", { email: value });
+      if (mySeq !== _signinEmailSeq || !hint) return;
+      const m = res || {};
+      if (m.available) {
+        hint.innerHTML = `No account found for this email. <button class="link" style="font-size:12px;vertical-align:baseline" onclick="goToSignupWithEmail('${value.replace(/'/g,"\\'")}')">Create account →</button>`;
+        hint.style.display = "block";
+      }
+    } catch(e) { /* silent */ }
+  }, 400);
 }
 
 // Live password validation (length + match)

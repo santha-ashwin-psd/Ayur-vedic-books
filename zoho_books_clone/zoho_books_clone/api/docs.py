@@ -191,6 +191,17 @@ def submit_doc(doctype, name):
     return d.as_dict()
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def cancel_doc(doctype, name):
+    """Cancel a submitted document."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    d = frappe.get_doc(doctype, name)
+    d.flags.ignore_permissions = True
+    d.cancel()
+    frappe.db.commit()
+    return d.as_dict()
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def delete_doc(doctype, name):
     """Delete a document via GET — no CSRF needed."""
     # Guard: only the logged-in user (session) must have at least read access.

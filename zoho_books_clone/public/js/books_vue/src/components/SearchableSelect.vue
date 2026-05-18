@@ -106,7 +106,7 @@ const props = defineProps({
   createDoctype: { type: String,  default: "" },
   createLabel:   { type: String,  default: "" },
 });
-const emit = defineEmits(["update:modelValue", "create"]);
+const emit = defineEmits(["update:modelValue", "select", "create"]);
 
 // Field configs for built-in quick-create. Mirrors books.js:389-409.
 const SS_CREATE_FIELDS = {
@@ -208,6 +208,7 @@ function openDD() {
 
 function pick(opt) {
   emit("update:modelValue", opt.value);
+  emit("select", opt);
   open.value = false;
   q.value = "";
 }

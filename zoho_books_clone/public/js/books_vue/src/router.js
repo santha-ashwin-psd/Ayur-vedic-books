@@ -55,6 +55,12 @@ import GSTReturn3B            from "./pages/GSTReturn3B.vue";
 import EInvoice               from "./pages/EInvoice.vue";
 import TDS                    from "./pages/TDS.vue";
 import Reports                from "./pages/Reports.vue";
+import PriceLists             from "./pages/PriceLists.vue";
+import RecurringBills         from "./pages/RecurringBills.vue";
+import BulkImport             from "./pages/BulkImport.vue";
+import DeliveryChallans       from "./pages/DeliveryChallans.vue";
+import ProformaInvoices       from "./pages/ProformaInvoices.vue";
+import PurchaseReceipts       from "./pages/PurchaseReceipts.vue";
 
 import { useToast } from "./composables/useToast.js";
 import { usePermissions } from "./composables/usePermissions.js";
@@ -166,6 +172,7 @@ const routes = [
   { path: "/payments",          name: "payments",         component: Payments,       meta: { module: "payments" } },
   { path: "/payments-received", name: "payments-received",component: Payments,       meta: { module: "payments" } },
   { path: "/debit-notes",       name: "debit-notes",      component: DebitNotes,     meta: { module: "bills"    } },
+  { path: "/recurring-bills",   name: "recurring-bills",  component: RecurringBills, meta: { module: "bills"    } },
   { path: "/recurring",         name: "recurring",        component: Recurring,      meta: { module: "invoices" } },
   { path: "/eway-bills",        name: "eway-bills",       component: EwayBills,      meta: { module: "invoices" } },
   { path: "/banking/accounts",       name: "banking-accounts",       component: BankAccounts,       meta: { module: "accounts" } },
@@ -178,11 +185,16 @@ const routes = [
   { path: "/inventory/stock-ledger",   name: "stock-ledger",    component: StockLedger,    meta: { module: "inventory" } },
   { path: "/inventory/valuation",      name: "stock-valuation", component: StockValuation, meta: { module: "inventory" } },
   { path: "/inventory/reorder-alerts", name: "reorder-alerts",  component: ReorderAlerts,  meta: { module: "inventory" } },
+  { path: "/inventory/price-lists",    name: "price-lists",     component: PriceLists,     meta: { module: "inventory" } },
   { path: "/gst/gstr1",    name: "gstr1",    component: GSTReturn1,  meta: { module: "accounts" } },
   { path: "/gst/gstr3b",   name: "gstr3b",   component: GSTReturn3B, meta: { module: "accounts" } },
   { path: "/gst/einvoice", name: "einvoice", component: EInvoice,    meta: { module: "invoices" } },
   { path: "/gst/tds",      name: "tds",      component: TDS,         meta: { module: "accounts" } },
   { path: "/reports",      name: "reports",  component: Reports,     meta: { module: null       } },
+  { path: "/bulk-import",        name: "bulk-import",       component: BulkImport,       meta: { module: "admin"    } },
+  { path: "/delivery-challans",   name: "delivery-challans",   component: DeliveryChallans,   meta: { module: "invoices" } },
+  { path: "/proforma-invoices",   name: "proforma-invoices",   component: ProformaInvoices,   meta: { module: "invoices" } },
+  { path: "/purchase-receipts",   name: "purchase-receipts",   component: PurchaseReceipts,   meta: { module: "bills"    } },
   // Future phases append entries here.
   {
     path: "/:pathMatch(.*)*",

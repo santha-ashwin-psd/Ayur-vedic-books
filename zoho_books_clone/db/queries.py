@@ -572,6 +572,139 @@ def get_ar_aging(company: str, as_of_date: str) -> list[dict]:
     return list(buckets.values())
 
 
+# ── AP Aging ──────────────────────────────────────────────────────────────────
+
+@frappe.whitelist()
+def get_ap_aging(company: str, as_of_date: str) -> list[dict]:
+    """Accounts Payable aging by supplier with standard buckets."""
+    rows = frappe.db.sql("""
+        SELECT
+            pi.supplier,
+            pi.supplier_name,
+            pi.name             AS invoice,
+            pi.posting_date,
+            pi.due_date,
+            pi.outstanding_amount,
+            DATEDIFF(%(as_of_date)s, pi.due_date) AS overdue_days
+        FROM `tabPurchase Invoice` pi
+        WHERE pi.company      = %(company)s
+          AND pi.docstatus    = 1
+          AND pi.outstanding_amount > 0
+        ORDER BY pi.supplier, pi.posting_date
+    """, {"company": company, "as_of_date": as_of_date}, as_dict=True)
+
+    buckets = {}
+    for r in rows:
+        sup = r["supplier"]
+        if sup not in buckets:
+            buckets[sup] = {"supplier": sup, "supplier_name": r.get("supplier_name", sup),
+                            "current": 0, "days_1_30": 0, "days_31_60": 0,
+                            "days_61_90": 0, "days_90_plus": 0, "total": 0}
+        b = buckets[sup]
+        amt = flt(r["outstanding_amount"])
+        days = r["overdue_days"] or 0
+        if days <= 0:
+            b["current"] += amt
+        elif days <= 30:
+            b["days_1_30"] += amt
+        elif days <= 60:
+            b["days_31_60"] += amt
+        elif days <= 90:
+            b["days_61_90"] += amt
+        else:
+            b["days_90_plus"] += amt
+        b["total"] += amt
+
+    return list(buckets.values())
+
+
+# ── Customer Statement ────────────────────────────────────────────────────────
+
+@frappe.whitelist()
+def get_customer_statement(customer: str, company: str) -> dict:
+    """Outstanding invoices + payment history for a customer."""
+    invoices = frappe.db.sql("""
+        SELECT name, posting_date, due_date, grand_total, outstanding_amount, currency,
+               CASE WHEN due_date < CURDATE() AND outstanding_amount > 0 THEN 1 ELSE 0 END AS is_overdue
+        FROM `tabSales Invoice`
+        WHERE company = %(company)s AND customer = %(customer)s AND docstatus = 1
+          AND outstanding_amount > 0
+        ORDER BY due_date ASC
+    """, {"company": company, "customer": customer}, as_dict=True)
+
+    payments = frappe.db.sql("""
+        SELECT name, payment_date, paid_amount, mode_of_payment
+        FROM `tabPayment Entry`
+        WHERE company = %(company)s AND party = %(customer)s AND party_type = 'Customer'
+          AND docstatus = 1
+        ORDER BY payment_date DESC
+        LIMIT 20
+    """, {"company": company, "customer": customer}, as_dict=True)
+
+    total_outstanding = sum(flt(i["outstanding_amount"]) for i in invoices)
+    overdue_amount    = sum(flt(i["outstanding_amount"]) for i in invoices if i["is_overdue"])
+
+    cust = frappe.db.get_value("Customer", customer,
+                               ["customer_name", "email_id", "mobile_no"], as_dict=True) or {}
+
+    return {
+        "customer": customer,
+        "customer_name": cust.get("customer_name", customer),
+        "email": cust.get("email_id", ""),
+        "mobile": cust.get("mobile_no", ""),
+        "invoices": invoices,
+        "payments": payments,
+        "total_outstanding": total_outstanding,
+        "overdue_amount": overdue_amount,
+    }
+
+
+@frappe.whitelist()
+def send_customer_statement(customer: str, company: str) -> dict:
+    """Email the account statement to the customer."""
+    data = get_customer_statement(customer, company)
+    email = data.get("email", "")
+    if not email:
+        frappe.throw("No email address on file for this customer.")
+
+    cname = data["customer_name"]
+    rows_html = "".join(
+        f"<tr><td>{i['name']}</td><td>{i['posting_date']}</td><td>{i['due_date']}</td>"
+        f"<td style='text-align:right'>₹{flt(i['outstanding_amount']):,.2f}</td>"
+        f"<td style='color:{'#c92a2a' if i['is_overdue'] else '#2f9e44'}'>"
+        f"{'Overdue' if i['is_overdue'] else 'Due'}</td></tr>"
+        for i in data["invoices"]
+    )
+
+    body = f"""
+<p>Dear {cname},</p>
+<p>Please find your account statement from <b>{company}</b> as of today.</p>
+<table border="1" cellpadding="6" cellspacing="0"
+  style="border-collapse:collapse;font-size:13px;width:100%">
+  <thead style="background:#f3f4f6">
+    <tr><th>Invoice</th><th>Date</th><th>Due Date</th><th>Outstanding</th><th>Status</th></tr>
+  </thead>
+  <tbody>{rows_html}</tbody>
+  <tfoot>
+    <tr style="font-weight:700;background:#f3f4f6">
+      <td colspan="3">Total Outstanding</td>
+      <td style="text-align:right">₹{data['total_outstanding']:,.2f}</td><td></td>
+    </tr>
+  </tfoot>
+</table>
+<p>Please arrange payment at your earliest convenience. Thank you.</p>
+<p>Regards,<br>{company}</p>
+"""
+    frappe.sendmail(
+        recipients=[email],
+        subject=f"Account Statement – {company}",
+        message=body,
+        reference_doctype="Customer",
+        reference_name=customer,
+    )
+    return {"sent": True, "email": email}
+
+
 # ── P&L Monthly Breakdown ────────────────────────────────────────────────────
 
 @frappe.whitelist()

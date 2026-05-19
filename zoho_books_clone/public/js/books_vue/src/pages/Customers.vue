@@ -238,7 +238,107 @@
         </div>
       </div>
 
-      <div v-if="activeCustomerTab!=='overview'" style="padding:32px 24px;text-align:center;color:#9CA3AF">
+      <!-- Statement Tab -->
+      <div v-if="activeCustomerTab==='statement'" style="padding:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#111827">Account Statement</div>
+            <div style="font-size:12px;color:#6B7280;margin-top:2px">Outstanding invoices for {{selectedCustomer.customer_name}}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="nim-btn" style="font-size:12.5px;background:#EBFBEE;color:#2F9E44;border-color:#8CE99A" @click="loadStatement" :disabled="stmtLoading">
+              <span v-if="stmtLoading">Loading…</span>
+              <span v-else>Refresh</span>
+            </button>
+            <button v-if="stmt && stmt.email" class="nim-btn nim-btn-primary" style="font-size:12.5px" @click="sendStatement" :disabled="sendingStmt">
+              {{sendingStmt ? 'Sending…' : '📧 Send to Customer'}}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="stmtLoading" style="padding:40px;text-align:center;color:#9CA3AF">Loading statement…</div>
+        <div v-else-if="!stmt" style="padding:40px;text-align:center;color:#9CA3AF">
+          <div style="font-size:32px;margin-bottom:8px">📄</div>
+          <div style="font-size:13.5px;font-weight:600;color:#374151;margin-bottom:4px">No statement loaded</div>
+          <button class="nim-btn nim-btn-primary" @click="loadStatement">Load Statement</button>
+        </div>
+        <template v-else>
+          <!-- Summary cards -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+            <div style="background:#FFF5F5;border:1px solid #FFC9C9;border-radius:10px;padding:14px 16px">
+              <div style="font-size:11px;color:#C92A2A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Total Outstanding</div>
+              <div style="font-size:20px;font-weight:700;font-family:monospace;color:#C92A2A">₹{{fmtStmt(stmt.total_outstanding)}}</div>
+            </div>
+            <div style="background:#FFF9DB;border:1px solid #FFD43B;border-radius:10px;padding:14px 16px">
+              <div style="font-size:11px;color:#E67700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Overdue</div>
+              <div style="font-size:20px;font-weight:700;font-family:monospace;color:#E67700">₹{{fmtStmt(stmt.overdue_amount)}}</div>
+            </div>
+            <div style="background:#F3F4F6;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
+              <div style="font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Open Invoices</div>
+              <div style="font-size:20px;font-weight:700;font-family:monospace;color:#111827">{{stmt.invoices.length}}</div>
+            </div>
+          </div>
+
+          <!-- Outstanding invoices -->
+          <div v-if="stmt.invoices.length" style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Outstanding Invoices</div>
+            <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+              <thead style="background:#F9FAFB">
+                <tr>
+                  <th style="padding:8px 12px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Invoice</th>
+                  <th style="padding:8px 12px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Date</th>
+                  <th style="padding:8px 12px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Due Date</th>
+                  <th style="padding:8px 12px;text-align:right;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Outstanding</th>
+                  <th style="padding:8px 12px;text-align:center;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="inv in stmt.invoices" :key="inv.name" style="border-bottom:1px solid #F3F4F6">
+                  <td style="padding:8px 12px;font-family:monospace;color:#3B5BDB;font-size:12px">{{inv.name}}</td>
+                  <td style="padding:8px 12px;color:#6B7280">{{inv.posting_date}}</td>
+                  <td style="padding:8px 12px;color:#6B7280">{{inv.due_date}}</td>
+                  <td style="padding:8px 12px;text-align:right;font-family:monospace;font-weight:600">₹{{fmtStmt(inv.outstanding_amount)}}</td>
+                  <td style="padding:8px 12px;text-align:center">
+                    <span :style="'padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;'+(inv.is_overdue?'background:#FFF5F5;color:#C92A2A':'background:#EBFBEE;color:#2F9E44')">
+                      {{inv.is_overdue ? 'Overdue' : 'Due'}}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else style="padding:20px;text-align:center;color:#9CA3AF;background:#F9FAFB;border-radius:8px">No outstanding invoices</div>
+
+          <!-- Recent payments -->
+          <div v-if="stmt.payments.length" style="margin-top:16px">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Recent Payments</div>
+            <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+              <thead style="background:#F9FAFB">
+                <tr>
+                  <th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB">Payment</th>
+                  <th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB">Date</th>
+                  <th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB">Mode</th>
+                  <th style="padding:8px 12px;text-align:right;font-weight:600;border-bottom:1px solid #E5E7EB">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="p in stmt.payments" :key="p.name" style="border-bottom:1px solid #F3F4F6">
+                  <td style="padding:8px 12px;font-family:monospace;color:#3B5BDB;font-size:12px">{{p.name}}</td>
+                  <td style="padding:8px 12px;color:#6B7280">{{p.payment_date}}</td>
+                  <td style="padding:8px 12px;color:#6B7280">{{p.mode_of_payment||'—'}}</td>
+                  <td style="padding:8px 12px;text-align:right;font-family:monospace;font-weight:600;color:#2F9E44">₹{{fmtStmt(p.paid_amount)}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="!stmt.email" style="margin-top:12px;padding:10px 14px;background:#FFF9DB;border:1px solid #FFD43B;border-radius:8px;font-size:12.5px;color:#876800">
+            ⚠️ No email on file — add an email to enable sending this statement.
+          </div>
+        </template>
+      </div>
+
+      <div v-if="activeCustomerTab!=='overview' && activeCustomerTab!=='statement'" style="padding:32px 24px;text-align:center;color:#9CA3AF">
         <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:capitalize">{{activeCustomerTab}}</div>
         <div style="font-size:12.5px">No {{activeCustomerTab}} data available for {{selectedCustomer.customer_name}}.</div>
       </div>
@@ -682,7 +782,7 @@
           <!-- Remarks Tab -->
           <template v-else-if="drawerTab==='remarks'">
             <div class="cust-sec-label" style="margin-top:0">Internal Notes</div>
-            <textarea v-model="form.notes" class="nim-input" rows="8" style="resize:vertical;line-height:1.6" placeholder="Add any internal notes about this customer — payment behaviour, communication preferences, account history…"></textarea>
+            <textarea v-model="form.notes" class="nim-input" rows="14" style="resize:vertical;line-height:1.6;min-height:280px" placeholder="Add any internal notes about this customer — payment behaviour, communication preferences, account history…"></textarea>
           </template>
 
         </div>
@@ -740,7 +840,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from "vue";
-import { apiList, apiGET, apiSave, apiDelete } from "../api/client.js";
+import { apiList, apiGET, apiSave, apiDelete, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
@@ -1186,11 +1286,50 @@ async function doDelete() {
 // ── Master-detail view ──
 const selectedCustomer = ref(null);
 const activeCustomerTab = ref("overview");
-function selectCustomer(c) { selectedCustomer.value = c; activeCustomerTab.value = "overview"; }
+function selectCustomer(c) { selectedCustomer.value = c; activeCustomerTab.value = "overview"; stmt.value = null; }
 function closeCustomer()   { selectedCustomer.value = null; }
 function custInitials(name) {
   return (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
+
+// ── Customer Statement ──
+const stmt        = ref(null);
+const stmtLoading = ref(false);
+const sendingStmt = ref(false);
+const fmtStmt = (v) => Number(v||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+async function loadStatement() {
+  if (!selectedCustomer.value) return;
+  stmtLoading.value = true;
+  try {
+    const co = (await apiGET("frappe.client.get_value", {
+      doctype: "Books Settings", filters: JSON.stringify({ name: "Books Settings" }),
+      fieldname: JSON.stringify(["default_company"]),
+    }))?.default_company || "";
+    stmt.value = await apiGET("zoho_books_clone.db.queries.get_customer_statement", {
+      customer: selectedCustomer.value.name, company: co,
+    });
+  } catch (e) { toast("Could not load statement: " + e.message, "error"); }
+  stmtLoading.value = false;
+}
+
+async function sendStatement() {
+  if (!selectedCustomer.value || !stmt.value) return;
+  sendingStmt.value = true;
+  try {
+    const co = stmt.value?.invoices?.[0]?.company || (await apiGET("frappe.client.get_value", {
+      doctype: "Books Settings", filters: JSON.stringify({ name: "Books Settings" }),
+      fieldname: JSON.stringify(["default_company"]),
+    }))?.default_company || "";
+    await apiPOST("zoho_books_clone.db.queries.send_customer_statement", {
+      customer: selectedCustomer.value.name, company: co,
+    });
+    toast("Statement sent to " + stmt.value.email);
+  } catch (e) { toast(e.message || "Failed to send statement", "error"); }
+  sendingStmt.value = false;
+}
+
+watch(activeCustomerTab, (t) => { if (t === "statement" && !stmt.value) loadStatement(); });
 
 onMounted(load);
 </script>

@@ -19,13 +19,17 @@ export const NAV = [
   { path: "/recurring",                     label: "Recurring",        icon: "recurring",  module: "invoices"   },
   { path: "/credit-notes",                  label: "Credit Notes",     icon: "creditnote", module: "invoices"   },
   { path: "/payments-received",             label: "Payments Received",icon: "rupee",      module: "payments"   },
+  { path: "/delivery-challans",             label: "Delivery Challans",icon: "truck",      module: "invoices"   },
+  { path: "/proforma-invoices",             label: "Proforma Invoices",icon: "file",       module: "invoices"   },
   { path: "/eway-bills",                    label: "e-Way Bills",      icon: "truck",      module: "invoices"   },
 
   { section: "Purchases" },
   { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills"      },
   { path: "/purchases",                     label: "Bills",            icon: "fileplus",   module: "bills"      },
+  { path: "/purchase-receipts",             label: "Purchase Receipts",icon: "purchase",   module: "bills"      },
   { path: "/debit-notes",                   label: "Debit Notes",      icon: "creditnote", module: "bills"      },
   { path: "/payments",                      label: "Payments Made",    icon: "payment",    module: "payments"   },
+  { path: "/recurring-bills",               label: "Recurring Bills",  icon: "recurring",  module: "bills"      },
   { path: "/expenses",                      label: "Expenses",         icon: "expense",    module: "bills"      },
 
   { section: "Contacts" },
@@ -55,6 +59,7 @@ export const NAV = [
   { path: "/inventory/stock-ledger",        label: "Stock Ledger",     icon: "ledger",     module: "inventory"  },
   { path: "/inventory/valuation",           label: "Valuation",        icon: "chart",      module: "inventory"  },
   { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },
+  { path: "/inventory/price-lists",         label: "Price Lists",      icon: "rupee",      module: "inventory"  },
 
   { section: "GST / Taxes" },
   { path: "/gst/gstr1",                     label: "GSTR-1",           icon: "gstfile",    module: "accounts"   },
@@ -64,6 +69,8 @@ export const NAV = [
 
   { section: "Reports" },
   { path: "/reports",                       label: "All Reports",      icon: "chart",      module: "reports"    },
+
+  { path: "/bulk-import",                   label: "Bulk Import",      icon: "fileplus",   module: "admin"      },
 
   { section: "Settings" },
   { path: "/settings/users",                label: "Users",            icon: "users",      module: "admin"      },

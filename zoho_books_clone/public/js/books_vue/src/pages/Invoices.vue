@@ -227,6 +227,16 @@
                 <option v-for="s in INDIAN_STATES" :key="s" :value="s">{{ s }}</option>
               </select>
             </div>
+            <div>
+              <label class="inv-lbl">Currency</label>
+              <select v-model="form.currency" class="inv-fi" @change="form.exchange_rate = form.currency==='INR'?1:form.exchange_rate">
+                <option v-for="(sym,code) in CURRENCY_SYMBOLS" :key="code" :value="code">{{ code }} {{ sym }}</option>
+              </select>
+            </div>
+            <div v-if="form.currency !== 'INR'">
+              <label class="inv-lbl">Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span></label>
+              <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi" placeholder="e.g. 83.5"/>
+            </div>
           </div>
 
           <!-- Billing Address -->
@@ -869,7 +879,7 @@ const form = reactive({
   customer:"", posting_date:"", due_date:"", po_no:"",
   payment_terms:"", place_of_supply:"", billing_address:"",
   terms:"", remarks:"", docstatus:0,
-  currency:"INR", gst_treatment:"",
+  currency:"INR", exchange_rate:1, gst_treatment:"",
 });
 const lines   = ref([]);
 const taxRows = ref([]);
@@ -1142,7 +1152,7 @@ function openAdd() {
   editingName.value=null;
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
   taxRows.value=[];
-  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:0,currency:"INR",gst_treatment:""});
+  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:""});
   drawerOpen.value=true;
 }
 async function openEdit(inv) {
@@ -1157,7 +1167,7 @@ async function openEdit(inv) {
       customer:doc.customer||"",posting_date:doc.posting_date||todayStr(),due_date:doc.due_date||dueDateDefault(),
       po_no:doc.po_no||"",payment_terms:doc.payment_terms_template||"",place_of_supply:doc.place_of_supply||"",
       billing_address:"",terms:doc.terms||"",remarks:doc.remarks||"",docstatus:doc.docstatus||0,
-      currency:doc.currency||"INR",gst_treatment:doc.gst_category||"",
+      currency:doc.currency||"INR",exchange_rate:doc.conversion_rate||1,gst_treatment:doc.gst_category||"",
     });
     lines.value=(doc.items||[]).map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:it.hsn_code||"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:it.uom||"Nos",discount_percentage:flt(it.discount_percentage)||0,discount_amount:flt(it.discount_amount)||0,amount:flt(it.amount)||0}));
     taxRows.value=(doc.taxes||[]).map((tx,i)=>({id:Date.now()+100+i,description:tx.description||"",rate:flt(tx.rate)||0,account_head:tx.account_head||taxAccountHead.value,amount:flt(tx.tax_amount)||0}));
@@ -1180,7 +1190,7 @@ async function saveInvoice(docstatus) {
     const company=await resolveCompany();
     const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0}));
     const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>({doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate}));
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms_template:form.payment_terms||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular"};
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms_template:form.payment_terms||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",conversion_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular"};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
     if (docstatus===1) await apiSubmit("Sales Invoice",saved.name);

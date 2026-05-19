@@ -119,6 +119,21 @@
         <div class="exp-total-row grand">
           <span>Total</span><span>{{ fmtCur(lineTotal) }}</span>
         </div>
+
+        <!-- Receipt upload -->
+        <div class="exp-field" style="margin-top:4px">
+          <label class="exp-label">Attach Receipt</label>
+          <div v-if="receiptFile" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#EBFBEE;border:1px solid #8CE99A;border-radius:8px;font-size:12.5px">
+            <span v-html="icon('check',12)" style="color:#2F9E44"></span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{receiptFile.name}}</span>
+            <button @click="receiptFile=null" style="background:none;border:none;cursor:pointer;color:#C92A2A;padding:2px" v-html="icon('x',12)"></button>
+          </div>
+          <label v-else style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px dashed #BAC8FF;border-radius:8px;cursor:pointer;background:#F8F9FF;font-size:12.5px;color:#4C6EF5">
+            <span v-html="icon('fileplus',13)"></span>
+            Click to attach receipt (image or PDF)
+            <input type="file" accept="image/*,.pdf" style="display:none" @change="onReceiptChange"/>
+          </label>
+        </div>
       </div>
       <div class="exp-dfooter">
         <button class="exp-btn-ghost" @click="drawerOpen=false">Cancel</button>
@@ -169,6 +184,8 @@ const list=ref([]),loading=ref(false),search=ref(""),selected=ref(new Set());
 const drawerOpen=ref(false),drawerSaving=ref(false),editingName=ref("");
 const viewOpen=ref(false),viewDoc=ref(null);
 const lines=ref([]);
+const receiptFile=ref(null);
+function onReceiptChange(e){const f=e.target.files[0];if(f)receiptFile.value=f;e.target.value="";}
 const sortCol=ref("posting_date"),sortDir=ref("desc");
 let _id=1;
 const blankLine=()=>({id:_id++,expense_type:"",description:"",amount:0});
@@ -193,7 +210,7 @@ function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db
 const allChecked=computed(()=>sorted.value.length>0&&sorted.value.every(e=>selected.value.has(e.name)));
 function toggle(n){const s=new Set(selected.value);s.has(n)?s.delete(n):s.add(n);selected.value=s;}
 function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(x=>x.name)):new Set();}
-function openNew(){editingName.value="";Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});lines.value=[blankLine()];drawerOpen.value=true;}
+function openNew(){editingName.value="";receiptFile.value=null;Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});lines.value=[blankLine()];drawerOpen.value=true;}
 async function openEdit(e){editingName.value=e.name;try{const doc=await apiGet("Expense Claim",e.name);Object.assign(form,{posting_date:doc.claim_date||doc.posting_date||"",employee_name:doc.employee_name||"",expense_type:"",total_claimed_amount:flt(doc.total_claimed_amount),currency:doc.currency||"INR",remark:doc.notes||""});lines.value=(doc.expenses||[]).map(l=>({id:_id++,expense_type:l.expense_type||"",description:l.description||"",amount:flt(l.amount)}));if(!lines.value.length)lines.value=[blankLine()];}catch{Object.assign(form,{posting_date:e.posting_date||"",employee_name:e.employee_name||"",expense_type:"",total_claimed_amount:flt(e.total_claimed_amount),currency:"INR",remark:""});lines.value=[blankLine()];}drawerOpen.value=true;}
 function openView(e){viewDoc.value=e;viewOpen.value=true;}
 function addLine(){lines.value.push(blankLine());}

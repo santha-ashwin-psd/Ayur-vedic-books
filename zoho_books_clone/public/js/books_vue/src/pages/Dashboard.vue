@@ -28,6 +28,7 @@
         <div class="card-header">
           <span class="books-card-title">Revenue Trend</span>
           <span class="badge badge-blue">Last 6 months</span>
+          <button class="books-btn books-btn-ghost" style="font-size:11px;padding:4px 10px;margin-left:auto" @click="navTo('/reports')">Full Report</button>
         </div>
         <div v-if="trendLoading" class="chart-placeholder">
           <div class="loading-shimmer" style="height:180px;border-radius:8px"></div>
@@ -86,24 +87,48 @@
         </div>
       </div>
 
-      <!-- AR Aging -->
-      <div class="books-card aging-card">
-        <div class="card-header">
-          <span class="books-card-title">AR Aging</span>
-        </div>
-        <div v-if="agingLoading" class="aging-bars">
-          <div v-for="n in 5" :key="n" class="aging-row">
-            <div class="loading-shimmer" style="height:12px;width:60px"></div>
-            <div class="loading-shimmer" style="height:12px;width:100px"></div>
+      <!-- AR / AP Aging side by side -->
+      <div class="aging-pair">
+        <div class="books-card aging-card">
+          <div class="card-header">
+            <span class="books-card-title">AR Aging</span>
+            <span class="badge badge-blue">Receivables</span>
+          </div>
+          <div v-if="agingLoading" class="aging-bars">
+            <div v-for="n in 5" :key="n" class="aging-row">
+              <div class="loading-shimmer" style="height:12px;width:60px"></div>
+              <div class="loading-shimmer" style="height:12px;width:100px"></div>
+            </div>
+          </div>
+          <div v-else class="aging-bars">
+            <div v-for="bucket in agingRows(aging)" :key="bucket.key" class="aging-row">
+              <span class="aging-label">{{ bucket.label }}</span>
+              <div class="aging-bar-wrap">
+                <div class="aging-bar" :style="{ width: bucket.pct + '%', background: bucket.color }"></div>
+              </div>
+              <span class="aging-amount" :style="{ color: bucket.color }">{{ fmt(aging?.[bucket.key]) }}</span>
+            </div>
           </div>
         </div>
-        <div v-else class="aging-bars">
-          <div v-for="bucket in agingRows" :key="bucket.key" class="aging-row">
-            <span class="aging-label">{{ bucket.label }}</span>
-            <div class="aging-bar-wrap">
-              <div class="aging-bar" :style="{ width: bucket.pct + '%', background: bucket.color }"></div>
+        <div class="books-card aging-card">
+          <div class="card-header">
+            <span class="books-card-title">AP Aging</span>
+            <span class="badge badge-amber">Payables</span>
+          </div>
+          <div v-if="apAgingLoading" class="aging-bars">
+            <div v-for="n in 5" :key="n" class="aging-row">
+              <div class="loading-shimmer" style="height:12px;width:60px"></div>
+              <div class="loading-shimmer" style="height:12px;width:100px"></div>
             </div>
-            <span class="aging-amount" :style="{ color: bucket.color }">{{ fmt(aging?.[bucket.key]) }}</span>
+          </div>
+          <div v-else class="aging-bars">
+            <div v-for="bucket in agingRows(apAging)" :key="bucket.key" class="aging-row">
+              <span class="aging-label">{{ bucket.label }}</span>
+              <div class="aging-bar-wrap">
+                <div class="aging-bar" :style="{ width: bucket.pct + '%', background: bucket.color }"></div>
+              </div>
+              <span class="aging-amount" :style="{ color: bucket.color }">{{ fmt(apAging?.[bucket.key]) }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -171,6 +196,44 @@
         </table>
         <div v-else class="loading-shimmer" style="height:140px;border-radius:8px"></div>
       </div>
+
+      <!-- Recent Activity -->
+      <div class="books-card" style="grid-column:1/-1">
+        <div class="card-header">
+          <span class="books-card-title">Recent Activity</span>
+          <span class="badge badge-blue">Last 10 transactions</span>
+        </div>
+        <div v-if="activityLoading" class="loading-shimmer" style="height:120px;border-radius:8px"></div>
+        <table v-else class="books-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Reference</th>
+              <th>Party</th>
+              <th class="ta-r">Amount</th>
+              <th class="ta-r">Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in (activity || [])" :key="row.name">
+              <td>
+                <span class="activity-tag" :class="activityTagClass(row.doctype)">{{ activityTypeLabel(row.doctype) }}</span>
+              </td>
+              <td><span class="link-accent">{{ row.name }}</span></td>
+              <td class="text-muted" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.party || '—' }}</td>
+              <td class="ta-r mono">{{ fmt(row.amount) }}</td>
+              <td class="ta-r mono text-muted">{{ fmtDate(row.date) }}</td>
+              <td>
+                <span class="activity-status" :class="statusTagClass(row.status)">{{ row.status }}</span>
+              </td>
+            </tr>
+            <tr v-if="!activity?.length">
+              <td colspan="6" style="text-align:center;color:#9ca3af;padding:24px">No recent activity</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
   </div>
@@ -201,12 +264,14 @@ function fmtShort(v) {
 }
 
 // ── API calls ──
-const { data: dash,  loading: dashLoading,  execute: loadDash  } = useFrappeCall("zoho_books_clone.api.dashboard.get_home_dashboard");
-const { data: kpis,  loading: kpiLoading,   execute: loadKpis  } = useFrappeCall("zoho_books_clone.db.aggregates.get_dashboard_kpis");
-const { data: trend, loading: trendLoading, execute: loadTrend } = useFrappeCall("zoho_books_clone.db.aggregates.get_monthly_revenue_trend");
-const { data: aging, loading: agingLoading, execute: loadAging } = useFrappeCall("zoho_books_clone.db.aggregates.get_aging_buckets");
+const { data: dash,     loading: dashLoading,     execute: loadDash     } = useFrappeCall("zoho_books_clone.api.dashboard.get_home_dashboard");
+const { data: kpis,     loading: kpiLoading,      execute: loadKpis     } = useFrappeCall("zoho_books_clone.db.aggregates.get_dashboard_kpis");
+const { data: trend,    loading: trendLoading,     execute: loadTrend    } = useFrappeCall("zoho_books_clone.db.aggregates.get_monthly_revenue_trend");
+const { data: aging,    loading: agingLoading,     execute: loadAging    } = useFrappeCall("zoho_books_clone.db.aggregates.get_aging_buckets");
+const { data: apAging,  loading: apAgingLoading,   execute: loadApAging  } = useFrappeCall("zoho_books_clone.api.dashboard.get_ap_aging_buckets");
+const { data: activity, loading: activityLoading,  execute: loadActivity } = useFrappeCall("zoho_books_clone.api.dashboard.get_recent_activity");
 
-onMounted(() => { loadDash(); loadKpis(); loadTrend(); loadAging(); });
+onMounted(() => { loadDash(); loadKpis(); loadTrend(); loadAging(); loadApAging(); loadActivity(); });
 
 // ── Icons ──
 const iconRevenue  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
@@ -273,18 +338,38 @@ const areaPath = computed(() => {
 });
 
 // ── Aging config ──
-const agingRows = computed(() => {
-  const buckets = [
-    { key: "current", label: "Current",    color: "#16a34a" },
-    { key: "1_30",    label: "1–30 days",  color: "#2563eb" },
-    { key: "31_60",   label: "31–60 days", color: "#f59e0b" },
-    { key: "61_90",   label: "61–90 days", color: "#fb923c" },
-    { key: "over_90", label: ">90 days",   color: "#dc2626" },
-  ];
-  const data  = aging.value || {};
-  const total = Object.values(data).reduce((a, v) => a + (v || 0), 0) || 1;
-  return buckets.map(b => ({ ...b, pct: Math.min(100, ((data[b.key] || 0) / total) * 100) }));
-});
+const AGING_BUCKETS = [
+  { key: "current", label: "Current",    color: "#16a34a" },
+  { key: "1_30",    label: "1–30 days",  color: "#2563eb" },
+  { key: "31_60",   label: "31–60 days", color: "#f59e0b" },
+  { key: "61_90",   label: "61–90 days", color: "#fb923c" },
+  { key: "over_90", label: ">90 days",   color: "#dc2626" },
+];
+function agingRows(data) {
+  const d     = data?.value || data || {};
+  const total = Object.values(d).reduce((a, v) => a + (v || 0), 0) || 1;
+  return AGING_BUCKETS.map(b => ({ ...b, pct: Math.min(100, ((d[b.key] || 0) / total) * 100) }));
+}
+
+// ── Recent activity helpers ──
+function activityTypeLabel(dt) {
+  if (dt === "Sales Invoice")    return "Invoice";
+  if (dt === "Purchase Invoice") return "Bill";
+  if (dt === "Payment Entry")    return "Payment";
+  return dt;
+}
+function activityTagClass(dt) {
+  if (dt === "Sales Invoice")    return "tag-invoice";
+  if (dt === "Purchase Invoice") return "tag-bill";
+  return "tag-payment";
+}
+function statusTagClass(status) {
+  const s = (status || "").toLowerCase();
+  if (s === "paid" || s === "receive") return "status-paid";
+  if (s === "unpaid" || s === "overdue") return "status-unpaid";
+  if (s === "draft") return "status-draft";
+  return "status-other";
+}
 </script>
 
 <style scoped>
@@ -307,8 +392,13 @@ const agingRows = computed(() => {
 .kv-blue  { color: #2563eb; }
 
 /* Mid grid */
-.mid-grid { display: grid; grid-template-columns: 1fr 300px; gap: 14px; }
+.mid-grid { display: grid; grid-template-columns: 1fr 620px; gap: 14px; }
+@media (max-width: 1300px) { .mid-grid { grid-template-columns: 1fr 480px; } }
 @media (max-width: 1100px) { .mid-grid { grid-template-columns: 1fr; } }
+
+/* Aging pair */
+.aging-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px)  { .aging-pair { grid-template-columns: 1fr; } }
 
 .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 
@@ -331,6 +421,7 @@ const agingRows = computed(() => {
 /* Bottom grid */
 .bot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 1000px) { .bot-grid { grid-template-columns: 1fr; } }
+.bot-grid > *:last-child { grid-column: 1 / -1; }
 
 /* Table helpers */
 .ta-r      { text-align: right; }
@@ -342,4 +433,19 @@ const agingRows = computed(() => {
 .text-muted{ color: #6b7280; font-size: 12.5px; }
 .link-accent { color: #2563eb; font-weight: 600; cursor: pointer; }
 .link-accent:hover { text-decoration: underline; }
+
+/* Activity tags */
+.activity-tag  { display:inline-block;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:600;letter-spacing:.04em; }
+.tag-invoice   { background:#eff6ff;color:#1d4ed8; }
+.tag-bill      { background:#fff7ed;color:#c2410c; }
+.tag-payment   { background:#f0fdf4;color:#15803d; }
+
+.activity-status { display:inline-block;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:500; }
+.status-paid    { background:#f0fdf4;color:#15803d; }
+.status-unpaid  { background:#fef2f2;color:#b91c1c; }
+.status-draft   { background:#f9fafb;color:#6b7280; }
+.status-other   { background:#f3f4f6;color:#374151; }
+
+/* Badge variants */
+.badge-amber { background:#fff7ed;color:#c2410c; }
 </style>

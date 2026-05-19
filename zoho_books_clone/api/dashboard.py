@@ -78,6 +78,62 @@ def search_transactions(query: str, company: str | None = None) -> list[dict]:
     return sorted(invoices + payments, key=lambda r: str(r.get("date") or ""), reverse=True)
 
 
+@frappe.whitelist()
+def get_recent_activity(company: str | None = None, limit: int = 10) -> list[dict]:
+    """Return the N most recent transactions across invoices, bills, and payments."""
+    if not company:
+        company = _get_company(frappe.session.user)
+    rows = frappe.db.sql("""
+        SELECT 'Sales Invoice' AS doctype, name, customer_name AS party,
+               grand_total AS amount, posting_date AS date,
+               CASE WHEN docstatus=0 THEN 'Draft' WHEN outstanding_amount=0 THEN 'Paid'
+                    WHEN outstanding_amount<grand_total THEN 'Partial' ELSE 'Unpaid' END AS status
+        FROM `tabSales Invoice`
+        WHERE company = %(company)s AND docstatus != 2
+        UNION ALL
+        SELECT 'Purchase Invoice' AS doctype, name, supplier_name AS party,
+               grand_total AS amount, posting_date AS date,
+               CASE WHEN docstatus=0 THEN 'Draft' WHEN outstanding_amount=0 THEN 'Paid'
+                    WHEN outstanding_amount<grand_total THEN 'Partial' ELSE 'Unpaid' END AS status
+        FROM `tabPurchase Invoice`
+        WHERE company = %(company)s AND docstatus != 2
+        UNION ALL
+        SELECT 'Payment Entry' AS doctype, name, party,
+               paid_amount AS amount, payment_date AS date, payment_type AS status
+        FROM `tabPayment Entry`
+        WHERE company = %(company)s AND docstatus != 2
+        ORDER BY date DESC
+        LIMIT %(limit)s
+    """, {"company": company, "limit": int(limit)}, as_dict=True)
+    return rows
+
+
+@frappe.whitelist()
+def get_ap_aging_buckets(company: str | None = None) -> dict:
+    """AP aging summary — bucketed by days overdue."""
+    if not company:
+        company = _get_company(frappe.session.user)
+    t = today()
+    rows = frappe.db.sql("""
+        SELECT
+            SUM(CASE WHEN DATEDIFF(%(today)s, due_date) <= 0  THEN outstanding_amount ELSE 0 END) AS current_amt,
+            SUM(CASE WHEN DATEDIFF(%(today)s, due_date) BETWEEN  1 AND 30 THEN outstanding_amount ELSE 0 END) AS d1_30,
+            SUM(CASE WHEN DATEDIFF(%(today)s, due_date) BETWEEN 31 AND 60 THEN outstanding_amount ELSE 0 END) AS d31_60,
+            SUM(CASE WHEN DATEDIFF(%(today)s, due_date) BETWEEN 61 AND 90 THEN outstanding_amount ELSE 0 END) AS d61_90,
+            SUM(CASE WHEN DATEDIFF(%(today)s, due_date) > 90 THEN outstanding_amount ELSE 0 END)              AS over_90
+        FROM `tabPurchase Invoice`
+        WHERE company = %(company)s AND docstatus = 1 AND outstanding_amount > 0
+    """, {"company": company, "today": t}, as_dict=True)
+    r = rows[0] if rows else {}
+    return {
+        "current":  flt(r.get("current_amt")),
+        "1_30":     flt(r.get("d1_30")),
+        "31_60":    flt(r.get("d31_60")),
+        "61_90":    flt(r.get("d61_90")),
+        "over_90":  flt(r.get("over_90")),
+    }
+
+
 def _get_aging_buckets(company: str, as_of: str) -> dict:
     """AR aging summary — bucketed by days overdue."""
     rows = frappe.db.sql("""

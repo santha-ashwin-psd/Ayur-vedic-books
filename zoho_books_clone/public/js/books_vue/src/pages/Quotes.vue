@@ -185,6 +185,9 @@
           <button v-if="viewDoc.docstatus===0" class="qt-btn-save" @click="openEdit(viewDoc);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
+          <button v-if="viewDoc.docstatus===1" class="qt-btn-convert" :disabled="converting" @click="convertToInvoice(viewDoc)">
+            <span v-html="icon('plus',13)"></span> {{ converting ? 'Creating…' : 'Convert to Invoice' }}
+          </button>
         </div>
       </template>
     </div>
@@ -194,11 +197,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { apiList, apiGet, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+
+const router = useRouter();
 
 const { toast } = useToast();
 const taxAccountHead=ref("");
@@ -329,6 +335,41 @@ async function openEdit(q) {
 }
 function openView(q){viewDoc.value=q;viewOpen.value=true;}
 
+const converting = ref(false);
+async function convertToInvoice(q) {
+  converting.value = true;
+  try {
+    const doc = await apiGet("Quotation", q.name);
+    const company = await resolveCompany();
+    const today = new Date().toISOString().slice(0, 10);
+    const inv = {
+      doctype: "Sales Invoice",
+      company,
+      customer: doc.party_name || doc.customer_name,
+      customer_name: doc.customer_name || doc.party_name,
+      posting_date: today,
+      due_date: today,
+      items: (doc.items || []).map(it => ({
+        doctype: "Sales Invoice Item",
+        item_code: it.item_code,
+        item_name: it.item_name || it.item_code,
+        description: it.description || it.item_code,
+        qty: flt(it.qty) || 1,
+        rate: flt(it.rate),
+        amount: flt(it.amount),
+      })),
+      taxes: (doc.taxes || []).map(t => ({ ...t, doctype: "Tax Line", name: undefined, parent: undefined })),
+      terms: doc.terms || "",
+      remarks: `Created from Quotation ${doc.name}`,
+    };
+    const saved = await apiSave(inv);
+    toast.success(`Invoice ${saved.name} created from ${doc.name}`);
+    viewOpen.value = false;
+    router.push("/invoices");
+  } catch (e) { toast.error(e.message || "Failed to convert"); }
+  finally { converting.value = false; }
+}
+
 async function fetchCustomers(q="") {
   try { const r=await apiList("Customer",{fields:["name","customer_name"],filters:q?[["customer_name","like","%"+q+"%"]]:[],limit:30,order:"customer_name asc"}); customers.value=r.map(x=>({label:x.customer_name||x.name,value:x.name})); }
   catch { customers.value=[]; }
@@ -394,6 +435,9 @@ onMounted(()=>{load();loadTaxAccount();});
 .qt-btn-save{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #16a34a;color:#16a34a;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
 .qt-btn-save:hover{background:#dcfce7;}
 .qt-btn-save:disabled{opacity:.5;cursor:not-allowed;}
+.qt-btn-convert{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+.qt-btn-convert:hover{background:#1d4ed8;}
+.qt-btn-convert:disabled{opacity:.5;cursor:not-allowed;}
 .qt-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
 .qt-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
 .qt-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}

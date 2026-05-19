@@ -98,6 +98,16 @@
             <label class="bill-label">Vendor Bill Date</label>
             <input v-model="form.bill_date" type="date" class="bill-input" />
           </div>
+          <div class="bill-field">
+            <label class="bill-label">Currency</label>
+            <select v-model="form.currency" class="bill-input" @change="form.exchange_rate=form.currency==='INR'?1:form.exchange_rate">
+              <option v-for="(sym,code) in BILL_CURRENCIES" :key="code" :value="code">{{ code }} {{ sym }}</option>
+            </select>
+          </div>
+          <div v-if="form.currency !== 'INR'" class="bill-field">
+            <label class="bill-label">Exchange Rate <span style="color:#6b7280;font-weight:400;font-size:11px">(1 {{ form.currency }} = ? INR)</span></label>
+            <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="bill-input" placeholder="e.g. 83.5"/>
+          </div>
         </div>
 
         <div class="bill-section-title">Items</div>
@@ -202,7 +212,8 @@ const sortCol=ref("posting_date"),sortDir=ref("desc");
 
 let _id=1;
 const blankLine=()=>({id:_id++,item_code:"",description:"",qty:1,rate:0,amount:0});
-const form=reactive({supplier:"",posting_date:new Date().toISOString().slice(0,10),due_date:"",bill_no:"",bill_date:"",tax_rate:0,remarks:""});
+const BILL_CURRENCIES = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
+const form=reactive({supplier:"",posting_date:new Date().toISOString().slice(0,10),due_date:"",bill_no:"",bill_date:"",tax_rate:0,remarks:"",currency:"INR",exchange_rate:1});
 
 async function load(){
   loading.value=true;
@@ -284,6 +295,7 @@ async function saveBill(submit){
     const company=await resolveCompany();
     const taxes=form.tax_rate>0&&taxAccountHead.value?[{doctype:"Tax Line",charge_type:"On Net Total",account_head:taxAccountHead.value,description:taxAccountHead.value,rate:form.tax_rate}]:[];
     const doc={doctype:"Purchase Invoice",company,supplier:form.supplier,posting_date:form.posting_date,due_date:form.due_date||null,bill_no:form.bill_no||"",bill_date:form.bill_date||null,remarks:form.remarks||"",
+      currency:form.currency||"INR",conversion_rate:form.currency==="INR"?1:(form.exchange_rate||1),
       items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Purchase Invoice Item",item_code:l.item_code,description:l.description||l.item_code,qty:flt(l.qty)||1,rate:flt(l.rate),amount:flt(l.amount)})),taxes};
     if(editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);

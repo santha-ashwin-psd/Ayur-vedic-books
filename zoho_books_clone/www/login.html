@@ -314,7 +314,7 @@ input,button,select,textarea{font-family:var(--font)}
             <input class="fi has-icon" id="email-input" type="email" placeholder="you@company.com" autocomplete="email"
               oninput="onSigninEmailInput(this.value)"
               onblur="onSigninEmailInput(this.value)"
-              onkeydown="if(event.key==='Enter')nextStep('password')"/>
+              onkeydown="if(event.key==='Enter'){event.preventDefault();nextStep('password')}"/>
           </div>
           <div class="err-msg" id="email-err">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -437,6 +437,10 @@ input,button,select,textarea{font-family:var(--font)}
             <input class="fi has-icon" id="reset-email" type="email" placeholder="you@company.com" autocomplete="email"
               onkeydown="if(event.key==='Enter')sendPasswordOTP()"/>
           </div>
+        </div>
+        <div class="err-msg" id="forgot-err" style="margin-bottom:12px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span></span>
         </div>
         <button class="btn-primary" id="reset-btn" onclick="sendPasswordOTP()">
           <div class="btn-text">Send OTP</div>
@@ -910,12 +914,15 @@ function setLoading(btnId, on) {
   else { b.classList.remove("loading"); b.disabled = false; }
 }
 
-function showErr(elId, msg) {
+function showErr(elId, msg, isHtml) {
   const el = document.getElementById(elId);
   if (!el) return;
   el.classList.add("show");
   const span = el.querySelector("span");
-  if (span) span.textContent = msg;
+  if (span) {
+    if (isHtml) span.innerHTML = msg;
+    else span.textContent = msg;
+  }
 }
 
 function clearErr(elId) {
@@ -946,19 +953,55 @@ function setAvatar(email) {
 
 // ─── Step: Email ────────────────────────────────────────────────────
 
-function nextStep(to) {
+async function nextStep(to) {
   if (to === "password") {
-    const email = document.getElementById("email-input").value.trim();
+    const emailInput = document.getElementById("email-input");
+    const email = emailInput.value.trim();
     const isAdmin = email.toLowerCase() === "administrator";
+
+    // 1. Basic format check
     if (!email || (!isAdmin && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
       setFiErr("email-input", true);
       showErr("email-err", "Please enter a valid email address");
       return;
     }
+
     setFiErr("email-input", false);
     clearErr("email-err");
     const hint = document.getElementById("email-hint");
-    if (hint) hint.style.display = "none";
+
+    // 2. For real emails (not Administrator), verify the account exists server-side
+    if (!isAdmin) {
+      const btn = emailInput.closest(".auth-step").querySelector(".btn-primary");
+      if (btn) { btn.classList.add("loading"); btn.disabled = true; }
+      // Cancel any pending debounced hint call so it doesn't race with us
+      if (_signinEmailTimer) { clearTimeout(_signinEmailTimer); _signinEmailTimer = null; }
+      try {
+        const res = await postFrappe("/api/method/zoho_books_clone.api.auth.check_email", { email: email.toLowerCase() });
+        if (res && res.available) {
+          // Email not registered — show error and stop
+          setFiErr("email-input", true);
+          if (hint) {
+            hint.innerHTML = `No account found for this email. <button class="link" style="font-size:12px;vertical-align:baseline" onclick="goToSignupWithEmail('${email.replace(/'/g,"\\'")}')">Create account →</button>`;
+            hint.style.display = "block";
+          }
+          emailInput.focus();
+          return;
+        }
+        // Email exists — hide any stale hint and proceed
+        if (hint) hint.style.display = "none";
+      } catch(e) {
+        setFiErr("email-input", true);
+        showErr("email-err", "Unable to verify email. Please try again.");
+        return;
+      } finally {
+        if (btn) { btn.classList.remove("loading"); btn.disabled = false; }
+      }
+    } else {
+      if (hint) hint.style.display = "none";
+    }
+
+    // 3. Set avatar and advance to password step
     if (isAdmin) {
       const av = document.getElementById("user-avatar");
       if (av) { av.textContent = "A"; av.style.background = "linear-gradient(135deg,#C92A2A,#E03131)"; }
@@ -1120,20 +1163,40 @@ async function resendOTP() {
 // ─── Forgot Password — OTP Flow ─────────────────────────────────────
 
 async function sendPasswordOTP() {
-  const email = (document.getElementById("reset-email").value.trim() ||
+  const emailInput = document.getElementById("reset-email");
+  const email = (emailInput.value.trim() ||
     document.getElementById("email-input").value.trim());
-  if (!email) return;
+  clearErr("forgot-err");
+  setFiErr("reset-email", false);
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setFiErr("reset-email", true);
+    showErr("forgot-err", "Please enter a valid email address");
+    return;
+  }
   setLoading("reset-btn", true);
   try {
+    // Check if the account exists before sending an OTP
+    const check = await postFrappe("/api/method/zoho_books_clone.api.auth.check_email", { email });
+    if (check && check.available) {
+      // available=true means the email is NOT registered
+      setFiErr("reset-email", true);
+      showErr("forgot-err", `No account found for this email. <a href="/login#signup" class="link" style="font-size:12px" onclick="goToSignupWithEmail('${email.replace(/'/g,"\\'")}');return false;">Register here →</a>`, true);
+      return;
+    }
+    // Account exists — send the OTP
     await postFrappe("/api/method/zoho_books_clone.api.auth.send_password_reset_otp", {email});
-  } catch(e) { /* always proceed to avoid email enumeration */ }
+  } catch(e) {
+    showErr("forgot-err", e.message || "Something went wrong. Please try again.");
+    return;
+  } finally {
+    setLoading("reset-btn", false);
+  }
   resetData.email = email;
   document.getElementById("reset-email-display").textContent = email;
   Array.from(document.querySelectorAll("#reset-wrap .otp-digit")).forEach(d => {
     d.value = ""; d.classList.remove("filled");
   });
   clearErr("reset-otp-err");
-  setLoading("reset-btn", false);
   goStep("forgot-otp");
   startResetResendTimer();
   const first = document.querySelector("#reset-wrap .otp-digit");

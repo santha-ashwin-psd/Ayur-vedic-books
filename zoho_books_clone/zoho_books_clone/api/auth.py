@@ -47,6 +47,24 @@ def _send_otp_email(email, first_name, otp):
         pass  # Don't block signup in dev environments without email configured
 
 
+# ─── User existence check ────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+def check_user_exists(email):
+    """Return whether a User record exists for the given email.
+
+    Used by the login page to block progression to the password step when
+    the email is not registered, so the user gets a clear error instead of
+    an unhelpful 'incorrect password' message.
+    """
+    email = (email or "").strip().lower()
+    if not email:
+        frappe.throw(_("Email is required."))
+
+    exists = frappe.db.exists("User", {"name": email, "enabled": 1})
+    return {"exists": bool(exists)}
+
+
 # ─── Signup ───────────────────────────────────────────────────────────────────
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])

@@ -20,6 +20,8 @@ fixtures = [
 _CV = "zoho_books_clone.accounts.central_validator"
 # Stock link layer (Audit-2 / Audit-3) — auto stock entries on invoice submit/cancel
 _SL = "zoho_books_clone.inventory.stock_link"
+# Multi-tenant data isolation — must be defined before doc_events, permission_query_conditions, and has_permission
+_TN = "zoho_books_clone.utils.tenancy"
 doc_events = {
     "Sales Invoice": {
         "validate":  f"{_CV}.on_validate",
@@ -99,7 +101,7 @@ after_migrate = "zoho_books_clone.books_setup.install.after_migrate"
 # Every transactional doctype with a `company` field is filtered to the user's
 # company at query time AND validated at save time (via central_validator).
 # System Manager / Administrator bypass these filters.
-_TN = "zoho_books_clone.utils.tenancy"
+# (_TN is defined near the top of this file, alongside _CV and _SL)
 
 permission_query_conditions = {
     "Sales Invoice":     f"{_TN}.qc_sales_invoice",

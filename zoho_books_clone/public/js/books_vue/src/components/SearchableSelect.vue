@@ -49,50 +49,13 @@
       </div>
     </Teleport>
 
-    <Teleport to="body">
-      <div v-if="qcOpen" class="ss-qc-overlay" @mousedown.self="qcOpen = false">
-        <div class="ss-qc-modal">
-          <div class="ss-qc-header">
-            <span>Create New {{ createLabel || createDoctype }}</span>
-            <button class="ss-qc-close" @click="qcOpen = false">✕</button>
-          </div>
-          <div class="ss-qc-body">
-            <div v-for="fd in qcFields" :key="fd.f" class="ss-qc-field">
-              <label class="ss-qc-label">
-                {{ fd.l }}<span v-if="fd.req" style="color:#ef4444;margin-left:2px">*</span>
-              </label>
-              <input
-                :type="fd.type || 'text'"
-                v-model="qcForm[fd.f]"
-                :placeholder="fd.placeholder || fd.l"
-                class="ss-qc-input"
-              />
-            </div>
-          </div>
-          <div class="ss-qc-footer">
-            <button class="nim-btn" @click="qcOpen = false">Cancel</button>
-            <button
-              class="nim-btn nim-btn-primary"
-              :disabled="qcSaving"
-              @click="qcSubmit"
-            >
-              <span v-if="qcSaving">Saving…</span>
-              <span v-else>Create &amp; Select</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
 import IconSvg from "./IconSvg.vue";
-import { apiSave } from "../api/client.js";
-import { useToast } from "../composables/useToast.js";
-
-const { toast } = useToast();
+import { useQuickCreate } from "../composables/useQuickCreate.js";
 
 const props = defineProps({
   modelValue:    { default: "" },
@@ -137,9 +100,6 @@ const inputEl   = ref(null);
 const trigEl    = ref(null);
 const dropStyle = ref({});
 
-const qcOpen   = ref(false);
-const qcSaving = ref(false);
-const qcForm   = reactive({});
 
 const normalized = computed(() => {
   const vk = props.valueKey, lk = props.labelKey;
@@ -176,11 +136,6 @@ const showCreate = computed(() => {
   return !normalized.value.some((o) => String(o.label).toLowerCase() === qv.toLowerCase());
 });
 
-const qcFields = computed(() =>
-  SS_CREATE_FIELDS[props.createDoctype] || [
-    { f: "name", l: props.createLabel || props.createDoctype || "Name", req: true, type: "text" },
-  ]
-);
 
 function calcDropStyle() {
   if (!trigEl.value) return;
@@ -213,40 +168,15 @@ function pick(opt) {
   q.value = "";
 }
 
-function onClickCreate() {
+async function onClickCreate() {
   const typed = q.value.trim();
   open.value = false;
-  if (props.createDoctype && SS_CREATE_FIELDS[props.createDoctype]) {
-    qcFields.value.forEach((fd) => { qcForm[fd.f] = ""; });
-    if (qcFields.value.length) qcForm[qcFields.value[0].f] = typed;
-    qcOpen.value = true;
+  if (props.createDoctype) {
+    const { openCreate } = useQuickCreate();
+    const record = await openCreate(props.createDoctype, typed);
+    if (record) pick({ value: record.name, label: record.label });
   } else {
     emit("create", typed);
-  }
-}
-
-async function qcSubmit() {
-  const firstReq = qcFields.value.find((fd) => fd.req);
-  if (firstReq && !qcForm[firstReq.f]) {
-    toast(`${firstReq.l} is required`, "error");
-    return;
-  }
-  qcSaving.value = true;
-  try {
-    const doctype = props.createDoctype;
-    const payload = { doctype };
-    qcFields.value.forEach((fd) => {
-      if (qcForm[fd.f] !== undefined && qcForm[fd.f] !== "") payload[fd.f] = qcForm[fd.f];
-    });
-    const res = await apiSave(payload);
-    const newName = res?.name || res;
-    pick({ value: newName, label: payload[qcFields.value[0].f] || newName });
-    qcOpen.value = false;
-    toast(`${props.createLabel || doctype} "${newName}" created`, "success");
-  } catch (e) {
-    toast("Create failed: " + (e?.message || e), "error");
-  } finally {
-    qcSaving.value = false;
   }
 }
 

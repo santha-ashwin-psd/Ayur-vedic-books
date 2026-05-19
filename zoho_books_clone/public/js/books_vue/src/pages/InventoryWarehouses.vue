@@ -189,11 +189,23 @@
           </div>
           <div class="nim-section-label">Address</div>
           <div class="nim-grid-2 nim-mb">
-            <div><label class="nim-label">City</label><input class="nim-input" v-model="form.city" placeholder="City"/></div>
-            <div><label class="nim-label">State</label><input class="nim-input" v-model="form.state" placeholder="State"/></div>
-          </div>
-          <div class="nim-grid-2 nim-mb">
             <div><label class="nim-label">Address</label><input class="nim-input" v-model="form.address_line1" placeholder="Street address"/></div>
+            <div><label class="nim-label">City</label><input class="nim-input" v-model="form.city" placeholder="City"/></div>
+            <div>
+              <label class="nim-label">Country</label>
+              <select class="nim-input" v-model="form.country" @change="form.state=''">
+                <option value="">— Select Country —</option>
+                <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
+              </select>
+            </div>
+            <div>
+              <label class="nim-label">State / Province</label>
+              <select v-if="statesFor(form.country).length" class="nim-input" v-model="form.state">
+                <option value="">— Select State —</option>
+                <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{s}}</option>
+              </select>
+              <input v-else class="nim-input" v-model="form.state" placeholder="Enter state / province"/>
+            </div>
             <div><label class="nim-label">Pincode</label><input class="nim-input" v-model="form.pincode" placeholder="Pincode"/></div>
           </div>
           <div class="nim-section-label">Flags</div>
@@ -281,6 +293,7 @@ import { useToast } from "../composables/useToast.js";
 import { fmt, fmtDate, flt } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 
 const { toast } = useToast();
 
@@ -314,7 +327,7 @@ const allItems       = ref([]);
 
 const form = reactive({
   name: "", warehouse_name: "", warehouse_type: "Stores",
-  parent_warehouse: "", city: "", state: "", address_line1: "", pincode: "",
+  parent_warehouse: "", city: "", country: "India", state: "", address_line1: "", pincode: "",
   is_group: 0, disabled: 0,
 });
 const transferForm = reactive({

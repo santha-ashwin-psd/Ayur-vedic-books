@@ -80,7 +80,8 @@
           <div class="bill-field" style="grid-column:1/-1">
             <label class="bill-label">Vendor <span class="req">*</span></label>
             <SearchableSelect v-model="form.supplier" :options="vendors"
-              placeholder="Select vendor…" @search="fetchVendors" />
+              placeholder="Select vendor…" :createable="true" createDoctype="Supplier"
+              @search="fetchVendors" />
           </div>
           <div class="bill-field">
             <label class="bill-label">Bill Date <span class="req">*</span></label>
@@ -117,7 +118,8 @@
           </div>
           <div v-for="line in lines" :key="line.id" class="bill-items-row">
             <div><SearchableSelect v-model="line.item_code" :options="items"
-              placeholder="Select item…" @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
+              placeholder="Select item…" :createable="true" createDoctype="Item"
+              @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
             <div><input v-model="line.description" class="bill-input" placeholder="Description" /></div>
             <div><input v-model.number="line.qty" type="number" min="1" class="bill-input ta-r" @input="calcLine(line)" /></div>
             <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="bill-input ta-r" @input="calcLine(line)" /></div>

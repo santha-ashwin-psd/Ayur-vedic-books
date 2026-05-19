@@ -538,10 +538,25 @@
                 <label class="nim-label">Mobile</label>
                 <div style="display:flex;gap:0">
                   <select v-model="form.mobile_code" class="nim-input" style="width:90px;border-right:none;border-radius:8px 0 0 8px;background:#f8f9fc;cursor:pointer;flex-shrink:0;padding:0 6px"
-                    @change="delete formErrors.mobile_no; validateField('mobile_no')">
-                    <option value="+91">🇮🇳 +91</option><option value="+1">🇺🇸 +1</option>
-                    <option value="+44">🇬🇧 +44</option><option value="+61">🇦🇺 +61</option>
-                    <option value="+971">🇦🇪 +971</option><option value="+65">🇸🇬 +65</option>
+                    @change="delete formErrors.mobile_no; if(form.mobile_no) validateField('mobile_no')">
+                    <option value="+91">🇮🇳 +91</option>
+                    <option value="+1">🇺🇸 +1</option>
+                    <option value="+44">🇬🇧 +44</option>
+                    <option value="+61">🇦🇺 +61</option>
+                    <option value="+971">🇦🇪 +971</option>
+                    <option value="+65">🇸🇬 +65</option>
+                    <option value="+49">🇩🇪 +49</option>
+                    <option value="+33">🇫🇷 +33</option>
+                    <option value="+60">🇲🇾 +60</option>
+                    <option value="+94">🇱🇰 +94</option>
+                    <option value="+966">🇸🇦 +966</option>
+                    <option value="+92">🇵🇰 +92</option>
+                    <option value="+880">🇧🇩 +880</option>
+                    <option value="+977">🇳🇵 +977</option>
+                    <option value="+27">🇿🇦 +27</option>
+                    <option value="+55">🇧🇷 +55</option>
+                    <option value="+86">🇨🇳 +86</option>
+                    <option value="+81">🇯🇵 +81</option>
                   </select>
                   <input v-model="form.mobile_no" class="nim-input" style="border-radius:0 8px 8px 0;flex:1" placeholder="98765 43210"
                     :style="formErrors.mobile_no?'border-color:#dc2626;background:#fff5f5':form.mobile_no&&!formErrors.mobile_no&&form.mobile_no.replace(/\D/g,'').length>6?'border-color:#2f9e44':''"
@@ -632,25 +647,29 @@
                   @input="form.city=form.city.replace(/[^a-zA-Z\s]/g,'')"/>
               </div>
               <div>
-                <label class="nim-label">State</label>
-                <select v-model="form.state" class="nim-input" style="cursor:pointer">
-                  <option value="">— Select State —</option>
-                  <option v-for="s in IN_STATES" :key="s" :value="s">{{s}}</option>
+                <label class="nim-label">Country</label>
+                <select v-model="form.country" class="nim-input" style="cursor:pointer" @change="form.state=''; delete formErrors.pincode; if(form.pincode) validateField('pincode')">
+                  <option value="">— Select Country —</option>
+                  <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
                 </select>
+              </div>
+              <div>
+                <label class="nim-label">State / Province</label>
+                <select v-if="statesFor(form.country).length" v-model="form.state" class="nim-input" style="cursor:pointer">
+                  <option value="">— Select State —</option>
+                  <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{s}}</option>
+                </select>
+                <input v-else v-model="form.state" class="nim-input" placeholder="Enter state / province"/>
               </div>
               <div>
                 <label class="nim-label">Pincode</label>
-                <input v-model="form.pincode" class="nim-input" placeholder="400001" maxlength="6"
-                  :style="formErrors.pincode?'border-color:#dc2626;background:#fff5f5':form.pincode&&form.pincode.length===6?'border-color:#2f9e44':''"
-                  @input="form.pincode=form.pincode.replace(/\D/g,'').slice(0,6); delete formErrors.pincode"
+                <input v-model="form.pincode" class="nim-input"
+                  :placeholder="pincodePlaceholder(form.country)"
+                  :style="formErrors.pincode?'border-color:#dc2626;background:#fff5f5':form.pincode&&!formErrors.pincode?'border-color:#2f9e44':''"
+                  @input="form.pincode=sanitizePincode(form.pincode, form.country); delete formErrors.pincode"
                   @blur="validateField('pincode')"/>
                 <div v-if="formErrors.pincode" style="margin-top:4px;font-size:12px;color:#dc2626">{{formErrors.pincode}}</div>
-              </div>
-              <div>
-                <label class="nim-label">Country</label>
-                <select v-model="form.country" class="nim-input" style="cursor:pointer">
-                  <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
-                </select>
+                <div v-else-if="form.pincode&&!formErrors.pincode" style="margin-top:4px;font-size:11px;color:#9ca3af">{{pincodeHint(form.country)}}</div>
               </div>
             </div>
 
@@ -670,25 +689,29 @@
                   @input="form.ship_city=form.ship_city.replace(/[^a-zA-Z\s]/g,'')"/>
               </div>
               <div>
-                <label class="nim-label">State</label>
-                <select v-model="form.ship_state" class="nim-input" style="cursor:pointer">
-                  <option value="">— Select State —</option>
-                  <option v-for="s in IN_STATES" :key="s" :value="s">{{s}}</option>
+                <label class="nim-label">Country</label>
+                <select v-model="form.ship_country" class="nim-input" style="cursor:pointer" @change="form.ship_state=''; delete formErrors.ship_pincode; if(form.ship_pincode) validateField('ship_pincode')">
+                  <option value="">— Select Country —</option>
+                  <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
                 </select>
+              </div>
+              <div>
+                <label class="nim-label">State / Province</label>
+                <select v-if="statesFor(form.ship_country).length" v-model="form.ship_state" class="nim-input" style="cursor:pointer">
+                  <option value="">— Select State —</option>
+                  <option v-for="s in statesFor(form.ship_country)" :key="s" :value="s">{{s}}</option>
+                </select>
+                <input v-else v-model="form.ship_state" class="nim-input" placeholder="Enter state / province"/>
               </div>
               <div>
                 <label class="nim-label">Pincode</label>
-                <input v-model="form.ship_pincode" class="nim-input" placeholder="400001" maxlength="6"
-                  :style="formErrors.ship_pincode?'border-color:#dc2626;background:#fff5f5':form.ship_pincode&&form.ship_pincode.length===6?'border-color:#2f9e44':''"
-                  @input="form.ship_pincode=form.ship_pincode.replace(/\D/g,'').slice(0,6); delete formErrors.ship_pincode"
+                <input v-model="form.ship_pincode" class="nim-input"
+                  :placeholder="pincodePlaceholder(form.ship_country)"
+                  :style="formErrors.ship_pincode?'border-color:#dc2626;background:#fff5f5':form.ship_pincode&&!formErrors.ship_pincode?'border-color:#2f9e44':''"
+                  @input="form.ship_pincode=sanitizePincode(form.ship_pincode, form.ship_country); delete formErrors.ship_pincode"
                   @blur="validateField('ship_pincode')"/>
                 <div v-if="formErrors.ship_pincode" style="margin-top:4px;font-size:12px;color:#dc2626">{{formErrors.ship_pincode}}</div>
-              </div>
-              <div>
-                <label class="nim-label">Country</label>
-                <select v-model="form.ship_country" class="nim-input" style="cursor:pointer">
-                  <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
-                </select>
+                <div v-else-if="form.ship_pincode&&!formErrors.ship_pincode" style="margin-top:4px;font-size:11px;color:#9ca3af">{{pincodeHint(form.ship_country)}}</div>
               </div>
             </div>
           </template>
@@ -844,20 +867,16 @@ import { apiList, apiGET, apiSave, apiDelete, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
+import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
+import {
+  EMAIL_REGEX, GSTIN_REGEX, PAN_REGEX, IFSC_REGEX, URL_REGEX,
+  validateMobile, validatePhone, validatePincode, sanitizePincode, pincodePlaceholder, pincodeHint,
+} from "../composables/useValidation.js";
 
 const { toast } = useToast();
 
 // ── Static option lists, factored out of inline template arrays in legacy ──
-const IN_STATES = [
-  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana",
-  "Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
-  "Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana",
-  "Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu and Kashmir","Ladakh",
-];
-const COUNTRIES = [
-  "India","United States","United Kingdom","Canada","Australia","Singapore","United Arab Emirates",
-  "Saudi Arabia","Germany","France","Japan",
-];
+// COUNTRIES and statesFor() imported from useCountryState.js
 const PLACE_OF_SUPPLY = [
   "01-Jammu and Kashmir","02-Himachal Pradesh","03-Punjab","04-Chandigarh","05-Uttarakhand",
   "06-Haryana","07-Delhi","08-Rajasthan","09-Uttar Pradesh","10-Bihar","11-Sikkim","12-Arunachal Pradesh",
@@ -935,11 +954,6 @@ const GST_RULES = {
   },
 };
 const GST_TREATMENT_OPTIONS = Object.keys(GST_RULES);
-const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-const PAN_REGEX   = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-const IFSC_REGEX  = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-const URL_REGEX   = /^https?:\/\/.+\..+/;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const FIELD_TAB = {
   customer_name: "overview", first_name: "overview", last_name: "overview",
@@ -1003,14 +1017,13 @@ function validateField(field) {
   if (field === "email_id" && s && !EMAIL_REGEX.test(s))
     formErrors.email_id = "Invalid email address";
   if (field === "mobile_no" && s) {
-    const digits = s.replace(/\D/g, "");
-    if (form.mobile_code === "+91" && digits.length !== 10)
-      formErrors.mobile_no = "Indian mobile numbers must be exactly 10 digits";
-    else if (form.mobile_code !== "+91" && (digits.length < 7 || digits.length > 15))
-      formErrors.mobile_no = "Enter a valid mobile number (7–15 digits)";
+    const err = validateMobile(s.replace(/\D/g, ""), form.mobile_code);
+    if (err) formErrors.mobile_no = err;
   }
-  if (field === "phone" && s && s.replace(/[^\d]/g, "").length < 6)
-    formErrors.phone = "Enter a valid phone number (min 6 digits)";
+  if (field === "phone" && s) {
+    const err = validatePhone(s);
+    if (err) formErrors.phone = err;
+  }
   if (field === "website" && s && !URL_REGEX.test(s))
     formErrors.website = "Website must start with http:// or https://";
   if (field === "credit_limit" && v < 0)
@@ -1025,10 +1038,14 @@ function validateField(field) {
     formErrors.pan_no = "Invalid PAN format (e.g. ABCDE1234F)";
   if (field === "place_of_supply" && rule.requirePlaceOfSupply && !v)
     formErrors.place_of_supply = "Place of Supply is required";
-  if (field === "pincode" && s && s.length !== 6)
-    formErrors.pincode = "Pincode must be exactly 6 digits";
-  if (field === "ship_pincode" && s && s.length !== 6)
-    formErrors.ship_pincode = "Pincode must be exactly 6 digits";
+  if (field === "pincode" && s) {
+    const err = validatePincode(s, form.country);
+    if (err) formErrors.pincode = err;
+  }
+  if (field === "ship_pincode" && s) {
+    const err = validatePincode(s, form.ship_country);
+    if (err) formErrors.ship_pincode = err;
+  }
   if (field === "opening_balance" && v < 0)
     formErrors.opening_balance = "Opening balance cannot be negative";
   if (field === "bank_account_no" && s && !/^\d{9,18}$/.test(s))
@@ -1054,14 +1071,13 @@ function validateCustomerForm() {
   if (form.email_id && !EMAIL_REGEX.test(form.email_id.trim()))
     formErrors.email_id = "Invalid email address";
   if (form.mobile_no) {
-    const digits = form.mobile_no.replace(/\D/g, "");
-    if (form.mobile_code === "+91" && digits.length !== 10)
-      formErrors.mobile_no = "Indian mobile numbers must be exactly 10 digits";
-    else if (form.mobile_code !== "+91" && (digits.length < 7 || digits.length > 15))
-      formErrors.mobile_no = "Enter a valid mobile number (7–15 digits)";
+    const err = validateMobile(form.mobile_no.replace(/\D/g, ""), form.mobile_code);
+    if (err) formErrors.mobile_no = err;
   }
-  if (form.phone && form.phone.replace(/[^\d]/g, "").length < 6)
-    formErrors.phone = "Enter a valid phone number (min 6 digits)";
+  if (form.phone) {
+    const err = validatePhone(form.phone);
+    if (err) formErrors.phone = err;
+  }
   if (form.website && !URL_REGEX.test(form.website.trim()))
     formErrors.website = "Website must start with http:// or https://";
   if (form.credit_limit < 0) formErrors.credit_limit = "Credit limit cannot be negative";
@@ -1076,8 +1092,8 @@ function validateCustomerForm() {
     formErrors.place_of_supply = "Place of Supply is required";
   if (form.opening_balance < 0) formErrors.opening_balance = "Opening balance cannot be negative";
 
-  if (form.pincode && form.pincode.length !== 6) formErrors.pincode = "Pincode must be exactly 6 digits";
-  if (form.ship_pincode && form.ship_pincode.length !== 6) formErrors.ship_pincode = "Pincode must be exactly 6 digits";
+  if (form.pincode) { const err = validatePincode(form.pincode, form.country); if (err) formErrors.pincode = err; }
+  if (form.ship_pincode) { const err = validatePincode(form.ship_pincode, form.ship_country); if (err) formErrors.ship_pincode = err; }
 
   if (form.bank_account_no && !/^\d{9,18}$/.test(form.bank_account_no.replace(/\s/g, "")))
     formErrors.bank_account_no = "Account number must be 9–18 digits";

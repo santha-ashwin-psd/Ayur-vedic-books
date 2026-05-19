@@ -68,7 +68,7 @@
         <div class="cn-fields-grid">
           <div class="cn-field" style="grid-column:1/-1">
             <label class="cn-label">Customer <span class="req">*</span></label>
-            <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer…" @search="fetchCustomers" />
+            <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer…" :createable="true" createDoctype="Customer" @search="fetchCustomers" />
           </div>
           <div class="cn-field">
             <label class="cn-label">Date <span class="req">*</span></label>
@@ -86,7 +86,7 @@
             <div>Item</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
           </div>
           <div v-for="line in lines" :key="line.id" class="cn-items-row">
-            <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Select item…" @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
+            <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Select item…" :createable="true" createDoctype="Item" @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
             <div><input v-model.number="line.qty" type="number" min="1" class="cn-input ta-r" @input="calcLine(line)" /></div>
             <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="cn-input ta-r" @input="calcLine(line)" /></div>
             <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>

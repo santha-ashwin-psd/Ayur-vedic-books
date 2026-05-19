@@ -80,7 +80,8 @@
           <div class="so-field" style="grid-column:1/-1">
             <label class="so-label">Customer <span class="req">*</span></label>
             <SearchableSelect v-model="form.customer" :options="customers"
-              placeholder="Select customer…" @search="fetchCustomers" />
+              placeholder="Select customer…" :createable="true" createDoctype="Customer"
+              @search="fetchCustomers" />
           </div>
           <div class="so-field">
             <label class="so-label">Order Date <span class="req">*</span></label>
@@ -99,7 +100,8 @@
           </div>
           <div v-for="line in lines" :key="line.id" class="so-items-row">
             <div><SearchableSelect v-model="line.item_code" :options="items"
-              placeholder="Select item…" @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
+              placeholder="Select item…" :createable="true" createDoctype="Item"
+              @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
             <div><input v-model="line.description" class="so-input" placeholder="Description" /></div>
             <div><input v-model.number="line.qty" type="number" min="1" class="so-input ta-r" @input="calcLine(line)" /></div>
             <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="so-input ta-r" @input="calcLine(line)" /></div>

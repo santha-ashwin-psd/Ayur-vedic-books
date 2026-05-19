@@ -196,6 +196,7 @@
               <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
               <SearchableSelect v-model="form.customer" :options="customers"
                 value-key="name" label-key="customer_name" placeholder="Select customer"
+                :createable="true" createDoctype="Customer"
                 @update:modelValue="onCustomerChange"/>
             </div>
             <div>
@@ -282,7 +283,8 @@
                     <td>
                       <SearchableSelect v-model="line.item_code" :options="items"
                         value-key="name" label-key="item_name" placeholder="— Select —"
-                        :compact="true" @update:modelValue="onItemChange(line)"/>
+                        :compact="true" :createable="true" createDoctype="Item"
+                        @update:modelValue="onItemChange(line)"/>
                     </td>
                     <td><input v-model="line.description" class="inv-ci" placeholder="Optional"/></td>
                     <td><input v-model="line.hsn_code" class="inv-ci" placeholder="HSN/SAC"/></td>
@@ -1277,7 +1279,12 @@ async function duplicateInvoice(inv) {
 // ── Cancel / Delete ────────────────────────────────────────────────────
 function confirmAction(action, inv) {
   if (action==="cancel") {
-    Object.assign(confirmModal,{open:true,loading:false,title:"Cancel Invoice",message:`Cancel ${inv.name}? This will reverse all GL entries. This cannot be undone.`,actionLabel:"Cancel Invoice",action:async()=>{confirmModal.loading=true;try{await apiCancel("Sales Invoice",inv.name);toast("Invoice cancelled");viewOpen.value=false;await load();}catch(e){toast(e.message||"Cancel failed","error");}confirmModal.open=false;}});
+    const isPaid = inv.outstanding_amount <= 0 && inv.docstatus === 1;
+    if (isPaid) {
+      toast("Cannot cancel a paid invoice. Go to Payments, cancel the linked Payment Entry first, then come back and cancel this invoice.", "error");
+      return;
+    }
+    Object.assign(confirmModal,{open:true,loading:false,title:"Cancel Invoice",message:`Cancel ${inv.name}? This will reverse all GL entries. This cannot be undone.`,actionLabel:"Cancel Invoice",action:async()=>{confirmModal.loading=true;try{await apiCancel("Sales Invoice",inv.name);toast("Invoice cancelled");viewOpen.value=false;await load();}catch(e){const msg=e.message||"";const friendly=msg.includes("Payment Entry")||msg.includes("linked")||msg.includes("payment")?"Cannot cancel: a Payment Entry is linked to this invoice. Cancel the payment first.":msg||"Cancel failed";toast(friendly,"error");}confirmModal.open=false;}});
   } else {
     Object.assign(confirmModal,{open:true,loading:false,title:"Delete Invoice",message:`Permanently delete draft ${inv.name}? This cannot be undone.`,actionLabel:"Delete",action:async()=>{confirmModal.loading=true;try{await apiDelete("Sales Invoice",inv.name);toast("Invoice deleted");viewOpen.value=false;await load();}catch(e){toast(e.message||"Delete failed","error");}confirmModal.open=false;}});
   }
@@ -1321,12 +1328,17 @@ async function bulkEmail() {
 
 // ── Export CSV ─────────────────────────────────────────────────────────
 function exportCSV() {
+  const source = selectedRows.value.size > 0
+    ? sorted.value.filter(i => selectedRows.value.has(i.name))
+    : sorted.value;
+  if (!source.length) { toast("No invoices to export", "info"); return; }
   const headers=["Date","Invoice#","PO Number","Customer","Status","Due Date","Amount","Balance Due"];
-  const rows=sorted.value.map(i=>[i.posting_date,i.name,i.po_no||"",i.customer_name||i.customer,statusLabel(i),i.due_date||"",i.grand_total,i.outstanding_amount]);
-  const csv=[headers,...rows].map(r=>r.map(c=>`"${c}"`).join(",")).join("\n");
-  const blob=new Blob([csv],{type:"text/csv"}); const url=URL.createObjectURL(blob);
+  const rows=source.map(i=>[i.posting_date,i.name,i.po_no||"",i.customer_name||i.customer,statusLabel(i),i.due_date||"",i.grand_total,i.outstanding_amount]);
+  const csv=[headers,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}); const url=URL.createObjectURL(blob);
   const a=document.createElement("a"); a.href=url; a.download=`invoices_${todayStr()}.csv`; a.click(); URL.revokeObjectURL(url);
-  toast("CSV exported");
+  const label = selectedRows.value.size > 0 ? `${source.length} selected invoice(s)` : `${source.length} invoice(s)`;
+  toast(`CSV exported — ${label}`);
 }
 
 // ── Branding persistence ───────────────────────────────────────────────

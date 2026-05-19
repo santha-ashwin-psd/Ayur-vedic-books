@@ -94,7 +94,8 @@
           <div class="qt-field" style="grid-column:1/-1">
             <label class="qt-label">Customer <span class="req">*</span></label>
             <SearchableSelect v-model="form.party_name" :options="customers"
-              placeholder="Select customer…" @search="fetchCustomers" />
+              placeholder="Select customer…" :createable="true" createDoctype="Customer"
+              @search="fetchCustomers" />
           </div>
           <div class="qt-field">
             <label class="qt-label">Quote Date <span class="req">*</span></label>
@@ -115,7 +116,8 @@
           <div v-for="line in lines" :key="line.id" class="qt-items-row">
             <div>
               <SearchableSelect v-model="line.item_code" :options="items"
-                placeholder="Select item…" @search="fetchItems" @select="v=>onItemSelect(line,v)" />
+                placeholder="Select item…" :createable="true" createDoctype="Item"
+                @search="fetchItems" @select="v=>onItemSelect(line,v)" />
             </div>
             <div><input v-model="line.description" class="qt-input" placeholder="Description" /></div>
             <div><input v-model.number="line.qty" type="number" min="1" class="qt-input ta-r" @input="calcLine(line)" /></div>

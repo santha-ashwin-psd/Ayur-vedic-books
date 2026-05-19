@@ -64,7 +64,7 @@
         <div class="dn-fields-grid">
           <div class="dn-field" style="grid-column:1/-1">
             <label class="dn-label">Vendor <span class="req">*</span></label>
-            <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…" @search="fetchVendors" />
+            <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…" :createable="true" createDoctype="Supplier" @search="fetchVendors" />
           </div>
           <div class="dn-field">
             <label class="dn-label">Date <span class="req">*</span></label>
@@ -80,7 +80,7 @@
         <div class="dn-items-table">
           <div class="dn-items-head"><div>Item</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div></div>
           <div v-for="line in lines" :key="line.id" class="dn-items-row">
-            <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
+            <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" :createable="true" createDoctype="Item" @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
             <div><input v-model.number="line.qty" type="number" min="1" class="dn-input ta-r" @input="calcLine(line)" /></div>
             <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="dn-input ta-r" @input="calcLine(line)" /></div>
             <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>

@@ -330,9 +330,9 @@
   <!-- Drawer -->
   <Teleport to="body">
     <div v-if="showDrawer" class="cust-backdrop" @click.self="showDrawer=false">
-      <div class="cust-drawer">
+      <div class="cust-drawer" style="width:min(600px,96vw)">
 
-        <div class="cust-drawer-header">
+        <div class="cust-drawer-header" style="background:linear-gradient(135deg,#E67700,#C96200);padding:18px 24px">
           <div class="cust-drawer-header-left">
             <div class="cust-drawer-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -349,14 +349,21 @@
           <div>Loading vendor…</div>
         </div>
 
-        <div v-else class="cust-drawer-body">
+        <div v-else class="cust-drawer-body" style="padding:24px;overflow-y:auto;flex:1">
 
           <div class="cust-sec-label">Basic Information</div>
-          <div class="nim-grid-3 nim-mb">
-            <div class="nim-field" style="grid-column:span 3">
+          <div class="nim-grid-2 nim-mb">
+            <div class="nim-field" style="grid-column:span 2">
               <label class="nim-label">Vendor Name <span class="nim-req">*</span></label>
-              <input v-model="form.supplier_name" class="nim-input" placeholder="Company or individual name"
-                @input="form.supplier_name=form.supplier_name.replace(/[^a-zA-Z\s.'&-]/g,'')"/>
+              <input v-model="form.supplier_name" class="nim-input"
+                :style="formErrors.supplier_name?'border-color:#dc2626;background:#fff5f5':''"
+                placeholder="Company or individual name"
+                @input="form.supplier_name=form.supplier_name.replace(/[^a-zA-Z\s.'&-]/g,''); delete formErrors.supplier_name"
+                @blur="validateField('supplier_name')"/>
+              <div v-if="formErrors.supplier_name" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                {{formErrors.supplier_name}}
+              </div>
             </div>
             <div class="nim-field">
               <label class="nim-label">Vendor Type</label>
@@ -366,7 +373,19 @@
             </div>
             <div class="nim-field">
               <label class="nim-label">GSTIN / Tax ID</label>
-              <input v-model="form.tax_id" class="nim-input" placeholder="27AAPFU0939F1ZV"/>
+              <input v-model="form.tax_id" class="nim-input"
+                :style="formErrors.tax_id?'border-color:#dc2626;background:#fff5f5':form.tax_id&&!formErrors.tax_id&&form.country==='India'&&GSTIN_REGEX.test(form.tax_id)?'border-color:#2f9e44':''"
+                placeholder="27AAPFU0939F1ZV"
+                @input="form.tax_id=form.tax_id.toUpperCase(); delete formErrors.tax_id"
+                @blur="validateField('tax_id')"/>
+              <div v-if="formErrors.tax_id" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                {{formErrors.tax_id}}
+              </div>
+              <div v-else-if="form.tax_id&&form.country==='India'&&GSTIN_REGEX.test(form.tax_id)" style="margin-top:4px;font-size:12px;color:#2f9e44;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Valid GSTIN
+              </div>
             </div>
             <div class="nim-field">
               <label class="nim-label">Currency</label>
@@ -388,28 +407,77 @@
           <div class="nim-grid-2 nim-mb">
             <div class="nim-field">
               <label class="nim-label">Email</label>
-              <input v-model="form.email_id" type="email" class="nim-input" placeholder="email@vendor.com"/>
+              <input v-model="form.email_id" type="email" class="nim-input"
+                :style="formErrors.email_id?'border-color:#dc2626;background:#fff5f5':form.email_id&&EMAIL_REGEX.test(form.email_id)?'border-color:#2f9e44':''"
+                placeholder="email@vendor.com"
+                @input="delete formErrors.email_id"
+                @blur="validateField('email_id')"/>
+              <div v-if="formErrors.email_id" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                {{formErrors.email_id}}
+              </div>
+              <div v-else-if="form.email_id&&EMAIL_REGEX.test(form.email_id)" style="margin-top:4px;font-size:12px;color:#2f9e44;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Valid email
+              </div>
             </div>
             <div class="nim-field">
               <label class="nim-label">Mobile</label>
               <div style="display:flex">
-                <select v-model="form.mobile_code" style="width:75px;border-right:none;border-top-right-radius:0;border-bottom-right-radius:0;text-align:center;background:#f9fafb;padding:0 5px" class="nim-input">
-                  <option value="+91">🇮🇳 +91</option><option value="+1">🇺🇸 +1</option>
-                  <option value="+44">🇬🇧 +44</option><option value="+61">🇦🇺 +61</option>
-                  <option value="+971">🇦🇪 +971</option><option value="+65">🇸🇬 +65</option>
+                <select v-model="form.mobile_code" style="width:85px;border-right:none;border-top-right-radius:0;border-bottom-right-radius:0;text-align:center;background:#f9fafb;padding:0 5px" class="nim-input"
+                  @change="delete formErrors.mobile_no; if(form.mobile_no) validateField('mobile_no')">
+                  <option value="+91">🇮🇳 +91</option>
+                  <option value="+1">🇺🇸 +1</option>
+                  <option value="+44">🇬🇧 +44</option>
+                  <option value="+61">🇦🇺 +61</option>
+                  <option value="+971">🇦🇪 +971</option>
+                  <option value="+65">🇸🇬 +65</option>
+                  <option value="+49">🇩🇪 +49</option>
+                  <option value="+33">🇫🇷 +33</option>
+                  <option value="+60">🇲🇾 +60</option>
+                  <option value="+94">🇱🇰 +94</option>
+                  <option value="+966">🇸🇦 +966</option>
+                  <option value="+92">🇵🇰 +92</option>
+                  <option value="+880">🇧🇩 +880</option>
+                  <option value="+977">🇳🇵 +977</option>
+                  <option value="+27">🇿🇦 +27</option>
+                  <option value="+55">🇧🇷 +55</option>
+                  <option value="+86">🇨🇳 +86</option>
+                  <option value="+81">🇯🇵 +81</option>
                 </select>
-                <input v-model="form.mobile_no" class="nim-input" style="border-top-left-radius:0;border-bottom-left-radius:0;flex:1" placeholder="98765 43210"
-                  @input="form.mobile_no=form.mobile_no.replace(/\D/g,'')"/>
+                <input v-model="form.mobile_no" class="nim-input"
+                  style="border-top-left-radius:0;border-bottom-left-radius:0;flex:1"
+                  :style="formErrors.mobile_no?'border-color:#dc2626;background:#fff5f5':form.mobile_no&&!formErrors.mobile_no?'border-color:#2f9e44':''"
+                  placeholder="Mobile number"
+                  @input="form.mobile_no=form.mobile_no.replace(/\D/g,''); delete formErrors.mobile_no"
+                  @blur="validateField('mobile_no')"/>
+              </div>
+              <div v-if="formErrors.mobile_no" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                {{formErrors.mobile_no}}
               </div>
             </div>
             <div class="nim-field">
               <label class="nim-label">Phone</label>
               <input v-model="form.phone" class="nim-input" placeholder="Landline"
-                @input="form.phone=form.phone.replace(/[^\d+\-\s()]/g,'')"/>
+                :style="formErrors.phone?'border-color:#dc2626;background:#fff5f5':''"
+                @input="form.phone=form.phone.replace(/[^\d+\-\s()]/g,''); delete formErrors.phone"
+                @blur="validateField('phone')"/>
+              <div v-if="formErrors.phone" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                {{formErrors.phone}}
+              </div>
             </div>
             <div class="nim-field">
               <label class="nim-label">Website</label>
-              <input v-model="form.website" class="nim-input" placeholder="https://"/>
+              <input v-model="form.website" class="nim-input" placeholder="https://"
+                :style="formErrors.website?'border-color:#dc2626;background:#fff5f5':form.website&&URL_REGEX.test(form.website)?'border-color:#2f9e44':''"
+                @input="delete formErrors.website"
+                @blur="validateField('website')"/>
+              <div v-if="formErrors.website" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                {{formErrors.website}}
+              </div>
             </div>
           </div>
 
@@ -429,23 +497,32 @@
                 @input="form.city=form.city.replace(/[^a-zA-Z\s]/g,'')"/>
             </div>
             <div class="nim-field">
-              <label class="nim-label">State</label>
-              <input v-model="form.state" class="nim-input" placeholder="Maharashtra"
-                @input="form.state=form.state.replace(/[^a-zA-Z\s]/g,'')"/>
-            </div>
-            <div class="nim-field">
-              <label class="nim-label">Pincode</label>
-              <input v-model="form.pincode" class="nim-input" placeholder="400001" maxlength="6"
-                @input="form.pincode=form.pincode.replace(/\D/g,'').slice(0,6)"/>
-            </div>
-            <div class="nim-field">
               <label class="nim-label">Country</label>
-              <select v-model="form.country" class="nim-select">
-                <option>India</option><option>United States</option><option>United Kingdom</option>
-                <option>Canada</option><option>Australia</option><option>Singapore</option>
-                <option>United Arab Emirates</option><option>Saudi Arabia</option>
-                <option>Germany</option><option>France</option>
+              <select v-model="form.country" class="nim-select" @change="form.state=''; delete formErrors.pincode; if(form.pincode) validateField('pincode')">
+                <option value="">— Select Country —</option>
+                <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
               </select>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">State / Province</label>
+              <select v-if="statesFor(form.country).length" v-model="form.state" class="nim-select">
+                <option value="">— Select State —</option>
+                <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{s}}</option>
+              </select>
+              <input v-else v-model="form.state" class="nim-input" placeholder="Enter state / province"/>
+            </div>
+            <div class="nim-field">
+              <label class="nim-label">Pincode / ZIP</label>
+              <input v-model="form.pincode" class="nim-input"
+                :placeholder="pincodePlaceholder(form.country)"
+                :style="formErrors.pincode?'border-color:#dc2626;background:#fff5f5':form.pincode&&!formErrors.pincode?'border-color:#2f9e44':''"
+                @input="form.pincode=sanitizePincode(form.pincode, form.country); delete formErrors.pincode"
+                @blur="validateField('pincode')"/>
+              <div v-if="formErrors.pincode" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                {{formErrors.pincode}}
+              </div>
+              <div v-else-if="form.pincode&&!formErrors.pincode" style="margin-top:4px;font-size:11px;color:#9ca3af">{{pincodeHint(form.country)}}</div>
             </div>
           </div>
 
@@ -519,6 +596,11 @@ import { apiList, apiGET, apiSave, apiDelete } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
+import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
+import {
+  EMAIL_REGEX, GSTIN_REGEX, URL_REGEX,
+  validateMobile, validatePhone, validatePincode, sanitizePincode, pincodePlaceholder, pincodeHint,
+} from "../composables/useValidation.js";
 
 const { toast } = useToast();
 
@@ -544,6 +626,8 @@ const form = reactive({
   city: "", state: "", pincode: "", country: "India",
   default_payable_account: "", disabled: 0,
 });
+
+const formErrors = reactive({});
 
 const counts = computed(() => ({
   all:      list.value.length,
@@ -600,6 +684,7 @@ function resetForm() {
     city: "", state: "", pincode: "", country: "India",
     default_payable_account: "", disabled: 0,
   });
+  Object.keys(formErrors).forEach(k => delete formErrors[k]);
 }
 
 function openAdd() {
@@ -643,9 +728,59 @@ async function openEdit(name) {
   } finally { drawerLoading.value = false; }
 }
 
+function validateField(field) {
+  delete formErrors[field];
+  const v = form[field];
+  const s = typeof v === "string" ? v.trim() : v;
+
+  if (field === "supplier_name") {
+    if (!s) formErrors.supplier_name = "Vendor name is required";
+    else if (s.length < 2) formErrors.supplier_name = "Name must be at least 2 characters";
+    else if (s.length > 140) formErrors.supplier_name = "Name must not exceed 140 characters";
+  }
+  if (field === "email_id" && s && !EMAIL_REGEX.test(s))
+    formErrors.email_id = "Invalid email address";
+  if (field === "mobile_no" && s) {
+    const err = validateMobile(s.replace(/\D/g, ""), form.mobile_code);
+    if (err) formErrors.mobile_no = err;
+  }
+  if (field === "phone" && s) {
+    const err = validatePhone(s);
+    if (err) formErrors.phone = err;
+  }
+  if (field === "website" && s && !URL_REGEX.test(s))
+    formErrors.website = "Website must start with http:// or https://";
+  if (field === "tax_id" && s && form.country === "India" && !GSTIN_REGEX.test(s))
+    formErrors.tax_id = "Invalid GSTIN format (e.g. 27AAPFU0939F1ZV)";
+  if (field === "pincode" && s) {
+    const err = validatePincode(s, form.country);
+    if (err) formErrors.pincode = err;
+  }
+}
+
+function validateVendorForm() {
+  Object.keys(formErrors).forEach((k) => delete formErrors[k]);
+  if (!form.supplier_name.trim()) formErrors.supplier_name = "Vendor name is required";
+  else if (form.supplier_name.trim().length < 2) formErrors.supplier_name = "Name must be at least 2 characters";
+  if (form.email_id && !EMAIL_REGEX.test(form.email_id.trim())) formErrors.email_id = "Invalid email address";
+  if (form.mobile_no) {
+    const err = validateMobile(form.mobile_no.replace(/\D/g, ""), form.mobile_code);
+    if (err) formErrors.mobile_no = err;
+  }
+  if (form.phone) { const err = validatePhone(form.phone); if (err) formErrors.phone = err; }
+  if (form.website && !URL_REGEX.test(form.website.trim())) formErrors.website = "Website must start with http:// or https://";
+  if (form.tax_id && form.country === "India" && !GSTIN_REGEX.test(form.tax_id.trim()))
+    formErrors.tax_id = "Invalid GSTIN format (e.g. 27AAPFU0939F1ZV)";
+  if (form.pincode) { const err = validatePincode(form.pincode, form.country); if (err) formErrors.pincode = err; }
+  return Object.keys(formErrors).length === 0;
+}
+
 async function saveVendor() {
-  if (!form.supplier_name.trim()) { toast("Vendor Name is required", "error"); return; }
-  if (form.email_id && !form.email_id.includes("@")) { toast("Invalid email address", "error"); return; }
+  if (!validateVendorForm()) {
+    const firstErr = Object.values(formErrors)[0];
+    toast(firstErr || "Please fix the errors before saving", "error");
+    return;
+  }
   saving.value = true;
   try {
     const doc = {

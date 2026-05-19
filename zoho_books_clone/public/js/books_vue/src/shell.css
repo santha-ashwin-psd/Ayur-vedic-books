@@ -241,7 +241,7 @@
 .bv-sidebar-collapsed .bv-sidebar-user { justify-content: center; padding: 10px 6px; }
 
 /* ── Main / Topbar ──────────────────────────────────────────────────── */
-.bv-app-main { display: flex; flex-direction: column; min-width: 0; }
+.bv-app-main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 
 .bv-topbar {
   height: var(--bv-topbar-h);

@@ -142,7 +142,13 @@
                   <option v-for="r in [0,5,12,18,28]" :key="r" :value="r">{{r}}%</option>
                 </select>
               </div>
-              <div><label class="nim-label">Tax Code</label><input class="nim-input" v-model="form.tax_code" placeholder="e.g. GST 18%"/></div>
+              <div>
+                <label class="nim-label">Tax Template</label>
+                <select class="nim-input" v-model="form.tax_code">
+                  <option value="">— None —</option>
+                  <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.label }}</option>
+                </select>
+              </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <div><label class="nim-label">Income Account</label><input class="nim-input" v-model="form.income_account" placeholder="Sales — Company"/></div>
@@ -214,8 +220,9 @@ const deleting   = ref(false);
 const showDel    = ref(false);
 const delTarget  = ref(null);
 const drawerTab  = ref("basic");
-const itemGroups = ref([]);
-const warehouses = ref([]);
+const itemGroups    = ref([]);
+const warehouses    = ref([]);
+const taxTemplates  = ref([]);
 const defaultAccounts = ref({ income: "", expense: "" });
 
 const form = reactive({
@@ -253,6 +260,14 @@ async function load() {
       label: (r.warehouse_name || r.name) + (r.warehouse_type ? " (" + r.warehouse_type + ")" : ""),
     }));
   } catch { warehouses.value = []; }
+  try {
+    const tt = await apiList("Tax Template", {
+      fields: ["name", "template_name"],
+      filters: [["disabled", "=", 0]],
+      order: "template_name asc", limit: 100,
+    });
+    taxTemplates.value = (tt || []).map((r) => ({ name: r.name, label: r.template_name || r.name }));
+  } catch { taxTemplates.value = []; }
   try {
     const company = await resolveCompany();
     const accts = await apiGET("zoho_books_clone.api.docs.get_accounts", { company });

@@ -240,6 +240,17 @@ def submit_doc(doctype, name):
     return d.as_dict()
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
+def cancel_doc(doctype, name):
+    """Cancel a submitted document."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    d = frappe.get_doc(doctype, name)
+    d.flags.ignore_permissions = True
+    d.cancel()
+    frappe.db.commit()
+    return d.as_dict()
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
 def delete_doc(doctype, name):
     """Delete a document via GET — no CSRF needed."""
     # Guard: only the logged-in user (session) must have at least read access.
@@ -252,6 +263,55 @@ def delete_doc(doctype, name):
     frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
     frappe.db.commit()
     return {"message": "deleted"}
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_invoice_payments(invoice_name):
+    """Return submitted Payment Entries linked to a Sales Invoice."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_name": invoice_name, "reference_doctype": "Sales Invoice"},
+        fields=["parent", "allocated_amount"],
+    )
+    if not refs:
+        return []
+    pe_names = list({r.parent for r in refs})
+    result = []
+    for pe_name in pe_names:
+        pe = frappe.db.get_value(
+            "Payment Entry", pe_name,
+            ["name", "payment_date", "paid_amount", "mode_of_payment", "reference_no", "docstatus"],
+            as_dict=True,
+        )
+        if pe:
+            result.append(pe)
+    result.sort(key=lambda x: x.get("payment_date") or "", reverse=True)
+    return result
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def cancel_invoice_with_payments(invoice_name):
+    """Cancel all linked Payment Entries, then cancel the Sales Invoice."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_name": invoice_name},
+        fields=["parent"],
+    )
+    pe_names = list({r.parent for r in refs})
+    cancelled_pes = []
+    for pe_name in pe_names:
+        pe_doc = frappe.get_doc("Payment Entry", pe_name)
+        if pe_doc.docstatus == 1:
+            pe_doc.cancel()
+            cancelled_pes.append(pe_name)
+    inv_doc = frappe.get_doc("Sales Invoice", invoice_name)
+    inv_doc.cancel()
+    frappe.db.commit()
+    return {"cancelled_payments": cancelled_pes, "cancelled_invoice": invoice_name}
+
 
 @frappe.whitelist(allow_guest=False)
 def get_party_last_items(party_type, party, limit=10):

@@ -122,6 +122,7 @@
               <div style="display:flex;gap:4px;justify-content:center">
                 <button class="inv-act-btn" @click="openView(inv)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="inv.docstatus===0" class="inv-act-btn" @click="openEdit(inv)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="inv.docstatus===0||inv.docstatus===2" class="inv-act-btn" style="color:#dc2626" @click.stop="confirmAction('delete',inv)" title="Delete"><span v-html="icon('trash',13)"></span></button>
                 <button v-if="inv.outstanding_amount>0&&inv.docstatus===1" class="inv-act-btn inv-act-pay" @click="openPayment(inv)" title="Record Payment">₹</button>
               </div>
             </td>
@@ -195,7 +196,7 @@
             <div style="grid-column:1/3">
               <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
               <SearchableSelect v-model="form.customer" :options="customers"
-                value-key="name" label-key="customer_name" placeholder="Select customer"
+                placeholder="Select customer"
                 :createable="true" createDoctype="Customer"
                 @update:modelValue="onCustomerChange"/>
             </div>
@@ -282,7 +283,7 @@
                   <tr v-for="line in lines" :key="line.id">
                     <td>
                       <SearchableSelect v-model="line.item_code" :options="items"
-                        value-key="name" label-key="item_name" placeholder="— Select —"
+                        placeholder="— Select —"
                         :compact="true" :createable="true" createDoctype="Item"
                         @update:modelValue="onItemChange(line)"/>
                     </td>
@@ -467,7 +468,7 @@
               </div>
               <div class="inv-tl-label">{{ step.label }}</div>
             </div>
-            <div v-if="i<timelineSteps.length-1" class="inv-tl-line" :class="{ done: timelineSteps[i+1]?.done }"></div>
+            <div v-if="i<timelineSteps.length-1" class="inv-tl-line" :class="{ done: timelineSteps[i+1]?.done, danger: timelineSteps[i+1]?.danger }"></div>
           </template>
         </div>
 
@@ -584,7 +585,7 @@
                   <div>Date</div><div>Mode</div><div>Reference</div><div style="text-align:right">Amount</div>
                 </div>
                 <div v-for="(p,i) in viewPayments" :key="i" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:9px 14px;border-bottom:1px solid #f0f2f5;font-size:13px">
-                  <div class="mono-sm">{{ fmtDate(p.posting_date) }}</div>
+                  <div class="mono-sm">{{ fmtDate(p.payment_date) }}</div>
                   <div>{{ p.mode_of_payment||'—' }}</div>
                   <div class="text-muted mono-sm">{{ p.reference_no||'—' }}</div>
                   <div style="text-align:right;font-family:monospace;font-weight:600;color:#059669">{{ fmtAmt(p.paid_amount) }}</div>
@@ -717,7 +718,12 @@
                   <span v-else>✨ AI Enhance</span>
                 </button>
               </label>
-              <textarea class="rp-input rp-textarea" v-model="emailModal.body" rows="6"></textarea>
+              <div
+                ref="emailBodyRef"
+                class="rp-input rp-rich-body"
+                contenteditable="true"
+                @input="emailModal.body = $event.target.innerHTML"
+              ></div>
             </div>
             <div style="font-size:12px;color:#9ca3af;background:#f8fafc;border-radius:6px;padding:8px 12px">
               📎 The invoice PDF will be attached automatically.
@@ -771,16 +777,28 @@
 
     <!-- ── Confirm Modal (cancel / delete) ── -->
     <div v-if="confirmModal.open" class="rp-backdrop" @click.self="confirmModal.open=false">
-      <div class="rp-dialog" style="max-width:420px">
+      <div class="rp-dialog" style="max-width:440px">
         <div class="rp-dialog-header">
           <span class="rp-dialog-title">{{ confirmModal.title }}</span>
           <button class="rp-close-btn" @click="confirmModal.open=false">✕</button>
         </div>
         <div class="rp-body">
-          <p style="font-size:13px;color:#374151;margin:0">{{ confirmModal.message }}</p>
+          <p style="font-size:13px;color:#374151;margin:0 0 12px">{{ confirmModal.message }}</p>
+          <div v-if="confirmModal.payments.length" style="border:1px solid #fca5a5;border-radius:8px;overflow:hidden;margin-bottom:8px">
+            <div style="background:#fef2f2;padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#b91c1c;display:grid;grid-template-columns:1fr 1fr 1fr 1fr">
+              <span>Payment</span><span>Mode</span><span>Date</span><span style="text-align:right">Amount</span>
+            </div>
+            <div v-for="p in confirmModal.payments" :key="p.name" style="padding:8px 12px;font-size:12.5px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:1px solid #fee2e2">
+              <span class="mono-sm" style="color:#374151">{{ p.name }}</span>
+              <span style="color:#6b7280">{{ p.mode_of_payment||'—' }}</span>
+              <span class="mono-sm" style="color:#6b7280">{{ fmtDate(p.payment_date) }}</span>
+              <span style="text-align:right;font-family:monospace;font-weight:600;color:#059669">{{ fmtAmt(p.paid_amount) }}</span>
+            </div>
+          </div>
+          <p v-if="confirmModal.payments.length" style="font-size:12px;color:#b91c1c;margin:8px 0 0">The payment(s) above will also be cancelled. This cannot be undone.</p>
         </div>
         <div class="rp-footer">
-          <button class="rp-btn rp-btn-outline" @click="confirmModal.open=false">Cancel</button>
+          <button class="rp-btn rp-btn-outline" @click="confirmModal.open=false">Keep Invoice</button>
           <button class="rp-btn" style="background:#dc2626;border-color:#dc2626;color:#fff" :disabled="confirmModal.loading" @click="confirmModal.action()">
             {{ confirmModal.loading ? 'Processing…' : confirmModal.actionLabel }}
           </button>
@@ -900,12 +918,13 @@ const payForm  = reactive({ amount:0, date:"", mode:"Cash", ref:"", depositTo:""
 
 // ── Email modal ────────────────────────────────────────────────────────
 const emailModal = reactive({ open:false, loading:false, sending:false, invName:"", to:"", cc:"", subject:"", body:"", enhancing:false });
+const emailBodyRef = ref(null);
 
 // ── Credit Note modal ──────────────────────────────────────────────────
 const cnModal = reactive({ open:false, saving:false, invName:"", customer:"", items:[], taxes:[], reason:"Price Adjustment", notes:"" });
 
 // ── Confirm modal ──────────────────────────────────────────────────────
-const confirmModal = reactive({ open:false, loading:false, title:"", message:"", actionLabel:"Confirm", action: null });
+const confirmModal = reactive({ open:false, loading:false, title:"", message:"", actionLabel:"Confirm", action: null, payments:[] });
 
 // ── Helpers ────────────────────────────────────────────────────────────
 const currencySymbol = computed(() => CURRENCY_SYMBOLS[form.currency] || "₹");
@@ -921,10 +940,12 @@ function dueDateDefault() { const d=new Date(); d.setDate(d.getDate()+30); retur
 
 function isOverdue(inv) { return inv.outstanding_amount>0&&inv.due_date&&new Date(inv.due_date)<new Date(); }
 function statusLabel(inv) {
+  if (inv.docstatus===2) return "CANCELLED";
   if (isOverdue(inv)) { const days=Math.floor((Date.now()-new Date(inv.due_date))/86400000); return `OVERDUE ${days}d`; }
   return (inv.status||(inv.docstatus===0?"Draft":"Unpaid")).toUpperCase();
 }
 function statusCls(inv) {
+  if (inv.docstatus===2) return "status-cancelled";
   if (isOverdue(inv)) return "status-overdue";
   const s=(inv.status||"").toLowerCase();
   if (s==="paid") return "status-paid";
@@ -933,6 +954,7 @@ function statusCls(inv) {
   return "status-draft";
 }
 function statusBg(inv) {
+  if (inv.docstatus===2) return "linear-gradient(135deg,#7f1d1d,#dc2626)";
   if (isOverdue(inv)) return "linear-gradient(135deg,#7f1d1d,#dc2626)";
   const s=(inv.status||"").toLowerCase();
   if (s==="paid") return "linear-gradient(135deg,#064e3b,#059669)";
@@ -1035,10 +1057,10 @@ async function load() {
   loading.value=false;
 }
 async function loadCustomers() {
-  try { customers.value=await apiList("Customer",{fields:["name","customer_name"],limit:500,order:"customer_name asc"})||[]; } catch {}
+  try { const r=await apiList("Customer",{fields:["name","customer_name"],filters:[["disabled","=",0]],limit:500,order:"customer_name asc"})||[]; customers.value=r.map(x=>({...x,value:x.name,label:x.customer_name||x.name})); } catch {}
 }
 async function loadItems() {
-  try { items.value=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],limit:500,order:"item_name asc"})||[]; } catch {}
+  try { const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:[["disabled","=",0]],limit:500,order:"item_name asc"})||[]; items.value=r.map(x=>({...x,value:x.name,label:x.item_name||x.name})); } catch {}
 }
 async function loadTaxAccount() {
   try {
@@ -1226,8 +1248,8 @@ async function loadPayments(invName) {
   if (viewPayments.value.length) return;
   viewPaymentsLoading.value=true;
   try {
-    viewPayments.value=await apiList("Payment Entry",{fields:["name","posting_date","paid_amount","mode_of_payment","reference_no"],filters:[["Payment Entry Reference","reference_name","=",invName]],limit:50,order:"posting_date desc"})||[];
-  } catch { viewPayments.value=[]; }
+    viewPayments.value=await apiGET("zoho_books_clone.api.docs.get_invoice_payments",{invoice_name:invName})||[];
+  } catch(e) { console.warn("loadPayments failed:",e.message); viewPayments.value=[]; }
   viewPaymentsLoading.value=false;
 }
 
@@ -1236,6 +1258,8 @@ async function openEmail(inv) {
   emailModal.open=true; emailModal.loading=true; emailModal.invName=inv.name; emailModal.to=""; emailModal.cc=""; emailModal.subject=""; emailModal.body="";
   try { const d=await apiGET("zoho_books_clone.api.docs.get_invoice_email_defaults",{invoice_name:inv.name}); if (d) { emailModal.to=d.to||""; emailModal.subject=d.subject||""; emailModal.body=d.body||""; } } catch {}
   emailModal.loading=false;
+  await nextTick();
+  if (emailBodyRef.value) emailBodyRef.value.innerHTML = emailModal.body;
 }
 async function sendEmail() {
   if (!emailModal.to) { toast("Recipient email is required","error"); return; }
@@ -1257,7 +1281,7 @@ async function enhanceEmail() {
       invoice_name: emailModal.invName,
     });
     if (res?.subject) emailModal.subject = res.subject;
-    if (res?.body)    emailModal.body    = res.body;
+    if (res?.body) { emailModal.body = res.body; await nextTick(); if (emailBodyRef.value) emailBodyRef.value.innerHTML = res.body; }
     toast("Email enhanced by AI ✨");
   } catch(e) { toast("AI enhance failed: "+e.message,"error"); }
   emailModal.enhancing = false;
@@ -1277,16 +1301,37 @@ async function duplicateInvoice(inv) {
 }
 
 // ── Cancel / Delete ────────────────────────────────────────────────────
-function confirmAction(action, inv) {
+async function confirmAction(action, inv) {
   if (action==="cancel") {
     const isPaid = inv.outstanding_amount <= 0 && inv.docstatus === 1;
     if (isPaid) {
-      toast("Cannot cancel a paid invoice. Go to Payments, cancel the linked Payment Entry first, then come back and cancel this invoice.", "error");
-      return;
+      // Load linked payments so we can show them in the dialog
+      let payments = [];
+      try { payments = await apiGET("zoho_books_clone.api.docs.get_invoice_payments", {invoice_name: inv.name}) || []; } catch(e) { /* show dialog anyway */ }
+      Object.assign(confirmModal, {
+        open: true, loading: false, payments,
+        title: "Cancel Invoice & Payment",
+        message: `Cancel invoice ${inv.name}? This will reverse all GL entries.`,
+        actionLabel: "Cancel Invoice & Payment",
+        action: async () => {
+          confirmModal.loading = true;
+          try {
+            await apiPOST("zoho_books_clone.api.docs.cancel_invoice_with_payments", {invoice_name: inv.name});
+            toast("Invoice and linked payment(s) cancelled");
+            confirmModal.open = false;
+            viewOpen.value = false;
+            await load();
+          } catch(e) {
+            toast(e.message || "Cancel failed", "error");
+            confirmModal.loading = false;
+          }
+        },
+      });
+    } else {
+      Object.assign(confirmModal,{open:true,loading:false,payments:[],title:"Cancel Invoice",message:`Cancel ${inv.name}? This will reverse all GL entries. This cannot be undone.`,actionLabel:"Cancel Invoice",action:async()=>{confirmModal.loading=true;try{await apiCancel("Sales Invoice",inv.name);toast("Invoice cancelled");viewOpen.value=false;await load();}catch(e){toast(e.message||"Cancel failed","error");}confirmModal.open=false;}});
     }
-    Object.assign(confirmModal,{open:true,loading:false,title:"Cancel Invoice",message:`Cancel ${inv.name}? This will reverse all GL entries. This cannot be undone.`,actionLabel:"Cancel Invoice",action:async()=>{confirmModal.loading=true;try{await apiCancel("Sales Invoice",inv.name);toast("Invoice cancelled");viewOpen.value=false;await load();}catch(e){const msg=e.message||"";const friendly=msg.includes("Payment Entry")||msg.includes("linked")||msg.includes("payment")?"Cannot cancel: a Payment Entry is linked to this invoice. Cancel the payment first.":msg||"Cancel failed";toast(friendly,"error");}confirmModal.open=false;}});
   } else {
-    Object.assign(confirmModal,{open:true,loading:false,title:"Delete Invoice",message:`Permanently delete draft ${inv.name}? This cannot be undone.`,actionLabel:"Delete",action:async()=>{confirmModal.loading=true;try{await apiDelete("Sales Invoice",inv.name);toast("Invoice deleted");viewOpen.value=false;await load();}catch(e){toast(e.message||"Delete failed","error");}confirmModal.open=false;}});
+    Object.assign(confirmModal,{open:true,loading:false,payments:[],title:"Delete Invoice",message:`Permanently delete draft ${inv.name}? This cannot be undone.`,actionLabel:"Delete",action:async()=>{confirmModal.loading=true;try{await apiDelete("Sales Invoice",inv.name);toast("Invoice deleted");viewOpen.value=false;await load();}catch(e){toast(e.message||"Delete failed","error");}confirmModal.open=false;}});
   }
 }
 
@@ -1315,8 +1360,21 @@ async function bulkDelete() {
 async function bulkCancel() {
   const submitted=sorted.value.filter(i=>selectedRows.value.has(i.name)&&i.docstatus===1);
   if (!submitted.length) { toast("No submitted invoices selected","info"); return; }
-  for (const inv of submitted) { try { await apiCancel("Sales Invoice",inv.name); } catch {} }
-  selectedRows.value=new Set(); toast(`Cancelled ${submitted.length} invoice(s)`); await load();
+  let done=0, failed=0;
+  for (const inv of submitted) {
+    try {
+      const isPaid = inv.outstanding_amount <= 0;
+      if (isPaid) {
+        await apiPOST("zoho_books_clone.api.docs.cancel_invoice_with_payments", {invoice_name: inv.name});
+      } else {
+        await apiCancel("Sales Invoice", inv.name);
+      }
+      done++;
+    } catch(e) { failed++; toast(`${inv.name}: ${e.message||"cancel failed"}`, "error"); }
+  }
+  selectedRows.value=new Set();
+  if (done) toast(`Cancelled ${done} invoice(s)${failed?`, ${failed} failed`:""}`);
+  await load();
 }
 async function bulkEmail() {
   const sel=sorted.value.filter(i=>selectedRows.value.has(i.name));
@@ -1627,6 +1685,7 @@ watch(() => route.query, (q) => {
 .inv-tl-step.danger .inv-tl-label { color:#dc2626; }
 .inv-tl-line { flex:1; height:2px; background:#e2e8f0; margin:0 6px; margin-bottom:16px; min-width:40px; }
 .inv-tl-line.done { background:#059669; }
+.inv-tl-line.danger { background:#dc2626; }
 
 /* ── View actions ── */
 .inv-view-actions { display:flex; align-items:center; gap:8px; padding:10px 24px; border-bottom:1px solid #e8ecf0; flex-wrap:wrap; flex-shrink:0; background:#fff; }
@@ -1718,6 +1777,10 @@ watch(() => route.query, (q) => {
 .rp-input:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.08); }
 .rp-amount-input { font-family:monospace; font-size:16px; font-weight:700; }
 .rp-select { cursor:pointer; } .rp-textarea { resize:vertical; }
+.rp-rich-body { min-height:160px; max-height:280px; overflow-y:auto; line-height:1.6; font-size:13px; cursor:text; }
+.rp-rich-body:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.08); outline:none; }
+.rp-rich-body table { border-collapse:collapse; font-size:13px; margin:8px 0; }
+.rp-rich-body td { padding:3px 10px 3px 0; color:#4b5563; }
 .rp-summary { background:#f8fafc; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; font-size:12.5px; color:#374151; flex-wrap:wrap; gap:8px; }
 .rp-footer { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:14px 22px; border-top:1px solid #e8ecf0; background:#f8fafc; }
 .rp-btn { display:inline-flex; align-items:center; gap:6px; border-radius:6px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid transparent; }

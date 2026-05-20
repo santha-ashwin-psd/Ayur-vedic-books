@@ -191,8 +191,8 @@ async function openEdit(o){
   }catch{}
 }
 function openView(o){viewDoc.value=o;viewOpen.value=true;}
-async function fetchVendors(q=""){try{const r=await apiList("Supplier",{fields:["name","supplier_name"],filters:q?[["supplier_name","like","%"+q+"%"]]:[],limit:30,order:"supplier_name asc"});vendors.value=r.map(x=>({label:x.supplier_name||x.name,value:x.name}));}catch{vendors.value=[];}}
-async function fetchItems(q=""){try{const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:q?[["item_name","like","%"+q+"%"]]:[],limit:30,order:"item_name asc"});items.value=r.map(x=>({label:x.item_name||x.name,value:x.name,rate:x.standard_rate||0}));}catch{items.value=[];}}
+async function fetchVendors(q=""){try{const f=[["disabled","=",0]];if(q)f.push(["supplier_name","like","%"+q+"%"]);const r=await apiList("Supplier",{fields:["name","supplier_name"],filters:f,limit:30,order:"supplier_name asc"});vendors.value=r.map(x=>({label:x.supplier_name||x.name,value:x.name}));}catch{vendors.value=[];}}
+async function fetchItems(q=""){try{const f=[["disabled","=",0]];if(q)f.push(["item_name","like","%"+q+"%"]);const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:f,limit:30,order:"item_name asc"});items.value=r.map(x=>({label:x.item_name||x.name,value:x.name,rate:x.standard_rate||0}));}catch{items.value=[];}}
 function onItemSelect(line,opt){line.item_code=opt?.value??opt;if(opt?.rate){line.rate=Number(opt.rate)||0;calcLine(line);}}
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}

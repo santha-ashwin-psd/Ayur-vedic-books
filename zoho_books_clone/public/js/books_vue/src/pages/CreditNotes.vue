@@ -182,8 +182,8 @@ function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",curren
 
 function openNew(){Object.assign(form,{customer:"",posting_date:new Date().toISOString().slice(0,10),return_against:"",reason:""});lines.value=[blankLine()];fetchCustomers("");fetchItems("");drawerOpen.value=true;}
 function openView(c){viewDoc.value=c;viewOpen.value=true;}
-async function fetchCustomers(q=""){try{const r=await apiList("Customer",{fields:["name","customer_name"],filters:q?[["customer_name","like","%"+q+"%"]]:[],limit:30,order:"customer_name asc"});customers.value=r.map(x=>({label:x.customer_name||x.name,value:x.name}));}catch{customers.value=[];}}
-async function fetchItems(q=""){try{const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:q?[["item_name","like","%"+q+"%"]]:[],limit:30,order:"item_name asc"});items.value=r.map(x=>({label:x.item_name||x.name,value:x.name,rate:x.standard_rate||0}));}catch{items.value=[];}}
+async function fetchCustomers(q=""){try{const f=[["disabled","=",0]];if(q)f.push(["customer_name","like","%"+q+"%"]);const r=await apiList("Customer",{fields:["name","customer_name"],filters:f,limit:30,order:"customer_name asc"});customers.value=r.map(x=>({label:x.customer_name||x.name,value:x.name}));}catch{customers.value=[];}}
+async function fetchItems(q=""){try{const f=[["disabled","=",0]];if(q)f.push(["item_name","like","%"+q+"%"]);const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:f,limit:30,order:"item_name asc"});items.value=r.map(x=>({label:x.item_name||x.name,value:x.name,rate:x.standard_rate||0}));}catch{items.value=[];}}
 async function fetchInvoices(q=""){try{const f=[["is_return","=",0],["docstatus","=",1]];if(form.customer)f.push(["customer","=",form.customer]);if(q)f.push(["name","like",`%${q}%`]);const r=await apiList("Sales Invoice",{fields:["name"],filters:f,limit:20});invoices.value=r.map(x=>({label:x.name,value:x.name}));}catch{invoices.value=[];}}
 function onItemSelect(line,opt){line.item_code=opt?.value??opt;if(opt?.rate){line.rate=Number(opt.rate)||0;calcLine(line);}}
 function addLine(){lines.value.push(blankLine());}

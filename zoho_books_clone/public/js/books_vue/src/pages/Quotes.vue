@@ -373,11 +373,11 @@ async function convertToInvoice(q) {
 }
 
 async function fetchCustomers(q="") {
-  try { const r=await apiList("Customer",{fields:["name","customer_name"],filters:q?[["customer_name","like","%"+q+"%"]]:[],limit:30,order:"customer_name asc"}); customers.value=r.map(x=>({label:x.customer_name||x.name,value:x.name})); }
+  try { const f=[["disabled","=",0]];if(q)f.push(["customer_name","like","%"+q+"%"]); const r=await apiList("Customer",{fields:["name","customer_name"],filters:f,limit:30,order:"customer_name asc"}); customers.value=r.map(x=>({label:x.customer_name||x.name,value:x.name})); }
   catch { customers.value=[]; }
 }
 async function fetchItems(q="") {
-  try { const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:q?[["item_name","like","%"+q+"%"]]:[],limit:30,order:"item_name asc"}); items.value=r.map(x=>({label:x.item_name||x.name,value:x.name,rate:x.standard_rate||0})); }
+  try { const f=[["disabled","=",0]];if(q)f.push(["item_name","like","%"+q+"%"]); const r=await apiList("Item",{fields:["name","item_name","standard_rate","stock_uom"],filters:f,limit:30,order:"item_name asc"}); items.value=r.map(x=>({label:x.item_name||x.name,value:x.name,rate:x.standard_rate||0})); }
   catch { items.value=[]; }
 }
 function onItemSelect(line,opt) {
@@ -402,7 +402,7 @@ async function saveQuote(submit) {
     const taxes=form.tax_rate>0?[{doctype:"Tax Line",charge_type:"On Net Total",rate:form.tax_rate,account_head:taxAccountHead.value,description:`Tax @ ${form.tax_rate}%`}]:[];
     const doc={
       doctype:"Quotation", company,
-      quotation_to:"Customer", party_name:form.party_name,
+      quotation_to:"Customer", customer:form.party_name,
       transaction_date:form.transaction_date, valid_till:form.valid_till||null,
       terms:form.terms||"",
       items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Quotation Item",item_code:l.item_code,description:l.description||l.item_code,qty:flt(l.qty)||1,rate:flt(l.rate),amount:flt(l.amount)})),

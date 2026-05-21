@@ -11,6 +11,10 @@
     <Toast />
     <Confirm />
     <QuickCreateDrawer />
+    <ConfirmCascadeDialog />
+    <EmailDialog />
+    <PaymentDialog />
+    <ReturnNoteDialog />
     <AiPanel :open="aiOpen" :alerts="aiAlerts" @close="aiOpen = false" @alerts-seen="alertCount = 0" />
     <TutorialOverlay />
   </div>
@@ -26,6 +30,10 @@ import TutorialOverlay  from "./TutorialOverlay.vue";
 import Toast              from "../components/Toast.vue";
 import Confirm            from "../components/Confirm.vue";
 import QuickCreateDrawer  from "../components/QuickCreateDrawer.vue";
+import ConfirmCascadeDialog from "../components/ConfirmCascadeDialog.vue";
+import EmailDialog          from "../components/EmailDialog.vue";
+import PaymentDialog        from "../components/PaymentDialog.vue";
+import ReturnNoteDialog     from "../components/ReturnNoteDialog.vue";
 import { useAiActions } from "../composables/useAiActions.js";
 import { apiGET }       from "../api/client.js";
 

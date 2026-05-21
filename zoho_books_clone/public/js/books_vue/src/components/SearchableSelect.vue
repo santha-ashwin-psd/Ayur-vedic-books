@@ -100,15 +100,27 @@ const inputEl   = ref(null);
 const trigEl    = ref(null);
 const dropStyle = ref({});
 
+// Records created via quick-create that the parent hasn't refetched yet.
+// Lets displayLabel show the friendly name immediately instead of the raw ID.
+const _localCreated = ref([]);
+
 
 const normalized = computed(() => {
   const vk = props.valueKey, lk = props.labelKey;
-  return (props.options || []).map((o) => {
+  const base = (props.options || []).map((o) => {
     if (typeof o === "string") return { value: o, label: o };
     const v = vk ? o[vk] : (o.value !== undefined ? o.value : (o.name !== undefined ? o.name : String(o)));
     const l = lk ? o[lk] : (o.label !== undefined ? o.label : (o.name !== undefined ? o.name : String(o)));
-    return { value: v ?? "", label: l ?? v ?? "" };
+    // Spread the original so extras like { rate, standard_rate, customer_name, ... }
+    // pass through to @select handlers in the parent.
+    return { ...o, value: v ?? "", label: l ?? v ?? "" };
   });
+  // Merge in just-created records that aren't yet in props.options
+  const existing = new Set(base.map(o => String(o.value)));
+  for (const c of _localCreated.value) {
+    if (!existing.has(String(c.value))) base.unshift(c);
+  }
+  return base;
 });
 
 const displayLabel = computed(() => {
@@ -174,7 +186,12 @@ async function onClickCreate() {
   if (props.createDoctype) {
     const { openCreate } = useQuickCreate();
     const record = await openCreate(props.createDoctype, typed);
-    if (record) pick({ value: record.name, label: record.label });
+    if (record) {
+      // Stash the friendly label so displayLabel renders the name even before
+      // the parent's next options refetch.
+      _localCreated.value.push({ value: record.name, label: record.label || record.name });
+      pick({ value: record.name, label: record.label });
+    }
   } else {
     emit("create", typed);
   }

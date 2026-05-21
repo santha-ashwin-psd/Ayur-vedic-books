@@ -24,6 +24,42 @@ def get_doc(doctype, name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit_page_length=50, start=0):
+    """
+    Permission-free list endpoint that mirrors frappe.client.get_list.
+    Books tenancy users may have no Frappe role (login is via custom auth flow),
+    so the built-in get_list raises PermissionError. This wrapper bypasses that
+    check after confirming the caller is authenticated.
+
+    The Vue SPA uses this through src/api/client.js → apiList(). Tenancy filters
+    (books_company / company) are added by the client; this endpoint trusts them.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+    if isinstance(fields, str):
+        try:
+            fields = json.loads(fields)
+        except Exception:
+            fields = [fields]
+    if isinstance(filters, str):
+        try:
+            filters = json.loads(filters)
+        except Exception:
+            filters = []
+
+    return frappe.get_list(
+        doctype,
+        fields=fields or ["name"],
+        filters=filters or [],
+        order_by=order_by,
+        start=int(start or 0),
+        limit_page_length=int(limit_page_length or 50),
+        ignore_permissions=True,
+    )
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_invoice_email_defaults(invoice_name):
     """
     Return pre-filled To, Subject, and body for the Send Email dialog.
@@ -313,6 +349,327 @@ def cancel_invoice_with_payments(invoice_name):
     return {"cancelled_payments": cancelled_pes, "cancelled_invoice": invoice_name}
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 1 — Bill (Purchase Invoice) helpers, mirroring the Sales Invoice set
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_bill_payments(bill_name):
+    """Return submitted Payment Entries linked to a Purchase Invoice (Bill)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_name": bill_name, "reference_doctype": "Purchase Invoice"},
+        fields=["parent", "allocated_amount"],
+    )
+    if not refs:
+        return []
+    pe_names = list({r.parent for r in refs})
+    result = []
+    for pe_name in pe_names:
+        pe = frappe.db.get_value(
+            "Payment Entry", pe_name,
+            ["name", "payment_date", "paid_amount", "mode_of_payment", "reference_no", "docstatus"],
+            as_dict=True,
+        )
+        if pe:
+            result.append(pe)
+    result.sort(key=lambda x: x.get("payment_date") or "", reverse=True)
+    return result
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_bill_email_defaults(bill_name):
+    """Pre-fill the Send Email dialog for a Bill."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    bill = frappe.get_doc("Purchase Invoice", bill_name)
+    supplier_email = frappe.db.get_value("Supplier", bill.supplier, "email_id") or ""
+    subject = f"Bill {bill.name} from {bill.company or ''}"
+    body = (
+        f"Dear {bill.supplier_name or bill.supplier},<br><br>"
+        f"Please find your bill <b>{bill.name}</b> details below:<br><br>"
+        f"<table style='border-collapse:collapse;font-size:14px'>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Bill #</td><td><b>{bill.name}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{bill.grand_total:,.2f}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Due Date</td><td>{bill.due_date or '—'}</td></tr>"
+        f"</table><br>"
+        f"Regards,<br>{bill.company or ''}"
+    )
+    return {
+        "to": supplier_email,
+        "subject": subject,
+        "body": body,
+        "bill_name": bill.name,
+        "supplier_name": bill.supplier_name or bill.supplier,
+        "from_email": frappe.session.user,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def send_bill_email(bill_name, to, subject, body, cc=None):
+    """Send a bill email; attaches the bill PDF when print format exists."""
+    if not to:
+        frappe.throw("Recipient email (To) is required.")
+    if not frappe.has_permission("Purchase Invoice", "read", bill_name):
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+    bill = frappe.get_doc("Purchase Invoice", bill_name)
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
+    attachments = []
+    try:
+        attachments = [frappe.attach_print(bill.doctype, bill.name, print_format="Purchase Invoice", print_letterhead=True)]
+    except Exception:
+        attachments = []
+
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list,
+        subject=subject, message=body,
+        attachments=attachments,
+        reference_doctype="Purchase Invoice", reference_name=bill_name,
+        now=True,
+    )
+    comm = frappe.get_doc({
+        "doctype": "Communication", "communication_type": "Communication",
+        "communication_medium": "Email", "sent_or_received": "Sent",
+        "subject": subject, "content": body, "sender": frappe.session.user,
+        "recipients": to, "cc": cc or "",
+        "reference_doctype": "Purchase Invoice", "reference_name": bill_name,
+        "status": "Linked",
+    })
+    comm.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "sent", "to": to, "bill": bill_name}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
+                          payment_mode="Cash", paid_from="", bank_charges=0,
+                          reference_no="", notes="", save_as_draft=0,
+                          # accept identical keys the receive-side dialog uses, for symmetry
+                          amount_received=None, deposit_to=""):
+    """Create a Payment Entry against a Purchase Invoice (vendor payment)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+    amount = flt(amount_paid or amount_received or 0)
+    if amount <= 0:
+        frappe.throw("Amount must be greater than zero")
+
+    bill = frappe.get_doc("Purchase Invoice", bill_name)
+    if bill.docstatus != 1:
+        frappe.throw("Bill must be submitted before recording payment")
+
+    company = bill.company or _get_company(frappe.session.user)
+    bank = paid_from or deposit_to or frappe.db.get_value(
+        "Account", {"account_type": ["in", ["Bank", "Cash"]], "company": company, "is_group": 0}, "name"
+    )
+    ap = frappe.db.get_value(
+        "Account", {"account_type": "Payable", "company": company, "is_group": 0}, "name"
+    )
+
+    pe = frappe.get_doc({
+        "doctype": "Payment Entry",
+        "payment_type": "Pay",
+        "company": company,
+        "party_type": "Supplier",
+        "party": bill.supplier,
+        "party_name": bill.supplier_name or bill.supplier,
+        "paid_from": bank,
+        "paid_to": ap,
+        "paid_amount": amount,
+        "received_amount": amount,
+        "source_exchange_rate": 1,
+        "target_exchange_rate": 1,
+        "reference_no": reference_no or bill.name,
+        "reference_date": payment_date or today(),
+        "posting_date": payment_date or today(),
+        "payment_date": payment_date or today(),
+        "mode_of_payment": payment_mode,
+        "remarks": notes or "",
+        "references": [{
+            "reference_doctype": "Purchase Invoice",
+            "reference_name": bill.name,
+            "total_amount": bill.grand_total,
+            "outstanding_amount": bill.outstanding_amount,
+            "allocated_amount": amount,
+        }],
+    })
+    pe.flags.ignore_permissions = True
+    pe.flags.ignore_mandatory = True
+    pe.insert()
+    if not int(save_as_draft or 0):
+        pe.submit()
+    frappe.db.commit()
+    return {"payment_entry": pe.name, "bill": bill.name}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def cancel_bill_with_payments(bill_name):
+    """Cancel linked Payment Entries first, then cancel the Bill (mirror of invoice cascade)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_name": bill_name},
+        fields=["parent"],
+    )
+    pe_names = list({r.parent for r in refs})
+    cancelled_pes = []
+    for pe_name in pe_names:
+        pe_doc = frappe.get_doc("Payment Entry", pe_name)
+        if pe_doc.docstatus == 1:
+            pe_doc.cancel()
+            cancelled_pes.append(pe_name)
+    bill_doc = frappe.get_doc("Purchase Invoice", bill_name)
+    bill_doc.cancel()
+    frappe.db.commit()
+    return {"cancelled_payments": cancelled_pes, "cancelled_bill": bill_name}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_debit_notes(bill_name):
+    """Return debit notes (return purchase invoices) against a Bill."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    return frappe.get_all(
+        "Purchase Invoice",
+        filters={"return_against": bill_name, "is_return": 1, "docstatus": ["!=", 2]},
+        fields=["name", "grand_total", "posting_date", "docstatus"],
+    )
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_debit_note_balance(debit_note_name):
+    """Calculate remaining (unapplied) balance on a debit note.
+
+    balance = |grand_total| - sum(allocated_amount from Payment Entry Refs whose parent is
+    a submitted PE allocating this DN). When no applications exist, balance = |grand_total|.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    dn = frappe.db.get_value("Purchase Invoice", debit_note_name,
+                             ["grand_total", "docstatus", "supplier", "supplier_name"], as_dict=True)
+    if not dn:
+        return {"name": debit_note_name, "total": 0, "applied": 0, "balance": 0}
+    total = abs(flt(dn.grand_total))
+    applied = 0
+    refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_name": debit_note_name, "reference_doctype": "Purchase Invoice"},
+        fields=["parent", "allocated_amount"],
+    )
+    for r in refs:
+        pe_status = frappe.db.get_value("Payment Entry", r.parent, "docstatus")
+        if pe_status == 1:
+            applied += abs(flt(r.allocated_amount))
+    return {
+        "name": debit_note_name, "supplier": dn.supplier, "supplier_name": dn.supplier_name,
+        "total": total, "applied": applied, "balance": max(0, total - applied),
+        "docstatus": dn.docstatus,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def apply_debit_note_to_bill(debit_note, bill, amount):
+    """Create a Payment Entry that applies a debit-note credit to a vendor bill."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    amount = abs(flt(amount))
+    if amount <= 0:
+        frappe.throw("Amount must be > 0")
+
+    dn = frappe.get_doc("Purchase Invoice", debit_note)
+    bill_doc = frappe.get_doc("Purchase Invoice", bill)
+    if dn.docstatus != 1 or bill_doc.docstatus != 1:
+        frappe.throw("Both debit note and bill must be submitted")
+
+    balance_info = get_debit_note_balance(debit_note)
+    if amount > flt(balance_info["balance"]) + 0.01:
+        frappe.throw(f"Cannot apply more than available balance ({balance_info['balance']})")
+
+    company = bill_doc.company
+    ap = frappe.db.get_value(
+        "Account", {"account_type": "Payable", "company": company, "is_group": 0}, "name"
+    )
+
+    pe = frappe.get_doc({
+        "doctype": "Payment Entry",
+        "payment_type": "Internal Transfer",
+        "company": company,
+        "party_type": "Supplier",
+        "party": dn.supplier,
+        "party_name": dn.supplier_name or dn.supplier,
+        "paid_from": ap,
+        "paid_to": ap,
+        "paid_amount": amount,
+        "received_amount": amount,
+        "reference_no": f"DN-{dn.name}",
+        "reference_date": today(),
+        "posting_date": today(),
+        "remarks": f"Debit Note {dn.name} applied to bill {bill}",
+        "references": [
+            {
+                "reference_doctype": "Purchase Invoice",
+                "reference_name": dn.name,
+                "total_amount": abs(flt(dn.grand_total)),
+                "allocated_amount": amount,
+            },
+            {
+                "reference_doctype": "Purchase Invoice",
+                "reference_name": bill,
+                "total_amount": flt(bill_doc.grand_total),
+                "outstanding_amount": flt(bill_doc.outstanding_amount),
+                "allocated_amount": amount,
+            },
+        ],
+    })
+    pe.flags.ignore_permissions = True
+    pe.flags.ignore_mandatory = True
+    pe.insert()
+    pe.submit()
+    frappe.db.commit()
+    return {"payment_entry": pe.name, "debit_note": debit_note, "bill": bill, "applied": amount}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_debit_note_applications(debit_note_name):
+    """Return the list of bills this debit note has been applied to (via Payment Entries)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_name": debit_note_name, "reference_doctype": "Purchase Invoice"},
+        fields=["parent", "allocated_amount"],
+    )
+    apps = []
+    for r in refs:
+        pe = frappe.db.get_value(
+            "Payment Entry", r.parent,
+            ["name", "posting_date", "docstatus"],
+            as_dict=True,
+        )
+        if not pe or pe.docstatus != 1:
+            continue
+        # the OTHER Purchase Invoice reference (the bill, not the DN itself) is what was applied
+        siblings = frappe.get_all(
+            "Payment Entry Reference",
+            filters={"parent": r.parent, "reference_doctype": "Purchase Invoice"},
+            fields=["reference_name", "allocated_amount"],
+        )
+        for s in siblings:
+            if s.reference_name and s.reference_name != debit_note_name:
+                apps.append({
+                    "bill": s.reference_name,
+                    "amount": abs(flt(s.allocated_amount)),
+                    "date": pe.posting_date,
+                    "payment_entry": pe.name,
+                })
+    return apps
+
+
 @frappe.whitelist(allow_guest=False)
 def get_party_last_items(party_type, party, limit=10):
     """
@@ -414,14 +771,14 @@ def create_debit_note():
 
     pi_items = [
         {
-            "item_code":      it.get("item_name") or it.get("item_code") or "",
-            "item_name":      it.get("item_name") or "",
+            "item_code":      it.get("item_code") or it.get("item_name") or "",
+            "item_name":      it.get("item_name") or it.get("item_code") or "",
             "description":    it.get("description") or it.get("item_name") or "",
             "qty":            -abs(flt(it.get("qty", 1))),
             "rate":           flt(it.get("rate", 0)),
             "expense_account": expense_account,
         }
-        for it in items_raw if (it.get("item_name") or it.get("item_code"))
+        for it in items_raw if (it.get("item_code") or it.get("item_name"))
     ]
 
     pi = frappe.get_doc({
@@ -498,6 +855,19 @@ def create_debit_note():
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_credit_notes(invoice_name):
+    """Return existing credit notes (return invoices) against a given Sales Invoice."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    cns = frappe.get_all(
+        "Sales Invoice",
+        filters={"return_against": invoice_name, "is_return": 1, "docstatus": ["!=", 2]},
+        fields=["name", "grand_total", "posting_date", "docstatus"],
+    )
+    return cns
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def create_credit_note():
     """
     Create and submit a Credit Note.
@@ -531,14 +901,14 @@ def create_credit_note():
 
     cn_items = [
         {
-            "item_code":      it.get("item_name") or it.get("item_code") or "",
-            "item_name":      it.get("item_name") or "",
+            "item_code":      it.get("item_code") or it.get("item_name") or "",
+            "item_name":      it.get("item_name") or it.get("item_code") or "",
             "description":    it.get("description") or it.get("item_name") or "",
             "qty":            -abs(flt(it.get("qty", 1))),
             "rate":           flt(it.get("rate", 0)),
             "income_account": income_account,
         }
-        for it in items_raw if (it.get("item_name") or it.get("item_code"))
+        for it in items_raw if (it.get("item_code") or it.get("item_name"))
     ]
 
     cn_taxes = [

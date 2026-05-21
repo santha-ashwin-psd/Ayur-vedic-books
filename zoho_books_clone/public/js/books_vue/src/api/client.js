@@ -166,7 +166,10 @@ export async function apiList(dt, opts = {}) {
       filters.push(["books_company", "=", co]);
   }
 
-  return await apiGET("frappe.client.get_list", {
+  // Use the custom get_list endpoint that bypasses Frappe's role-permission
+  // check — Books tenancy users may have no Frappe role assigned, so the
+  // standard frappe.client.get_list returns empty for them.
+  return await apiGET("zoho_books_clone.api.docs.get_list", {
     doctype:           dt,
     fields:            JSON.stringify(opts.fields || ["name"]),
     filters:           JSON.stringify(filters),

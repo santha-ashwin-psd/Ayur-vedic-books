@@ -741,35 +741,66 @@
     </div>
 
     <!-- ── Credit Note Modal ── -->
-    <div v-if="cnModal.open" class="rp-backdrop" @click.self="cnModal.open=false">
-      <div class="rp-dialog" style="max-width:460px">
+    <div v-if="cnModal.open" class="rp-backdrop" @click.self="!cnModal.saving&&(cnModal.open=false)">
+      <div class="rp-dialog" style="max-width:560px">
         <div class="rp-dialog-header">
-          <span class="rp-dialog-title">Create Credit Note — {{ cnModal.invName }}</span>
-          <button class="rp-close-btn" @click="cnModal.open=false">✕</button>
+          <span class="rp-dialog-title">Credit Note — {{ cnModal.invName }}</span>
+          <button class="rp-close-btn" @click="cnModal.open=false" :disabled="cnModal.saving">✕</button>
         </div>
         <div class="rp-body">
-          <div class="rp-field rp-field-full">
-            <label class="rp-label rp-req">Reason</label>
-            <select class="rp-input rp-select" v-model="cnModal.reason">
-              <option value="Price Adjustment">Price Adjustment</option>
-              <option value="Goods Returned">Goods Returned</option>
-              <option value="Damaged Goods">Damaged Goods</option>
-              <option value="Duplicate Invoice">Duplicate Invoice</option>
-              <option value="Other">Other</option>
-            </select>
+          <!-- Existing CNs warning -->
+          <div v-if="cnModal.existingCNs.length" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:10px 12px;font-size:12.5px;color:#92400e">
+            <strong>⚠ Existing credit notes:</strong>
+            <span v-for="cn in cnModal.existingCNs" :key="cn.name" style="margin-left:6px;font-family:monospace">{{ cn.name }} ({{ fmtAmt(Math.abs(cn.grand_total)) }})</span>
+            <div style="margin-top:4px;font-size:11.5px">Creating another will further reduce the invoice balance.</div>
           </div>
-          <div class="rp-field rp-field-full">
-            <label class="rp-label">Notes</label>
-            <textarea class="rp-input rp-textarea" v-model="cnModal.notes" rows="3" placeholder="Additional notes…"></textarea>
+          <!-- Date + Reason row -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="rp-field">
+              <label class="rp-label rp-req">Credit Note Date</label>
+              <input class="rp-input" type="date" v-model="cnModal.date"/>
+            </div>
+            <div class="rp-field">
+              <label class="rp-label rp-req">Reason</label>
+              <select class="rp-input rp-select" v-model="cnModal.reason">
+                <option value="Price Adjustment">Price Adjustment</option>
+                <option value="Goods Returned">Goods Returned</option>
+                <option value="Damaged Goods">Damaged Goods</option>
+                <option value="Duplicate Invoice">Duplicate Invoice</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
           </div>
-          <div style="font-size:12px;color:#6b7280;background:#fef3c7;border-radius:6px;padding:8px 12px">
-            This will create a Credit Note against invoice {{ cnModal.invName }} for the full amount.
+          <!-- Items table -->
+          <div>
+            <label class="rp-label" style="margin-bottom:6px;display:block">Items to Credit</label>
+            <div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:2fr 80px 80px 90px;gap:8px;padding:7px 12px;background:#f8fafc;font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280">
+                <span>Item</span><span style="text-align:center">Qty</span><span style="text-align:right">Rate</span><span style="text-align:right">Amount</span>
+              </div>
+              <div v-for="(line,i) in cnModal.lines" :key="i" style="display:grid;grid-template-columns:2fr 80px 80px 90px;gap:8px;padding:7px 12px;border-top:1px solid #f0f2f5;align-items:center;font-size:13px">
+                <span style="color:#374151">{{ line.item_name||line.item_code }}</span>
+                <input v-model.number="line.qty" type="number" :max="line.maxQty" min="0.001" step="0.001"
+                  style="border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;width:100%;font-size:12px;text-align:center"
+                  @input="calcCNLine(line)"/>
+                <span style="text-align:right;font-family:monospace;color:#6b7280">{{ fmtAmt(line.rate) }}</span>
+                <span style="text-align:right;font-family:monospace;font-weight:600">{{ fmtAmt(line.amount) }}</span>
+              </div>
+            </div>
+            <div style="text-align:right;padding:8px 12px 0;font-size:13px">
+              Credit Total: <strong style="font-family:monospace;color:#dc2626">{{ fmtAmt(cnTotal) }}</strong>
+            </div>
+          </div>
+          <!-- Notes -->
+          <div class="rp-field rp-field-full">
+            <label class="rp-label">Notes <span style="color:#9ca3af;font-weight:400">(optional)</span></label>
+            <input class="rp-input" v-model="cnModal.notes" placeholder="Internal note or customer message…"/>
           </div>
         </div>
         <div class="rp-footer">
-          <button class="rp-btn rp-btn-outline" @click="cnModal.open=false">Cancel</button>
-          <button class="rp-btn rp-btn-primary" :disabled="cnModal.saving" @click="submitCreditNote">
-            {{ cnModal.saving ? 'Creating…' : 'Create Credit Note' }}
+          <button class="rp-btn rp-btn-outline" @click="cnModal.open=false" :disabled="cnModal.saving">Cancel</button>
+          <button class="rp-btn" style="background:#dc2626;border-color:#dc2626;color:#fff" :disabled="cnModal.saving||cnTotal<=0" @click="submitCreditNote">
+            {{ cnModal.saving ? 'Creating…' : `Issue Credit Note  ${fmtAmt(cnTotal)}` }}
           </button>
         </div>
       </div>
@@ -921,7 +952,9 @@ const emailModal = reactive({ open:false, loading:false, sending:false, invName:
 const emailBodyRef = ref(null);
 
 // ── Credit Note modal ──────────────────────────────────────────────────
-const cnModal = reactive({ open:false, saving:false, invName:"", customer:"", items:[], taxes:[], reason:"Price Adjustment", notes:"" });
+const cnModal = reactive({ open:false, saving:false, invName:"", customer:"", lines:[], date:"", existingCNs:[], reason:"Price Adjustment", notes:"" });
+const cnTotal = computed(() => cnModal.lines.reduce((s,l) => s + flt(l.amount), 0));
+function calcCNLine(line) { line.amount = Math.round(flt(line.qty) * flt(line.rate) * 100) / 100; }
 
 // ── Confirm modal ──────────────────────────────────────────────────────
 const confirmModal = reactive({ open:false, loading:false, title:"", message:"", actionLabel:"Confirm", action: null, payments:[] });
@@ -1336,18 +1369,44 @@ async function confirmAction(action, inv) {
 }
 
 // ── Credit Note ────────────────────────────────────────────────────────
-function openCreditNote(inv) {
-  Object.assign(cnModal,{open:true,saving:false,invName:inv.name,customer:inv.customer,items:inv.items||[],taxes:inv.taxes||[],reason:"Price Adjustment",notes:""});
+async function openCreditNote(inv) {
+  const lines = (inv.items||[]).map(it => ({
+    item_code: it.item_code||"",
+    item_name: it.item_name||it.item_code||"",
+    description: it.description||"",
+    maxQty: flt(it.qty),
+    qty: flt(it.qty),
+    rate: flt(it.rate),
+    amount: Math.round(flt(it.qty)*flt(it.rate)*100)/100,
+  }));
+  Object.assign(cnModal, { open:true, saving:false, invName:inv.name, customer:inv.customer, lines, date:todayStr(), existingCNs:[], reason:"Price Adjustment", notes:"" });
+  try {
+    const existing = await apiGET("zoho_books_clone.api.docs.get_credit_notes", { invoice_name: inv.name });
+    cnModal.existingCNs = existing || [];
+  } catch { cnModal.existingCNs = []; }
 }
 async function submitCreditNote() {
-  cnModal.saving=true;
+  if (!cnModal.date) { toast("Please select a credit note date","error"); return; }
+  const validLines = cnModal.lines.filter(l => flt(l.qty) > 0);
+  if (!validLines.length) { toast("At least one item must have qty > 0","error"); return; }
+  cnModal.saving = true;
   try {
-    const items=cnModal.items.map(it=>({item_code:it.item_code,item_name:it.item_name,description:it.description,qty:flt(it.qty),rate:flt(it.rate),amount:flt(it.amount)}));
-    const taxes=cnModal.taxes.map(tx=>({description:tx.description,rate:flt(tx.rate)}));
-    const r=await apiPOST("zoho_books_clone.api.docs.create_credit_note",{customer:cnModal.customer,against_invoice:cnModal.invName,date:todayStr(),reason:cnModal.reason,notes:cnModal.notes||"",items:JSON.stringify(items),taxes:JSON.stringify(taxes)});
-    toast("Credit Note created: "+(r?.credit_note||"")); cnModal.open=false; viewOpen.value=false;
+    const items = validLines.map(it => ({ item_code:it.item_code, item_name:it.item_name, description:it.description, qty:flt(it.qty), rate:flt(it.rate), amount:flt(it.amount) }));
+    const r = await apiPOST("zoho_books_clone.api.docs.create_credit_note", {
+      customer: cnModal.customer,
+      against_invoice: cnModal.invName,
+      date: cnModal.date,
+      reason: cnModal.reason,
+      notes: cnModal.notes||"",
+      items: JSON.stringify(items),
+      taxes: "[]",
+    });
+    toast("Credit Note created: "+(r?.credit_note||""));
+    cnModal.open = false;
+    viewOpen.value = false;
+    await load();
   } catch(e) { toast("Failed: "+e.message,"error"); }
-  cnModal.saving=false;
+  cnModal.saving = false;
 }
 
 // ── Bulk actions ───────────────────────────────────────────────────────

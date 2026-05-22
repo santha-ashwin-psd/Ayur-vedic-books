@@ -2756,6 +2756,98 @@ def unreconcile_bank_transaction(bank_transaction_name):
     return {"bank_transaction": bank_transaction_name, "status": "Unreconciled"}
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Cheque lifecycle: Issued → Cleared / Bounced / Cancelled
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_cheque_list(company=None, status=None):
+    """List all Payment Entries with mode_of_payment='Cheque' + their lifecycle state."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    company = company or _get_company(frappe.session.user)
+    where = ["mode_of_payment='Cheque'", "company=%(co)s"]
+    params = {"co": company}
+    if status:
+        where.append("cheque_status=%(st)s")
+        params["st"] = status
+    rows = frappe.db.sql(f"""
+        SELECT name, party_type, party, party_name, payment_type, payment_date,
+               paid_amount, reference_no, reference_date, mode_of_payment,
+               cheque_status, cheque_cleared_date, cheque_bounce_reason,
+               docstatus
+        FROM `tabPayment Entry`
+        WHERE {' AND '.join(where)}
+        ORDER BY payment_date DESC, creation DESC
+        LIMIT 200
+    """, params, as_dict=True)
+    for r in rows:
+        if not r.cheque_status:
+            r.cheque_status = "Issued"
+    return rows
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def update_cheque_status(payment_entry_name, new_status, cleared_date=None, bounce_reason=None):
+    """Transition a cheque between Issued → Cleared / Bounced / Cancelled."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if new_status not in ("Issued", "Cleared", "Bounced", "Cancelled"):
+        frappe.throw(f"Invalid cheque status: {new_status}")
+    pe = frappe.db.get_value("Payment Entry", payment_entry_name,
+        ["mode_of_payment", "docstatus"], as_dict=True)
+    if not pe:
+        frappe.throw(f"Payment Entry {payment_entry_name} not found")
+    if pe.mode_of_payment != "Cheque":
+        frappe.throw("Cheque status can only be set on Cheque-mode Payment Entries")
+
+    updates = {"cheque_status": new_status}
+    if new_status == "Cleared":
+        updates["cheque_cleared_date"] = cleared_date or today()
+        updates["cheque_bounce_reason"] = None
+    elif new_status == "Bounced":
+        if not bounce_reason:
+            frappe.throw("Bounce reason is required when marking a cheque as Bounced")
+        updates["cheque_bounce_reason"] = bounce_reason
+        updates["cheque_cleared_date"] = None
+    elif new_status == "Cancelled":
+        updates["cheque_cleared_date"] = None
+    elif new_status == "Issued":
+        updates["cheque_cleared_date"] = None
+        updates["cheque_bounce_reason"] = None
+
+    for k, v in updates.items():
+        frappe.db.set_value("Payment Entry", payment_entry_name, k, v, update_modified=True)
+    frappe.db.commit()
+    return {"payment_entry": payment_entry_name, "cheque_status": new_status, **updates}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_cheque_summary(company=None):
+    """Counts + total values per cheque lifecycle state."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    company = company or _get_company(frappe.session.user)
+    rows = frappe.db.sql("""
+        SELECT COALESCE(cheque_status,'Issued') AS state,
+               COUNT(*) AS count,
+               COALESCE(SUM(paid_amount),0) AS total
+        FROM `tabPayment Entry`
+        WHERE mode_of_payment='Cheque' AND company=%s
+        GROUP BY COALESCE(cheque_status,'Issued')
+    """, (company,), as_dict=True)
+    by_state = {r.state: {"count": r["count"], "total": flt(r["total"])} for r in rows}
+    total_count = sum(s["count"] for s in by_state.values())
+    total_value = sum(s["total"] for s in by_state.values())
+    return {
+        "by_state": by_state, "total_count": total_count, "total_value": total_value,
+        "issued":   by_state.get("Issued",    {"count": 0, "total": 0}),
+        "cleared":  by_state.get("Cleared",   {"count": 0, "total": 0}),
+        "bounced":  by_state.get("Bounced",   {"count": 0, "total": 0}),
+        "cancelled":by_state.get("Cancelled", {"count": 0, "total": 0}),
+    }
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def suggest_payment_matches(bank_transaction_name, date_tolerance_days=7, amount_tolerance=0.01):
     """Suggest Payment Entries that likely match a Bank Transaction.
@@ -2901,6 +2993,127 @@ def import_bank_statement_csv(bank_account, csv_data):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Standalone Delivery Note + Purchase Receipt creators (from SO/PO).
+# These create real submittable documents that adjust SO/PO qty via the
+# controllers' on_submit hooks. Useful when you want a printable voucher
+# instead of just per-line qty tracking.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def create_delivery_note_from_so(sales_order, line_qtys=None, lr_no="", transporter_name="", remarks=""):
+    """Create + submit a Delivery Note from a Sales Order.
+    line_qtys = {sales_order_item_row_name: qty_to_deliver}; null → all remaining.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if isinstance(line_qtys, str):
+        try: line_qtys = json.loads(line_qtys) if line_qtys else None
+        except json.JSONDecodeError: line_qtys = None
+    if line_qtys:
+        line_qtys = {str(k): v for k, v in line_qtys.items()}
+
+    so = frappe.get_doc("Sales Order", sales_order)
+    dn_items = []
+    for it in (so.items or []):
+        remaining = max(0.0, flt(it.qty) - flt(it.delivered_qty))
+        if remaining <= 0: continue
+        if line_qtys:
+            q = min(flt(line_qtys.get(str(it.name), 0)), remaining)
+        else:
+            q = remaining
+        if q <= 0: continue
+        dn_items.append({
+            "doctype": "Delivery Note Item",
+            "item_code":   it.item_code,
+            "item_name":   it.item_name or it.item_code,
+            "description": it.description or it.item_name or it.item_code,
+            "qty":         q,
+            "uom":         getattr(it, "uom", "") or "Nos",
+            "rate":        flt(it.rate),
+            "amount":      flt(it.rate) * q,
+            "so_item":     int(it.name) if str(it.name).isdigit() else 0,
+        })
+    if not dn_items:
+        frappe.throw("Nothing left to deliver on this Sales Order")
+
+    dn = frappe.get_doc({
+        "doctype": "Delivery Note",
+        "company":          so.company,
+        "customer":         so.customer,
+        "customer_name":    so.customer_name,
+        "posting_date":     today(),
+        "sales_order":      so.name,
+        "delivery_date":    so.delivery_date or today(),
+        "lr_no":            lr_no or "",
+        "transporter_name": transporter_name or "",
+        "remarks":          remarks or "",
+        "items":            dn_items,
+    })
+    dn.flags.ignore_permissions = True
+    dn.flags.ignore_mandatory = True
+    dn.insert()
+    dn.submit()
+    frappe.db.commit()
+    return {"delivery_note": dn.name, "sales_order": sales_order,
+            "total_qty": dn.total_qty}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_delivery_note="", remarks=""):
+    """Create + submit a Purchase Receipt from a Purchase Order."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if isinstance(line_qtys, str):
+        try: line_qtys = json.loads(line_qtys) if line_qtys else None
+        except json.JSONDecodeError: line_qtys = None
+    if line_qtys:
+        line_qtys = {str(k): v for k, v in line_qtys.items()}
+
+    po = frappe.get_doc("Purchase Order", purchase_order)
+    pr_items = []
+    for it in (po.items or []):
+        remaining = max(0.0, flt(it.qty) - flt(it.received_qty))
+        if remaining <= 0: continue
+        if line_qtys:
+            q = min(flt(line_qtys.get(str(it.name), 0)), remaining)
+        else:
+            q = remaining
+        if q <= 0: continue
+        pr_items.append({
+            "doctype": "Purchase Receipt Item",
+            "item_code":   it.item_code,
+            "item_name":   it.item_name or it.item_code,
+            "description": it.description or it.item_name or it.item_code,
+            "qty":         q,
+            "uom":         getattr(it, "uom", "") or "Nos",
+            "rate":        flt(it.rate),
+            "amount":      flt(it.rate) * q,
+            "po_item":     int(it.name) if str(it.name).isdigit() else 0,
+        })
+    if not pr_items:
+        frappe.throw("Nothing left to receive on this Purchase Order")
+
+    pr = frappe.get_doc({
+        "doctype": "Purchase Receipt",
+        "company":                  po.company,
+        "supplier":                 po.supplier,
+        "supplier_name":            po.supplier_name,
+        "posting_date":             today(),
+        "purchase_order":           po.name,
+        "supplier_delivery_note":   supplier_delivery_note or "",
+        "remarks":                  remarks or "",
+        "items":                    pr_items,
+    })
+    pr.flags.ignore_permissions = True
+    pr.flags.ignore_mandatory = True
+    pr.insert()
+    pr.submit()
+    frappe.db.commit()
+    return {"purchase_receipt": pr.name, "purchase_order": purchase_order,
+            "total_qty": pr.total_qty}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Tier 3 — Logistics: derived Delivery Challan & Purchase Receipt views.
 # Neither doctype exists in this build, so we synthesise the lists from
 # Sales Order Item.delivered_qty and Purchase Order Item.received_qty.
@@ -2908,12 +3121,45 @@ def import_bank_statement_csv(bank_account, csv_data):
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_delivery_challan_list(company=None, limit=200):
-    """A 'Delivery Challan' here = a Sales Order with at least one line that
-    has been marked delivered (delivered_qty > 0). One row per SO summarises
-    its delivery state."""
+    """List Delivery Notes (real submittable docs) + any SOs with delivered_qty
+    that don't yet have a DN (derived fallback). Real DNs are shown first.
+    """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     company = company or _get_company(frappe.session.user)
+
+    # 1) Real Delivery Notes
+    dns = frappe.db.sql("""
+        SELECT name, customer, customer_name, posting_date, delivery_date,
+               sales_order, status, total_qty, lr_no, transporter_name,
+               docstatus, 'real' AS source
+        FROM `tabDelivery Note`
+        WHERE company = %(co)s
+        ORDER BY posting_date DESC, creation DESC
+        LIMIT %(lim)s
+    """, {"co": company, "lim": int(limit)}, as_dict=True)
+    # Map fields to the legacy template shape
+    out = []
+    sos_with_dn = set()
+    for d in dns:
+        if d.sales_order: sos_with_dn.add(d.sales_order)
+        out.append({
+            "name":          d.name,
+            "sales_order":   d.sales_order or "",
+            "customer":      d.customer, "customer_name": d.customer_name,
+            "posting_date":  d.posting_date,
+            "delivery_date": d.delivery_date or d.posting_date,
+            "lr_no":         d.lr_no, "transporter_name": d.transporter_name,
+            "status":        d.status or ("Cancelled" if d.docstatus == 2 else "Submitted"),
+            "challan_status": "Cancelled" if d.docstatus == 2 else "Submitted",
+            "qty_delivered": flt(d.total_qty),
+            "qty_ordered":   flt(d.total_qty),
+            "pct_delivered": 100.0,
+            "docstatus":     d.docstatus,
+            "source":        "real",
+        })
+
+    # 2) Derived rows for SOs that have delivered_qty but no DN yet
     rows = frappe.db.sql("""
         SELECT
             so.name AS sales_order,
@@ -2933,15 +3179,20 @@ def get_delivery_challan_list(company=None, limit=200):
         LIMIT %(lim)s
     """, {"co": company, "lim": int(limit)}, as_dict=True)
     for r in rows:
-        ordered = flt(r.qty_ordered)
-        delivered = flt(r.qty_delivered)
-        r["challan_status"] = (
+        if r.sales_order in sos_with_dn:
+            continue   # already have a real DN for this SO
+        ordered = flt(r.qty_ordered); delivered = flt(r.qty_delivered)
+        r["name"]            = r.sales_order   # legacy template uses .name
+        r["challan_status"]  = (
             "Cancelled"           if r.status == "Cancelled" else
             "Fully Delivered"     if delivered >= ordered - 0.001 else
             "Partially Delivered"
         )
-        r["pct_delivered"] = round(100 * delivered / ordered, 1) if ordered else 0
-    return rows
+        r["pct_delivered"]   = round(100 * delivered / ordered, 1) if ordered else 0
+        r["source"]          = "derived"
+        r["docstatus"]       = 2 if r.status == "Cancelled" else 1
+        out.append(r)
+    return out[:int(limit)]
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
@@ -2959,11 +3210,41 @@ def get_delivery_challan_lines(sales_order):
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_purchase_receipt_list(company=None, limit=200):
-    """A 'Purchase Receipt' here = a Purchase Order with at least one line
-    that has been marked received (received_qty > 0)."""
+    """List Purchase Receipts (real submittable docs) + any POs with received_qty
+    that don't yet have a PR (derived fallback)."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     company = company or _get_company(frappe.session.user)
+
+    # 1) Real Purchase Receipts
+    prs = frappe.db.sql("""
+        SELECT name, supplier, supplier_name, posting_date, purchase_order,
+               status, total_qty, supplier_delivery_note, docstatus
+        FROM `tabPurchase Receipt`
+        WHERE company = %(co)s
+        ORDER BY posting_date DESC, creation DESC
+        LIMIT %(lim)s
+    """, {"co": company, "lim": int(limit)}, as_dict=True)
+    out = []
+    pos_with_pr = set()
+    for p in prs:
+        if p.purchase_order: pos_with_pr.add(p.purchase_order)
+        out.append({
+            "name":                  p.name,
+            "purchase_order":        p.purchase_order or "",
+            "supplier":              p.supplier, "supplier_name": p.supplier_name,
+            "posting_date":          p.posting_date,
+            "supplier_delivery_note":p.supplier_delivery_note,
+            "status":                p.status or ("Cancelled" if p.docstatus == 2 else "Submitted"),
+            "receipt_status":        "Cancelled" if p.docstatus == 2 else "Submitted",
+            "qty_received":          flt(p.total_qty),
+            "qty_ordered":           flt(p.total_qty),
+            "pct_received":          100.0,
+            "docstatus":             p.docstatus,
+            "source":                "real",
+        })
+
+    # 2) Derived rows for POs without a real PR
     rows = frappe.db.sql("""
         SELECT
             po.name AS purchase_order,
@@ -2983,15 +3264,20 @@ def get_purchase_receipt_list(company=None, limit=200):
         LIMIT %(lim)s
     """, {"co": company, "lim": int(limit)}, as_dict=True)
     for r in rows:
-        ordered = flt(r.qty_ordered)
-        received = flt(r.qty_received)
+        if r.purchase_order in pos_with_pr:
+            continue
+        ordered = flt(r.qty_ordered); received = flt(r.qty_received)
+        r["name"]           = r.purchase_order
         r["receipt_status"] = (
             "Cancelled"          if r.status == "Cancelled" else
             "Fully Received"     if received >= ordered - 0.001 else
             "Partially Received"
         )
-        r["pct_received"] = round(100 * received / ordered, 1) if ordered else 0
-    return rows
+        r["pct_received"]   = round(100 * received / ordered, 1) if ordered else 0
+        r["source"]         = "derived"
+        r["docstatus"]      = 2 if r.status == "Cancelled" else 1
+        out.append(r)
+    return out[:int(limit)]
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])

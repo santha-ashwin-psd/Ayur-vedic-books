@@ -608,203 +608,7 @@
       </div>
     </div>
 
-    <!-- ── Record Payment Modal ── -->
-    <div v-if="payModal.open" class="rp-backdrop" @click.self="payModal.open=false">
-      <div class="rp-dialog">
-        <div class="rp-dialog-header">
-          <span class="rp-dialog-title">Record Payment — {{ payModal.invName }}</span>
-          <button class="rp-close-btn" @click="payModal.open=false">✕</button>
-        </div>
-        <div v-if="payModal.loading" class="rp-loading"><div class="rp-spinner"></div> Loading…</div>
-        <template v-else>
-          <div class="rp-customer-strip">
-            <div class="rp-avatar">{{ (payModal.customerName||'?').charAt(0).toUpperCase() }}</div>
-            <div>
-              <div class="rp-cust-name">{{ payModal.customerName }}</div>
-              <div class="rp-cust-bal">Balance Due: <strong class="text-danger">{{ fmtAmt(payModal.balanceDue) }}</strong></div>
-            </div>
-          </div>
-          <div class="rp-body">
-            <div class="rp-row">
-              <div class="rp-field">
-                <label class="rp-label rp-req">Amount Received (₹)</label>
-                <input class="rp-input rp-amount-input" v-model.number="payForm.amount" type="number" min="0" step="0.01"/>
-              </div>
-              <div class="rp-field">
-                <label class="rp-label rp-req">Payment Date</label>
-                <input class="rp-input" v-model="payForm.date" type="date"/>
-              </div>
-            </div>
-            <div class="rp-row">
-              <div class="rp-field">
-                <label class="rp-label">Payment Mode</label>
-                <select class="rp-input rp-select" v-model="payForm.mode">
-                  <option v-for="m in PAY_MODES" :key="m" :value="m">{{ m }}</option>
-                </select>
-              </div>
-              <div class="rp-field">
-                <label class="rp-label">Reference / Cheque #</label>
-                <input class="rp-input" v-model="payForm.ref" placeholder="UTR / Txn ID / Cheque #"/>
-              </div>
-            </div>
-            <div class="rp-row">
-              <div class="rp-field">
-                <label class="rp-label">Deposit To (Bank Account)</label>
-                <select class="rp-input rp-select" v-model="payForm.depositTo">
-                  <option value="">— Default —</option>
-                  <option v-for="a in payModal.bankAccounts" :key="a" :value="a">{{ a }}</option>
-                </select>
-              </div>
-              <div class="rp-field">
-                <label class="rp-label">Bank Charges (if any)</label>
-                <input class="rp-input" v-model.number="payForm.charges" type="number" min="0" step="0.01"/>
-              </div>
-            </div>
-            <div class="rp-field rp-field-full">
-              <label class="rp-label">Notes</label>
-              <textarea class="rp-input rp-textarea" v-model="payForm.notes" rows="2" placeholder="Optional notes…"></textarea>
-            </div>
-            <div class="rp-summary">
-              <span>Invoice Total: <strong>{{ fmtAmt(payModal.grandTotal) }}</strong></span>
-              <span>Recording: <strong>{{ fmtAmt(payForm.amount||0) }}</strong></span>
-              <span>Balance After: <strong :class="Math.max(0,payModal.balanceDue-(payForm.amount||0))>0?'text-danger':'text-success'">
-                {{ fmtAmt(Math.max(0, payModal.balanceDue-(payForm.amount||0))) }}
-              </strong></span>
-            </div>
-          </div>
-          <div class="rp-footer">
-            <button class="rp-btn rp-btn-outline" @click="payModal.open=false">Cancel</button>
-            <button class="rp-btn rp-btn-primary" :disabled="payModal.saving" @click="submitPayment">
-              {{ payModal.saving ? 'Saving…' : 'Record Payment' }}
-            </button>
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <!-- ── Send Email Modal ── -->
-    <div v-if="emailModal.open" class="rp-backdrop" @click.self="emailModal.open=false">
-      <div class="rp-dialog">
-        <div class="rp-dialog-header">
-          <span class="rp-dialog-title">Send Invoice — {{ emailModal.invName }}</span>
-          <button class="rp-close-btn" @click="emailModal.open=false">✕</button>
-        </div>
-        <div v-if="emailModal.loading" class="rp-loading"><div class="rp-spinner"></div> Loading…</div>
-        <template v-else>
-          <div class="rp-body">
-            <div class="rp-field rp-field-full">
-              <label class="rp-label rp-req">To</label>
-              <input class="rp-input" v-model="emailModal.to" placeholder="customer@email.com" type="email"/>
-            </div>
-            <div class="rp-field rp-field-full">
-              <label class="rp-label">CC</label>
-              <input class="rp-input" v-model="emailModal.cc" placeholder="cc@email.com (optional)"/>
-            </div>
-            <div class="rp-field rp-field-full">
-              <label class="rp-label rp-req">Subject</label>
-              <input class="rp-input" v-model="emailModal.subject"/>
-            </div>
-            <div class="rp-field rp-field-full">
-              <label class="rp-label rp-req" style="display:flex;align-items:center;justify-content:space-between;">
-                <span>Message</span>
-                <button
-                  type="button"
-                  class="bv-ai-enhance-btn"
-                  :disabled="emailModal.enhancing"
-                  @click="enhanceEmail"
-                  title="Enhance with AI"
-                >
-                  <span v-if="emailModal.enhancing">✨ Enhancing…</span>
-                  <span v-else>✨ AI Enhance</span>
-                </button>
-              </label>
-              <div
-                ref="emailBodyRef"
-                class="rp-input rp-rich-body"
-                contenteditable="true"
-                @input="emailModal.body = $event.target.innerHTML"
-              ></div>
-            </div>
-            <div style="font-size:12px;color:#9ca3af;background:#f8fafc;border-radius:6px;padding:8px 12px">
-              📎 The invoice PDF will be attached automatically.
-            </div>
-          </div>
-          <div class="rp-footer">
-            <button class="rp-btn rp-btn-outline" @click="emailModal.open=false">Cancel</button>
-            <button class="rp-btn rp-btn-primary" :disabled="emailModal.sending||!emailModal.to" @click="sendEmail">
-              <span v-html="icon('mail',13)" style="margin-right:5px"></span>
-              {{ emailModal.sending ? 'Sending…' : 'Send Email' }}
-            </button>
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <!-- ── Credit Note Modal ── -->
-    <div v-if="cnModal.open" class="rp-backdrop" @click.self="!cnModal.saving&&(cnModal.open=false)">
-      <div class="rp-dialog" style="max-width:560px">
-        <div class="rp-dialog-header">
-          <span class="rp-dialog-title">Credit Note — {{ cnModal.invName }}</span>
-          <button class="rp-close-btn" @click="cnModal.open=false" :disabled="cnModal.saving">✕</button>
-        </div>
-        <div class="rp-body">
-          <!-- Existing CNs warning -->
-          <div v-if="cnModal.existingCNs.length" style="background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:10px 12px;font-size:12.5px;color:#92400e">
-            <strong>⚠ Existing credit notes:</strong>
-            <span v-for="cn in cnModal.existingCNs" :key="cn.name" style="margin-left:6px;font-family:monospace">{{ cn.name }} ({{ fmtAmt(Math.abs(cn.grand_total)) }})</span>
-            <div style="margin-top:4px;font-size:11.5px">Creating another will further reduce the invoice balance.</div>
-          </div>
-          <!-- Date + Reason row -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="rp-field">
-              <label class="rp-label rp-req">Credit Note Date</label>
-              <input class="rp-input" type="date" v-model="cnModal.date"/>
-            </div>
-            <div class="rp-field">
-              <label class="rp-label rp-req">Reason</label>
-              <select class="rp-input rp-select" v-model="cnModal.reason">
-                <option value="Price Adjustment">Price Adjustment</option>
-                <option value="Goods Returned">Goods Returned</option>
-                <option value="Damaged Goods">Damaged Goods</option>
-                <option value="Duplicate Invoice">Duplicate Invoice</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-          <!-- Items table -->
-          <div>
-            <label class="rp-label" style="margin-bottom:6px;display:block">Items to Credit</label>
-            <div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
-              <div style="display:grid;grid-template-columns:2fr 80px 80px 90px;gap:8px;padding:7px 12px;background:#f8fafc;font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280">
-                <span>Item</span><span style="text-align:center">Qty</span><span style="text-align:right">Rate</span><span style="text-align:right">Amount</span>
-              </div>
-              <div v-for="(line,i) in cnModal.lines" :key="i" style="display:grid;grid-template-columns:2fr 80px 80px 90px;gap:8px;padding:7px 12px;border-top:1px solid #f0f2f5;align-items:center;font-size:13px">
-                <span style="color:#374151">{{ line.item_name||line.item_code }}</span>
-                <input v-model.number="line.qty" type="number" :max="line.maxQty" min="0.001" step="0.001"
-                  style="border:1px solid #e2e8f0;border-radius:4px;padding:3px 6px;width:100%;font-size:12px;text-align:center"
-                  @input="calcCNLine(line)"/>
-                <span style="text-align:right;font-family:monospace;color:#6b7280">{{ fmtAmt(line.rate) }}</span>
-                <span style="text-align:right;font-family:monospace;font-weight:600">{{ fmtAmt(line.amount) }}</span>
-              </div>
-            </div>
-            <div style="text-align:right;padding:8px 12px 0;font-size:13px">
-              Credit Total: <strong style="font-family:monospace;color:#dc2626">{{ fmtAmt(cnTotal) }}</strong>
-            </div>
-          </div>
-          <!-- Notes -->
-          <div class="rp-field rp-field-full">
-            <label class="rp-label">Notes <span style="color:#9ca3af;font-weight:400">(optional)</span></label>
-            <input class="rp-input" v-model="cnModal.notes" placeholder="Internal note or customer message…"/>
-          </div>
-        </div>
-        <div class="rp-footer">
-          <button class="rp-btn rp-btn-outline" @click="cnModal.open=false" :disabled="cnModal.saving">Cancel</button>
-          <button class="rp-btn" style="background:#dc2626;border-color:#dc2626;color:#fff" :disabled="cnModal.saving||cnTotal<=0" @click="submitCreditNote">
-            {{ cnModal.saving ? 'Creating…' : `Issue Credit Note  ${fmtAmt(cnTotal)}` }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- Phase 0.9 purge: Payment / Email / Credit Note inline modals removed. Handled by globally mounted PaymentDialog / EmailDialog / ReturnNoteDialog. -->
 
     <!-- ── Confirm Modal (cancel / delete) ── -->
     <div v-if="confirmModal.open" class="rp-backdrop" @click.self="confirmModal.open=false">
@@ -846,6 +650,9 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { useEmailDialog } from "../composables/useEmailDialog.js";
+import { usePaymentDialog } from "../composables/usePaymentDialog.js";
+import { useReturnNote } from "../composables/useReturnNote.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
@@ -943,18 +750,9 @@ const viewLoading = ref(false);
 const viewPayments = ref([]);
 const viewPaymentsLoading = ref(false);
 
-// ── Payment modal ──────────────────────────────────────────────────────
-const payModal = reactive({ open:false, loading:false, saving:false, invName:"", customerName:"", grandTotal:0, balanceDue:0, bankAccounts:[] });
-const payForm  = reactive({ amount:0, date:"", mode:"Cash", ref:"", depositTo:"", charges:0, notes:"" });
-
-// ── Email modal ────────────────────────────────────────────────────────
-const emailModal = reactive({ open:false, loading:false, sending:false, invName:"", to:"", cc:"", subject:"", body:"", enhancing:false });
-const emailBodyRef = ref(null);
-
-// ── Credit Note modal ──────────────────────────────────────────────────
-const cnModal = reactive({ open:false, saving:false, invName:"", customer:"", lines:[], date:"", existingCNs:[], reason:"Price Adjustment", notes:"" });
-const cnTotal = computed(() => cnModal.lines.reduce((s,l) => s + flt(l.amount), 0));
-function calcCNLine(line) { line.amount = Math.round(flt(line.qty) * flt(line.rate) * 100) / 100; }
+// Phase 0.9 purge — payModal / emailModal / cnModal removed.
+// Their UX is now delegated to globally mounted PaymentDialog / EmailDialog /
+// ReturnNoteDialog via useEmailDialog / usePaymentDialog / useReturnNote.
 
 // ── Confirm modal ──────────────────────────────────────────────────────
 const confirmModal = reactive({ open:false, loading:false, title:"", message:"", actionLabel:"Confirm", action: null, payments:[] });
@@ -1259,22 +1057,22 @@ async function saveInvoice(docstatus) {
 }
 
 // ── Payment modal ──────────────────────────────────────────────────────
+// Phase 0.9 — delegates to the globally mounted PaymentDialog. Same UX as Bills
+// (vendor payments) but `direction:"receive"` for customer side.
 async function openPayment(inv) {
-  payModal.open=true; payModal.loading=true; payModal.invName=inv.name; payModal.customerName=inv.customer_name||inv.customer; payModal.grandTotal=flt(inv.grand_total); payModal.balanceDue=flt(inv.outstanding_amount); payModal.saving=false; payModal.bankAccounts=[];
-  Object.assign(payForm,{amount:flt(inv.outstanding_amount),date:todayStr(),mode:"Cash",ref:"",depositTo:"",charges:0,notes:""});
-  try { const d=await apiGET("zoho_books_clone.api.books_data.get_payment_defaults",{invoice_name:inv.name}); if (d) { payModal.bankAccounts=(d.bank_accounts||[]).map(a=>a.name||a); payForm.depositTo=payModal.bankAccounts[0]||""; payForm.mode=(d.payment_modes||[])[0]||"Cash"; } } catch {}
-  payModal.loading=false;
+  const { openPayment: openShared } = usePaymentDialog();
+  const paymentName = await openShared({
+    direction: "receive",
+    doctype: "Sales Invoice", name: inv.name,
+    party: inv.customer, partyLabel: inv.customer_name || inv.customer,
+    balance: flt(inv.outstanding_amount),
+    getDefaultsEndpoint: "zoho_books_clone.api.books_data.get_payment_defaults",
+    sendEndpoint:        "zoho_books_clone.api.books_data.record_payment",
+    paramKey: "invoice_name",
+  });
+  if (paymentName) await load();
 }
-async function submitPayment() {
-  if (!payForm.amount||payForm.amount<=0) { toast("Enter a valid amount","error"); return; }
-  payModal.saving=true;
-  try {
-    const res=await apiPOST("zoho_books_clone.api.books_data.record_payment",{invoice_name:payModal.invName,amount_received:payForm.amount,payment_date:payForm.date,payment_mode:payForm.mode,deposit_to:payForm.depositTo||"",bank_charges:payForm.charges||0,reference_no:payForm.ref||"",notes:payForm.notes||"",save_as_draft:0});
-    toast("Payment recorded — "+(res?.payment_entry||""));
-    payModal.open=false; load();
-  } catch(e) { toast("Payment failed: "+e.message,"error"); }
-  payModal.saving=false;
-}
+// submitPayment() removed — PaymentDialog handles submission.
 
 // ── Load payments (view tab) ───────────────────────────────────────────
 async function loadPayments(invName) {
@@ -1288,37 +1086,22 @@ async function loadPayments(invName) {
 
 // ── Email ──────────────────────────────────────────────────────────────
 async function openEmail(inv) {
-  emailModal.open=true; emailModal.loading=true; emailModal.invName=inv.name; emailModal.to=""; emailModal.cc=""; emailModal.subject=""; emailModal.body="";
-  try { const d=await apiGET("zoho_books_clone.api.docs.get_invoice_email_defaults",{invoice_name:inv.name}); if (d) { emailModal.to=d.to||""; emailModal.subject=d.subject||""; emailModal.body=d.body||""; } } catch {}
-  emailModal.loading=false;
-  await nextTick();
-  if (emailBodyRef.value) emailBodyRef.value.innerHTML = emailModal.body;
+  // Phase 0.9 refactor — delegate to the globally mounted EmailDialog.
+  // This gives Invoices the same email UX as Bills / Quotes / SO / PO and
+  // removes ~50 lines of inline modal duplication. The legacy inline modal
+  // template + sendEmail/enhanceEmail handlers remain in the file as fallback
+  // but are no longer opened (emailModal.open stays false).
+  const { openEmail: openShared } = useEmailDialog();
+  await openShared({
+    doctype: "Sales Invoice", name: inv.name, docLabel: `Invoice ${inv.name}`,
+    getDefaultsEndpoint: "zoho_books_clone.api.docs.get_invoice_email_defaults",
+    sendEndpoint:        "zoho_books_clone.api.docs.send_invoice_email",
+    enhanceEndpoint:     "zoho_books_clone.api.books_data.ai_enhance_email",
+    paramKey: "invoice_name",
+  });
 }
-async function sendEmail() {
-  if (!emailModal.to) { toast("Recipient email is required","error"); return; }
-  emailModal.sending=true;
-  try {
-    await apiPOST("zoho_books_clone.api.docs.send_invoice_email",{invoice_name:emailModal.invName,to:emailModal.to,subject:emailModal.subject,body:emailModal.body,cc:emailModal.cc||""});
-    toast("Email sent to "+emailModal.to); emailModal.open=false;
-  } catch(e) { toast("Failed: "+e.message,"error"); }
-  emailModal.sending=false;
-}
-
-async function enhanceEmail() {
-  if (emailModal.enhancing) return;
-  emailModal.enhancing = true;
-  try {
-    const res = await apiPOST("zoho_books_clone.api.books_data.ai_enhance_email", {
-      subject: emailModal.subject,
-      body: emailModal.body,
-      invoice_name: emailModal.invName,
-    });
-    if (res?.subject) emailModal.subject = res.subject;
-    if (res?.body) { emailModal.body = res.body; await nextTick(); if (emailBodyRef.value) emailBodyRef.value.innerHTML = res.body; }
-    toast("Email enhanced by AI ✨");
-  } catch(e) { toast("AI enhance failed: "+e.message,"error"); }
-  emailModal.enhancing = false;
-}
+// sendEmail / enhanceEmail removed — EmailDialog handles both via its
+// `sendEndpoint` + `enhanceEndpoint` props.
 
 // ── Duplicate ──────────────────────────────────────────────────────────
 async function duplicateInvoice(inv) {
@@ -1369,45 +1152,29 @@ async function confirmAction(action, inv) {
 }
 
 // ── Credit Note ────────────────────────────────────────────────────────
+// Phase 0.9 — delegates to the globally mounted ReturnNoteDialog. The shared
+// dialog already pre-fills items from the invoice and warns about existing CNs.
 async function openCreditNote(inv) {
-  const lines = (inv.items||[]).map(it => ({
-    item_code: it.item_code||"",
-    item_name: it.item_name||it.item_code||"",
-    description: it.description||"",
-    maxQty: flt(it.qty),
-    qty: flt(it.qty),
-    rate: flt(it.rate),
-    amount: Math.round(flt(it.qty)*flt(it.rate)*100)/100,
-  }));
-  Object.assign(cnModal, { open:true, saving:false, invName:inv.name, customer:inv.customer, lines, date:todayStr(), existingCNs:[], reason:"Price Adjustment", notes:"" });
-  try {
-    const existing = await apiGET("zoho_books_clone.api.docs.get_credit_notes", { invoice_name: inv.name });
-    cnModal.existingCNs = existing || [];
-  } catch { cnModal.existingCNs = []; }
+  const { openReturnNote } = useReturnNote();
+  const result = await openReturnNote({
+    kind: "credit",
+    parentName: inv.name,
+    party: inv.customer,
+    items: (inv.items || []).map(it => ({
+      item_code: it.item_code, item_name: it.item_name,
+      description: it.description, qty: it.qty, rate: it.rate,
+    })),
+    existingEndpoint: "zoho_books_clone.api.docs.get_credit_notes",
+    createEndpoint:   "zoho_books_clone.api.docs.create_credit_note",
+    paramKey:  "invoice_name",
+    partyKey:  "customer",
+    parentKey: "against_invoice",
+  });
+  if (result) { viewOpen.value = false; await load(); }
 }
-async function submitCreditNote() {
-  if (!cnModal.date) { toast("Please select a credit note date","error"); return; }
-  const validLines = cnModal.lines.filter(l => flt(l.qty) > 0);
-  if (!validLines.length) { toast("At least one item must have qty > 0","error"); return; }
-  cnModal.saving = true;
-  try {
-    const items = validLines.map(it => ({ item_code:it.item_code, item_name:it.item_name, description:it.description, qty:flt(it.qty), rate:flt(it.rate), amount:flt(it.amount) }));
-    const r = await apiPOST("zoho_books_clone.api.docs.create_credit_note", {
-      customer: cnModal.customer,
-      against_invoice: cnModal.invName,
-      date: cnModal.date,
-      reason: cnModal.reason,
-      notes: cnModal.notes||"",
-      items: JSON.stringify(items),
-      taxes: "[]",
-    });
-    toast("Credit Note created: "+(r?.credit_note||""));
-    cnModal.open = false;
-    viewOpen.value = false;
-    await load();
-  } catch(e) { toast("Failed: "+e.message,"error"); }
-  cnModal.saving = false;
-}
+// submitCreditNote removed — ReturnNoteDialog handles submission via its
+// `createEndpoint` prop. openCreditNote() above now resolves a promise with
+// the created CN name.
 
 // ── Bulk actions ───────────────────────────────────────────────────────
 async function bulkDelete() {

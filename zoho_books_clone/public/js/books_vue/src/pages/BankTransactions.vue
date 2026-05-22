@@ -8,13 +8,23 @@
       <div class="bt-pills">
         <button v-for="t in tabs" :key="t.key" class="bt-pill" :class="{active:activeTab===t.key}" @click="activeTab=t.key">{{ t.label }}</button>
       </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
         <select v-model="selectedAccount" class="bt-select" @change="load">
           <option value="">All Accounts</option>
           <option v-for="a in bankAccounts" :key="a.name" :value="a.name">{{ a.account_name||a.name }}</option>
         </select>
+        <label class="bt-import-btn" :class="{disabled:!selectedAccount||importing}">
+          📥 Import CSV
+          <input type="file" accept=".csv,text/csv" style="display:none" :disabled="!selectedAccount||importing" @change="onCsvSelected"/>
+        </label>
         <button class="bt-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
       </div>
+    </div>
+
+    <div v-if="importResult" class="bt-import-result" :class="importResult.ok?'ok':'err'">
+      <span v-if="importResult.ok">✓ Imported {{ importResult.count }} transaction(s). Skipped {{ importResult.skipped }}.</span>
+      <span v-else>✗ {{ importResult.error }}</span>
+      <button class="bt-import-close" @click="importResult=null">×</button>
     </div>
 
     <div class="bt-summary" v-if="!loading">
@@ -84,7 +94,38 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { apiList, resolveCompany } from "../api/client.js";
+import { apiList, apiPOST, resolveCompany } from "../api/client.js";
+
+// CSV import
+const importing = ref(false);
+const importResult = ref(null);
+function onCsvSelected(e) {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  if (!selectedAccount.value) {
+    importResult.value = { ok: false, error: "Pick a Bank Account first" };
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    importing.value = true;
+    importResult.value = null;
+    try {
+      const r = await apiPOST("zoho_books_clone.api.docs.import_bank_statement_csv", {
+        bank_account: selectedAccount.value,
+        csv_data: evt.target.result,
+      });
+      importResult.value = { ok: true, count: r?.count || 0, skipped: r?.skipped || 0 };
+      await load();
+    } catch (err) {
+      importResult.value = { ok: false, error: err.message || "Import failed" };
+    } finally {
+      importing.value = false;
+      e.target.value = ""; // reset input so the same file can be re-selected
+    }
+  };
+  reader.readAsText(f);
+}
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -143,6 +184,14 @@ onMounted(load);
 .bt-select{border:1px solid #e5e7eb;border-radius:8px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;cursor:pointer;}
 .bt-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;}
 .bt-btn-ghost:hover{background:#f9fafb;}
+.bt-import-btn{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+.bt-import-btn:hover:not(.disabled){background:#dbeafe;}
+.bt-import-btn.disabled{opacity:.5;cursor:not-allowed;}
+.bt-import-result{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;font-size:12.5px;font-weight:600;margin-top:-4px;}
+.bt-import-result.ok{background:#dcfce7;color:#16a34a;border:1px solid #86efac;}
+.bt-import-result.err{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;}
+.bt-import-close{background:transparent;border:none;color:inherit;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;}
+.bt-import-close:hover{opacity:.7;}
 .bt-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
 .bt-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
 .bt-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}

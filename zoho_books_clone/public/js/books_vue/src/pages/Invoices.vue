@@ -207,7 +207,7 @@
             <div>
               <label class="inv-lbl">Payment Terms</label>
               <select v-model="form.payment_terms" class="inv-fi" @change="applyPaymentTerms">
-                <option value="">— None —</option>
+                <option value="">— Select Payment Terms —</option>
                 <option v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ t }}</option>
               </select>
             </div>
@@ -1165,8 +1165,8 @@ async function onCustomerChange() {
     if (custDoc?.default_currency) form.currency = custDoc.default_currency;
 
     // Apply payment terms from customer (only if user hasn't changed it yet)
-    if (custDoc?.payment_terms_template && !form.payment_terms) {
-      form.payment_terms = custDoc.payment_terms_template;
+    if (custDoc?.payment_terms && !form.payment_terms) {
+      form.payment_terms = custDoc.payment_terms;
       applyPaymentTerms();
     }
 
@@ -1222,7 +1222,7 @@ async function openEdit(inv) {
     const doc=await apiGet("Sales Invoice",inv.name);
     Object.assign(form,{
       customer:doc.customer||"",posting_date:doc.posting_date||todayStr(),due_date:doc.due_date||dueDateDefault(),
-      po_no:doc.po_no||"",payment_terms:doc.payment_terms_template||"",place_of_supply:doc.place_of_supply||"",
+      po_no:doc.po_no||"",payment_terms:doc.payment_terms||"",place_of_supply:doc.place_of_supply||"",
       billing_address:"",terms:doc.terms||"",remarks:doc.remarks||"",docstatus:doc.docstatus||0,
       currency:doc.currency||"INR",exchange_rate:doc.conversion_rate||1,gst_treatment:doc.gst_category||"",
     });
@@ -1247,7 +1247,7 @@ async function saveInvoice(docstatus) {
     const company=await resolveCompany();
     const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0}));
     const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>({doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate}));
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms_template:form.payment_terms||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",conversion_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular"};
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",conversion_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular"};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
     if (docstatus===1) await apiSubmit("Sales Invoice",saved.name);

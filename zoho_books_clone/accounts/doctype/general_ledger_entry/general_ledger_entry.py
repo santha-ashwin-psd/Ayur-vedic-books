@@ -78,9 +78,41 @@ def recompute_outstanding_from_gl(doctype: str, docname: str) -> float:
           AND gle.voucher_type = 'Payment Entry'
     """, (party_account, docname), as_dict=True)
 
-    invoice_debit = flt(result[0].outstanding) if result else 0.0
+    # Also include Journal Entry contras that reference this doc (e.g. applying a
+    # debit/credit note via a contra JE on AP/AR). Read directly from JEA — joining
+    # to GLE on (voucher_no, account) would double-count when the same JE has
+    # multiple rows on the party account.
+    # For SI (AR side, outstanding=DR), a credit row settles it.
+    # For PI (AP side, outstanding=CR), a debit row settles it.
+    if doctype == "Purchase Invoice":
+        je_settlement = frappe.db.sql("""
+            SELECT COALESCE(SUM(jea.debit) - SUM(jea.credit), 0) AS settled
+            FROM `tabJournal Entry Account` jea
+            JOIN `tabJournal Entry` je ON je.name = jea.parent
+            WHERE jea.account = %s AND jea.reference_name = %s
+              AND je.docstatus = 1
+        """, (party_account, docname), as_dict=True)
+    else:
+        je_settlement = frappe.db.sql("""
+            SELECT COALESCE(SUM(jea.credit) - SUM(jea.debit), 0) AS settled
+            FROM `tabJournal Entry Account` jea
+            JOIN `tabJournal Entry` je ON je.name = jea.parent
+            WHERE jea.account = %s AND jea.reference_name = %s
+              AND je.docstatus = 1
+        """, (party_account, docname), as_dict=True)
+
+    invoice_debit  = flt(result[0].outstanding) if result else 0.0
     payment_credit = flt(payments[0].paid) if payments else 0.0
-    outstanding = max(0.0, invoice_debit - payment_credit)
+    je_credit      = flt(je_settlement[0].settled) if je_settlement else 0.0
+
+    # Sales Invoice posts DR AR / Purchase Invoice posts CR AP. Outstanding lives
+    # on the increasing side of the party account — DR for AR, CR for AP. For PI we
+    # invert: outstanding = max(0, (credit-debit) - settlements). For SI the original
+    # formula (debit-credit) is correct.
+    if doctype == "Purchase Invoice":
+        outstanding = max(0.0, (-invoice_debit) - payment_credit - je_credit)
+    else:
+        outstanding = max(0.0, invoice_debit - payment_credit - je_credit)
 
     frappe.db.set_value(doctype, docname, "outstanding_amount", outstanding,
                         update_modified=False)

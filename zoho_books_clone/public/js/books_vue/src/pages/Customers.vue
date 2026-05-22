@@ -338,7 +338,35 @@
         </template>
       </div>
 
-      <div v-if="activeCustomerTab!=='overview' && activeCustomerTab!=='statement'" style="padding:32px 24px;text-align:center;color:#9CA3AF">
+      <!-- Transactions tab -->
+      <div v-if="activeCustomerTab==='transactions'" style="padding:24px">
+        <div v-if="custTxnsLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading transactions…</div>
+        <div v-else-if="!custTxns.length" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">
+          <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
+          <div style="font-size:12.5px">Invoices, payments, and credit notes for {{selectedCustomer.customer_name}} will appear here.</div>
+        </div>
+        <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:100px 1fr 110px 130px 130px 100px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
+            <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span><span>Status</span>
+          </div>
+          <div v-for="t in custTxns" :key="t.type+'-'+t.name"
+            style="display:grid;grid-template-columns:100px 1fr 110px 130px 130px 100px;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+            <span :style="{
+              fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
+              background: t.type==='Invoice' ? '#DBEAFE' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
+              color: t.type==='Invoice' ? '#1E40AF' : t.type==='Payment' ? '#059669' : '#991B1B'
+            }">{{t.type}}</span>
+            <span style="font-family:monospace;color:#2563EB;font-weight:600">{{t.name}}</span>
+            <span style="font-family:monospace;color:#6B7280">{{fmtDate(t.date)}}</span>
+            <span style="text-align:right;font-family:monospace;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmt(Math.abs(t.amount))}}</span>
+            <span style="text-align:right;font-family:monospace" :style="{color: t.outstanding>0 ? '#dc2626' : '#9CA3AF'}">{{t.outstanding>0?fmt(t.outstanding):'—'}}</span>
+            <span style="font-size:11.5px;color:#6B7280">{{t.status||(t.docstatus===2?'Cancelled':'Submitted')}}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comments / Mails — kept generic for now -->
+      <div v-if="activeCustomerTab==='comments' || activeCustomerTab==='mails'" style="padding:32px 24px;text-align:center;color:#9CA3AF">
         <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:capitalize">{{activeCustomerTab}}</div>
         <div style="font-size:12.5px">No {{activeCustomerTab}} data available for {{selectedCustomer.customer_name}}.</div>
       </div>
@@ -1302,7 +1330,21 @@ async function doDelete() {
 // ── Master-detail view ──
 const selectedCustomer = ref(null);
 const activeCustomerTab = ref("overview");
-function selectCustomer(c) { selectedCustomer.value = c; activeCustomerTab.value = "overview"; stmt.value = null; }
+const custTxns = ref([]);
+const custTxnsLoading = ref(false);
+
+async function selectCustomer(c) {
+  selectedCustomer.value = c;
+  activeCustomerTab.value = "overview";
+  stmt.value = null;
+  custTxns.value = [];
+  custTxnsLoading.value = true;
+  try {
+    custTxns.value = await apiGET("zoho_books_clone.api.docs.get_customer_transactions",
+      { customer: c.name, limit: 100 }) || [];
+  } catch (e) { /* keep panel open */ }
+  custTxnsLoading.value = false;
+}
 function closeCustomer()   { selectedCustomer.value = null; }
 function custInitials(name) {
   return (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);

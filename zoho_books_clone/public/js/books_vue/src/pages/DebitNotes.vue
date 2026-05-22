@@ -231,6 +231,9 @@
           <button v-if="viewDoc.docstatus===1" class="dn-btn-ghost" @click="emailDN(viewDoc)">
             <span v-html="icon('mail',13)"></span> Email
           </button>
+          <button class="dn-btn-ghost" @click="printDN(viewDoc)" title="Print preview">
+            🖨 Print
+          </button>
           <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="dn-btn-primary" @click="applyDN(viewDoc)">↳ Apply to Bill</button>
           <button v-if="viewDoc.docstatus===1" class="dn-btn-danger" @click="cancelDN(viewDoc)">Cancel</button>
           <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="dn-btn-danger" @click="deleteDN(viewDoc)">Delete</button>
@@ -278,6 +281,7 @@ import { useToast } from "../composables/useToast.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useConfirm } from "../composables/useConfirm.js";
+import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
@@ -287,6 +291,9 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
+const { printDoc } = useLivePreview();
+function printDN(d) { printDoc(d, { title: "DEBIT NOTE", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
+
 const { openEmail } = useEmailDialog();
 const { statusLabel, statusCls, statusBg } = useDocStatus({
   fallbackDraftLabel: "Draft",

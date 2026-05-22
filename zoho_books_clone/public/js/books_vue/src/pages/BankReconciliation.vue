@@ -29,23 +29,58 @@
             <th style="width:32px"><input type="checkbox" :checked="allUnreconciledSelected" @change="toggleSelectAll" /></th>
             <th>Date</th><th>Description</th><th>Reference</th>
             <th class="ta-r">Deposit</th><th class="ta-r">Withdrawal</th><th>Status</th>
+            <th style="width:130px">Match</th>
           </tr>
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 5" :key="n"><td colspan="7"><div class="br-shimmer"></div></td></tr>
+            <tr v-for="n in 5" :key="n"><td colspan="8"><div class="br-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="t in transactions" :key="t.name" class="br-row">
-              <td @click.stop><input v-if="t.status!=='Reconciled'" type="checkbox" :checked="selected.has(t.name)" @change="toggleSelect(t.name)" /></td>
-              <td class="mono-sm">{{ fmtDate(t.date) }}</td>
-              <td>{{ t.description||'—' }}</td>
-              <td class="mono-sm text-muted">{{ t.reference_number||'—' }}</td>
-              <td class="ta-r mono-sm green">{{ flt(t.deposit)>0?fmtCur(t.deposit):'—' }}</td>
-              <td class="ta-r mono-sm red">{{ flt(t.withdrawal)>0?fmtCur(t.withdrawal):'—' }}</td>
-              <td><span class="br-badge" :class="t.status==='Reconciled'?'badge-green':'badge-orange'">{{ t.status||'Unreconciled' }}</span></td>
-            </tr>
-            <tr v-if="!transactions.length"><td colspan="7" class="br-empty">No transactions in this period</td></tr>
+            <template v-for="t in transactions" :key="t.name">
+              <tr class="br-row">
+                <td @click.stop><input v-if="t.status!=='Reconciled'" type="checkbox" :checked="selected.has(t.name)" @change="toggleSelect(t.name)" /></td>
+                <td class="mono-sm">{{ fmtDate(t.date) }}</td>
+                <td>{{ t.description||'—' }}</td>
+                <td class="mono-sm text-muted">{{ t.reference_number||'—' }}</td>
+                <td class="ta-r mono-sm green">{{ flt(t.deposit)>0?fmtCur(t.deposit):'—' }}</td>
+                <td class="ta-r mono-sm red">{{ flt(t.withdrawal)>0?fmtCur(t.withdrawal):'—' }}</td>
+                <td><span class="br-badge" :class="t.status==='Reconciled'?'badge-green':'badge-orange'">{{ t.status||'Unreconciled' }}</span></td>
+                <td>
+                  <button v-if="t.status!=='Reconciled'"
+                    class="br-match-btn"
+                    @click.stop="suggestMatches(t)"
+                    :disabled="matchingFor===t.name">
+                    {{ matchingFor===t.name ? '…' : '🔍 Suggest' }}
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="suggestions[t.name]" class="br-suggest-row">
+                <td colspan="8" style="padding:0">
+                  <div class="br-suggest-panel">
+                    <div style="font-size:12px;font-weight:600;color:#1e40af;margin-bottom:8px">
+                      🤖 {{ suggestions[t.name].matches.length }} candidate payment{{ suggestions[t.name].matches.length===1?'':'s' }} for ₹{{ fmtCur(suggestions[t.name].bt_amount) }} ({{ suggestions[t.name].bt_direction==='in'?'received':'paid out' }})
+                    </div>
+                    <div v-if="!suggestions[t.name].matches.length" style="font-size:12.5px;color:#6b7280;padding:8px">No Payment Entries matched on amount + date. You can mark this row Reconciled manually if you reviewed it.</div>
+                    <div v-for="m in suggestions[t.name].matches" :key="m.name" class="br-suggest-card">
+                      <div class="br-suggest-meta">
+                        <span class="br-num">{{ m.name }}</span>
+                        <span class="br-score" :style="`background:${m.score>=80?'#dcfce7':m.score>=50?'#fef3c7':'#fee2e2'};color:${m.score>=80?'#16a34a':m.score>=50?'#d97706':'#dc2626'}`">{{ m.score.toFixed(0) }}% confidence</span>
+                      </div>
+                      <div class="br-suggest-info">
+                        <span>{{ m.party_name || m.party }} · {{ fmtDate(m.payment_date) }} · {{ m.mode_of_payment||'—' }}</span>
+                      </div>
+                      <div class="br-suggest-amt">{{ fmtCur(m.paid_amount) }}</div>
+                      <button class="br-match-confirm" @click="confirmMatch(t, m)" :disabled="matchingFor===m.name">
+                        {{ matchingFor===m.name ? '…' : '✓ Match' }}
+                      </button>
+                    </div>
+                    <button class="br-suggest-close" @click="suggestions[t.name]=null">close</button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+            <tr v-if="!transactions.length"><td colspan="8" class="br-empty">No transactions in this period</td></tr>
           </template>
         </tbody>
       </table>
@@ -70,7 +105,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiPOST, resolveCompany } from "../api/client.js";
+import { apiList, apiGET, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -91,16 +126,20 @@ async function load(){
   loading.value=true;ran.value=true;systemBalance.value=0;
   selected.value=new Set();
   try{
-    const[txRows,baRows]=await Promise.all([
-      apiList("Bank Transaction",{fields:["name","date","description","reference_number","deposit","withdrawal","status"],filters:[["bank_account","=",form.bank_account],["date",">=",form.from_date],["date","<=",form.to_date]],limit:500,order:"date asc"}),
-      apiList("Bank Account",{fields:["account"],filters:[["name","=",form.bank_account]],limit:1}),
-    ]);
-    transactions.value=txRows;
-    const linkedAccount=baRows[0]?.account;
-    if(linkedAccount){
-      const gl=await apiList("GL Entry",{fields:["debit","credit"],filters:[["account","=",linkedAccount],["posting_date","<=",form.to_date],["is_cancelled","=",0]],limit:2000});
-      systemBalance.value=gl.reduce((s,e)=>s+flt(e.debit)-flt(e.credit),0);
-    }
+    // Use the consolidated backend endpoint — handles the GL Entry → General
+    // Ledger Entry rename + the Bank Transaction debit/credit column naming.
+    const res = await apiGET("zoho_books_clone.api.docs.get_bank_reconciliation", {
+      bank_account: form.bank_account,
+      from_date:    form.from_date,
+      to_date:      form.to_date,
+    });
+    // Backend returns rows with debit/credit; alias for legacy template.
+    transactions.value = (res?.bank_transactions || []).map(t => ({
+      ...t,
+      deposit:    flt(t.debit  || 0),
+      withdrawal: flt(t.credit || 0),
+    }));
+    systemBalance.value = flt(res?.gl_balance || 0);
   }catch(e){toast.error(e.message||"Failed to load");}finally{loading.value=false;}
 }
 const summary=computed(()=>{
@@ -117,13 +156,45 @@ function toggleSelectAll(){const unreconciled=transactions.value.filter(t=>t.sta
 async function markReconciled(){
   if(!selected.value.size||!clearanceDate.value)return;
   reconciling.value=true;
+  let ok=0;
   try{
-    await apiPOST("zoho_books_clone.api.banking.reconcile_transactions",{bank_account:form.bank_account,transaction_names:JSON.stringify([...selected.value]),clearance_date:clearanceDate.value});
-    toast.success(`${selected.value.size} transaction(s) marked as reconciled`);
+    for(const name of selected.value){
+      try{
+        await apiPOST("zoho_books_clone.api.docs.reconcile_bank_transaction",{bank_transaction_name:name});
+        ok++;
+      }catch{}
+    }
+    toast.success(`${ok} transaction(s) marked as reconciled`);
     await load();
   }catch(e){toast.error(e.message||"Failed to reconcile transactions");}
   finally{reconciling.value=false;}
 }
+// ── Auto-match suggestions ───────────────────────────────────────────────
+const suggestions = reactive({});   // { bt_name: { matches, bt_amount, bt_direction } | null }
+const matchingFor = ref("");
+
+async function suggestMatches(t) {
+  if (suggestions[t.name]) { suggestions[t.name] = null; return; } // toggle close
+  matchingFor.value = t.name;
+  try {
+    suggestions[t.name] = await apiGET("zoho_books_clone.api.docs.suggest_payment_matches",
+      { bank_transaction_name: t.name });
+  } catch (e) { toast.error(e.message || "Failed to suggest matches"); }
+  matchingFor.value = "";
+}
+
+async function confirmMatch(t, m) {
+  matchingFor.value = m.name;
+  try {
+    await apiPOST("zoho_books_clone.api.docs.reconcile_bank_transaction",
+      { bank_transaction_name: t.name, payment_entry_name: m.name });
+    toast.success(`${t.name} matched to ${m.name}`);
+    suggestions[t.name] = null;
+    await load();
+  } catch (e) { toast.error(e.message || "Match failed"); }
+  matchingFor.value = "";
+}
+
 onMounted(loadAccounts);
 </script>
 
@@ -156,4 +227,20 @@ onMounted(loadAccounts);
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .br-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;}
 .br-reconcile-bar{display:flex;align-items:center;gap:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;flex-wrap:wrap;}
+.br-match-btn{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+.br-match-btn:hover:not(:disabled){background:#dbeafe;}
+.br-match-btn:disabled{opacity:.5;cursor:not-allowed;}
+.br-suggest-row{background:#f8fafc;}
+.br-suggest-panel{position:relative;padding:14px 18px;background:#f0f9ff;border-left:3px solid #1a6ef7;}
+.br-suggest-card{display:grid;grid-template-columns:1.5fr 2fr 100px 80px;gap:10px;align-items:center;padding:8px 10px;background:#fff;border:1px solid #e0e7ff;border-radius:6px;margin-bottom:6px;font-size:12.5px;}
+.br-suggest-meta{display:flex;align-items:center;gap:8px;}
+.br-num{font-family:monospace;color:#1d4ed8;font-weight:700;font-size:12px;}
+.br-score{padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:700;}
+.br-suggest-info{color:#6b7280;font-size:12px;}
+.br-suggest-amt{text-align:right;font-family:monospace;font-weight:700;color:#111827;}
+.br-match-confirm{background:#1a6ef7;color:#fff;border:none;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
+.br-match-confirm:hover:not(:disabled){background:#1d4ed8;}
+.br-match-confirm:disabled{opacity:.5;cursor:not-allowed;}
+.br-suggest-close{position:absolute;top:8px;right:10px;background:transparent;border:none;color:#6b7280;font-size:11px;cursor:pointer;}
+.br-suggest-close:hover{color:#1d4ed8;text-decoration:underline;}
 </style>

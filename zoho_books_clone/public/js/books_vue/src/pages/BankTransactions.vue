@@ -105,7 +105,17 @@ async function load(){
     if(!whNames.length&&!selectedAccount.value){list.value=[];loading.value=false;return;}
     const filters=whNames.length?[["bank_account","in",whNames]]:[];
     if(selectedAccount.value)filters.push(["bank_account","=",selectedAccount.value]);
-    list.value=await apiList("Bank Transaction",{fields:["name","date","bank_account","description","reference_number","deposit","withdrawal","status","currency"],filters,limit:300,order:"date desc"});
+    // Bank Transaction uses `debit`/`credit` columns (not deposit/withdrawal).
+    // Pull both then alias for the legacy template.
+    const raw=await apiList("Bank Transaction",{
+      fields:["name","date","bank_account","description","reference_number","debit","credit","status","currency"],
+      filters, limit:300, order:"date desc"
+    });
+    list.value = raw.map(t => ({
+      ...t,
+      deposit:    flt(t.debit  || 0),   // money INTO bank → debit on bank ledger
+      withdrawal: flt(t.credit || 0),
+    }));
   }catch(e){toast.error(e.message||"Failed to load transactions");}
   finally{loading.value=false;}
 }

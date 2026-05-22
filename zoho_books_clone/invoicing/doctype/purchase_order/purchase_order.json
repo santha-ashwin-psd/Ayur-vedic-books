@@ -218,7 +218,7 @@
             "translatable": 0,
             "unique": 0,
             "reqd": 0,
-            "options": "Draft\nSent\nConfirmed\nReceived\nBilled\nCancelled"
+            "options": "Draft\nTo Receive\nPartially Received\nReceived\nBilled\nClosed\nCancelled\nSent\nConfirmed"
         },
         {
             "fieldname": "ref_rfq",

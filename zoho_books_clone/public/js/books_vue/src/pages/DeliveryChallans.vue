@@ -258,22 +258,40 @@ function statusClass(r) {
 async function load() {
   loading.value = true;
   try {
-    list.value = await apiList("Delivery Note", {
-      fields: ["name","customer","customer_name","posting_date","lr_no","transporter_name","status","docstatus","total_qty"],
-      limit: 200,
-    });
+    // No standalone Delivery Note doctype in this build. We synthesise the
+    // list from Sales Order lines that have been marked delivered.
+    const rows = await apiGET("zoho_books_clone.api.docs.get_delivery_challan_list", { limit: 500 }) || [];
+    // Compat shape so the existing template binds without changes
+    list.value = rows.map(r => ({
+      name: r.sales_order,
+      customer: r.customer,
+      customer_name: r.customer_name,
+      posting_date: r.delivery_date || r.transaction_date,
+      lr_no: "",
+      transporter_name: "",
+      status: r.challan_status,
+      docstatus: r.status === "Cancelled" ? 2 : 1,
+      total_qty: r.qty_delivered,
+      qty_ordered: r.qty_ordered,
+      qty_delivered: r.qty_delivered,
+      qty_billed: r.qty_billed,
+      pct_delivered: r.pct_delivered,
+      grand_total: r.grand_total,
+    }));
   } catch (e) {
-    console.warn("Delivery Note load failed:", e.message);
+    console.warn("Delivery challan load failed:", e.message);
     list.value = [];
   } finally { loading.value = false; }
 }
 
 const filtered = computed(() => {
   let r = list.value;
-  if (tab.value !== "all") r = r.filter(x => String(x.docstatus) === tab.value);
+  if (tab.value === "1")      r = r.filter(x => x.status === "Fully Delivered");
+  else if (tab.value === "0") r = r.filter(x => x.status === "Partially Delivered");
+  else if (tab.value === "2") r = r.filter(x => x.docstatus === 2);
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
-    r = r.filter(x => (x.name||"").toLowerCase().includes(q) || (x.customer_name||"").toLowerCase().includes(q) || (x.lr_no||"").toLowerCase().includes(q));
+    r = r.filter(x => (x.name||"").toLowerCase().includes(q) || (x.customer_name||"").toLowerCase().includes(q));
   }
   return r;
 });
@@ -291,9 +309,14 @@ function sa(col) { if (sortCol.value!==col) return '<span style="color:#d1d5db">
 
 async function openView(r) {
   viewOpen.value = true;
+  // r.name is the underlying Sales Order; pull per-line delivery rows.
   try {
-    viewDoc.value = await apiGET("Delivery Note", r.name);
-  } catch { viewDoc.value = r; }
+    const lines = await apiGET("zoho_books_clone.api.docs.get_delivery_challan_lines", { sales_order: r.name }) || [];
+    viewDoc.value = { ...r, items: lines };
+  } catch (e) {
+    console.warn("DC lines load failed:", e.message);
+    viewDoc.value = r;
+  }
 }
 
 async function submitChallan() {

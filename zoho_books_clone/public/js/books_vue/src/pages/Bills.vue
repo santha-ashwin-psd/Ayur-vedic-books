@@ -263,6 +263,9 @@
           <button v-if="viewDoc.docstatus===1" class="bill-btn-ghost" @click="emailBill(viewDoc)">
             <span v-html="icon('mail',13)"></span> Email
           </button>
+          <button class="bill-btn-ghost" @click="printBILL(viewDoc)" title="Print preview">
+            🖨 Print
+          </button>
           <button v-if="viewDoc.docstatus===1 && flt(viewDoc.outstanding_amount)>0" class="bill-btn-primary" @click="payBill(viewDoc)">
             ₹ Record Payment
           </button>
@@ -292,6 +295,7 @@ import { usePaymentDialog } from "../composables/usePaymentDialog.js";
 import { useConfirmCascade } from "../composables/useConfirmCascade.js";
 import { useReturnNote } from "../composables/useReturnNote.js";
 import { useConfirm } from "../composables/useConfirm.js";
+import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
@@ -301,6 +305,9 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
+const { printDoc } = useLivePreview();
+function printBILL(d) { printDoc(d, { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
+
 const { openEmail } = useEmailDialog();
 const { openPayment } = usePaymentDialog();
 const { confirmCascade } = useConfirmCascade();

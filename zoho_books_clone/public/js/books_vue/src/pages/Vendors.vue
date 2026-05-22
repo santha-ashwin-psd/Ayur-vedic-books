@@ -17,23 +17,38 @@
           <input v-model="search" placeholder="Search vendors…" class="cust-search-input" autocomplete="off"/>
         </div>
         <button class="zb-tb-btn" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
+        <button class="zb-tb-btn" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
         <button class="zb-tb-btn zb-tb-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
       </div>
     </div>
+
+    <SummaryStrip :cards="[
+      { label: 'Total Vendors',     value: listSummary.totalCount },
+      { label: 'Active',            value: listSummary.activeCount,        accent: '#16a34a' },
+      { label: 'With Open Balance', value: listSummary.vendorsWithBalance, accent: '#E67700' },
+      { label: 'Total Payable',     value: fmtCur(listSummary.totalPayable), accent: '#dc2626' },
+    ]" />
+
+    <BulkActionBar :count="selectedRows.size" @clear="clearSelection">
+      <button @click="bulkSetDisabled(true)">Disable</button>
+      <button @click="bulkSetDisabled(false)">Enable</button>
+      <button @click="exportCSV"><span v-html="icon('download',13)"></span> Export CSV</button>
+    </BulkActionBar>
     <div class="b-card cust-table-card">
       <div class="cust-table-wrap">
         <table class="cust-table">
           <thead><tr>
-            <th>Vendor</th><th>Type</th><th>GSTIN</th><th>Email</th>
+            <th style="width:32px"><input type="checkbox" :checked="filtered.length>0 && filtered.every(v=>selectedRows.has(v.name))" @change="e=>e.target.checked ? selectedRows=new Set(filtered.map(v=>v.name)) : clearSelection()" /></th>
+            <th>Vendor</th><th>Type</th><th>Outstanding</th><th>GSTIN</th><th>Email</th>
             <th>Mobile</th><th>City / State</th><th>Status</th>
             <th style="text-align:center;width:100px">Actions</th>
           </tr></thead>
           <tbody>
             <template v-if="loading">
-              <tr v-for="n in 6" :key="n"><td colspan="8" style="padding:12px 14px"><div class="b-shimmer" style="height:13px;border-radius:4px;width:70%"></div></td></tr>
+              <tr v-for="n in 6" :key="n"><td colspan="10" style="padding:12px 14px"><div class="b-shimmer" style="height:13px;border-radius:4px;width:70%"></div></td></tr>
             </template>
             <tr v-else-if="!filtered.length">
-              <td colspan="8" class="cust-empty">
+              <td colspan="10" class="cust-empty">
                 <div class="cust-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
                 <div class="cust-empty-title">{{search ? 'No results found' : 'No vendors yet'}}</div>
                 <div class="cust-empty-sub">{{search ? 'Try a different search term' : 'Add your first vendor to get started'}}</div>
@@ -41,8 +56,10 @@
               </td>
             </tr>
             <tr v-else v-for="v in filtered" :key="v.name" class="cust-row" :class="v.disabled?'cust-row-disabled':''" @click="selectVendor(v)">
+              <td @click.stop><input type="checkbox" :checked="selectedRows.has(v.name)" @change="toggleRow(v.name)" /></td>
               <td><div class="cust-name">{{v.supplier_name||v.name}}</div><div class="cust-id">{{v.name}}</div></td>
               <td><span class="b-badge" :class="v.supplier_type==='Company'?'b-badge-blue':'b-badge-muted'">{{v.supplier_type||'—'}}</span></td>
+              <td class="cust-mono" :style="balancesByVendor[v.name]>0?'color:#E67700;font-weight:600':'color:#9CA3AF'">{{ balancesByVendor[v.name]>0 ? fmtCur(balancesByVendor[v.name]) : '—' }}</td>
               <td class="cust-mono">{{v.tax_id||'—'}}</td>
               <td class="cust-secondary">{{v.email_id||'—'}}</td>
               <td class="cust-secondary">{{v.mobile_no||'—'}}</td>
@@ -121,7 +138,7 @@
                 {{v.supplier_name||v.name}}
               </div>
               <div style="font-size:11.5px;color:#6B7280;margin-top:2px">
-                ₹0.00 outstanding
+                <span :style="balancesByVendor[v.name]>0?'color:#E67700;font-weight:600':''">{{ fmtCur(balancesByVendor[v.name] || 0) }}</span> outstanding
                 <span v-if="v.disabled" style="margin-left:6px;font-size:10px;font-weight:600;color:#6B7280;background:#F3F4F6;padding:1px 5px;border-radius:10px">Disabled</span>
               </div>
             </div>
@@ -180,6 +197,13 @@
               color:activeVendorTab==='transactions'?'#E67700':'#6B7280',
               borderBottom:activeVendorTab==='transactions'?'2px solid #E67700':'2px solid transparent',marginBottom:'-2px'}">
             Transactions
+            <span v-if="vendorTxns.length" style="background:#E67700;color:#fff;padding:1px 7px;border-radius:999px;font-size:11px;margin-left:4px">{{vendorTxns.length}}</span>
+          </button>
+          <button @click="activeVendorTab='statement'; loadStatement()"
+            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
+              color:activeVendorTab==='statement'?'#E67700':'#6B7280',
+              borderBottom:activeVendorTab==='statement'?'2px solid #E67700':'2px solid transparent',marginBottom:'-2px'}">
+            Statement
           </button>
         </div>
 
@@ -298,9 +322,9 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px">INR</td>
-                    <td style="font-size:13px;font-weight:600;color:#E67700;text-align:right;padding:10px 12px;font-family:monospace">₹0.00</td>
-                    <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;font-family:monospace">₹0.00</td>
+                    <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px">{{ selectedVendor.default_currency || "INR" }}</td>
+                    <td style="font-size:13px;font-weight:600;color:#E67700;text-align:right;padding:10px 12px;font-family:monospace">{{ fmtCur(vendorSummary.outstanding || 0) }}</td>
+                    <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;font-family:monospace">{{ fmtCur(vendorSummary.dn_credit || 0) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -318,10 +342,67 @@
         </div>
 
         <!-- Transactions tab -->
-        <div v-else-if="activeVendorTab==='transactions'" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5" style="margin:0 auto 12px;display:block"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
-          <div style="font-size:12.5px;color:#9CA3AF">Bills and payments for {{selectedVendor.supplier_name}} will appear here.</div>
+        <div v-else-if="activeVendorTab==='transactions'">
+          <div v-if="detailLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading transactions…</div>
+          <div v-else-if="!vendorTxns.length" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5" style="margin:0 auto 12px;display:block"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
+            <div style="font-size:12.5px;color:#9CA3AF">Bills and payments for {{selectedVendor.supplier_name}} will appear here.</div>
+          </div>
+          <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:90px 1fr 120px 130px 130px 100px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
+              <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span><span>Status</span>
+            </div>
+            <div v-for="t in vendorTxns" :key="t.type+'-'+t.name"
+              style="display:grid;grid-template-columns:90px 1fr 120px 130px 130px 100px;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+              <span :style="{
+                fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
+                background: t.type==='Bill' ? '#FEF3C7' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
+                color: t.type==='Bill' ? '#92400E' : t.type==='Payment' ? '#059669' : '#991B1B'
+              }">{{t.type}}</span>
+              <span style="font-family:monospace;color:#2563EB;font-weight:600">{{t.name}}</span>
+              <span style="font-family:monospace;color:#6B7280">{{fmtDate(t.date)}}</span>
+              <span style="text-align:right;font-family:monospace;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmtCur(Math.abs(t.amount))}}</span>
+              <span style="text-align:right;font-family:monospace" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):'—'}}</span>
+              <span style="font-size:11.5px;color:#6B7280">{{t.status||(t.docstatus===2?'Cancelled':'Submitted')}}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Statement tab -->
+        <div v-else-if="activeVendorTab==='statement'">
+          <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:600;color:#6B7280">FROM</span>
+            <input v-model="stmtRange.from" type="date" class="nim-input" style="width:160px"/>
+            <span style="font-size:12px;font-weight:600;color:#6B7280">TO</span>
+            <input v-model="stmtRange.to" type="date" class="nim-input" style="width:160px"/>
+            <button class="nim-btn" style="border:1px solid #E5E7EB" @click="loadStatement">Refresh</button>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <button class="nim-btn" style="border:1px solid #E5E7EB" @click="emailVendorStatement">📧 Email Statement</button>
+            </div>
+          </div>
+          <div v-if="detailLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading statement…</div>
+          <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:110px 1fr 100px 110px 110px 130px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
+              <span>Date</span><span>Reference</span><span>Type</span><span style="text-align:right">Debit</span><span style="text-align:right">Credit</span><span style="text-align:right">Balance</span>
+            </div>
+            <div v-if="!vendorStatement.rows?.length" style="padding:24px;text-align:center;color:#9CA3AF;font-size:13px">No statement rows for this period.</div>
+            <div v-for="(r,i) in (vendorStatement.rows || [])" :key="r.ref+'-'+i"
+              style="display:grid;grid-template-columns:110px 1fr 100px 110px 110px 130px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;font-family:monospace;align-items:center">
+              <span style="color:#6B7280">{{fmtDate(r.date)}}</span>
+              <span style="color:#2563EB;font-weight:600">{{r.ref}}</span>
+              <span style="font-size:11px;color:#6B7280">{{r.type}}</span>
+              <span style="text-align:right;color:#059669">{{r.debit>0?fmtCur(r.debit):'—'}}</span>
+              <span style="text-align:right;color:#E67700">{{r.credit>0?fmtCur(r.credit):'—'}}</span>
+              <span style="text-align:right;font-weight:700;color:#111827">{{fmtCur(r.balance)}}</span>
+            </div>
+            <div v-if="vendorStatement.rows?.length" style="background:#F9FAFB;padding:12px 14px;border-top:2px solid #E5E7EB;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;font-size:12.5px">
+              <div><span style="color:#6B7280">Billed:</span> <strong style="font-family:monospace;color:#E67700">{{fmtCur(vendorStatement.totals?.billed || 0)}}</strong></div>
+              <div><span style="color:#6B7280">Paid:</span> <strong style="font-family:monospace;color:#059669">{{fmtCur(vendorStatement.totals?.paid || 0)}}</strong></div>
+              <div><span style="color:#6B7280">Debit Notes:</span> <strong style="font-family:monospace;color:#059669">{{fmtCur(vendorStatement.totals?.debit_notes || 0)}}</strong></div>
+              <div style="text-align:right"><span style="color:#6B7280">Closing Balance:</span> <strong style="font-family:monospace;color:#111827">{{fmtCur(vendorStatement.totals?.closing_balance || 0)}}</strong></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -601,6 +682,8 @@ import {
   EMAIL_REGEX, GSTIN_REGEX, URL_REGEX,
   validateMobile, validatePhone, validatePincode, sanitizePincode, pincodePlaceholder, pincodeHint,
 } from "../composables/useValidation.js";
+import SummaryStrip from "../components/SummaryStrip.vue";
+import BulkActionBar from "../components/BulkActionBar.vue";
 
 const { toast } = useToast();
 
@@ -839,11 +922,141 @@ async function doDelete() {
 
 const selectedVendor  = ref(null);
 const activeVendorTab = ref("overview");
-function selectVendor(v) { selectedVendor.value = v; activeVendorTab.value = "overview"; }
-function closeVendor()   { selectedVendor.value = null; }
+
+// ── Live vendor data wired to backend ──────────────────────────────────────
+const vendorSummary      = ref({});       // {outstanding, dn_credit, open_bill_count, ...}
+const vendorTxns         = ref([]);       // chronological transactions
+const vendorStatement    = ref({ rows: [], totals: {} });
+const balancesByVendor   = ref({});       // {vendor_name: outstanding} — for the list view
+const detailLoading      = ref(false);
+const stmtRange          = reactive({ from: "", to: "" });
+
+// Bulk selection (for the flat table)
+const selectedRows = ref(new Set());
+function toggleRow(name) {
+  const s = new Set(selectedRows.value);
+  s.has(name) ? s.delete(name) : s.add(name);
+  selectedRows.value = s;
+}
+function clearSelection() { selectedRows.value = new Set(); }
+
+async function selectVendor(v) {
+  selectedVendor.value = v;
+  activeVendorTab.value = "overview";
+  detailLoading.value = true;
+  vendorSummary.value = {};
+  vendorTxns.value = [];
+  vendorStatement.value = { rows: [], totals: {} };
+  try {
+    const [sum, txns] = await Promise.all([
+      apiGET("zoho_books_clone.api.docs.get_vendor_summary", { vendor: v.name }).catch(() => ({})),
+      apiGET("zoho_books_clone.api.docs.get_vendor_transactions", { vendor: v.name, limit: 100 }).catch(() => []),
+    ]);
+    vendorSummary.value = sum || {};
+    vendorTxns.value = txns || [];
+  } catch (e) { /* keep panel open */ }
+  detailLoading.value = false;
+}
+function closeVendor() { selectedVendor.value = null; }
+
+async function loadStatement() {
+  if (!selectedVendor.value) return;
+  detailLoading.value = true;
+  try {
+    vendorStatement.value = await apiGET("zoho_books_clone.api.docs.get_vendor_statement", {
+      vendor: selectedVendor.value.name,
+      from_date: stmtRange.from || "",
+      to_date:   stmtRange.to   || "",
+    }) || { rows: [], totals: {} };
+  } catch (e) { toast(e.message || "Failed to load statement", "error"); }
+  detailLoading.value = false;
+}
+
+async function emailVendorStatement() {
+  if (!selectedVendor.value) return;
+  try {
+    const d = await apiGET("zoho_books_clone.api.docs.get_vendor_email_defaults",
+      { vendor: selectedVendor.value.name });
+    const to = prompt(`Send statement to:`, d?.to || "");
+    if (!to) return;
+    await (await import("../api/client.js")).apiPOST("zoho_books_clone.api.docs.send_vendor_statement_email", {
+      vendor: selectedVendor.value.name,
+      to, subject: d?.subject || "Statement", body: d?.body || "",
+    });
+    toast(`Statement emailed to ${to}`, "success");
+  } catch (e) { toast(e.message || "Email failed", "error"); }
+}
+
+async function bulkSetDisabled(disable) {
+  const names = [...selectedRows.value];
+  if (!names.length) { toast("No vendors selected", "info"); return; }
+  try {
+    const { apiPOST } = await import("../api/client.js");
+    await apiPOST("zoho_books_clone.api.docs.bulk_set_vendor_disabled", {
+      vendor_names: JSON.stringify(names),
+      disabled: disable ? 1 : 0,
+    });
+    toast(`${disable ? "Disabled" : "Enabled"} ${names.length} vendor(s)`, "success");
+    clearSelection();
+    await load();
+  } catch (e) { toast(e.message || "Bulk update failed", "error"); }
+}
+
+function exportCSV() {
+  const rows = filtered.value;
+  const head = ["Vendor","Type","GSTIN","Email","Mobile","City","State","Outstanding","Status"];
+  const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const out = [head.map(esc).join(",")];
+  for (const v of rows) {
+    out.push([
+      v.supplier_name || v.name, v.supplier_type || "", v.tax_id || "",
+      v.email_id || "", v.mobile_no || "", v.city || "", v.state || "",
+      Number(balancesByVendor.value[v.name] || 0).toFixed(2),
+      v.disabled ? "Disabled" : "Active",
+    ].map(esc).join(","));
+  }
+  const blob = new Blob(["﻿" + out.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `vendors_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast(`Exported ${rows.length} vendor(s)`, "success");
+}
+
+// Aggregate summary across all vendors (for the flat-list SummaryStrip)
+const listSummary = computed(() => ({
+  totalCount:  list.value.length,
+  activeCount: list.value.filter(v => !v.disabled).length,
+  totalPayable: Object.values(balancesByVendor.value).reduce((s, x) => s + Number(x || 0), 0),
+  vendorsWithBalance: Object.values(balancesByVendor.value).filter(x => Number(x) > 0).length,
+}));
+
 function vendorInitials(name) {
   return (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
+function fmtCur(v) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(Number(v || 0));
+}
 
-onMounted(() => { load(); loadAccounts(); });
+async function loadAllBalances() {
+  // Pull outstanding for every vendor in parallel — bounded to avoid hammering server
+  const names = list.value.map(v => v.name);
+  if (!names.length) return;
+  const chunks = [];
+  for (let i = 0; i < names.length; i += 8) chunks.push(names.slice(i, i + 8));
+  const map = {};
+  for (const chunk of chunks) {
+    const results = await Promise.all(chunk.map(n =>
+      apiGET("zoho_books_clone.api.docs.get_vendor_summary", { vendor: n }).catch(() => null)
+    ));
+    chunk.forEach((n, i) => { if (results[i]) map[n] = results[i].outstanding || 0; });
+  }
+  balancesByVendor.value = map;
+}
+
+onMounted(async () => {
+  await load();
+  loadAccounts();
+  loadAllBalances();
+});
 </script>

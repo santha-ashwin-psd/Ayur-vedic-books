@@ -259,7 +259,7 @@
             "translatable": 0,
             "unique": 0,
             "reqd": 0,
-            "options": "Draft\nSent\nExpired\nAccepted\nLost"
+            "options": "Draft\nSent\nExpired\nAccepted\nDeclined\nConverted\nLost"
         },
         {
             "fieldname": "company",

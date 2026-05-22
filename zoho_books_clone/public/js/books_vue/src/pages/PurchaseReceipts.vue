@@ -222,17 +222,33 @@ function statusClass(r) {
 async function load() {
   loading.value = true;
   try {
-    list.value = await apiList("Purchase Receipt", {
-      fields: ["name","supplier","supplier_name","posting_date","purchase_order","total_qty","docstatus","status"],
-      limit: 200,
-    });
-  } catch (e) { console.warn("Purchase Receipt load failed:", e.message); list.value = []; }
+    // No standalone Purchase Receipt doctype in this build. Synthesise the list
+    // from Purchase Order lines with received_qty > 0.
+    const rows = await apiGET("zoho_books_clone.api.docs.get_purchase_receipt_list", { limit: 500 }) || [];
+    list.value = rows.map(r => ({
+      name: r.purchase_order,
+      supplier: r.supplier,
+      supplier_name: r.supplier_name,
+      posting_date: r.expected_delivery_date || r.transaction_date,
+      purchase_order: r.purchase_order,
+      total_qty: r.qty_received,
+      qty_ordered: r.qty_ordered,
+      qty_received: r.qty_received,
+      qty_billed: r.qty_billed,
+      pct_received: r.pct_received,
+      status: r.receipt_status,
+      docstatus: r.status === "Cancelled" ? 2 : 1,
+      grand_total: r.grand_total,
+    }));
+  } catch (e) { console.warn("Purchase receipt load failed:", e.message); list.value = []; }
   finally { loading.value = false; }
 }
 
 const filtered = computed(() => {
   let r = list.value;
-  if (tab.value !== "all") r = r.filter(x => String(x.docstatus) === tab.value);
+  if (tab.value === "1")      r = r.filter(x => x.status === "Fully Received");
+  else if (tab.value === "0") r = r.filter(x => x.status === "Partially Received");
+  else if (tab.value === "2") r = r.filter(x => x.docstatus === 2);
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
     r = r.filter(x => (x.name||"").toLowerCase().includes(q) || (x.supplier_name||"").toLowerCase().includes(q));
@@ -246,12 +262,22 @@ const sorted = computed(() => [...filtered.value].sort((a,b) =>
 
 async function openView(r) {
   viewOpen.value = true;
-  try { viewDoc.value = await apiGET("Purchase Receipt", r.name); }
-  catch { viewDoc.value = r; }
+  try {
+    const lines = await apiGET("zoho_books_clone.api.docs.get_purchase_receipt_lines", { purchase_order: r.name }) || [];
+    viewDoc.value = { ...r, items: lines };
+  } catch (e) {
+    console.warn("PR lines load failed:", e.message);
+    viewDoc.value = r;
+  }
 }
 
 async function submitGRN() {
+  // No standalone Purchase Receipt doctype in this build; receipts are tracked
+  // as `received_qty` on the Purchase Order lines. Point the user there.
   if (!viewDoc.value) return;
+  toast.info("Receipt status is managed on the Purchase Order — open " + viewDoc.value.name + " in Purchase Orders to mark additional qty received.");
+  return;
+  // eslint-disable-next-line no-unreachable
   submitting.value = true;
   try {
     await apiSubmit("Purchase Receipt", viewDoc.value.name);

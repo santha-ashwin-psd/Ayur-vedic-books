@@ -193,7 +193,27 @@ const employees=ref([]);
 async function fetchEmployees(q=""){try{const r=await apiLinkValues("Employee",q);employees.value=r.map(x=>({label:x.name,value:x.name}));}catch{employees.value=[];}}
 const form=reactive({posting_date:new Date().toISOString().slice(0,10),employee_name:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});
 
-async function load(){loading.value=true;try{const co=await resolveCompany();const raw=await apiList("Expense Claim",{fields:["name","employee_name","claim_date","total_claimed_amount","status"],filters:[["company","=",co]],limit:200,order:"claim_date desc"});list.value=raw.map(e=>({...e,posting_date:e.claim_date,employee:e.employee_name}));}catch(e){toast.error(e.message||"Failed to load expenses");}finally{loading.value=false;}}
+async function load(){
+  loading.value=true;
+  try{
+    const co=await resolveCompany();
+    const raw=await apiList("Expense",{
+      fields:["name","posting_date","expense_type","description","amount","tax_amount",
+              "total_amount","vendor","status","docstatus"],
+      filters:[["company","=",co]],
+      limit:200,
+      order:"posting_date desc",
+    });
+    // Map to legacy shape so the rest of the template doesn't need to change.
+    list.value=raw.map(e=>({
+      ...e,
+      // template uses these field names — provide compatibility aliases:
+      employee_name: e.vendor||"",   // show vendor in the "Employee" column
+      total_claimed_amount: e.total_amount||e.amount||0,
+    }));
+  }catch(e){toast.error(e.message||"Failed to load expenses");}
+  finally{loading.value=false;}
+}
 
 function statusLabel(e){if(e.docstatus===2)return"Cancelled";if(e.docstatus===0)return"Draft";const s=e.status||"";if(s==="Paid")return"Paid";return"Submitted";}
 function statusClass(e){if(e.docstatus===2)return"badge-grey";if(e.docstatus===0)return"badge-orange";if(statusLabel(e)==="Paid")return"badge-green";return"badge-blue";}
@@ -211,27 +231,85 @@ const allChecked=computed(()=>sorted.value.length>0&&sorted.value.every(e=>selec
 function toggle(n){const s=new Set(selected.value);s.has(n)?s.delete(n):s.add(n);selected.value=s;}
 function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(x=>x.name)):new Set();}
 function openNew(){editingName.value="";receiptFile.value=null;Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});lines.value=[blankLine()];drawerOpen.value=true;}
-async function openEdit(e){editingName.value=e.name;try{const doc=await apiGet("Expense Claim",e.name);Object.assign(form,{posting_date:doc.claim_date||doc.posting_date||"",employee_name:doc.employee_name||"",expense_type:"",total_claimed_amount:flt(doc.total_claimed_amount),currency:doc.currency||"INR",remark:doc.notes||""});lines.value=(doc.expenses||[]).map(l=>({id:_id++,expense_type:l.expense_type||"",description:l.description||"",amount:flt(l.amount)}));if(!lines.value.length)lines.value=[blankLine()];}catch{Object.assign(form,{posting_date:e.posting_date||"",employee_name:e.employee_name||"",expense_type:"",total_claimed_amount:flt(e.total_claimed_amount),currency:"INR",remark:""});lines.value=[blankLine()];}drawerOpen.value=true;}
+async function openEdit(e){
+  editingName.value=e.name;
+  try{
+    const doc=await apiGet("Expense",e.name);
+    Object.assign(form,{
+      posting_date: doc.posting_date||"",
+      employee_name: doc.vendor||"",   // template uses "Employee Name" label, we map it to vendor
+      expense_type: doc.expense_type||"",
+      total_claimed_amount: flt(doc.total_amount||doc.amount),
+      currency: "INR",
+      remark: doc.description||doc.notes||"",
+    });
+    // Expense is FLAT (one row = one expense), so seed a single line for editing
+    lines.value=[{
+      id:_id++,
+      expense_type: doc.expense_type||"",
+      description:  doc.description||"",
+      amount:       flt(doc.amount||doc.total_amount),
+    }];
+  }catch{
+    Object.assign(form,{
+      posting_date:e.posting_date||"",
+      employee_name:e.vendor||e.employee_name||"",
+      expense_type:e.expense_type||"",
+      total_claimed_amount:flt(e.total_amount||e.total_claimed_amount),
+      currency:"INR",
+      remark:e.description||"",
+    });
+    lines.value=[blankLine()];
+  }
+  drawerOpen.value=true;
+}
 function openView(e){viewDoc.value=e;viewOpen.value=true;}
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
 const lineTotal=computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
 
 async function saveExpense(submit){
-  if(!form.employee_name) return toast.error("Employee name is required");
-  const amount=flt(form.total_claimed_amount)||lineTotal.value;
-  if(!amount||amount<=0) return toast.error("Amount is required");
+  // The `Expense` doctype is flat (one row = one expense). If the form has
+  // multiple lines, each gets saved as its own Expense record.
+  const validLines=lines.value.filter(l=>flt(l.amount)>0);
+  if(!validLines.length && !flt(form.total_claimed_amount)){
+    return toast.error("Enter an amount or at least one line");
+  }
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
-    const expLines=lines.value.filter(l=>l.amount>0).map(l=>({doctype:"Expense Claim Detail",expense_type:l.expense_type||form.expense_type||"Miscellaneous",description:l.description||"",amount:flt(l.amount),sanctioned_amount:flt(l.amount)}));
-    const doc={doctype:"Expense Claim",company,employee_name:form.employee_name,claim_date:form.posting_date,notes:form.remark||"",total_claimed_amount:amount,currency:form.currency||"INR",expenses:expLines.length?expLines:[{doctype:"Expense Claim Detail",expense_type:form.expense_type||"Miscellaneous",description:form.remark||"",amount,sanctioned_amount:amount}]};
-    if(editingName.value) doc.name=editingName.value;
-    const saved=await apiSave(doc);
-    if(submit) await apiSubmit("Expense Claim",saved.name);
-    toast.success(`Expense ${saved?.name||""} ${submit?"submitted":"saved"}`);
-    drawerOpen.value=false;await load();
-  }catch(e){toast.error(e.message||"Failed to save expense");}finally{drawerSaving.value=false;}
+    // If the user only filled the header amount (no real lines), treat as single expense
+    const rows=validLines.length?validLines:[{
+      expense_type:form.expense_type||"Miscellaneous",
+      description:form.remark||"",
+      amount:flt(form.total_claimed_amount),
+    }];
+    let lastName="";
+    for(const [idx,l] of rows.entries()){
+      const amt=flt(l.amount);
+      const doc={
+        doctype:"Expense",
+        company,
+        posting_date:form.posting_date||new Date().toISOString().slice(0,10),
+        expense_type:l.expense_type||form.expense_type||"Miscellaneous",
+        description:l.description||form.remark||"",
+        amount:amt,
+        tax_amount:0,
+        total_amount:amt,
+        vendor:form.employee_name||"",   // map "Employee Name" UI label → vendor field
+        notes:form.remark||"",
+      };
+      // Only attach the existing name to the FIRST row when editing
+      if(editingName.value && idx===0) doc.name=editingName.value;
+      const saved=await apiSave(doc);
+      lastName=saved?.name||lastName;
+      if(submit && saved?.name) await apiSubmit("Expense",saved.name);
+    }
+    toast.success(`Expense ${lastName} ${submit?"submitted":"saved"}${rows.length>1?` (+${rows.length-1} more)`:""}`);
+    drawerOpen.value=false;
+    await load();
+  }catch(e){toast.error(e.message||"Failed to save expense");}
+  finally{drawerSaving.value=false;}
 }
 onMounted(load);
 </script>

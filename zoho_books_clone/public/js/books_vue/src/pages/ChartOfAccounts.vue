@@ -30,12 +30,12 @@
     <table class="b-table coa-tbl">
       <thead>
         <tr>
-          <th style="width:44%">Account Name</th>
+          <th style="width:36%">Account Name</th>
           <th>Type</th>
           <th>Account No.</th>
-          <th class="ta-r">Opening Balance</th>
-          <th class="ta-r">Balance Type</th>
-          <th style="text-align:center;width:90px">Actions</th>
+          <th class="ta-r">Opening</th>
+          <th class="ta-r">Current Balance</th>
+          <th style="text-align:center;width:120px">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -71,9 +71,14 @@
             </td>
             <td style="padding:9px 14px;font-family:monospace;font-size:12px;color:#868e96">{{row.code||'—'}}</td>
             <td class="ta-r" style="padding:9px 14px;font-family:monospace;font-weight:600" :class="row.opening>0?(row.bal_type==='Debit'?'coa-dr':'coa-cr'):'c-muted'">{{fmtINR(row.opening)}}</td>
-            <td class="ta-r" style="padding:9px 14px;font-size:12px;color:#868e96">{{row.opening?row.bal_type:'—'}}</td>
+            <td class="ta-r" style="padding:9px 14px;font-family:monospace;font-weight:600" :class="(balances[row.name]||0) > 0 ? 'coa-dr' : (balances[row.name]||0) < 0 ? 'coa-cr' : 'c-muted'">
+              <span v-if="row.is_group">—</span>
+              <span v-else-if="balancesLoading && balances[row.name] === undefined" style="color:#9ca3af;font-size:11px">…</span>
+              <span v-else>{{ fmtBal(balances[row.name]) }}</span>
+            </td>
             <td style="text-align:center;padding:8px 14px">
               <div style="display:flex;gap:4px;justify-content:center">
+                <button v-if="!row.is_group && row.source==='frappe'" class="b-icon-btn" @click.stop="openLedger(row)" title="View Ledger" style="color:#2563eb"><span v-html="icon('book',14)"></span></button>
                 <button class="b-icon-btn" @click.stop="openEdit(row.name)" title="Edit"><span v-html="icon('edit',14)"></span></button>
                 <button v-if="row.source!=='frappe'" class="b-icon-btn danger" @click.stop="confirmDelete(row.name)" title="Delete"><span v-html="icon('trash',14)"></span></button>
               </div>
@@ -192,6 +197,69 @@
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button @click="showDel=false" class="b-btn b-btn-ghost">Keep It</button>
           <button @click="doDelete" class="b-btn" style="background:#c92a2a;color:#fff;border-color:#c92a2a">Yes, Delete</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- ── Ledger drill-down drawer ── -->
+  <Teleport to="body">
+    <div v-if="ledgerDrawer.open" class="coa-drawer-bg" @click.self="closeLedger">
+      <div class="coa-drawer-panel" style="width:min(960px,98vw)">
+        <div class="coa-dh" style="background:linear-gradient(135deg,#1e3a5f,#1a6ef7);color:#fff;padding:18px 24px">
+          <div>
+            <div class="coa-dh-title" style="color:#fff">📒 Ledger — {{ ledgerDrawer.account_label }}</div>
+            <div class="coa-dh-sub" style="color:rgba(255,255,255,.8)">General Ledger entries with running balance</div>
+          </div>
+          <button class="coa-dclose" style="color:#fff;background:rgba(255,255,255,.18)" @click="closeLedger"><span v-html="icon('x',16)"></span></button>
+        </div>
+        <div style="padding:12px 24px;background:#f8fafc;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e5e7eb;flex-wrap:wrap">
+          <span style="font-size:11.5px;font-weight:600;color:#6b7280">FROM</span>
+          <input v-model="ledgerDrawer.from_date" type="date" class="coa-fi" style="width:150px"/>
+          <span style="font-size:11.5px;font-weight:600;color:#6b7280">TO</span>
+          <input v-model="ledgerDrawer.to_date" type="date" class="coa-fi" style="width:150px"/>
+          <button class="b-btn b-btn-primary" style="padding:6px 14px" @click="fetchLedger">Refresh</button>
+          <button class="b-btn" style="margin-left:auto;padding:6px 14px;border:1px solid #e5e7eb;background:#fff" @click="exportLedgerCSV" :disabled="!ledgerDrawer.rows.length">📥 Export CSV</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px 24px">
+          <div v-if="ledgerDrawer.loading" style="text-align:center;padding:32px;color:#9ca3af">Loading ledger…</div>
+          <div v-else-if="!ledgerDrawer.rows.length" style="text-align:center;padding:32px;color:#9ca3af">No transactions in this period.</div>
+          <table v-else class="b-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+            <thead>
+              <tr style="background:#f9fafb">
+                <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Date</th>
+                <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Voucher</th>
+                <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Type</th>
+                <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Party</th>
+                <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Debit</th>
+                <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Credit</th>
+                <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in ledgerDrawer.rows" :key="(r.name||r.voucher_no)+'-'+r.posting_date"
+                style="border-top:1px solid #f3f4f6">
+                <td style="padding:8px 10px;font-family:monospace;color:#6b7280">{{ r.posting_date }}</td>
+                <td style="padding:8px 10px;font-family:monospace;color:#2563eb;font-weight:600">{{ r.voucher_no }}</td>
+                <td style="padding:8px 10px;color:#6b7280">{{ r.voucher_type }}</td>
+                <td style="padding:8px 10px;color:#374151">{{ r.party || '—' }}</td>
+                <td style="padding:8px 10px;text-align:right;font-family:monospace;color:#16a34a">{{ Number(r.debit||0) > 0 ? "₹"+Number(r.debit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
+                <td style="padding:8px 10px;text-align:right;font-family:monospace;color:#dc2626">{{ Number(r.credit||0) > 0 ? "₹"+Number(r.credit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
+                <td style="padding:8px 10px;text-align:right;font-family:monospace;font-weight:700" :style="{color: r.balance > 0 ? '#16a34a' : r.balance < 0 ? '#dc2626' : '#374151'}">
+                  ₹{{ Number(r.balance).toLocaleString("en-IN",{minimumFractionDigits:2}) }}
+                </td>
+              </tr>
+            </tbody>
+            <tfoot v-if="ledgerDrawer.rows.length">
+              <tr style="background:#f9fafb;border-top:2px solid #e5e7eb">
+                <td colspan="4" style="padding:10px;font-weight:700;color:#374151">Closing Balance</td>
+                <td colspan="2"></td>
+                <td style="padding:10px;text-align:right;font-family:monospace;font-weight:800;font-size:14px" :style="{color: ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance > 0 ? '#16a34a' : '#dc2626'}">
+                  ₹{{ Number(ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance).toLocaleString("en-IN",{minimumFractionDigits:2}) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
     </div>
@@ -468,5 +536,92 @@ async function doDelete() {
   await load();
 }
 
-onMounted(load);
+// ── Live account balances (from GL) ───────────────────────────────────────
+const balances = ref({});  // { account_name: number }
+const balancesLoading = ref(false);
+function fmtBal(v) {
+  const n = Number(v || 0);
+  if (Math.abs(n) < 0.005) return "—";
+  return "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+async function loadBalances() {
+  const ledger = allAccounts.value.filter(a => !a.is_group && a.source === "frappe");
+  if (!ledger.length) return;
+  balancesLoading.value = true;
+  const map = {};
+  const chunks = [];
+  for (let i = 0; i < ledger.length; i += 10) chunks.push(ledger.slice(i, i + 10));
+  for (const chunk of chunks) {
+    const results = await Promise.all(chunk.map(a =>
+      apiGET("zoho_books_clone.db.queries.get_account_balance", { account: a.name }).catch(() => null)
+    ));
+    chunk.forEach((a, i) => { if (results[i] != null) map[a.name] = Number(results[i]) || 0; });
+  }
+  balances.value = map;
+  balancesLoading.value = false;
+}
+
+// ── GL drill-down drawer ──────────────────────────────────────────────────
+const ledgerDrawer = reactive({
+  open: false, loading: false, account: "", account_label: "",
+  from_date: "", to_date: "", rows: [],
+});
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function monthsAgo(n) { const d = new Date(); d.setMonth(d.getMonth() - n); return d.toISOString().slice(0, 10); }
+
+async function openLedger(acct) {
+  Object.assign(ledgerDrawer, {
+    open: true, loading: true,
+    account: acct.name, account_label: acct.account_name || acct.name,
+    from_date: monthsAgo(3), to_date: todayStr(), rows: [],
+  });
+  await fetchLedger();
+}
+async function fetchLedger() {
+  ledgerDrawer.loading = true;
+  try {
+    const company = await resolveCompany();
+    const rows = await apiGET("zoho_books_clone.db.queries.get_gl_entries", {
+      company,
+      account: ledgerDrawer.account,
+      from_date: ledgerDrawer.from_date || "2000-01-01",
+      to_date: ledgerDrawer.to_date || "2099-12-31",
+    }) || [];
+    // Compute running balance
+    let bal = 0;
+    rows.forEach(r => {
+      bal += Number(r.debit || 0) - Number(r.credit || 0);
+      r.balance = bal;
+    });
+    ledgerDrawer.rows = rows;
+  } catch (e) {
+    toast(e?.message || "Failed to load ledger", "error");
+  }
+  ledgerDrawer.loading = false;
+}
+function closeLedger() { ledgerDrawer.open = false; }
+
+function exportLedgerCSV() {
+  if (!ledgerDrawer.rows.length) return;
+  const head = ["Date","Voucher","Type","Party","Debit","Credit","Balance","Remarks"];
+  const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const out = [head.map(esc).join(",")];
+  for (const r of ledgerDrawer.rows) {
+    out.push([r.posting_date, r.voucher_no, r.voucher_type, r.party || "",
+      Number(r.debit || 0).toFixed(2), Number(r.credit || 0).toFixed(2),
+      Number(r.balance || 0).toFixed(2), r.remarks || ""].map(esc).join(","));
+  }
+  const blob = new Blob(["﻿" + out.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ledger_${ledgerDrawer.account_label.replace(/[^a-z0-9]/gi, "_")}_${todayStr()}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast("Ledger CSV exported", "success");
+}
+
+onMounted(async () => {
+  await load();
+  loadBalances();
+});
 </script>

@@ -220,12 +220,15 @@ const filtered = computed(() => {
 async function load() {
   loading.value = true;
   try {
-    // Proforma invoices = draft Sales Invoices with remarks containing 'Proforma'
+    // Proforma invoices = draft Sales Invoices whose `notes` field contains 'Proforma'.
+    // (The schema renamed the legacy `remarks` column to `notes`.)
     list.value = await apiList("Sales Invoice", {
-      fields: ["name","customer","customer_name","posting_date","grand_total","remarks","docstatus"],
-      filters: [["docstatus","=",0],["remarks","like","%Proforma%"]],
+      fields: ["name","customer","customer_name","posting_date","grand_total","notes","docstatus"],
+      filters: [["docstatus","=",0],["notes","like","%Proforma%"]],
       limit: 200,
     });
+    // Compat alias so existing template that reads `remarks` still works.
+    list.value = list.value.map(r => ({ ...r, remarks: r.notes }));
   } catch (e) {
     console.warn("Proforma load failed:", e.message);
     list.value = [];
@@ -295,7 +298,7 @@ async function saveProforma() {
       posting_date: form.posting_date,
       due_date: form.due_date || form.posting_date,
       company,
-      remarks: form.remarks || "Proforma Invoice",
+      notes: form.remarks || "Proforma Invoice",
       items: form.items.filter(it => it.item_code.trim()).map(it => ({
         doctype: "Sales Invoice Item",
         item_code: it.item_code,

@@ -217,9 +217,72 @@ export function useLivePreview() {
     return _renderClassic(doc, cfg);
   }
 
+  /**
+   * Open the rendered document in a new browser window with template-switcher
+   * controls + print button. Convenience helper so pages can call:
+   *   const { printDoc } = useLivePreview();
+   *   printDoc(invoiceDoc, { title: "INVOICE", partyLabel: "Bill To", partyField: "customer_name" });
+   */
+  function printDoc(doc, config) {
+    const html = renderDocument(doc, config);
+    // Wrap in a tiny shell with template + print controls so the user can switch
+    // templates without bouncing back to the app.
+    const shell = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Print — ${doc?.name || ""}</title>
+<style>
+  body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #f1f5f9; }
+  .toolbar { position: sticky; top: 0; z-index: 10; background: #fff; padding: 10px 16px;
+    border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px; }
+  .toolbar h2 { margin: 0; font-size: 13px; color: #6b7280; letter-spacing: .04em; }
+  .tbtn { font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 6px;
+    border: 1px solid #e5e7eb; background: #fff; color: #374151; cursor: pointer; }
+  .tbtn.active { background: #1a6ef7; color: #fff; border-color: #1a6ef7; }
+  .tbtn:hover:not(.active) { background: #f9fafb; }
+  .print { margin-left: auto; background: #1a6ef7; color: #fff; border: none; padding: 6px 14px;
+    border-radius: 6px; font-weight: 600; cursor: pointer; font: inherit; font-size: 12px; }
+  .doc { background: #fff; max-width: 800px; margin: 16px auto; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  iframe { border: none; width: 100%; min-height: calc(100vh - 90px); display: block; }
+  @media print {
+    .toolbar { display: none; }
+    .doc { box-shadow: none; margin: 0; max-width: none; }
+  }
+</style></head><body>
+<div class="toolbar">
+  <h2>PRINT PREVIEW</h2>
+  <button class="tbtn ${_state.template === 'classic' ? 'active' : ''}" data-t="classic">Classic</button>
+  <button class="tbtn ${_state.template === 'modern'  ? 'active' : ''}" data-t="modern">Modern</button>
+  <button class="tbtn ${_state.template === 'minimal' ? 'active' : ''}" data-t="minimal">Minimal</button>
+  <button class="print" onclick="window.print()">🖨 Print</button>
+</div>
+<div class="doc"><iframe id="frm" srcdoc="${html.replace(/"/g, '&quot;')}"></iframe></div>
+<script>
+  // template switcher posts back to opener to re-render
+  document.querySelectorAll('.tbtn').forEach(b => b.onclick = () => {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({ kind: 'switch-template', template: b.dataset.t, doc: ${JSON.stringify(doc || {})}, config: ${JSON.stringify(config || {})} }, '*');
+    }
+  });
+</script>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.open(); w.document.write(shell); w.document.close();
+  }
+
+  // Listen for template-switch postMessages and re-open the print window
+  if (typeof window !== "undefined" && !window.__bvLivePreviewListener) {
+    window.__bvLivePreviewListener = true;
+    window.addEventListener("message", (ev) => {
+      const d = ev.data || {};
+      if (d.kind === "switch-template" && d.template) {
+        setTemplate(d.template);
+        if (d.doc && d.config) printDoc(d.doc, d.config);
+      }
+    });
+  }
+
   const template = computed({ get: () => _state.template, set: setTemplate });
   const brandColor = computed({ get: () => _state.brandColor, set: setBrandColor });
   const logo = computed({ get: () => _state.logo, set: setLogo });
 
-  return { state: _state, template, brandColor, logo, setCompany, renderDocument };
+  return { state: _state, template, brandColor, logo, setCompany, renderDocument, printDoc };
 }

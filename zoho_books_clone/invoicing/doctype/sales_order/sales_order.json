@@ -218,7 +218,7 @@
             "translatable": 0,
             "unique": 0,
             "reqd": 0,
-            "options": "Draft\nConfirmed\nProcessing\nReady\nInvoiced\nCancelled"
+            "options": "Draft\nTo Deliver\nPartially Delivered\nDelivered\nInvoiced\nClosed\nCancelled\nConfirmed\nProcessing\nReady"
         },
         {
             "fieldname": "po_number",

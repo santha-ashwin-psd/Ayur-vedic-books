@@ -56,6 +56,8 @@
               <td class="pmt-act-cell">
                 <button class="pmt-act-btn" @click="openView(p)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="p.docstatus===0" class="pmt-act-btn" @click="openEdit(p)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="p.docstatus===1" class="pmt-act-btn" style="border-color:#fee2e2;color:#dc2626" @click="cancelPmt(p)" title="Cancel">✕</button>
+                <button v-if="p.docstatus===0 || p.docstatus===2" class="pmt-act-btn" style="border-color:#fee2e2;color:#dc2626" @click="deletePmt(p)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
             <tr v-if="!sorted.length"><td colspan="9" class="pmt-empty">No payments found</td></tr>
@@ -221,6 +223,12 @@
           <button v-if="viewPmt.docstatus===0" class="pmt-btn-save" @click="openEdit(viewPmt);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
+          <button v-if="viewPmt.docstatus===1" class="pmt-btn-ghost" style="border-color:#dc2626;color:#dc2626" @click="cancelPmt(viewPmt)">
+            Cancel Payment
+          </button>
+          <button v-if="viewPmt.docstatus===0 || viewPmt.docstatus===2" class="pmt-btn-ghost" style="border-color:#dc2626;color:#dc2626" @click="deletePmt(viewPmt)">
+            <span v-html="icon('trash',13)"></span> Delete
+          </button>
         </div>
       </template>
     </div>
@@ -230,7 +238,29 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { apiList, apiGet, apiGET, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiPOST, apiDelete, resolveCompany, apiLinkValues } from "../api/client.js";
+import { useConfirm } from "../composables/useConfirm.js";
+const { confirm } = useConfirm();
+
+async function cancelPmt(p) {
+  if (!await confirm({ title: "Cancel Payment", body: `Cancel ${p.name}? Linked invoices/bills will reflect the reversal.`, okLabel: "Cancel Payment" })) return;
+  try {
+    await apiPOST("zoho_books_clone.api.docs.cancel_payment_entry_safe",
+      { payment_entry_name: p.name });
+    toast.success(`Payment ${p.name} cancelled`);
+    viewOpen.value = false;
+    await load();
+  } catch (e) { toast.error(e.message || "Cancel failed"); }
+}
+async function deletePmt(p) {
+  if (!await confirm({ title: "Delete Payment", body: `Permanently delete ${p.name}? This cannot be undone.`, okLabel: "Delete" })) return;
+  try {
+    await apiDelete("Payment Entry", p.name);
+    toast.success(`Payment ${p.name} deleted`);
+    viewOpen.value = false;
+    await load();
+  } catch (e) { toast.error(e.message || "Delete failed"); }
+}
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";

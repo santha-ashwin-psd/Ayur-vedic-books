@@ -541,12 +541,27 @@ def get_debit_notes(bill_name):
     )
 
 
+def _je_applications_for_pi(pi_name):
+    """Internal helper — returns submitted Journal Entry Account rows that reference
+    `pi_name`. Custom schema uses simple `debit` / `credit` columns.
+    """
+    rows = frappe.db.sql("""
+        SELECT jea.parent, jea.debit AS dr, jea.credit AS cr,
+               je.posting_date, je.docstatus
+        FROM `tabJournal Entry Account` jea
+        JOIN `tabJournal Entry` je ON je.name = jea.parent
+        WHERE jea.reference_type = 'Purchase Invoice' AND jea.reference_name = %s
+          AND je.docstatus = 1
+    """, (pi_name,), as_dict=True)
+    return rows
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_debit_note_balance(debit_note_name):
     """Calculate remaining (unapplied) balance on a debit note.
 
-    balance = |grand_total| - sum(allocated_amount from Payment Entry Refs whose parent is
-    a submitted PE allocating this DN). When no applications exist, balance = |grand_total|.
+    balance = |grand_total| − applied, where applied includes both
+    Payment Entry References AND Journal Entry contra entries that reference this DN.
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
@@ -556,15 +571,20 @@ def get_debit_note_balance(debit_note_name):
         return {"name": debit_note_name, "total": 0, "applied": 0, "balance": 0}
     total = abs(flt(dn.grand_total))
     applied = 0
-    refs = frappe.get_all(
+    # 1) Payment Entry references (rarely used for DN, kept for completeness)
+    pe_refs = frappe.get_all(
         "Payment Entry Reference",
         filters={"reference_name": debit_note_name, "reference_doctype": "Purchase Invoice"},
         fields=["parent", "allocated_amount"],
     )
-    for r in refs:
-        pe_status = frappe.db.get_value("Payment Entry", r.parent, "docstatus")
-        if pe_status == 1:
+    for r in pe_refs:
+        if frappe.db.get_value("Payment Entry", r.parent, "docstatus") == 1:
             applied += abs(flt(r.allocated_amount))
+    # 2) Journal Entry contra rows (the apply_debit_note_to_bill path).
+    # In the corrected JE shape, the DN's reference row sits on the CREDIT side
+    # of AP (it cancels the DN's debit-balance). Sum credit, not debit.
+    for jea in _je_applications_for_pi(debit_note_name):
+        applied += abs(flt(jea.cr))
     return {
         "name": debit_note_name, "supplier": dn.supplier, "supplier_name": dn.supplier_name,
         "total": total, "applied": applied, "balance": max(0, total - applied),
@@ -574,7 +594,14 @@ def get_debit_note_balance(debit_note_name):
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def apply_debit_note_to_bill(debit_note, bill, amount):
-    """Create a Payment Entry that applies a debit-note credit to a vendor bill."""
+    """Apply DN credit to a vendor bill via a Journal Entry (contra entry on AP).
+
+    This is the accounting-correct path: a single JE with two AP rows — debits the
+    DN reference (reducing its credit balance) and credits the bill reference
+    (reducing its outstanding). A Payment Entry can't carry two references that
+    each allocate the full amount (sum_allocated > paid_amount), which is why we
+    use a JE here.
+    """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     amount = abs(flt(amount))
@@ -585,75 +612,100 @@ def apply_debit_note_to_bill(debit_note, bill, amount):
     bill_doc = frappe.get_doc("Purchase Invoice", bill)
     if dn.docstatus != 1 or bill_doc.docstatus != 1:
         frappe.throw("Both debit note and bill must be submitted")
+    if dn.supplier != bill_doc.supplier:
+        frappe.throw("Debit note and bill must be for the same vendor")
 
     balance_info = get_debit_note_balance(debit_note)
     if amount > flt(balance_info["balance"]) + 0.01:
         frappe.throw(f"Cannot apply more than available balance ({balance_info['balance']})")
 
     company = bill_doc.company
-    ap = frappe.db.get_value(
-        "Account", {"account_type": "Payable", "company": company, "is_group": 0}, "name"
-    )
+    ap = (bill_doc.credit_to or dn.credit_to
+          or frappe.db.get_value("Account",
+                                 {"account_type": "Payable", "company": company, "is_group": 0},
+                                 "name"))
 
-    pe = frappe.get_doc({
-        "doctype": "Payment Entry",
-        "payment_type": "Internal Transfer",
+    je = frappe.get_doc({
+        "doctype": "Journal Entry",
+        "naming_series": "JE-DN-.YYYY.-.####",
+        "voucher_type": "Credit Note",
         "company": company,
-        "party_type": "Supplier",
-        "party": dn.supplier,
-        "party_name": dn.supplier_name or dn.supplier,
-        "paid_from": ap,
-        "paid_to": ap,
-        "paid_amount": amount,
-        "received_amount": amount,
-        "reference_no": f"DN-{dn.name}",
-        "reference_date": today(),
         "posting_date": today(),
-        "remarks": f"Debit Note {dn.name} applied to bill {bill}",
-        "references": [
+        "remark": f"Apply Debit Note {dn.name} to Bill {bill}",
+        "accounts": [
+            # DEBIT side ref-Bill — reduces the Bill's outstanding payable
+            # (Bill outstanding lives on CR side of AP; debiting AP reduces it).
             {
-                "reference_doctype": "Purchase Invoice",
-                "reference_name": dn.name,
-                "total_amount": abs(flt(dn.grand_total)),
-                "allocated_amount": amount,
-            },
-            {
-                "reference_doctype": "Purchase Invoice",
+                "account": ap,
+                "party_type": "Supplier",
+                "party": bill_doc.supplier,
+                "debit": amount,
+                "credit": 0,
+                "reference_type": "Purchase Invoice",
                 "reference_name": bill,
-                "total_amount": flt(bill_doc.grand_total),
-                "outstanding_amount": flt(bill_doc.outstanding_amount),
-                "allocated_amount": amount,
+            },
+            # CREDIT side ref-DN — settles the DN's debit-balance to zero
+            # (DN sits as a debit on AP; crediting AP cancels it).
+            {
+                "account": ap,
+                "party_type": "Supplier",
+                "party": dn.supplier,
+                "debit": 0,
+                "credit": amount,
+                "reference_type": "Purchase Invoice",
+                "reference_name": dn.name,
             },
         ],
     })
-    pe.flags.ignore_permissions = True
-    pe.flags.ignore_mandatory = True
-    pe.insert()
-    pe.submit()
+    je.flags.ignore_permissions = True
+    je.flags.ignore_mandatory = True
+    je.insert()
+    je.submit()
+    # Recompute outstanding on the bill so the list/drawer reflects the reduction.
+    try:
+        from zoho_books_clone.accounts.doctype.general_ledger_entry.general_ledger_entry import recompute_outstanding_from_gl
+        recompute_outstanding_from_gl("Purchase Invoice", bill)
+    except Exception as exc:
+        frappe.log_error(f"recompute_outstanding failed for {bill}: {exc}", "apply_debit_note_to_bill")
     frappe.db.commit()
-    return {"payment_entry": pe.name, "debit_note": debit_note, "bill": bill, "applied": amount}
+    return {"journal_entry": je.name, "debit_note": debit_note, "bill": bill, "applied": amount}
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_debit_note_applications(debit_note_name):
-    """Return the list of bills this debit note has been applied to (via Payment Entries)."""
+    """Return bills this debit note has been applied to (via JE contra entries, with
+    legacy Payment Entry references included for forwards-compatibility)."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
-    refs = frappe.get_all(
+    apps = []
+    # Journal Entry path (primary)
+    je_rows = _je_applications_for_pi(debit_note_name)
+    for jea in je_rows:
+        # Look for the sibling row in the same JE that references a DIFFERENT PI (the bill)
+        siblings = frappe.db.sql("""
+            SELECT reference_name, debit AS dr, credit AS cr
+            FROM `tabJournal Entry Account`
+            WHERE parent = %s AND reference_type='Purchase Invoice'
+              AND reference_name != %s
+        """, (jea.parent, debit_note_name), as_dict=True)
+        for s in siblings:
+            apps.append({
+                "bill": s.reference_name,
+                "amount": abs(flt(s.cr or s.dr)),
+                "date": jea.posting_date,
+                "payment_entry": jea.parent,   # JE name; key kept for UI compatibility
+            })
+    # Legacy Payment Entry path
+    pe_refs = frappe.get_all(
         "Payment Entry Reference",
         filters={"reference_name": debit_note_name, "reference_doctype": "Purchase Invoice"},
         fields=["parent", "allocated_amount"],
     )
-    apps = []
-    for r in refs:
-        pe = frappe.db.get_value(
-            "Payment Entry", r.parent,
-            ["name", "posting_date", "docstatus"],
-            as_dict=True,
-        )
+    for r in pe_refs:
+        pe = frappe.db.get_value("Payment Entry", r.parent,
+                                 ["name", "posting_date", "docstatus"], as_dict=True)
         if not pe or pe.docstatus != 1:
             continue
-        # the OTHER Purchase Invoice reference (the bill, not the DN itself) is what was applied
         siblings = frappe.get_all(
             "Payment Entry Reference",
             filters={"parent": r.parent, "reference_doctype": "Purchase Invoice"},
@@ -847,11 +899,301 @@ def create_debit_note():
                     indicator="orange", alert=True
                 )
 
+    # Recompute the parent bill's outstanding from GL. Without this, a stale
+    # write earlier in the submit pipeline inflates the bill's outstanding by the
+    # DN amount (the bill's own AP CR + the DN's negative-debit posting confuse
+    # the central status recalculation). recompute_outstanding_from_gl uses only
+    # rows where voucher_no == bill.name plus its sibling PE/JE settlements, so
+    # it returns the correct figure.
+    if against_bill and frappe.db.exists("Purchase Invoice", against_bill):
+        try:
+            from zoho_books_clone.accounts.doctype.general_ledger_entry.general_ledger_entry import recompute_outstanding_from_gl
+            recompute_outstanding_from_gl("Purchase Invoice", against_bill)
+            frappe.db.commit()
+        except Exception as exc:
+            frappe.log_error(
+                f"recompute_outstanding failed for parent bill {against_bill}: {exc}",
+                "create_debit_note",
+            )
+
     return {
         "debit_note":  pi.name,
         "stock_entry": se_name,
         "return_type": "inventory" if reason == "Goods Returned" else "expense",
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 2 — Credit Note (Sales Invoice with is_return=1) helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _je_applications_for_si(si_name):
+    """JEA rows that reference a Sales Invoice (CN or regular SI), submitted JEs only."""
+    return frappe.db.sql("""
+        SELECT jea.parent, jea.debit AS dr, jea.credit AS cr,
+               je.posting_date, je.docstatus
+        FROM `tabJournal Entry Account` jea
+        JOIN `tabJournal Entry` je ON je.name = jea.parent
+        WHERE jea.reference_type = 'Sales Invoice' AND jea.reference_name = %s
+          AND je.docstatus = 1
+    """, (si_name,), as_dict=True)
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_credit_note_balance(credit_note_name):
+    """Available (unapplied) credit on a CN. applied = settled via JE contra + PE refs."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    cn = frappe.db.get_value("Sales Invoice", credit_note_name,
+                             ["grand_total", "docstatus", "customer", "customer_name"], as_dict=True)
+    if not cn:
+        return {"name": credit_note_name, "total": 0, "applied": 0, "balance": 0}
+    total = abs(flt(cn.grand_total))
+    applied = 0
+    pe_refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_name": credit_note_name, "reference_doctype": "Sales Invoice"},
+        fields=["parent", "allocated_amount"],
+    )
+    for r in pe_refs:
+        if frappe.db.get_value("Payment Entry", r.parent, "docstatus") == 1:
+            applied += abs(flt(r.allocated_amount))
+    # For AR-side CN, the row that REDUCES its credit is on the debit side.
+    for jea in _je_applications_for_si(credit_note_name):
+        applied += abs(flt(jea.dr))
+    return {
+        "name": credit_note_name, "customer": cn.customer, "customer_name": cn.customer_name,
+        "total": total, "applied": applied, "balance": max(0, total - applied),
+        "docstatus": cn.docstatus,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def apply_credit_note_to_invoice(credit_note, invoice, amount):
+    """Apply CN credit to a customer invoice via Journal Entry (contra entry on AR)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    amount = abs(flt(amount))
+    if amount <= 0:
+        frappe.throw("Amount must be > 0")
+
+    cn = frappe.get_doc("Sales Invoice", credit_note)
+    inv = frappe.get_doc("Sales Invoice", invoice)
+    if cn.docstatus != 1 or inv.docstatus != 1:
+        frappe.throw("Both credit note and invoice must be submitted")
+    if cn.customer != inv.customer:
+        frappe.throw("Credit note and invoice must be for the same customer")
+
+    balance_info = get_credit_note_balance(credit_note)
+    if amount > flt(balance_info["balance"]) + 0.01:
+        frappe.throw(f"Cannot apply more than available balance ({balance_info['balance']})")
+
+    company = inv.company
+    ar = (inv.debit_to or cn.debit_to
+          or frappe.db.get_value("Account",
+                                 {"account_type": "Receivable", "company": company, "is_group": 0},
+                                 "name"))
+
+    je = frappe.get_doc({
+        "doctype": "Journal Entry",
+        "naming_series": "JE-CN-.YYYY.-.####",
+        "voucher_type": "Credit Note",
+        "company": company,
+        "posting_date": today(),
+        "remark": f"Apply Credit Note {cn.name} to Invoice {invoice}",
+        "accounts": [
+            # DEBIT side — neutralises the CN's credit balance
+            {
+                "account": ar, "party_type": "Customer", "party": cn.customer,
+                "debit": amount, "credit": 0,
+                "reference_type": "Sales Invoice", "reference_name": cn.name,
+            },
+            # CREDIT side — reduces the Invoice's outstanding receivable
+            {
+                "account": ar, "party_type": "Customer", "party": inv.customer,
+                "debit": 0, "credit": amount,
+                "reference_type": "Sales Invoice", "reference_name": invoice,
+            },
+        ],
+    })
+    je.flags.ignore_permissions = True
+    je.flags.ignore_mandatory = True
+    je.insert()
+    je.submit()
+    try:
+        from zoho_books_clone.accounts.doctype.general_ledger_entry.general_ledger_entry import recompute_outstanding_from_gl
+        recompute_outstanding_from_gl("Sales Invoice", invoice)
+    except Exception as exc:
+        frappe.log_error(f"recompute_outstanding failed for {invoice}: {exc}",
+                         "apply_credit_note_to_invoice")
+    frappe.db.commit()
+    return {"journal_entry": je.name, "credit_note": credit_note, "invoice": invoice, "applied": amount}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_credit_note_applications(credit_note_name):
+    """List invoices this CN has been applied to (JE contras + legacy PE refs)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    apps = []
+    for jea in _je_applications_for_si(credit_note_name):
+        siblings = frappe.db.sql("""
+            SELECT reference_name, debit AS dr, credit AS cr
+            FROM `tabJournal Entry Account`
+            WHERE parent = %s AND reference_type='Sales Invoice'
+              AND reference_name != %s
+        """, (jea.parent, credit_note_name), as_dict=True)
+        for s in siblings:
+            apps.append({
+                "invoice": s.reference_name,
+                "amount": abs(flt(s.cr or s.dr)),
+                "date": jea.posting_date,
+                "payment_entry": jea.parent,
+            })
+    pe_refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_name": credit_note_name, "reference_doctype": "Sales Invoice"},
+        fields=["parent", "allocated_amount"],
+    )
+    for r in pe_refs:
+        pe = frappe.db.get_value("Payment Entry", r.parent,
+                                 ["name", "posting_date", "docstatus"], as_dict=True)
+        if not pe or pe.docstatus != 1:
+            continue
+        siblings = frappe.get_all(
+            "Payment Entry Reference",
+            filters={"parent": r.parent, "reference_doctype": "Sales Invoice"},
+            fields=["reference_name", "allocated_amount"],
+        )
+        for s in siblings:
+            if s.reference_name and s.reference_name != credit_note_name:
+                apps.append({
+                    "invoice": s.reference_name,
+                    "amount": abs(flt(s.allocated_amount)),
+                    "date": pe.posting_date,
+                    "payment_entry": pe.name,
+                })
+    return apps
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def refund_credit_note(credit_note_name, amount, refund_mode="Bank Transfer",
+                      paid_to="", reference_no=""):
+    """Refund the available CN balance back to the customer as a Payment Entry (pay-out)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    amount = abs(flt(amount))
+    if amount <= 0:
+        frappe.throw("Refund amount must be > 0")
+
+    cn = frappe.get_doc("Sales Invoice", credit_note_name)
+    if cn.docstatus != 1:
+        frappe.throw("Credit Note must be submitted to refund")
+
+    balance_info = get_credit_note_balance(credit_note_name)
+    if amount > flt(balance_info["balance"]) + 0.01:
+        frappe.throw(f"Cannot refund more than available balance ({balance_info['balance']})")
+
+    company = cn.company
+    bank = paid_to or frappe.db.get_value(
+        "Account", {"account_type": ["in", ["Bank", "Cash"]], "company": company, "is_group": 0},
+        "name",
+    )
+    ar = cn.debit_to or frappe.db.get_value(
+        "Account", {"account_type": "Receivable", "company": company, "is_group": 0}, "name",
+    )
+
+    # Refund as a Journal Entry: DR AR (settles CN credit) / CR Bank (money out).
+    # Avoids the PE validator that forbids Pay→Receivable.
+    je = frappe.get_doc({
+        "doctype": "Journal Entry",
+        "naming_series": "JE-REFUND-.YYYY.-.####",
+        "voucher_type": "Bank Entry",
+        "company": company,
+        "posting_date": today(),
+        "remark": f"Refund of Credit Note {cn.name} ({refund_mode})"
+                  + (f" — ref {reference_no}" if reference_no else ""),
+        "accounts": [
+            # DEBIT side — reduces the CN's outstanding credit (settles it)
+            {
+                "account": ar, "party_type": "Customer", "party": cn.customer,
+                "debit": amount, "credit": 0,
+                "reference_type": "Sales Invoice", "reference_name": cn.name,
+            },
+            # CREDIT side — money leaves the bank
+            {
+                "account": bank, "debit": 0, "credit": amount,
+            },
+        ],
+    })
+    je.flags.ignore_permissions = True
+    je.flags.ignore_mandatory = True
+    je.insert()
+    je.submit()
+    frappe.db.commit()
+    return {"journal_entry": je.name, "credit_note": credit_note_name, "refunded": amount}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_credit_note_email_defaults(credit_note_name):
+    """Pre-fill the Send Email dialog for a Credit Note."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    cn = frappe.get_doc("Sales Invoice", credit_note_name)
+    cust_email = frappe.db.get_value("Customer", cn.customer, "email_id") or ""
+    subject = f"Credit Note {cn.name} from {cn.company or ''}"
+    body = (
+        f"Dear {cn.customer_name or cn.customer},<br><br>"
+        f"Please find your credit note <b>{cn.name}</b> details below:<br><br>"
+        f"<table style='border-collapse:collapse;font-size:14px'>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Credit Note #</td><td><b>{cn.name}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{abs(cn.grand_total):,.2f}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{cn.posting_date}</td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Against Invoice</td><td>{cn.return_against or '—'}</td></tr>"
+        f"</table><br>"
+        f"This credit note may be applied against your open invoices or refunded.<br><br>"
+        f"Regards,<br>{cn.company or ''}"
+    )
+    return {
+        "to": cust_email, "subject": subject, "body": body,
+        "credit_note_name": cn.name,
+        "customer_name": cn.customer_name or cn.customer,
+        "from_email": frappe.session.user,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def send_credit_note_email(credit_note_name, to, subject, body, cc=None):
+    if not to:
+        frappe.throw("Recipient email (To) is required.")
+    if not frappe.has_permission("Sales Invoice", "read", credit_note_name):
+        frappe.throw("Not permitted", frappe.PermissionError)
+    cn = frappe.get_doc("Sales Invoice", credit_note_name)
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
+    attachments = []
+    try:
+        attachments = [frappe.attach_print(cn.doctype, cn.name,
+                                           print_format="Sales Invoice",
+                                           print_letterhead=True)]
+    except Exception:
+        attachments = []
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list,
+        subject=subject, message=body, attachments=attachments,
+        reference_doctype="Sales Invoice", reference_name=credit_note_name, now=True,
+    )
+    comm = frappe.get_doc({
+        "doctype": "Communication", "communication_type": "Communication",
+        "communication_medium": "Email", "sent_or_received": "Sent",
+        "subject": subject, "content": body, "sender": frappe.session.user,
+        "recipients": to, "cc": cc or "",
+        "reference_doctype": "Sales Invoice", "reference_name": credit_note_name,
+        "status": "Linked",
+    })
+    comm.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "sent", "to": to, "credit_note": credit_note_name}
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
@@ -989,11 +1331,1698 @@ def create_credit_note():
                     indicator="orange", alert=True
                 )
 
+    # Recompute parent invoice outstanding (mirror of the DN fix)
+    if against_inv and frappe.db.exists("Sales Invoice", against_inv):
+        try:
+            from zoho_books_clone.accounts.doctype.general_ledger_entry.general_ledger_entry import recompute_outstanding_from_gl
+            recompute_outstanding_from_gl("Sales Invoice", against_inv)
+            frappe.db.commit()
+        except Exception as exc:
+            frappe.log_error(
+                f"recompute_outstanding failed for parent invoice {against_inv}: {exc}",
+                "create_credit_note",
+            )
+
     return {
         "credit_note": cn.name,
         "stock_entry": se_name,
         "return_type": "inventory" if reason == "Goods Returned" else "adjustment",
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 3 — Quotation lifecycle + conversions
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _set_quote_status(quotation_name, status):
+    """Update Quotation.status without triggering full save validation."""
+    if not frappe.db.exists("Quotation", quotation_name):
+        frappe.throw(f"Quotation {quotation_name} not found")
+    frappe.db.set_value("Quotation", quotation_name, "status", status, update_modified=True)
+    frappe.db.commit()
+    return status
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def mark_quote_sent(quotation_name):
+    """Mark a quote as sent (sets status='Sent'). Auto-fired by Send Email too."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    return {"name": quotation_name, "status": _set_quote_status(quotation_name, "Sent")}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def mark_quote_accepted(quotation_name):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    return {"name": quotation_name, "status": _set_quote_status(quotation_name, "Accepted")}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def mark_quote_declined(quotation_name, reason=""):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    _set_quote_status(quotation_name, "Declined")
+    if reason:
+        notes = frappe.db.get_value("Quotation", quotation_name, "notes") or ""
+        sep = "\n\n" if notes else ""
+        frappe.db.set_value("Quotation", quotation_name, "notes",
+                            f"{notes}{sep}Declined: {reason}", update_modified=True)
+        frappe.db.commit()
+    return {"name": quotation_name, "status": "Declined", "reason": reason}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def mark_quote_expired_bulk(quotation_names):
+    """Bulk-set status='Expired' for the given quotations."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if isinstance(quotation_names, str):
+        quotation_names = json.loads(quotation_names)
+    out = []
+    for q in (quotation_names or []):
+        try:
+            _set_quote_status(q, "Expired")
+            out.append({"name": q, "ok": True})
+        except Exception as exc:
+            out.append({"name": q, "ok": False, "error": str(exc)})
+    return out
+
+
+def _quote_items_to_doc_items(quote_doc, target_item_doctype):
+    """Map Quotation Item rows into the target child-table dict format."""
+    rows = []
+    for it in (quote_doc.items or []):
+        rows.append({
+            "doctype": target_item_doctype,
+            "item_code":   it.item_code,
+            "item_name":   it.item_name or it.item_code,
+            "description": it.description or it.item_name or it.item_code,
+            "qty":         flt(it.qty) or 1,
+            "uom":         getattr(it, "uom", "") or "Nos",
+            "rate":        flt(it.rate),
+            "amount":      flt(it.amount),
+        })
+    return rows
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def convert_quote_to_sales_order(quotation_name, delivery_date=""):
+    """Create a Sales Order from a Quotation; flips the quote status to Converted."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    qd = frappe.get_doc("Quotation", quotation_name)
+    so = frappe.get_doc({
+        "doctype": "Sales Order",
+        "company":          qd.company,
+        "customer":         qd.customer,
+        "customer_name":    qd.customer_name,
+        "transaction_date": today(),
+        "delivery_date":    delivery_date or qd.valid_till or today(),
+        "ref_quote":        qd.name,
+        "terms":            getattr(qd, "terms", "") or "",
+        "items":            _quote_items_to_doc_items(qd, "Sales Order Item"),
+        "taxes":            [
+            {"doctype": "Tax Line",
+             "charge_type": getattr(t, "charge_type", "On Net Total"),
+             "account_head": getattr(t, "account_head", ""),
+             "description": getattr(t, "description", ""),
+             "rate": flt(getattr(t, "rate", 0))}
+            for t in (qd.taxes or [])
+        ],
+    })
+    so.flags.ignore_permissions = True
+    so.flags.ignore_mandatory = True
+    so.insert()
+    _set_quote_status(quotation_name, "Converted")
+    return {"sales_order": so.name, "quotation": quotation_name}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def convert_quote_to_invoice(quotation_name, due_date=""):
+    """Create a Sales Invoice directly from a Quotation."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    qd = frappe.get_doc("Quotation", quotation_name)
+    ar = frappe.db.get_value(
+        "Account", {"account_type": "Receivable", "company": qd.company, "is_group": 0}, "name"
+    )
+    inc = frappe.db.get_value(
+        "Account", {"account_type": ["in", ["Income", "Income Account", "Direct Income", "Sales"]],
+                    "company": qd.company, "is_group": 0}, "name"
+    )
+    items = _quote_items_to_doc_items(qd, "Sales Invoice Item")
+    for it in items:
+        it["income_account"] = inc
+    si = frappe.get_doc({
+        "doctype":      "Sales Invoice",
+        "company":      qd.company,
+        "customer":     qd.customer,
+        "posting_date": today(),
+        "due_date":     due_date or today(),
+        "debit_to":     ar,
+        "income_account": inc,
+        "notes":        f"From Quotation {qd.name}",
+        "items":        items,
+    })
+    si.flags.ignore_permissions = True
+    si.flags.ignore_mandatory = True
+    si.insert()
+    _set_quote_status(quotation_name, "Converted")
+    return {"sales_invoice": si.name, "quotation": quotation_name}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_quote_conversions(quotation_name):
+    """Return any Sales Orders / Sales Invoices linked back to this Quotation."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    sos = frappe.get_all("Sales Order",
+        filters={"ref_quote": quotation_name},
+        fields=["name", "transaction_date", "grand_total", "status"],
+    )
+    sis = frappe.db.sql("""
+        SELECT name, posting_date, grand_total, status, outstanding_amount
+        FROM `tabSales Invoice`
+        WHERE notes LIKE %s AND is_return = 0
+        ORDER BY posting_date DESC
+    """, ("%From Quotation " + quotation_name + "%",), as_dict=True)
+    return {"sales_orders": sos or [], "sales_invoices": sis or []}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_quote_email_defaults(quotation_name):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    qd = frappe.get_doc("Quotation", quotation_name)
+    cust_email = frappe.db.get_value("Customer", qd.customer, "email_id") or ""
+    subject = f"Quotation {qd.name} from {qd.company or ''}"
+    body = (
+        f"Dear {qd.customer_name or qd.customer},<br><br>"
+        f"Please find your quotation <b>{qd.name}</b> details below:<br><br>"
+        f"<table style='border-collapse:collapse;font-size:14px'>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Quotation #</td><td><b>{qd.name}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{qd.grand_total:,.2f}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{qd.transaction_date}</td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Valid Till</td><td>{qd.valid_till or '—'}</td></tr>"
+        f"</table><br>"
+        f"Looking forward to your confirmation.<br><br>"
+        f"Regards,<br>{qd.company or ''}"
+    )
+    return {
+        "to": cust_email, "subject": subject, "body": body,
+        "quotation_name": qd.name,
+        "customer_name": qd.customer_name or qd.customer,
+        "from_email": frappe.session.user,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def send_quote_email(quotation_name, to, subject, body, cc=None):
+    """Send a quote email and auto-flip status to 'Sent'."""
+    if not to:
+        frappe.throw("Recipient email (To) is required.")
+    if not frappe.has_permission("Quotation", "read", quotation_name):
+        frappe.throw("Not permitted", frappe.PermissionError)
+    qd = frappe.get_doc("Quotation", quotation_name)
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
+    attachments = []
+    try:
+        attachments = [frappe.attach_print(qd.doctype, qd.name,
+                                           print_format="Quotation", print_letterhead=True)]
+    except Exception:
+        attachments = []
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list,
+        subject=subject, message=body, attachments=attachments,
+        reference_doctype="Quotation", reference_name=quotation_name, now=True,
+    )
+    comm = frappe.get_doc({
+        "doctype": "Communication", "communication_type": "Communication",
+        "communication_medium": "Email", "sent_or_received": "Sent",
+        "subject": subject, "content": body, "sender": frappe.session.user,
+        "recipients": to, "cc": cc or "",
+        "reference_doctype": "Quotation", "reference_name": quotation_name,
+        "status": "Linked",
+    })
+    comm.insert(ignore_permissions=True)
+    # Auto-flip status to Sent if still Draft
+    cur = frappe.db.get_value("Quotation", quotation_name, "status")
+    if cur in (None, "", "Draft"):
+        _set_quote_status(quotation_name, "Sent")
+    frappe.db.commit()
+    return {"status": "sent", "to": to, "quotation": quotation_name}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 4 — Sales Order fulfillment + conversions
+# This build has no Delivery Challan doctype, so DC conversion is replaced by a
+# manual "Mark Delivered" action that sets delivered_qty on selected SO lines.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _so_status_from_fulfillment(so_name):
+    """Compute a fulfillment-aware status: To Deliver / Partially Delivered /
+    Delivered / Invoiced / Closed."""
+    rows = frappe.get_all("Sales Order Item",
+        filters={"parent": so_name},
+        fields=["qty", "delivered_qty", "billed_qty"])
+    if not rows:
+        return "Submitted"
+    total_qty = sum(flt(r.qty) for r in rows)
+    delivered = sum(flt(r.delivered_qty) for r in rows)
+    billed    = sum(flt(r.billed_qty) for r in rows)
+    if total_qty <= 0:
+        return "Submitted"
+    if billed >= total_qty - 0.001 and delivered >= total_qty - 0.001:
+        return "Closed"
+    if billed >= total_qty - 0.001:
+        return "Invoiced"
+    if delivered >= total_qty - 0.001:
+        return "Delivered"
+    if delivered > 0 or billed > 0:
+        return "Partially Delivered"
+    return "To Deliver"
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_sales_order_fulfillment(sales_order):
+    """Per-line: qty, delivered_qty, billed_qty, remaining_to_deliver, remaining_to_bill."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    rows = frappe.get_all("Sales Order Item",
+        filters={"parent": sales_order},
+        fields=["name", "item_code", "item_name", "qty", "rate", "amount",
+                "delivered_qty", "billed_qty"],
+        order_by="idx asc")
+    for r in rows:
+        r["remaining_to_deliver"] = max(0.0, flt(r["qty"]) - flt(r["delivered_qty"]))
+        r["remaining_to_bill"]    = max(0.0, flt(r["qty"]) - flt(r["billed_qty"]))
+    return {"lines": rows, "computed_status": _so_status_from_fulfillment(sales_order)}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def mark_so_delivered(sales_order, line_qtys=None):
+    """Mark selected SO lines as delivered. line_qtys is {item_row_name: qty_to_add}
+    or null/empty to mark ALL remaining qty delivered on every line."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if isinstance(line_qtys, str):
+        try:
+            line_qtys = json.loads(line_qtys) if line_qtys else None
+        except json.JSONDecodeError:
+            line_qtys = None
+
+    rows = frappe.get_all("Sales Order Item",
+        filters={"parent": sales_order},
+        fields=["name", "qty", "delivered_qty"])
+    if line_qtys:
+        line_qtys = {str(k): v for k, v in line_qtys.items()}
+    updated = 0
+    for r in rows:
+        remaining = max(0.0, flt(r.qty) - flt(r.delivered_qty))
+        if remaining <= 0:
+            continue
+        if line_qtys:
+            add = flt(line_qtys.get(str(r.name), 0))
+            if add <= 0:
+                continue
+            add = min(add, remaining)
+        else:
+            add = remaining
+        new_delivered = flt(r.delivered_qty) + add
+        frappe.db.set_value("Sales Order Item", r.name, "delivered_qty",
+                            new_delivered, update_modified=False)
+        updated += 1
+    # Update parent status
+    new_status = _so_status_from_fulfillment(sales_order)
+    frappe.db.set_value("Sales Order", sales_order, "status", new_status,
+                        update_modified=True)
+    frappe.db.commit()
+    return {"sales_order": sales_order, "lines_updated": updated, "status": new_status}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def convert_sales_order_to_invoice(sales_order, line_qtys=None, due_date=""):
+    """Create a Sales Invoice from an SO (partial or full).
+    line_qtys = {sales_order_item_name: qty_to_invoice}; null → invoice remaining."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if isinstance(line_qtys, str):
+        try:
+            line_qtys = json.loads(line_qtys) if line_qtys else None
+        except json.JSONDecodeError:
+            line_qtys = None
+
+    so = frappe.get_doc("Sales Order", sales_order)
+    company = so.company
+    ar = frappe.db.get_value("Account",
+        {"account_type": "Receivable", "company": company, "is_group": 0}, "name")
+    inc = frappe.db.get_value("Account",
+        {"account_type": ["in", ["Income", "Income Account", "Direct Income", "Sales"]],
+         "company": company, "is_group": 0}, "name")
+
+    si_items = []
+    line_updates = []  # (so_item_name, qty_to_bill)
+    # Normalise dict keys to strings — JSON dict keys come in as strings even when
+    # Frappe's auto-increment row names are stored as integers.
+    if line_qtys:
+        line_qtys = {str(k): v for k, v in line_qtys.items()}
+    for it in (so.items or []):
+        remaining = max(0.0, flt(it.qty) - flt(it.billed_qty))
+        if remaining <= 0:
+            continue
+        if line_qtys:
+            qty_bill = min(flt(line_qtys.get(str(it.name), 0)), remaining)
+        else:
+            qty_bill = remaining
+        if qty_bill <= 0:
+            continue
+        si_items.append({
+            "doctype": "Sales Invoice Item",
+            "item_code":   it.item_code,
+            "item_name":   it.item_name or it.item_code,
+            "description": it.description or it.item_name or it.item_code,
+            "qty":         qty_bill,
+            "uom":         getattr(it, "uom", "") or "Nos",
+            "rate":        flt(it.rate),
+            "amount":      flt(it.rate) * qty_bill,
+            "income_account": inc,
+        })
+        line_updates.append((it.name, qty_bill))
+
+    if not si_items:
+        frappe.throw("Nothing left to invoice on this Sales Order")
+
+    si = frappe.get_doc({
+        "doctype":        "Sales Invoice",
+        "company":        company,
+        "customer":       so.customer,
+        "posting_date":   today(),
+        "due_date":       due_date or so.delivery_date or today(),
+        "debit_to":       ar,
+        "income_account": inc,
+        "sales_order":    so.name,
+        "notes":          f"From Sales Order {so.name}",
+        "items":          si_items,
+    })
+    si.flags.ignore_permissions = True
+    si.flags.ignore_mandatory = True
+    si.insert()
+    si.submit()
+    # Update billed_qty on SO lines
+    for so_item_name, qty in line_updates:
+        cur = flt(frappe.db.get_value("Sales Order Item", so_item_name, "billed_qty"))
+        frappe.db.set_value("Sales Order Item", so_item_name, "billed_qty",
+                            cur + qty, update_modified=False)
+    # Refresh SO status
+    new_status = _so_status_from_fulfillment(sales_order)
+    frappe.db.set_value("Sales Order", sales_order, "status", new_status, update_modified=True)
+    frappe.db.commit()
+    return {"sales_invoice": si.name, "sales_order": sales_order, "status": new_status}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_sales_order_links(sales_order):
+    """Return Sales Invoices linked back to this SO (via SI.sales_order field)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    sis = frappe.get_all("Sales Invoice",
+        filters={"sales_order": sales_order, "is_return": 0},
+        fields=["name", "posting_date", "grand_total", "outstanding_amount", "status", "docstatus"],
+        order_by="posting_date desc")
+    return {"sales_invoices": sis or [], "delivery_challans": []}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def cancel_sales_order_safe(sales_order):
+    """Cancel an SO only if it has no submitted downstream invoices."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    submitted_sis = frappe.get_all("Sales Invoice",
+        filters={"sales_order": sales_order, "docstatus": 1, "is_return": 0},
+        fields=["name", "outstanding_amount"])
+    if submitted_sis:
+        names = ", ".join(s.name for s in submitted_sis)
+        frappe.throw(
+            f"Cannot cancel — {len(submitted_sis)} submitted invoice(s) exist: {names}. "
+            f"Cancel those invoices first."
+        )
+    so = frappe.get_doc("Sales Order", sales_order)
+    if so.docstatus == 1:
+        so.flags.ignore_permissions = True
+        so.cancel()
+    else:
+        # non-submittable build: just set status
+        frappe.db.set_value("Sales Order", sales_order, "status", "Cancelled",
+                            update_modified=True)
+    frappe.db.commit()
+    return {"sales_order": sales_order, "status": "Cancelled"}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_sales_order_email_defaults(sales_order):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    so = frappe.get_doc("Sales Order", sales_order)
+    cust_email = frappe.db.get_value("Customer", so.customer, "email_id") or ""
+    subject = f"Sales Order {so.name} from {so.company or ''}"
+    body = (
+        f"Dear {so.customer_name or so.customer},<br><br>"
+        f"Confirmation of your Sales Order:<br><br>"
+        f"<table style='border-collapse:collapse;font-size:14px'>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order #</td><td><b>{so.name}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{so.grand_total:,.2f}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order Date</td><td>{so.transaction_date}</td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Delivery Date</td><td>{so.delivery_date or '—'}</td></tr>"
+        f"</table><br>"
+        f"Thank you for your order.<br><br>"
+        f"Regards,<br>{so.company or ''}"
+    )
+    return {
+        "to": cust_email, "subject": subject, "body": body,
+        "sales_order_name": so.name,
+        "customer_name": so.customer_name or so.customer,
+        "from_email": frappe.session.user,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def send_sales_order_email(sales_order, to, subject, body, cc=None):
+    if not to:
+        frappe.throw("Recipient email (To) is required.")
+    if not frappe.has_permission("Sales Order", "read", sales_order):
+        frappe.throw("Not permitted", frappe.PermissionError)
+    so = frappe.get_doc("Sales Order", sales_order)
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
+    attachments = []
+    try:
+        attachments = [frappe.attach_print(so.doctype, so.name,
+                                           print_format="Sales Order", print_letterhead=True)]
+    except Exception:
+        attachments = []
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list,
+        subject=subject, message=body, attachments=attachments,
+        reference_doctype="Sales Order", reference_name=sales_order, now=True,
+    )
+    comm = frappe.get_doc({
+        "doctype": "Communication", "communication_type": "Communication",
+        "communication_medium": "Email", "sent_or_received": "Sent",
+        "subject": subject, "content": body, "sender": frappe.session.user,
+        "recipients": to, "cc": cc or "",
+        "reference_doctype": "Sales Order", "reference_name": sales_order,
+        "status": "Linked",
+    })
+    comm.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "sent", "to": to, "sales_order": sales_order}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 5 — Purchase Order receipt + conversions (mirror of Phase 4)
+# Purchase Receipt doctype does not exist in this build, so receipt tracking is
+# done via a manual mark_po_received action that bumps received_qty per line.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _po_status_from_fulfillment(po_name):
+    rows = frappe.get_all("Purchase Order Item",
+        filters={"parent": po_name},
+        fields=["qty", "received_qty", "billed_qty"])
+    if not rows:
+        return "Submitted"
+    total_qty = sum(flt(r.qty) for r in rows)
+    received  = sum(flt(r.received_qty) for r in rows)
+    billed    = sum(flt(r.billed_qty)   for r in rows)
+    if total_qty <= 0:
+        return "Submitted"
+    if billed >= total_qty - 0.001 and received >= total_qty - 0.001:
+        return "Closed"
+    if billed >= total_qty - 0.001:
+        return "Billed"
+    if received >= total_qty - 0.001:
+        return "Received"
+    if received > 0 or billed > 0:
+        return "Partially Received"
+    return "To Receive"
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_purchase_order_fulfillment(purchase_order):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    rows = frappe.get_all("Purchase Order Item",
+        filters={"parent": purchase_order},
+        fields=["name", "item_code", "item_name", "qty", "rate", "amount",
+                "received_qty", "billed_qty"],
+        order_by="idx asc")
+    for r in rows:
+        r["remaining_to_receive"] = max(0.0, flt(r["qty"]) - flt(r["received_qty"]))
+        r["remaining_to_bill"]    = max(0.0, flt(r["qty"]) - flt(r["billed_qty"]))
+    return {"lines": rows, "computed_status": _po_status_from_fulfillment(purchase_order)}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def mark_po_received(purchase_order, line_qtys=None):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if isinstance(line_qtys, str):
+        try:
+            line_qtys = json.loads(line_qtys) if line_qtys else None
+        except json.JSONDecodeError:
+            line_qtys = None
+    if line_qtys:
+        line_qtys = {str(k): v for k, v in line_qtys.items()}
+
+    rows = frappe.get_all("Purchase Order Item",
+        filters={"parent": purchase_order},
+        fields=["name", "qty", "received_qty"])
+    updated = 0
+    for r in rows:
+        remaining = max(0.0, flt(r.qty) - flt(r.received_qty))
+        if remaining <= 0:
+            continue
+        if line_qtys:
+            add = flt(line_qtys.get(str(r.name), 0))
+            if add <= 0:
+                continue
+            add = min(add, remaining)
+        else:
+            add = remaining
+        new_received = flt(r.received_qty) + add
+        frappe.db.set_value("Purchase Order Item", r.name, "received_qty",
+                            new_received, update_modified=False)
+        updated += 1
+    new_status = _po_status_from_fulfillment(purchase_order)
+    frappe.db.set_value("Purchase Order", purchase_order, "status", new_status,
+                        update_modified=True)
+    frappe.db.commit()
+    return {"purchase_order": purchase_order, "lines_updated": updated, "status": new_status}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def convert_purchase_order_to_bill(purchase_order, line_qtys=None, bill_no="",
+                                   bill_date="", due_date=""):
+    """Create a Bill (Purchase Invoice) from a PO (partial or full)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if isinstance(line_qtys, str):
+        try:
+            line_qtys = json.loads(line_qtys) if line_qtys else None
+        except json.JSONDecodeError:
+            line_qtys = None
+    if line_qtys:
+        line_qtys = {str(k): v for k, v in line_qtys.items()}
+
+    po = frappe.get_doc("Purchase Order", purchase_order)
+    company = po.company
+    ap = frappe.db.get_value("Account",
+        {"account_type": "Payable", "company": company, "is_group": 0}, "name")
+    exp = frappe.db.get_value("Account",
+        {"account_type": ["in", ["Expense", "Expense Account", "Cost of Goods Sold", "Direct Expense"]],
+         "company": company, "is_group": 0}, "name")
+
+    pi_items = []
+    line_updates = []
+    three_way_warnings = []
+    for it in (po.items or []):
+        remaining_to_bill = max(0.0, flt(it.qty) - flt(it.billed_qty))
+        if remaining_to_bill <= 0:
+            continue
+        if line_qtys:
+            qty_bill = min(flt(line_qtys.get(str(it.name), 0)), remaining_to_bill)
+        else:
+            qty_bill = remaining_to_bill
+        if qty_bill <= 0:
+            continue
+        # Three-way match check: warn if billing more than has been received
+        if (flt(it.billed_qty) + qty_bill) > flt(it.received_qty):
+            three_way_warnings.append(
+                f"{it.item_name or it.item_code}: billing {qty_bill} "
+                f"but only {flt(it.received_qty) - flt(it.billed_qty)} received"
+            )
+        pi_items.append({
+            "doctype": "Purchase Invoice Item",
+            "item_code":   it.item_code,
+            "item_name":   it.item_name or it.item_code,
+            "description": it.description or it.item_name or it.item_code,
+            "qty":         qty_bill,
+            "uom":         getattr(it, "uom", "") or "Nos",
+            "rate":        flt(it.rate),
+            "amount":      flt(it.rate) * qty_bill,
+            "expense_account": exp,
+        })
+        line_updates.append((it.name, qty_bill))
+
+    if not pi_items:
+        frappe.throw("Nothing left to bill on this Purchase Order")
+
+    pi = frappe.get_doc({
+        "doctype":         "Purchase Invoice",
+        "company":         company,
+        "supplier":        po.supplier,
+        "posting_date":    today(),
+        "due_date":        due_date or today(),
+        "bill_no":         bill_no or "",
+        "bill_date":       bill_date or None,
+        "credit_to":       ap,
+        "expense_account": exp,
+        "purchase_order":  po.name,
+        "remark":          f"From Purchase Order {po.name}",
+        "items":           pi_items,
+    })
+    pi.flags.ignore_permissions = True
+    pi.flags.ignore_mandatory = True
+    pi.insert()
+    pi.submit()
+    # Update billed_qty on PO lines
+    for poi_name, qty in line_updates:
+        cur = flt(frappe.db.get_value("Purchase Order Item", poi_name, "billed_qty"))
+        frappe.db.set_value("Purchase Order Item", poi_name, "billed_qty",
+                            cur + qty, update_modified=False)
+    new_status = _po_status_from_fulfillment(purchase_order)
+    frappe.db.set_value("Purchase Order", purchase_order, "status", new_status,
+                        update_modified=True)
+    frappe.db.commit()
+    return {
+        "bill": pi.name, "purchase_order": purchase_order,
+        "status": new_status,
+        "three_way_warnings": three_way_warnings,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_purchase_order_links(purchase_order):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    bills = frappe.get_all("Purchase Invoice",
+        filters={"purchase_order": purchase_order, "is_return": 0},
+        fields=["name", "posting_date", "grand_total", "outstanding_amount", "status", "docstatus"],
+        order_by="posting_date desc")
+    return {"bills": bills or [], "purchase_receipts": []}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def cancel_purchase_order_safe(purchase_order):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    submitted_bills = frappe.get_all("Purchase Invoice",
+        filters={"purchase_order": purchase_order, "docstatus": 1, "is_return": 0},
+        fields=["name"])
+    if submitted_bills:
+        names = ", ".join(b.name for b in submitted_bills)
+        frappe.throw(
+            f"Cannot cancel — {len(submitted_bills)} submitted bill(s) exist: {names}. "
+            f"Cancel those bills first."
+        )
+    po = frappe.get_doc("Purchase Order", purchase_order)
+    if po.docstatus == 1:
+        po.flags.ignore_permissions = True
+        po.cancel()
+    else:
+        frappe.db.set_value("Purchase Order", purchase_order, "status", "Cancelled",
+                            update_modified=True)
+    frappe.db.commit()
+    return {"purchase_order": purchase_order, "status": "Cancelled"}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_purchase_order_email_defaults(purchase_order):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    po = frappe.get_doc("Purchase Order", purchase_order)
+    supplier_email = frappe.db.get_value("Supplier", po.supplier, "email_id") or ""
+    subject = f"Purchase Order {po.name} from {po.company or ''}"
+    body = (
+        f"Dear {po.supplier_name or po.supplier},<br><br>"
+        f"Please find our Purchase Order:<br><br>"
+        f"<table style='border-collapse:collapse;font-size:14px'>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>PO #</td><td><b>{po.name}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{po.grand_total:,.2f}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order Date</td><td>{po.transaction_date}</td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Expected Delivery</td><td>{po.expected_delivery_date or '—'}</td></tr>"
+        f"</table><br>"
+        f"Please confirm receipt and expected dispatch.<br><br>"
+        f"Regards,<br>{po.company or ''}"
+    )
+    return {
+        "to": supplier_email, "subject": subject, "body": body,
+        "purchase_order_name": po.name,
+        "supplier_name": po.supplier_name or po.supplier,
+        "from_email": frappe.session.user,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def send_purchase_order_email(purchase_order, to, subject, body, cc=None):
+    if not to:
+        frappe.throw("Recipient email (To) is required.")
+    if not frappe.has_permission("Purchase Order", "read", purchase_order):
+        frappe.throw("Not permitted", frappe.PermissionError)
+    po = frappe.get_doc("Purchase Order", purchase_order)
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
+    attachments = []
+    try:
+        attachments = [frappe.attach_print(po.doctype, po.name,
+                                           print_format="Purchase Order", print_letterhead=True)]
+    except Exception:
+        attachments = []
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list,
+        subject=subject, message=body, attachments=attachments,
+        reference_doctype="Purchase Order", reference_name=purchase_order, now=True,
+    )
+    comm = frappe.get_doc({
+        "doctype": "Communication", "communication_type": "Communication",
+        "communication_medium": "Email", "sent_or_received": "Sent",
+        "subject": subject, "content": body, "sender": frappe.session.user,
+        "recipients": to, "cc": cc or "",
+        "reference_doctype": "Purchase Order", "reference_name": purchase_order,
+        "status": "Linked",
+    })
+    comm.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "sent", "to": to, "purchase_order": purchase_order}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tier 2 / Phase 6 — Vendor (Supplier) statement + transaction history
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_vendor_summary(vendor):
+    """Return aggregate vendor stats: total outstanding payable, available DN credit,
+    counts of open bills + open DNs, latest transaction date."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if not frappe.db.exists("Supplier", vendor):
+        return {"vendor": vendor, "outstanding": 0, "dn_credit": 0,
+                "open_bill_count": 0, "open_dn_count": 0, "last_txn_date": None}
+
+    bills = frappe.get_all("Purchase Invoice",
+        filters={"supplier": vendor, "is_return": 0, "docstatus": 1},
+        fields=["outstanding_amount", "posting_date"])
+    outstanding = sum(flt(b.outstanding_amount) for b in bills if flt(b.outstanding_amount) > 0)
+    open_bill_count = sum(1 for b in bills if flt(b.outstanding_amount) > 0)
+
+    dns = frappe.get_all("Purchase Invoice",
+        filters={"supplier": vendor, "is_return": 1, "docstatus": 1},
+        fields=["name"])
+    dn_credit = 0
+    open_dn_count = 0
+    for d in dns:
+        bal = get_debit_note_balance(d.name)
+        if flt(bal.get("balance", 0)) > 0:
+            dn_credit += flt(bal["balance"])
+            open_dn_count += 1
+
+    last_dates = [b.posting_date for b in bills if b.posting_date]
+    return {
+        "vendor": vendor,
+        "outstanding": outstanding,
+        "dn_credit": dn_credit,
+        "open_bill_count": open_bill_count,
+        "open_dn_count": open_dn_count,
+        "last_txn_date": max(last_dates) if last_dates else None,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_vendor_transactions(vendor, limit=50):
+    """Return a unified, dated transaction history: Bills, Debit Notes, Payments."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    limit = int(limit)
+    txns = []
+
+    for b in frappe.get_all("Purchase Invoice",
+        filters={"supplier": vendor, "is_return": 0},
+        fields=["name", "posting_date", "grand_total", "outstanding_amount", "docstatus", "status"],
+        order_by="posting_date desc", limit_page_length=limit):
+        txns.append({
+            "type": "Bill", "name": b.name, "date": b.posting_date,
+            "amount": flt(b.grand_total), "outstanding": flt(b.outstanding_amount),
+            "docstatus": b.docstatus, "status": b.status,
+        })
+
+    for d in frappe.get_all("Purchase Invoice",
+        filters={"supplier": vendor, "is_return": 1},
+        fields=["name", "posting_date", "grand_total", "docstatus", "return_against", "status"],
+        order_by="posting_date desc", limit_page_length=limit):
+        txns.append({
+            "type": "Debit Note", "name": d.name, "date": d.posting_date,
+            "amount": -abs(flt(d.grand_total)), "outstanding": 0,
+            "docstatus": d.docstatus, "status": d.status,
+            "related": d.return_against,
+        })
+
+    # Payment Entries (Pay-type, to this supplier). This build uses `payment_date`.
+    pes = frappe.db.sql("""
+        SELECT name, payment_date, paid_amount, mode_of_payment, docstatus
+        FROM `tabPayment Entry`
+        WHERE party_type='Supplier' AND party=%s AND payment_type='Pay'
+        ORDER BY payment_date DESC LIMIT %s
+    """, (vendor, limit), as_dict=True)
+    for p in pes:
+        txns.append({
+            "type": "Payment", "name": p.name, "date": p.payment_date,
+            "amount": -abs(flt(p.paid_amount)), "outstanding": 0,
+            "docstatus": p.docstatus, "status": p.mode_of_payment or "Payment",
+        })
+
+    txns.sort(key=lambda x: (x.get("date") or "", x.get("name") or ""), reverse=True)
+    return txns[:limit]
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_vendor_statement(vendor, from_date=None, to_date=None):
+    """Account statement: chronological list with running balance."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    fd = frappe._dict({"from_date": from_date, "to_date": to_date})
+    rows = []
+
+    bills = frappe.get_all("Purchase Invoice",
+        filters={"supplier": vendor, "docstatus": 1, "is_return": 0},
+        fields=["name", "posting_date", "grand_total"],
+        order_by="posting_date asc")
+    for b in bills:
+        if fd.from_date and str(b.posting_date) < fd.from_date: continue
+        if fd.to_date   and str(b.posting_date) > fd.to_date:   continue
+        rows.append({"date": b.posting_date, "ref": b.name,
+                     "type": "Bill", "debit": 0, "credit": flt(b.grand_total)})
+
+    dns = frappe.get_all("Purchase Invoice",
+        filters={"supplier": vendor, "docstatus": 1, "is_return": 1},
+        fields=["name", "posting_date", "grand_total"],
+        order_by="posting_date asc")
+    for d in dns:
+        if fd.from_date and str(d.posting_date) < fd.from_date: continue
+        if fd.to_date   and str(d.posting_date) > fd.to_date:   continue
+        rows.append({"date": d.posting_date, "ref": d.name,
+                     "type": "Debit Note", "debit": abs(flt(d.grand_total)), "credit": 0})
+
+    pes = frappe.db.sql("""
+        SELECT name, payment_date, paid_amount
+        FROM `tabPayment Entry`
+        WHERE party_type='Supplier' AND party=%s AND payment_type='Pay' AND docstatus=1
+        ORDER BY payment_date ASC
+    """, (vendor,), as_dict=True)
+    for p in pes:
+        if fd.from_date and str(p.payment_date) < fd.from_date: continue
+        if fd.to_date   and str(p.payment_date) > fd.to_date:   continue
+        rows.append({"date": p.payment_date, "ref": p.name,
+                     "type": "Payment", "debit": flt(p.paid_amount), "credit": 0})
+
+    rows.sort(key=lambda r: (r["date"] or "", r["ref"] or ""))
+    running = 0.0
+    for r in rows:
+        running += flt(r["credit"]) - flt(r["debit"])
+        r["balance"] = running
+
+    total_billed = sum(flt(r["credit"]) for r in rows if r["type"] == "Bill")
+    total_paid   = sum(flt(r["debit"])  for r in rows if r["type"] == "Payment")
+    total_dn     = sum(flt(r["debit"])  for r in rows if r["type"] == "Debit Note")
+
+    return {
+        "vendor": vendor, "from_date": from_date, "to_date": to_date,
+        "rows": rows,
+        "totals": {
+            "billed": total_billed, "paid": total_paid,
+            "debit_notes": total_dn, "closing_balance": running,
+        },
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_vendor_email_defaults(vendor):
+    """Email template defaults for sending a statement to a vendor."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    v = frappe.db.get_value("Supplier", vendor,
+        ["supplier_name", "email_id", "books_company"], as_dict=True)
+    if not v:
+        frappe.throw(f"Supplier {vendor} not found")
+    summary = get_vendor_summary(vendor)
+    subject = f"Account Statement — {v.supplier_name}"
+    body = (
+        f"Dear {v.supplier_name},<br><br>"
+        f"Please find your account statement below.<br><br>"
+        f"<table style='border-collapse:collapse;font-size:14px'>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Total Outstanding</td>"
+        f"<td><b>₹{summary['outstanding']:,.2f}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Open Bills</td>"
+        f"<td>{summary['open_bill_count']}</td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Unused Debit-Note Credits</td>"
+        f"<td>₹{summary['dn_credit']:,.2f}</td></tr>"
+        f"</table><br>"
+        f"Regards,<br>{v.books_company or ''}"
+    )
+    return {
+        "to": v.email_id or "", "subject": subject, "body": body,
+        "vendor": vendor, "supplier_name": v.supplier_name,
+        "from_email": frappe.session.user,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def send_vendor_statement_email(vendor, to, subject, body, cc=None):
+    if not to:
+        frappe.throw("Recipient email (To) is required.")
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list,
+        subject=subject, message=body,
+        reference_doctype="Supplier", reference_name=vendor, now=True,
+    )
+    comm = frappe.get_doc({
+        "doctype": "Communication", "communication_type": "Communication",
+        "communication_medium": "Email", "sent_or_received": "Sent",
+        "subject": subject, "content": body, "sender": frappe.session.user,
+        "recipients": to, "cc": cc or "",
+        "reference_doctype": "Supplier", "reference_name": vendor,
+        "status": "Linked",
+    })
+    comm.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "sent", "to": to, "vendor": vendor}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def bulk_set_vendor_disabled(vendor_names, disabled):
+    """Bulk enable/disable. vendor_names = list/json list. disabled = 0|1."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if isinstance(vendor_names, str):
+        vendor_names = json.loads(vendor_names)
+    disabled = int(disabled)
+    done = 0
+    for v in (vendor_names or []):
+        try:
+            frappe.db.set_value("Supplier", v, "disabled", disabled, update_modified=True)
+            done += 1
+        except Exception:
+            pass
+    frappe.db.commit()
+    return {"updated": done, "disabled": disabled}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tier 2 / Phase 7 — Customer statement + transaction history (mirror of vendors)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_customer_summary(customer):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if not frappe.db.exists("Customer", customer):
+        return {"customer": customer, "outstanding": 0, "cn_credit": 0,
+                "open_invoice_count": 0, "open_cn_count": 0, "last_txn_date": None}
+
+    invs = frappe.get_all("Sales Invoice",
+        filters={"customer": customer, "is_return": 0, "docstatus": 1},
+        fields=["outstanding_amount", "posting_date"])
+    outstanding = sum(flt(i.outstanding_amount) for i in invs if flt(i.outstanding_amount) > 0)
+    open_inv_count = sum(1 for i in invs if flt(i.outstanding_amount) > 0)
+
+    cns = frappe.get_all("Sales Invoice",
+        filters={"customer": customer, "is_return": 1, "docstatus": 1},
+        fields=["name"])
+    cn_credit = 0
+    open_cn_count = 0
+    for c in cns:
+        bal = get_credit_note_balance(c.name)
+        if flt(bal.get("balance", 0)) > 0:
+            cn_credit += flt(bal["balance"])
+            open_cn_count += 1
+
+    last_dates = [i.posting_date for i in invs if i.posting_date]
+    return {
+        "customer": customer,
+        "outstanding": outstanding,
+        "cn_credit": cn_credit,
+        "open_invoice_count": open_inv_count,
+        "open_cn_count": open_cn_count,
+        "last_txn_date": max(last_dates) if last_dates else None,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_customer_transactions(customer, limit=50):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    limit = int(limit)
+    txns = []
+
+    for i in frappe.get_all("Sales Invoice",
+        filters={"customer": customer, "is_return": 0},
+        fields=["name", "posting_date", "grand_total", "outstanding_amount", "docstatus", "status"],
+        order_by="posting_date desc", limit_page_length=limit):
+        txns.append({
+            "type": "Invoice", "name": i.name, "date": i.posting_date,
+            "amount": flt(i.grand_total), "outstanding": flt(i.outstanding_amount),
+            "docstatus": i.docstatus, "status": i.status,
+        })
+
+    for c in frappe.get_all("Sales Invoice",
+        filters={"customer": customer, "is_return": 1},
+        fields=["name", "posting_date", "grand_total", "docstatus", "return_against", "status"],
+        order_by="posting_date desc", limit_page_length=limit):
+        txns.append({
+            "type": "Credit Note", "name": c.name, "date": c.posting_date,
+            "amount": -abs(flt(c.grand_total)), "outstanding": 0,
+            "docstatus": c.docstatus, "status": c.status,
+            "related": c.return_against,
+        })
+
+    pes = frappe.db.sql("""
+        SELECT name, payment_date, paid_amount, mode_of_payment, docstatus
+        FROM `tabPayment Entry`
+        WHERE party_type='Customer' AND party=%s AND payment_type='Receive'
+        ORDER BY payment_date DESC LIMIT %s
+    """, (customer, limit), as_dict=True)
+    for p in pes:
+        txns.append({
+            "type": "Payment", "name": p.name, "date": p.payment_date,
+            "amount": -abs(flt(p.paid_amount)), "outstanding": 0,
+            "docstatus": p.docstatus, "status": p.mode_of_payment or "Payment",
+        })
+
+    txns.sort(key=lambda x: (x.get("date") or "", x.get("name") or ""), reverse=True)
+    return txns[:limit]
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_customer_statement(customer, from_date=None, to_date=None):
+    """Customer statement (AR perspective): Invoice = debit (owed), Payment/CN = credit."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    fd = frappe._dict({"from_date": from_date, "to_date": to_date})
+    rows = []
+
+    invs = frappe.get_all("Sales Invoice",
+        filters={"customer": customer, "docstatus": 1, "is_return": 0},
+        fields=["name", "posting_date", "grand_total"],
+        order_by="posting_date asc")
+    for i in invs:
+        if fd.from_date and str(i.posting_date) < fd.from_date: continue
+        if fd.to_date   and str(i.posting_date) > fd.to_date:   continue
+        rows.append({"date": i.posting_date, "ref": i.name,
+                     "type": "Invoice", "debit": flt(i.grand_total), "credit": 0})
+
+    cns = frappe.get_all("Sales Invoice",
+        filters={"customer": customer, "docstatus": 1, "is_return": 1},
+        fields=["name", "posting_date", "grand_total"],
+        order_by="posting_date asc")
+    for c in cns:
+        if fd.from_date and str(c.posting_date) < fd.from_date: continue
+        if fd.to_date   and str(c.posting_date) > fd.to_date:   continue
+        rows.append({"date": c.posting_date, "ref": c.name,
+                     "type": "Credit Note", "debit": 0, "credit": abs(flt(c.grand_total))})
+
+    pes = frappe.db.sql("""
+        SELECT name, payment_date, paid_amount
+        FROM `tabPayment Entry`
+        WHERE party_type='Customer' AND party=%s AND payment_type='Receive' AND docstatus=1
+        ORDER BY payment_date ASC
+    """, (customer,), as_dict=True)
+    for p in pes:
+        if fd.from_date and str(p.payment_date) < fd.from_date: continue
+        if fd.to_date   and str(p.payment_date) > fd.to_date:   continue
+        rows.append({"date": p.payment_date, "ref": p.name,
+                     "type": "Payment", "debit": 0, "credit": flt(p.paid_amount)})
+
+    rows.sort(key=lambda r: (r["date"] or "", r["ref"] or ""))
+    running = 0.0
+    for r in rows:
+        running += flt(r["debit"]) - flt(r["credit"])
+        r["balance"] = running
+
+    total_inv  = sum(flt(r["debit"])  for r in rows if r["type"] == "Invoice")
+    total_paid = sum(flt(r["credit"]) for r in rows if r["type"] == "Payment")
+    total_cn   = sum(flt(r["credit"]) for r in rows if r["type"] == "Credit Note")
+
+    return {
+        "customer": customer, "from_date": from_date, "to_date": to_date,
+        "rows": rows,
+        "totals": {
+            "invoiced": total_inv, "paid": total_paid,
+            "credit_notes": total_cn, "closing_balance": running,
+        },
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_customer_email_defaults(customer):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    c = frappe.db.get_value("Customer", customer,
+        ["customer_name", "email_id", "books_company"], as_dict=True)
+    if not c:
+        frappe.throw(f"Customer {customer} not found")
+    summary = get_customer_summary(customer)
+    subject = f"Account Statement — {c.customer_name}"
+    body = (
+        f"Dear {c.customer_name},<br><br>"
+        f"Please find your account statement below.<br><br>"
+        f"<table style='border-collapse:collapse;font-size:14px'>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Total Outstanding</td>"
+        f"<td><b>₹{summary['outstanding']:,.2f}</b></td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Open Invoices</td>"
+        f"<td>{summary['open_invoice_count']}</td></tr>"
+        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Available Credit Notes</td>"
+        f"<td>₹{summary['cn_credit']:,.2f}</td></tr>"
+        f"</table><br>"
+        f"Kindly settle the open invoices at your earliest.<br><br>"
+        f"Regards,<br>{c.books_company or ''}"
+    )
+    return {
+        "to": c.email_id or "", "subject": subject, "body": body,
+        "customer": customer, "customer_name": c.customer_name,
+        "from_email": frappe.session.user,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def send_customer_statement_email(customer, to, subject, body, cc=None):
+    if not to:
+        frappe.throw("Recipient email (To) is required.")
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list,
+        subject=subject, message=body,
+        reference_doctype="Customer", reference_name=customer, now=True,
+    )
+    comm = frappe.get_doc({
+        "doctype": "Communication", "communication_type": "Communication",
+        "communication_medium": "Email", "sent_or_received": "Sent",
+        "subject": subject, "content": body, "sender": frappe.session.user,
+        "recipients": to, "cc": cc or "",
+        "reference_doctype": "Customer", "reference_name": customer,
+        "status": "Linked",
+    })
+    comm.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "sent", "to": to, "customer": customer}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tier 2 / Phase 8 — Payments (Payment Entry — unified across SI / PI / CN / DN)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_payment_applications(payment_entry_name):
+    """Return the list of invoices/bills/CNs/DNs this Payment Entry was applied to."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"parent": payment_entry_name},
+        fields=["reference_doctype", "reference_name", "allocated_amount", "outstanding_amount"],
+    )
+    apps = []
+    for r in refs:
+        cur_out = None
+        is_return = 0
+        total = None
+        if r.reference_doctype in ("Sales Invoice", "Purchase Invoice"):
+            row = frappe.db.get_value(r.reference_doctype, r.reference_name,
+                ["outstanding_amount", "is_return", "grand_total", "docstatus"], as_dict=True)
+            if row:
+                cur_out = row.outstanding_amount
+                is_return = row.is_return or 0
+                total = abs(flt(row.grand_total))
+        apps.append({
+            "ref_doctype": r.reference_doctype,
+            "ref_name": r.reference_name,
+            "allocated": abs(flt(r.allocated_amount)),
+            "total": total,
+            "outstanding_now": flt(cur_out) if cur_out is not None else None,
+            "is_return": is_return,
+        })
+    return apps
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def cancel_payment_entry_safe(payment_entry_name):
+    """Cancel a Payment Entry; outstanding on linked invoices/bills will recompute via GL hooks."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    pe = frappe.get_doc("Payment Entry", payment_entry_name)
+    if pe.docstatus != 1:
+        frappe.throw(f"Payment Entry {payment_entry_name} is not submitted")
+    pe.flags.ignore_permissions = True
+    pe.cancel()
+    frappe.db.commit()
+    return {"payment_entry": payment_entry_name, "status": "Cancelled"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tier 2 / Phase 9 — Expense summary (custom `Expense` doctype, not HR's Expense Claim)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_expense_summary(company=None, from_date=None, to_date=None):
+    """Aggregate expenses for the company dashboard / Expenses page summary strip."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    company = company or _get_company(frappe.session.user)
+    filters = {"company": company}
+    if from_date: filters["posting_date"] = [">=", from_date]
+    if to_date:
+        # merge with above filter if present
+        if "posting_date" in filters:
+            filters["posting_date"] = ["between", [from_date, to_date]]
+        else:
+            filters["posting_date"] = ["<=", to_date]
+
+    rows = frappe.get_all("Expense",
+        filters=filters,
+        fields=["name", "posting_date", "expense_type", "amount", "tax_amount",
+                "total_amount", "status", "docstatus", "vendor"])
+    total = sum(flt(r.total_amount) or flt(r.amount) for r in rows)
+    by_category = {}
+    for r in rows:
+        cat = r.expense_type or "Uncategorized"
+        by_category[cat] = by_category.get(cat, 0) + (flt(r.total_amount) or flt(r.amount))
+    return {
+        "company": company, "from_date": from_date, "to_date": to_date,
+        "total_count": len(rows),
+        "total_amount": total,
+        "by_category": sorted(by_category.items(), key=lambda kv: -kv[1]),
+        "draft_count":     sum(1 for r in rows if r.docstatus == 0),
+        "submitted_count": sum(1 for r in rows if r.docstatus == 1),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tier 3 — Banking: dashboard summary + reconciliation match
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_banking_summary(company=None):
+    """Headline KPIs + per-account balances for the Banking dashboard."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    company = company or _get_company(frappe.session.user)
+
+    accounts = frappe.get_all("Bank Account",
+        filters={"company": company},
+        fields=["name", "account_name", "bank_name", "account_number",
+                "currency", "gl_account", "is_default", "current_balance"],
+        order_by="account_name asc")
+
+    # Live balance from GL for each linked gl_account
+    from zoho_books_clone.db.queries import get_account_balance
+    for a in accounts:
+        if a.gl_account:
+            try:
+                a["live_balance"] = flt(get_account_balance(a.gl_account))
+            except Exception:
+                a["live_balance"] = flt(a.current_balance)
+        else:
+            a["live_balance"] = flt(a.current_balance)
+
+    total_balance = sum(flt(a.get("live_balance")) for a in accounts)
+
+    # Recent bank transactions across all accounts
+    recent = frappe.db.sql("""
+        SELECT bt.name, bt.bank_account, bt.date, bt.description,
+               bt.debit, bt.credit, bt.status, bt.reference_number
+        FROM `tabBank Transaction` bt
+        ORDER BY bt.date DESC, bt.creation DESC
+        LIMIT 20
+    """, as_dict=True)
+
+    # Unreconciled count
+    unrec = frappe.db.sql("""
+        SELECT COUNT(*) AS c FROM `tabBank Transaction`
+        WHERE status IN ('Unreconciled','Pending') OR status IS NULL
+    """, as_dict=True)
+    unrec_count = unrec[0].c if unrec else 0
+
+    # Recent transfers (JE voucher_type=Bank Entry)
+    transfers = frappe.db.sql("""
+        SELECT name, posting_date, total_debit, remark, docstatus
+        FROM `tabJournal Entry`
+        WHERE company=%s AND voucher_type='Bank Entry'
+        ORDER BY posting_date DESC LIMIT 10
+    """, (company,), as_dict=True)
+
+    return {
+        "company": company,
+        "accounts": accounts,
+        "account_count": len(accounts),
+        "total_balance": total_balance,
+        "recent_transactions": recent,
+        "unreconciled_count": unrec_count,
+        "recent_transfers": transfers,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_bank_reconciliation(bank_account, from_date, to_date):
+    """Pull bank transactions + linked GL movements for reconciliation."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    # Bank Transaction uses `debit`/`credit`, not deposit/withdrawal
+    bts = frappe.db.sql("""
+        SELECT name, date, description, debit, credit, balance,
+               reference_number, status, payment_entry
+        FROM `tabBank Transaction`
+        WHERE bank_account=%(b)s AND date BETWEEN %(f)s AND %(t)s
+        ORDER BY date ASC, creation ASC
+    """, {"b": bank_account, "f": from_date, "t": to_date}, as_dict=True)
+
+    # Resolve the linked GL account on this Bank Account
+    gl_account = frappe.db.get_value("Bank Account", bank_account, "gl_account")
+    gles = []
+    gl_balance = 0
+    if gl_account:
+        gles = frappe.db.sql("""
+            SELECT name, posting_date, debit, credit, voucher_type, voucher_no, remarks
+            FROM `tabGeneral Ledger Entry`
+            WHERE account=%(a)s AND posting_date BETWEEN %(f)s AND %(t)s AND is_cancelled=0
+            ORDER BY posting_date ASC
+        """, {"a": gl_account, "f": from_date, "t": to_date}, as_dict=True)
+        gl_balance = sum(flt(g.debit) - flt(g.credit) for g in gles)
+
+    bank_balance = sum(flt(b.debit) - flt(b.credit) for b in bts)
+    reconciled = sum(1 for b in bts if (b.status or "").lower() in ("reconciled","matched"))
+
+    return {
+        "bank_account": bank_account,
+        "gl_account": gl_account,
+        "from_date": from_date, "to_date": to_date,
+        "bank_transactions": bts,
+        "gl_entries": gles,
+        "bank_balance": bank_balance,
+        "gl_balance": gl_balance,
+        "difference": gl_balance - bank_balance,
+        "total_count": len(bts),
+        "reconciled_count": reconciled,
+        "unreconciled_count": len(bts) - reconciled,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def reconcile_bank_transaction(bank_transaction_name, payment_entry_name=None):
+    """Mark a Bank Transaction as reconciled, optionally linking a Payment Entry."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    updates = {"status": "Reconciled"}
+    if payment_entry_name and frappe.db.exists("Payment Entry", payment_entry_name):
+        updates["payment_entry"] = payment_entry_name
+    for k, v in updates.items():
+        frappe.db.set_value("Bank Transaction", bank_transaction_name, k, v, update_modified=True)
+    frappe.db.commit()
+    return {"bank_transaction": bank_transaction_name, "status": "Reconciled",
+            "payment_entry": payment_entry_name}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def unreconcile_bank_transaction(bank_transaction_name):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    frappe.db.set_value("Bank Transaction", bank_transaction_name, "status",
+                        "Unreconciled", update_modified=True)
+    frappe.db.set_value("Bank Transaction", bank_transaction_name, "payment_entry",
+                        None, update_modified=True)
+    frappe.db.commit()
+    return {"bank_transaction": bank_transaction_name, "status": "Unreconciled"}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def suggest_payment_matches(bank_transaction_name, date_tolerance_days=7, amount_tolerance=0.01):
+    """Suggest Payment Entries that likely match a Bank Transaction.
+
+    Score formula: amount match (0-60) + date proximity (0-30) + reference
+    match (0-10). Returns top 5 candidates by score, descending.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    bt = frappe.db.get_value("Bank Transaction", bank_transaction_name,
+        ["bank_account", "date", "debit", "credit", "description", "reference_number", "status"],
+        as_dict=True)
+    if not bt:
+        frappe.throw(f"Bank Transaction {bank_transaction_name} not found")
+    if (bt.status or "").lower() in ("reconciled", "matched"):
+        return {"already_reconciled": True, "matches": []}
+
+    # Bank-side amount + direction:
+    #   debit on BTXN  = money INTO bank (Receive type PE expected)
+    #   credit on BTXN = money OUT of bank (Pay type PE expected)
+    amount = flt(bt.debit) if flt(bt.debit) > 0 else flt(bt.credit)
+    pe_type_pref = "Receive" if flt(bt.debit) > 0 else "Pay"
+    if amount <= 0:
+        return {"matches": [], "reason": "Bank Transaction has no amount"}
+
+    from datetime import timedelta
+    from frappe.utils import getdate
+    date_obj = getdate(bt.date)
+    days = int(date_tolerance_days)
+    tol = flt(amount_tolerance) * amount  # 1% by default
+
+    # Candidate PEs within ± days, amount within tol
+    candidates = frappe.db.sql("""
+        SELECT name, payment_type, party, party_name, party_type,
+               payment_date, paid_amount, mode_of_payment, reference_no, docstatus
+        FROM `tabPayment Entry`
+        WHERE docstatus = 1
+          AND ABS(paid_amount - %(amt)s) <= %(tol)s
+          AND payment_date BETWEEN %(d1)s AND %(d2)s
+        ORDER BY ABS(DATEDIFF(payment_date, %(centre)s)) ASC
+        LIMIT 25
+    """, {
+        "amt": amount, "tol": max(0.01, tol),
+        "d1": date_obj - timedelta(days=days),
+        "d2": date_obj + timedelta(days=days),
+        "centre": date_obj,
+    }, as_dict=True)
+
+    # Exclude PEs already linked to another BTXN
+    already_linked = frappe.db.sql_list("""
+        SELECT payment_entry FROM `tabBank Transaction`
+        WHERE payment_entry IS NOT NULL AND payment_entry != ''
+    """)
+    candidates = [c for c in candidates if c.name not in already_linked]
+
+    desc = (bt.description or "").lower()
+    ref  = (bt.reference_number or "").lower()
+    scored = []
+    for c in candidates:
+        score = 0
+        # Amount match — closer is better (max 60)
+        diff = abs(flt(c.paid_amount) - amount)
+        score += max(0, 60 - (diff / max(amount, 1)) * 1000)
+        # Date proximity — same day = 30, decay over `days`
+        ddiff = abs((getdate(c.payment_date) - date_obj).days)
+        score += max(0, 30 - (ddiff * 30 / max(days, 1)))
+        # Type alignment — Receive/Pay match
+        if c.payment_type == pe_type_pref:
+            score += 5
+        # Reference match — exact wins, partial helps
+        cref = (c.reference_no or "").lower()
+        if cref and (cref == ref or (ref and (cref in ref or ref in cref))):
+            score += 10
+        elif cref and desc and cref in desc:
+            score += 5
+        # Party hit in description
+        pname = (c.party_name or c.party or "").lower()
+        if pname and pname in desc:
+            score += 5
+        scored.append({**c, "score": round(score, 1)})
+
+    scored.sort(key=lambda x: -x["score"])
+    return {
+        "bank_transaction": bank_transaction_name,
+        "bt_amount": amount,
+        "bt_direction": "in" if flt(bt.debit) > 0 else "out",
+        "matches": scored[:5],
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def import_bank_statement_csv(bank_account, csv_data):
+    """Parse a CSV string and create one Bank Transaction per row.
+    CSV columns expected (case-insensitive, lenient): date, description, debit, credit
+    (or amount + type=DR/CR). Returns count + list of created names.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if not bank_account or not frappe.db.exists("Bank Account", bank_account):
+        frappe.throw("Bank Account is required")
+
+    import csv as _csv
+    from io import StringIO
+    reader = _csv.DictReader(StringIO(csv_data or ""))
+    created = []
+    skipped = 0
+    for raw in reader:
+        # Lower-case keys for tolerance
+        row = {(k or "").strip().lower(): (v or "").strip() for k, v in raw.items()}
+        date = row.get("date") or row.get("transaction_date") or row.get("posting_date")
+        if not date:
+            skipped += 1; continue
+        desc = row.get("description") or row.get("narration") or row.get("particulars") or ""
+        ref  = row.get("reference") or row.get("reference_number") or row.get("ref no") or ""
+        debit  = flt(row.get("debit") or 0)
+        credit = flt(row.get("credit") or 0)
+        if not (debit or credit):
+            # fall back to amount + type
+            amt = flt(row.get("amount") or 0)
+            typ = (row.get("type") or row.get("dr/cr") or "").upper()
+            if typ.startswith("D"): debit = amt
+            elif typ.startswith("C"): credit = amt
+        if debit + credit <= 0:
+            skipped += 1; continue
+        try:
+            bt = frappe.get_doc({
+                "doctype": "Bank Transaction",
+                "bank_account": bank_account,
+                "date": date, "description": desc[:140],
+                "debit": debit, "credit": credit,
+                "reference_number": ref[:80],
+                "status": "Unreconciled",
+            })
+            bt.flags.ignore_permissions = True
+            bt.flags.ignore_mandatory = True
+            bt.insert()
+            created.append(bt.name)
+        except Exception:
+            skipped += 1
+    frappe.db.commit()
+    return {"created": created, "count": len(created), "skipped": skipped,
+            "bank_account": bank_account}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tier 3 — Logistics: derived Delivery Challan & Purchase Receipt views.
+# Neither doctype exists in this build, so we synthesise the lists from
+# Sales Order Item.delivered_qty and Purchase Order Item.received_qty.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_delivery_challan_list(company=None, limit=200):
+    """A 'Delivery Challan' here = a Sales Order with at least one line that
+    has been marked delivered (delivered_qty > 0). One row per SO summarises
+    its delivery state."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    company = company or _get_company(frappe.session.user)
+    rows = frappe.db.sql("""
+        SELECT
+            so.name AS sales_order,
+            so.customer, so.customer_name,
+            so.transaction_date, so.delivery_date, so.status,
+            so.grand_total,
+            SUM(soi.qty)            AS qty_ordered,
+            SUM(soi.delivered_qty)  AS qty_delivered,
+            SUM(soi.billed_qty)     AS qty_billed
+        FROM `tabSales Order` so
+        JOIN `tabSales Order Item` soi ON soi.parent = so.name
+        WHERE so.company = %(co)s
+          AND so.status NOT IN ('Cancelled', 'Draft')
+        GROUP BY so.name
+        HAVING SUM(soi.delivered_qty) > 0
+        ORDER BY so.transaction_date DESC
+        LIMIT %(lim)s
+    """, {"co": company, "lim": int(limit)}, as_dict=True)
+    for r in rows:
+        ordered = flt(r.qty_ordered)
+        delivered = flt(r.qty_delivered)
+        r["challan_status"] = (
+            "Cancelled"           if r.status == "Cancelled" else
+            "Fully Delivered"     if delivered >= ordered - 0.001 else
+            "Partially Delivered"
+        )
+        r["pct_delivered"] = round(100 * delivered / ordered, 1) if ordered else 0
+    return rows
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_delivery_challan_lines(sales_order):
+    """Per-line delivery detail for a Sales Order (used by the DC view drawer)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    rows = frappe.get_all("Sales Order Item",
+        filters={"parent": sales_order, "delivered_qty": [">", 0]},
+        fields=["name", "item_code", "item_name", "description",
+                "qty", "uom", "rate", "amount", "delivered_qty", "billed_qty"],
+        order_by="idx asc")
+    return rows
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_purchase_receipt_list(company=None, limit=200):
+    """A 'Purchase Receipt' here = a Purchase Order with at least one line
+    that has been marked received (received_qty > 0)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    company = company or _get_company(frappe.session.user)
+    rows = frappe.db.sql("""
+        SELECT
+            po.name AS purchase_order,
+            po.supplier, po.supplier_name,
+            po.transaction_date, po.expected_delivery_date, po.status,
+            po.grand_total,
+            SUM(poi.qty)           AS qty_ordered,
+            SUM(poi.received_qty)  AS qty_received,
+            SUM(poi.billed_qty)    AS qty_billed
+        FROM `tabPurchase Order` po
+        JOIN `tabPurchase Order Item` poi ON poi.parent = po.name
+        WHERE po.company = %(co)s
+          AND po.status NOT IN ('Cancelled', 'Draft')
+        GROUP BY po.name
+        HAVING SUM(poi.received_qty) > 0
+        ORDER BY po.transaction_date DESC
+        LIMIT %(lim)s
+    """, {"co": company, "lim": int(limit)}, as_dict=True)
+    for r in rows:
+        ordered = flt(r.qty_ordered)
+        received = flt(r.qty_received)
+        r["receipt_status"] = (
+            "Cancelled"          if r.status == "Cancelled" else
+            "Fully Received"     if received >= ordered - 0.001 else
+            "Partially Received"
+        )
+        r["pct_received"] = round(100 * received / ordered, 1) if ordered else 0
+    return rows
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_purchase_receipt_lines(purchase_order):
+    """Per-line receipt detail for a Purchase Order."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    rows = frappe.get_all("Purchase Order Item",
+        filters={"parent": purchase_order, "received_qty": [">", 0]},
+        fields=["name", "item_code", "item_name", "description",
+                "qty", "uom", "rate", "amount", "received_qty", "billed_qty"],
+        order_by="idx asc")
+    return rows
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def bulk_set_customer_disabled(customer_names, disabled):
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if isinstance(customer_names, str):
+        customer_names = json.loads(customer_names)
+    disabled = int(disabled)
+    done = 0
+    for c in (customer_names or []):
+        try:
+            frappe.db.set_value("Customer", c, "disabled", disabled, update_modified=True)
+            done += 1
+        except Exception:
+            pass
+    frappe.db.commit()
+    return {"updated": done, "disabled": disabled}
 
 
 @frappe.whitelist(allow_guest=False)

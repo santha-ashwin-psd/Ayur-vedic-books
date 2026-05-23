@@ -322,12 +322,14 @@
           <div v-if="showPreview" class="qt-preview-pane">
             <div class="qt-preview-toolbar">
               <span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#6b7280">LIVE PREVIEW</span>
-              <span style="font-size:11px;color:#9ca3af">{{ TEMPLATES.find(t=>t.key===selectedTemplate)?.label }}</span>
+              <div style="display:flex;gap:6px">
+                <span style="font-size:11px;color:#9ca3af">{{ TEMPLATES.find(t=>t.key===selectedTemplate)?.label }}</span>
+                <button class="qt-btn-ghost" style="font-size:11px;padding:4px 10px" @click="printQuote(previewData)">
+                  <span v-html="icon('download',12)"></span> Print PDF
+                </button>
+              </div>
             </div>
-            <div class="qt-preview-placeholder">
-              <svg width="48" height="48" fill="none" stroke="#d1d5db" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>
-              <p style="color:#9ca3af;font-size:13px;margin:8px 0 0">Preview coming soon</p>
-            </div>
+            <iframe :srcdoc="previewHtml" class="qt-preview-iframe" sandbox="allow-same-origin"></iframe>
           </div>
 
         </div><!-- /qt-content-row -->
@@ -482,7 +484,7 @@
           <button class="qt-btn-ghost" @click="emailQT(viewDoc)">
             <span v-html="icon('mail',13)"></span> Email
           </button>
-          <button class="qt-btn-ghost" @click="printQT(viewDoc)" title="Print preview">
+          <button class="qt-btn-ghost" @click="printQuote(viewDoc)" title="Print preview">
             🖨 Print
           </button>
           <button v-if="viewDoc.status!=='Accepted' && viewDoc.status!=='Converted'" class="qt-btn-ghost" @click="markStatus(viewDoc,'Accepted')">✓ Accept</button>
@@ -1379,6 +1381,171 @@ function exportCSV() {
   toast.success(`CSV exported — ${rows.length} quote(s)`);
 }
 
+// ── Branding persistence ───────────────────────────────────────────────
+function saveBranding() {
+  try {
+    const co = window.__booksCompany || "_default";
+    localStorage.setItem("books_qt_branding_" + co, JSON.stringify({
+      template: selectedTemplate.value, color: brandColor.value, logo: logoUrl.value,
+    }));
+  } catch {}
+}
+function loadBranding() {
+  try {
+    const co = window.__booksCompany || "_default";
+    const s = JSON.parse(localStorage.getItem("books_qt_branding_" + co) || "{}");
+    if (s.template) selectedTemplate.value = s.template;
+    if (s.color)    brandColor.value = s.color;
+    if (s.logo)     logoUrl.value = s.logo;
+  } catch {}
+}
+
+// ── Live preview ───────────────────────────────────────────────────────
+const previewData = computed(() => ({
+  name:          editingName.value || "QT-PREVIEW",
+  customer:      form.customer,
+  customer_name: customers.value.find(c => c.name === form.customer)?.customer_name || form.customer,
+  transaction_date: form.transaction_date,
+  valid_till:    form.valid_till,
+  title:         form.title,
+  billing_address: form.billing_address,
+  currency:      form.currency,
+  items:         lines.value.filter(l => l.item_code || l.item_name),
+  taxes:         taxRows.value,
+  subtotal:      subtotal.value,
+  totalTax:      totalTax.value,
+  grandTotal:    grandTotal.value,
+  terms:         form.terms,
+  company:       window.__booksCompany || "",
+}));
+
+const previewHtml = computed(() =>
+  renderQuote(previewData.value, selectedTemplate.value, brandColor.value, logoUrl.value)
+);
+
+function renderQuote(d, tmpl, color, logo) {
+  const sym = CURRENCY_SYMBOLS[d.currency] || "₹";
+  const locale = d.currency === "INR" ? "en-IN" : "en-US";
+  const fmt = v => {
+    try {
+      return new Intl.NumberFormat(locale, { style: "currency", currency: d.currency || "INR", minimumFractionDigits: 2 }).format(Number(v || 0));
+    } catch { return sym + Number(v || 0).toFixed(2); }
+  };
+  const fmtD = v => v ? new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  const co = d.company || window.__booksCompany || "Your Company";
+  const c = color || "#1a6ef7";
+  const logoTag = logo ? `<img src="${logo}" style="max-width:80px;max-height:55px;object-fit:contain;display:block;margin-bottom:8px" alt="logo"/>` : "";
+  const itemRows = (d.items || []).filter(it => it.item_code || it.item_name).map(it => `
+    <tr>
+      <td>${it.item_name || it.item_code || ""}${it.description ? `<br><small style="color:#888">${it.description}</small>` : ""}</td>
+      <td style="text-align:center">${it.hsn_code || "—"}</td>
+      <td style="text-align:center">${Number(it.qty || 0)}</td>
+      <td style="text-align:right">${fmt(it.rate)}</td>
+      <td style="text-align:right">${it.discount_percentage ? it.discount_percentage + "%" : "—"}</td>
+      <td style="text-align:right;font-weight:600">${fmt(it.amount)}</td>
+    </tr>`).join("");
+  const taxRowsHtml = (d.taxes || []).filter(t => t.rate > 0 || t.amount > 0).map(t =>
+    `<tr><td>${t.description || "Tax"}</td><td style="text-align:right">${fmt(t.amount || 0)}</td></tr>`).join("");
+  const noItems = `<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">No items</td></tr>`;
+
+  if (tmpl === "modern") return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#1a1a2e;background:#fff}
+.hband{background:${c};color:#fff;padding:28px 36px}.hinner{display:flex;justify-content:space-between;align-items:flex-start}
+.co-name{font-size:19px;font-weight:700}.qt-chip{background:rgba(255,255,255,.2);border-radius:6px;padding:3px 12px;font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:6px;display:inline-block}
+.qt-num{font-size:22px;font-weight:700}.body{padding:28px 36px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:24px;padding:18px;background:#f8fafc;border-radius:8px}
+.ml{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:4px}
+.mv{font-size:13px;font-weight:600;color:#1a1a2e}table.it{width:100%;border-collapse:collapse;margin-bottom:18px}
+table.it thead th{padding:9px 11px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;border-bottom:2px solid #e8ecf0;text-align:left}
+table.it tbody td{padding:9px 11px;border-bottom:1px solid #f0f2f5;font-size:12px}
+.tw{display:flex;justify-content:flex-end;margin-bottom:20px}.tot{width:270px;background:#f8fafc;border-radius:8px;padding:14px}
+.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.tr2.gr{border-top:2px solid ${c};margin-top:7px;padding-top:9px;font-size:14px;font-weight:700;color:${c}}
+@media print{@page{size:A4;margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="hband"><div class="hinner"><div>${logoTag}<div class="co-name">${co}</div></div><div style="text-align:right"><div class="qt-chip">QUOTATION</div><div class="qt-num">${d.name || "DRAFT"}</div></div></div></div>
+<div class="body"><div class="mgrid">
+<div><div class="ml">Bill To</div><div class="mv">${d.customer_name || d.customer || "—"}</div>${d.billing_address ? `<div style="font-size:11px;color:#6b7280;margin-top:4px">${d.billing_address}</div>` : ""}</div>
+<div><div class="ml">Quote Date</div><div class="mv">${fmtD(d.transaction_date)}</div><div class="ml" style="margin-top:10px">Valid Till</div><div class="mv">${fmtD(d.valid_till)}</div></div>
+<div>${d.title ? `<div class="ml">Title</div><div class="mv">${d.title}</div>` : ""}</div>
+</div>
+<table class="it"><thead><tr><th style="width:35%">Item</th><th style="width:10%">HSN/SAC</th><th style="width:8%;text-align:center">Qty</th><th style="width:14%;text-align:right">Rate</th><th style="width:10%;text-align:right">Disc</th><th style="width:14%;text-align:right">Amount</th></tr></thead><tbody>${itemRows || noItems}</tbody></table>
+<div class="tw"><div class="tot"><div class="tr2"><span style="color:#6b7280">Subtotal</span><span>${fmt(d.subtotal || 0)}</span></div>${taxRowsHtml}<div class="tr2 gr"><span>Total</span><span>${fmt(d.grandTotal || 0)}</span></div></div></div>
+${d.terms ? `<div style="background:#f0f9ff;border-radius:8px;padding:11px 14px;font-size:12px;color:#374151"><strong>Note:</strong> ${d.terms}</div>` : ""}</div></body></html>`;
+
+  if (tmpl === "minimal") return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;color:#333;background:#fff;padding:48px}
+.page{max-width:720px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:20px;border-bottom:3px solid ${c}}
+.co-name{font-size:17px;font-weight:700;color:#111}.qt-label{font-size:30px;font-weight:300;color:#999;letter-spacing:3px}.qt-num{font-size:13px;font-weight:700;color:${c};margin-top:4px}
+.brow{display:flex;justify-content:space-between;margin-bottom:32px}.lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#aaa;margin-bottom:6px}
+.val{font-size:13px;color:#222;font-weight:600}.sval{font-size:11.5px;color:#777;margin-top:3px}
+table.it{width:100%;border-collapse:collapse;margin-bottom:20px}table.it thead th{padding:7px 0;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#bbb;border-bottom:1px solid #eee;text-align:left}
+table.it tbody td{padding:9px 0;border-bottom:1px solid #f5f5f5;font-size:12px;vertical-align:top}
+.tot{margin-left:auto;width:230px}.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#666}.tr2.gr{border-top:3px solid ${c};margin-top:7px;padding-top:9px;color:${c};font-size:14px;font-weight:700}
+.notes{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11.5px;color:#888}
+@media print{body{padding:24px}@page{size:A4;margin:15mm}}</style></head><body>
+<div class="page"><div class="header"><div>${logoTag}<div class="co-name">${co}</div></div><div style="text-align:right"><div class="qt-label">QUOTATION</div><div class="qt-num">${d.name || "DRAFT"}</div></div></div>
+<div class="brow"><div><div class="lbl">Bill To</div><div class="val">${d.customer_name || d.customer || "—"}</div>${d.billing_address ? `<div class="sval">${d.billing_address}</div>` : ""}</div>
+<div style="text-align:right"><div class="lbl">Quote Date</div><div class="val">${fmtD(d.transaction_date)}</div><div class="lbl" style="margin-top:10px">Valid Till</div><div class="val">${fmtD(d.valid_till)}</div></div>
+${d.title ? `<div style="text-align:right"><div class="lbl">Title</div><div class="val">${d.title}</div></div>` : ""}</div>
+<table class="it"><thead><tr><th style="width:35%">Item</th><th style="width:10%">HSN/SAC</th><th style="width:8%;text-align:center">Qty</th><th style="width:14%;text-align:right">Rate</th><th style="width:10%;text-align:right">Disc</th><th style="width:14%;text-align:right">Amount</th></tr></thead>
+<tbody>${itemRows || noItems}</tbody></table>
+<div class="tot">${taxRowsHtml ? `<div class="tr2"><span>Subtotal</span><span>${fmt(d.subtotal || 0)}</span></div>${taxRowsHtml}` : ""}<div class="tr2 gr"><span>Grand Total</span><span>${fmt(d.grandTotal || 0)}</span></div></div>
+${d.terms ? `<div class="notes"><strong>Note:</strong> ${d.terms}</div>` : ""}</div></body></html>`;
+
+  // classic (default)
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:Georgia,'Times New Roman',serif;font-size:12px;color:#333;background:#fff;padding:40px}
+.page{max-width:750px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px}
+.co-name{font-size:21px;font-weight:bold;color:${c};margin-bottom:4px}.qt-label{font-size:28px;font-weight:bold;color:${c};text-align:right;letter-spacing:2px}
+.meta{text-align:right;margin-top:8px}.meta table{margin-left:auto}.meta td{padding:2px 6px;font-size:12px}.meta td:first-child{color:#666;text-align:right}.meta td:last-child{font-weight:600;color:#333}
+.div{border:none;border-top:2px solid ${c};margin:18px 0}.brow{display:flex;justify-content:space-between;margin-bottom:22px}
+.lbl{font-size:10px;font-weight:bold;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:5px}.val{font-size:14px;font-weight:bold;color:#222}.sval{font-size:12px;color:#555;margin-top:3px;white-space:pre-wrap}
+table.it{width:100%;border-collapse:collapse;margin-bottom:14px}table.it thead tr{background:${c};color:#fff}table.it thead th{padding:8px 10px;font-size:11px;font-weight:600;text-align:left}
+table.it tbody td{padding:8px 10px;border-bottom:1px solid #eee;font-size:12px}table.it tbody tr:last-child td{border-bottom:2px solid ${c}}
+.tw{display:flex;justify-content:flex-end;margin-bottom:22px}.tot{width:260px}.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
+.tr2.gr{border-top:2px solid ${c};margin-top:6px;padding-top:8px;font-size:14px;font-weight:bold;color:${c}}
+.fn{border-top:1px solid #ddd;padding-top:12px;font-size:11px;color:#666}
+@media print{body{padding:0}@page{size:A4;margin:20mm}}</style></head><body>
+<div class="page"><div class="header"><div>${logoTag}<div class="co-name">${co}</div></div><div><div class="qt-label">QUOTATION</div><div class="meta"><table><tr><td>Quote #</td><td>${d.name || "DRAFT"}</td></tr><tr><td>Date</td><td>${fmtD(d.transaction_date)}</td></tr><tr><td>Valid Till</td><td>${fmtD(d.valid_till)}</td></tr>${d.title ? `<tr><td>Title</td><td>${d.title}</td></tr>` : ""}</table></div></div></div>
+<hr class="div"/>
+<div class="brow"><div><div class="lbl">Bill To</div><div class="val">${d.customer_name || d.customer || "—"}</div>${d.billing_address ? `<div class="sval">${d.billing_address}</div>` : ""}</div></div>
+<table class="it"><thead><tr><th style="width:35%">Item</th><th style="width:10%">HSN/SAC</th><th style="width:8%;text-align:center">Qty</th><th style="width:14%;text-align:right">Rate</th><th style="width:10%;text-align:right">Discount</th><th style="width:14%;text-align:right">Amount</th></tr></thead><tbody>${itemRows || noItems}</tbody></table>
+<div class="tw"><div class="tot"><div class="tr2"><span>Subtotal</span><span>${fmt(d.subtotal || 0)}</span></div>${taxRowsHtml}<div class="tr2 gr"><span>Grand Total</span><span>${fmt(d.grandTotal || 0)}</span></div></div></div>
+${d.terms ? `<div class="fn"><div class="lbl">Notes</div><p>${d.terms}</p></div>` : ""}</div></body></html>`;
+}
+
+function printQuote(data) {
+  // For view drawer, build data object from the viewed doc
+  if (data?.doctype === "Quotation" || data?.transaction_date) {
+    const doc = data;
+    data = {
+      name:             doc.name,
+      customer:         doc.customer,
+      customer_name:    doc.customer_name || doc.customer,
+      transaction_date: doc.transaction_date,
+      valid_till:       doc.valid_till,
+      title:            doc.title || "",
+      billing_address:  doc.billing_address || doc.address_display || "",
+      currency:         doc.currency || "INR",
+      items:            doc.items || [],
+      taxes:            doc.taxes || [],
+      subtotal:         flt(doc.grand_total) - flt(doc.total_taxes_and_charges),
+      totalTax:         flt(doc.total_taxes_and_charges),
+      grandTotal:       flt(doc.grand_total),
+      terms:            doc.terms || "",
+      company:          doc.company || window.__booksCompany || "",
+    };
+  }
+  const html = renderQuote(data, selectedTemplate.value, brandColor.value, logoUrl.value);
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const win  = window.open(url, "_blank", "width=820,height=1060,scrollbars=yes");
+  if (!win) { URL.revokeObjectURL(url); toast.error("Pop-up blocked — allow pop-ups to print"); return; }
+  win.addEventListener("load", () => {
+    try { win.focus(); win.print(); } catch {}
+    URL.revokeObjectURL(url);
+  });
+}
+
 // ── Mount ─────────────────────────────────────────────────────────────
 onMounted(() => {
   load();
@@ -1650,6 +1817,7 @@ select.qt-fi { cursor:pointer; }
 .qt-grand-total { border-top:1px solid #e8ecf0; padding-top:7px; margin-top:2px; font-weight:700; }
 
 /* Preview pane */
+.qt-preview-iframe { flex: 1; border: none; width: 100%; min-height: 0; background: #fff; }
 .qt-preview-pane { width:480px; flex-shrink:0; border-left:1px solid #e8ecf0; display:flex; flex-direction:column; background:#e8ecf0; overflow:hidden; }
 .qt-preview-toolbar { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#fff; border-bottom:1px solid #e8ecf0; flex-shrink:0; }
 .qt-preview-placeholder { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }

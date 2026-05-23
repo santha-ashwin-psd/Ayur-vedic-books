@@ -15,6 +15,7 @@
     <EmailDialog />
     <PaymentDialog />
     <ReturnNoteDialog />
+    <MakeRecurringDialog />
     <AiPanel :open="aiOpen" :alerts="aiAlerts" @close="aiOpen = false" @alerts-seen="alertCount = 0" />
     <TutorialOverlay />
   </div>
@@ -34,6 +35,7 @@ import ConfirmCascadeDialog from "../components/ConfirmCascadeDialog.vue";
 import EmailDialog          from "../components/EmailDialog.vue";
 import PaymentDialog        from "../components/PaymentDialog.vue";
 import ReturnNoteDialog     from "../components/ReturnNoteDialog.vue";
+import MakeRecurringDialog   from "../components/MakeRecurringDialog.vue";
 import { useAiActions } from "../composables/useAiActions.js";
 import { apiGET }       from "../api/client.js";
 

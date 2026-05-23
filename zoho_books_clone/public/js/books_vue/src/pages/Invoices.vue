@@ -496,6 +496,9 @@
           <button v-if="viewInv.docstatus===1" class="inv-va-btn" @click="openCreditNote(viewInv)">
             <span v-html="icon('creditnote',13)"></span> Credit Note
           </button>
+          <button v-if="viewInv.docstatus===1" class="inv-va-btn" @click="makeRecurring(viewInv)">
+            <span v-html="icon('repeat',13)"></span> Make Recurring
+          </button>
           <button v-if="viewInv.docstatus===1" class="inv-va-btn inv-va-danger" @click="confirmAction('cancel', viewInv)">
             Cancel
           </button>
@@ -656,6 +659,7 @@ import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCan
 import { useToast } from "../composables/useToast.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { usePaymentDialog } from "../composables/usePaymentDialog.js";
+import { useMakeRecurring } from "../composables/useMakeRecurring.js";
 import { useReturnNote } from "../composables/useReturnNote.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -1223,6 +1227,18 @@ async function openCreditNote(inv) {
 // submitCreditNote removed — ReturnNoteDialog handles submission via its
 // `createEndpoint` prop. openCreditNote() above now resolves a promise with
 // the created CN name.
+
+// ── Make Recurring ─────────────────────────────────────────────────────
+async function makeRecurring(inv) {
+  const { openMakeRecurring } = useMakeRecurring();
+  const subName = await openMakeRecurring({
+    doctype: "Sales Invoice",
+    name: inv.name,
+    partyLabel: inv.customer_name || inv.customer || "",
+    amount: inv.grand_total || 0,
+  });
+  if (subName) toast(`Recurring subscription ${subName} created`);
+}
 
 // ── Bulk actions ───────────────────────────────────────────────────────
 async function bulkDelete() {

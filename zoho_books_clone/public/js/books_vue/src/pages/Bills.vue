@@ -272,6 +272,9 @@
           <button v-if="viewDoc.docstatus===1" class="bill-btn-warn" @click="issueDebitNote(viewDoc)">
             <span v-html="icon('arrow-left',13)"></span> Issue Debit Note
           </button>
+          <button v-if="viewDoc.docstatus===1" class="bill-btn-ghost" @click="makeRecurringBill(viewDoc)">
+            <span v-html="icon('repeat',13)"></span> Make Recurring
+          </button>
           <button v-if="viewDoc.docstatus===1" class="bill-btn-danger" @click="cancelBill(viewDoc)">
             Cancel
           </button>
@@ -294,6 +297,7 @@ import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { usePaymentDialog } from "../composables/usePaymentDialog.js";
 import { useConfirmCascade } from "../composables/useConfirmCascade.js";
 import { useReturnNote } from "../composables/useReturnNote.js";
+import { useMakeRecurring } from "../composables/useMakeRecurring.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
@@ -594,6 +598,17 @@ async function issueDebitNote(b) {
     parentKey: "against_bill",
   });
   if (result) { await load(); if (viewDoc.value?.name === b.name) await openView(b); }
+}
+
+async function makeRecurringBill(b) {
+  const { openMakeRecurring } = useMakeRecurring();
+  const subName = await openMakeRecurring({
+    doctype: "Purchase Invoice",
+    name: b.name,
+    partyLabel: b.supplier_name || b.supplier || "",
+    amount: b.grand_total || 0,
+  });
+  if (subName) toast(`Recurring subscription ${subName} created`);
 }
 
 async function cancelBill(b) {

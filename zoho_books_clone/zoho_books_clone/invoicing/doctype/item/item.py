@@ -42,7 +42,7 @@ class Item(Document):
 
             company = (
                 frappe.db.get_single_value("Books Settings", "default_company")
-                or frappe.defaults.get_default("company")
+                or frappe.db.get_default("company")
                 or ""
             )
 

@@ -68,7 +68,7 @@ def get_invoice_email_defaults(invoice_name):
     inv = frappe.get_doc("Sales Invoice", invoice_name)
     customer_email = frappe.db.get_value("Customer", inv.customer, "email_id") or ""
 
-    subject = f"Invoice {inv.name} from {inv.company or frappe.defaults.get_default('company') or ''}"
+    subject = f"Invoice {inv.name} from {inv.company or frappe.db.get_default('company') or ''}"
 
     body = (
         f"Dear {inv.customer_name or inv.customer},<br><br>"

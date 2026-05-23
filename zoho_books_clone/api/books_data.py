@@ -8,7 +8,7 @@ from zoho_books_clone.api.session import _get_company
 def get_invoice_email_defaults(invoice_name):
     inv = frappe.get_doc("Sales Invoice", invoice_name)
     customer_email = frappe.db.get_value("Customer", inv.customer, "email_id") or ""
-    subject = f"Invoice {inv.name} from {inv.company or frappe.defaults.get_default('company') or ''}"
+    subject = f"Invoice {inv.name} from {inv.company or frappe.db.get_default('company') or ''}"
     body = (
         f"Dear {inv.customer_name or inv.customer},<br><br>"
         f"Please find your invoice <b>{inv.name}</b> details below:<br><br>"
@@ -98,7 +98,7 @@ def get_quote_email_defaults(quote_name):
     """Return pre-filled subject, body and recipient for a Quotation."""
     quot = frappe.get_doc("Quotation", quote_name)
     customer_email = frappe.db.get_value("Customer", quot.customer, "email_id") or ""
-    company = quot.company or frappe.defaults.get_default("company") or ""
+    company = quot.company or frappe.db.get_default("company") or ""
     items_html = "".join(
         f"<tr><td style='padding:6px 12px;border-bottom:1px solid #f0f2f5'>{r.item_name or r.item_code}</td>"
         f"<td style='padding:6px 12px;border-bottom:1px solid #f0f2f5;text-align:right'>{flt(r.qty):.2f}</td>"
@@ -227,7 +227,7 @@ def get_payment_defaults(invoice_name):
     outstanding = flt(getattr(inv, "outstanding_amount", None))
     if not outstanding:
         outstanding = flt(inv.grand_total) - flt(inv.advance_paid)
-    company = inv.company or frappe.defaults.get_default("company")
+    company = inv.company or frappe.db.get_default("company")
     # Use LOWER() so we find accounts regardless of company name casing in the DB
     bank_accounts = frappe.db.sql(
         """SELECT name, account_type FROM `tabAccount`
@@ -290,7 +290,7 @@ def record_payment(
         frappe.throw("Not permitted", frappe.PermissionError)
 
     inv      = frappe.get_doc("Sales Invoice", invoice_name)
-    company  = inv.company or frappe.defaults.get_default("company")
+    company  = inv.company or frappe.db.get_default("company")
     currency = inv.currency or "INR"
 
     # Resolve deposit_to first so we can derive the canonical company name from it.

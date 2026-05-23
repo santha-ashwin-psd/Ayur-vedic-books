@@ -37,7 +37,7 @@ def close_fiscal_year(fiscal_year: str, retained_earnings_account: str = None) -
     if not company:
         company = (
             frappe.db.get_single_value("Books Settings", "default_company")
-            or frappe.defaults.get_default("company")
+            or frappe.db.get_default("company")
         )
     if not company:
         frappe.throw(_("No company found. Please set a default company in Books Settings."))

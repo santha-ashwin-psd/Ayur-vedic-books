@@ -29,7 +29,7 @@ def _bank_gl(bank_account: str) -> str:
 
 def _company(bank_account: str) -> str:
     co = frappe.db.get_value("Bank Account", bank_account, "company")
-    return co or frappe.defaults.get_default("company") or ""
+    return co or frappe.db.get_default("company") or ""
 
 
 def _recalc_balance(bank_account: str) -> float:

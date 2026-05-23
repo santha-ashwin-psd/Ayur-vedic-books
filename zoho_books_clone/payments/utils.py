@@ -37,7 +37,7 @@ def make_payment_entry_from_invoice(
     if amount <= 0:
         frappe.throw(_("Payment amount must be greater than 0"))
 
-    inv_company = invoice.company or frappe.defaults.get_default("company") or ""
+    inv_company = invoice.company or frappe.db.get_default("company") or ""
 
     # Resolve paid_to (bank/cash) — canonicalize company from this account
     if not paid_to:
@@ -131,7 +131,7 @@ def make_payment_entry_from_purchase_invoice(
     if amount <= 0:
         frappe.throw(_("Payment amount must be greater than 0"))
 
-    inv_company = invoice.company or frappe.defaults.get_default("company") or ""
+    inv_company = invoice.company or frappe.db.get_default("company") or ""
 
     # Resolve paid_from (bank/cash)
     if not paid_from:

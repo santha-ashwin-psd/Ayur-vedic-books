@@ -323,7 +323,7 @@ def get_or_create_bin(item_code: str, warehouse: str, company: str = "") -> str:
     if not company:
         company = (
             frappe.db.get_single_value("Books Settings", "default_company")
-            or frappe.defaults.get_default("company")
+            or frappe.db.get_default("company")
             or ""
         )
 

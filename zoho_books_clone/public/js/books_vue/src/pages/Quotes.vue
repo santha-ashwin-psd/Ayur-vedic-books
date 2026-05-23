@@ -195,9 +195,13 @@
           </div>
           <div>
             <label class="qt-lbl">Currency</label>
-            <select v-model="form.currency" class="qt-fi">
+            <select v-model="form.currency" class="qt-fi" @change="onCurrencyChange">
               <option v-for="(sym,code) in CURRENCY_SYMBOLS" :key="code" :value="code">{{ code }} {{ sym }}</option>
             </select>
+          </div>
+          <div v-if="form.currency !== 'INR'">
+            <label class="qt-lbl">Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span></label>
+            <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="qt-fi" placeholder="e.g. 83.5"/>
           </div>
           <div style="grid-column:1/-1">
             <label class="qt-lbl">Title / Project</label>
@@ -228,7 +232,7 @@
             <div>HSN/SAC</div>
             <div class="ta-r">QTY</div>
             <div>UOM</div>
-            <div class="ta-r">RATE (₹)</div>
+            <div class="ta-r">RATE ({{ CURRENCY_SYMBOLS[form.currency] || '₹' }})</div>
             <div class="ta-r">DISC %</div>
             <div class="ta-r">AMOUNT</div>
             <div></div>
@@ -451,13 +455,13 @@
               <div v-for="so in conv.sales_orders" :key="so.name" class="qt-conv-row">
                 <span class="qt-num">{{ so.name }}</span>
                 <span class="text-muted">{{ fmtDate(so.transaction_date) }}</span>
-                <span style="text-align:right;font-weight:600">{{ fmtCur(so.grand_total) }}</span>
+                <span style="text-align:right;font-weight:600">{{ fmtCur(so.grand_total, so.currency) }}</span>
               </div>
               <div v-if="conv.sales_invoices.length" class="qt-section-title">Sales Invoices</div>
               <div v-for="si in conv.sales_invoices" :key="si.name" class="qt-conv-row">
                 <span class="qt-num">{{ si.name }}</span>
                 <span class="text-muted">{{ fmtDate(si.posting_date) }}</span>
-                <span style="text-align:right;font-weight:600">{{ fmtCur(si.grand_total) }}</span>
+                <span style="text-align:right;font-weight:600">{{ fmtCur(si.grand_total, si.currency) }}</span>
               </div>
               <div v-if="!conv.sales_orders.length && !conv.sales_invoices.length"
                 style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
@@ -629,10 +633,18 @@ function validTillDefault() {
   const d = new Date(); d.setDate(d.getDate() + 30);
   return d.toISOString().slice(0, 10);
 }
-function fmtCur(v) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency", currency: "INR", minimumFractionDigits: 2,
-  }).format(flt(v));
+function fmtCur(v, currency) {
+  const cur = currency || form.currency || "INR";
+  const locale = cur === "INR" ? "en-IN" : "en-US";
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency", currency: cur, minimumFractionDigits: 2,
+    }).format(flt(v));
+  } catch {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency", currency: "INR", minimumFractionDigits: 2,
+    }).format(flt(v));
+  }
 }
 function fmtDocCur(v, doc) {
   const cur = doc?.currency || "INR";
@@ -656,6 +668,7 @@ const form = reactive({
   remarks: "",
   billing_address: "",
   currency: "INR",
+  exchange_rate: 1,
 });
 
 // ── Blank line — matches Invoice exactly ─────────────────────────────
@@ -968,6 +981,48 @@ function applyTaxPreset(preset) {
   }));
 }
 
+// ── Customer change: auto-fill currency & address ─────────────────────
+watch(() => form.customer, async (newVal) => {
+  if (!newVal) return;
+  try {
+    const custDoc = await apiGet("Customer", newVal);
+    if (custDoc?.default_currency) {
+      form.currency = custDoc.default_currency;
+      form.exchange_rate = form.currency === "INR"
+        ? 1
+        : (await fetchExchangeRate(form.currency) || 1);
+    }
+    if (custDoc?.customer_primary_address) {
+      try {
+        const addr = await apiGet("Address", custDoc.customer_primary_address);
+        const parts = [addr?.address_line1, addr?.address_line2, addr?.city, addr?.state, addr?.pincode].filter(Boolean);
+        if (parts.length) form.billing_address = parts.join(", ");
+      } catch {}
+    }
+  } catch {}
+});
+
+// ── Currency change & exchange rate fetch ─────────────────────────────
+async function onCurrencyChange() {
+  if (form.currency === "INR") {
+    form.exchange_rate = 1;
+    return;
+  }
+  form.exchange_rate = await fetchExchangeRate(form.currency) || form.exchange_rate || 1;
+}
+async function fetchExchangeRate(currency) {
+  if (!currency || currency === "INR") return 1;
+  try {
+    const r = await apiGET("frappe.client.get_value", {
+      doctype: "Currency Exchange",
+      filters: JSON.stringify([["from_currency","=",currency],["to_currency","=","INR"]]),
+      fieldname: "exchange_rate",
+    });
+    if (r?.message?.exchange_rate) return flt(r.message.exchange_rate);
+  } catch {}
+  return null;
+}
+
 // ── Open New ──────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
@@ -980,6 +1035,7 @@ function openNew() {
     remarks:          "",
     billing_address:  "",
     currency:         "INR",
+    exchange_rate:    1,
   });
   showPreview.value = false;
   lines.value    = [blankLine()];
@@ -998,6 +1054,8 @@ async function openEdit(q) {
     valid_till:       q.valid_till       || validTillDefault(),
     title:            q.title            || "",
     terms:            q.terms            || "",
+    currency:         q.currency         || "INR",
+    exchange_rate:    q.exchange_rate     || 1,
   });
   // seed with one blank while loading
   lines.value   = [blankLine()];
@@ -1037,9 +1095,12 @@ async function openEdit(q) {
       }));
     }
 
-    // Fill remaining form fields from full doc
-    if (doc?.terms)            form.terms  = doc.terms;
-    if (doc?.title)            form.title  = doc.title;
+    if (doc?.terms)            form.terms           = doc.terms;
+    if (doc?.title)            form.title           = doc.title;
+    if (doc?.currency)         form.currency        = doc.currency;
+    if (doc?.exchange_rate)    form.exchange_rate   = flt(doc.exchange_rate) || 1;
+    if (doc?.remarks)          form.remarks         = doc.remarks;
+    if (doc?.billing_address)  form.billing_address = doc.billing_address;
   } catch {}
 }
 
@@ -1130,12 +1191,17 @@ async function saveQT(newStatus) {
     const doc = {
       doctype:          "Quotation",
       company,
+      party_name:       form.customer,
       customer:         form.customer,
       transaction_date: form.transaction_date,
-      valid_till:       form.valid_till   || null,
-      title:            form.title        || "",
-      status:           newStatus         || "Draft",
-      terms:            form.terms        || "",
+      valid_till:       form.valid_till          || null,
+      title:            form.title               || "",
+      status:           newStatus                || "Draft",
+      terms:            form.terms               || "",
+      remarks:          form.remarks             || "",
+      billing_address:  form.billing_address     || "",
+      currency:         form.currency            || "INR",
+      exchange_rate:    form.currency === "INR" ? 1 : (flt(form.exchange_rate) || 1),
       items:            qtItems,
       taxes,
     };

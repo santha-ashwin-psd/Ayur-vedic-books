@@ -33,7 +33,7 @@
               <div class="qcd-field">
                 <label class="qcd-lbl">GST Treatment</label>
                 <select v-model="form.gst_treatment" class="qcd-input">
-                  <option value="Registered Business - Regular">Registered Business</option>
+                  <option value="Registered Business">Registered Business</option>
                   <option value="Unregistered Business">Unregistered Business</option>
                   <option value="Consumer">Consumer</option>
                   <option value="Overseas">Overseas</option>
@@ -55,10 +55,15 @@
                 <label class="qcd-lbl">Country</label>
                 <input v-model="form.country" class="qcd-input" placeholder="India" />
               </div>
+              <div>
               <div class="qcd-field">
-                <label class="qcd-lbl">Payment Terms</label>
-                <input v-model="form.payment_terms" class="qcd-input" placeholder="e.g. Net 30" />
+              <label class="qcd-lbl">Payment Terms</label>
+              <select v-model="form.payment_terms" class="qcd-input" @change="applyPaymentTerms">
+                <option value="">— Select Payment Terms —</option>
+                <option v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ t }}</option>
+              </select>
               </div>
+            </div>
             </div>
           </template>
 
@@ -183,7 +188,7 @@ const { toast } = useToast();
 
 const saving = ref(false);
 const form   = reactive({});
-
+const PAYMENT_TERMS = ["Due on Receipt","Net 7","Net 15","Net 30","Net 45","Net 60","Net 90"];
 const LABELS = { Customer: "Customer", Supplier: "Vendor / Supplier", Item: "Item" };
 
 watch(() => state.open, (open) => {
@@ -193,7 +198,7 @@ watch(() => state.open, (open) => {
   if (state.doctype === "Customer") {
     Object.assign(form, {
       customer_name: state.prefill, customer_type: "Company",
-      gst_treatment: "Registered Business - Regular",
+      gst_treatment: "Registered Business",
       email_id: "", mobile_no: "", tax_id: "", country: "India", payment_terms: "",
     });
   } else if (state.doctype === "Supplier") {

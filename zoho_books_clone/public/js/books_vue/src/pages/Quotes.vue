@@ -109,7 +109,7 @@
                 <div style="display:flex;gap:4px;justify-content:center">
                   <button class="inv-act-btn" @click="openView(q)" title="View"><span v-html="icon('eye',13)"></span></button>
                   <button class="inv-act-btn" @click="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                  <button v-if="canConvert(q)" class="inv-act-btn inv-act-conv" @click="openConvertModal(q)" title="Convert to Invoice / SO"><span v-html="icon('arrow-right',13)"></span></button>
+                  <button v-if="canConvert(q)" class="inv-act-btn inv-act-conv" @click="openConvertModal(q)" title="Convert to Invoice / SO"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
                   <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteQT(q)" title="Delete"><span v-html="icon('trash',13)"></span></button>
                 </div>
               </td>
@@ -350,14 +350,27 @@
             <div class="qt-view-num">{{ viewDoc.name }}</div>
             <div class="qt-view-sub">{{ viewDoc.customer_name||viewDoc.customer }}</div>
           </div>
-          <div style="text-align:right">
+          <!-- <div style="text-align:right">
             <div class="qt-view-amount">{{ fmtCur(viewDoc.grand_total) }}</div>
             <span class="qt-badge qt-badge-white">{{ displayStatus(viewDoc) }}</span>
-          </div>
+          </div> -->
           <button class="qt-dclose qt-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
 
-        <TimelineStepper :steps="timelineSteps" />
+        <!-- Inline timeline — fully controlled, no external component -->
+        <div class="qt-timeline">
+          <template v-for="(step, i) in timelineSteps" :key="i">
+            <div class="qt-tl-step" :class="{ done: step.done, danger: step.danger, current: step.current }">
+              <div class="qt-tl-dot">
+                <span v-if="step.done && !step.danger" v-html="icon('check', 9)"></span>
+                <span v-else-if="step.danger" style="font-size:9px;font-weight:700">!</span>
+              </div>
+              <div class="qt-tl-label">{{ step.label }}</div>
+            </div>
+            <div v-if="i < timelineSteps.length - 1" class="qt-tl-line"
+              :class="{ done: timelineSteps[i+1]?.done, danger: timelineSteps[i+1]?.danger }"></div>
+          </template>
+        </div>
 
         <div class="qt-tabs">
           <button class="qt-tab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
@@ -369,29 +382,63 @@
         <div class="qt-dbody">
           <template v-if="viewTab==='details'">
             <div class="qt-meta-grid">
-              <div><div class="qt-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.transaction_date) }}</div></div>
-              <div><div class="qt-meta-lbl">Valid Till</div>
+              <div>
+                <div class="qt-meta-lbl">Date</div>
+                <div class="mono-sm">{{ fmtDate(viewDoc.transaction_date) }}</div>
+              </div>
+              <div>
+                <div class="qt-meta-lbl">Valid Till</div>
                 <div class="mono-sm" :class="isExpired(viewDoc)?'text-danger':''">{{ fmtDate(viewDoc.valid_till)||'—' }}</div>
               </div>
-              <div><div class="qt-meta-lbl">Status</div><div class="mono-sm">{{ displayStatus(viewDoc) }}</div></div>
-              <div><div class="qt-meta-lbl">Title</div><div>{{ viewDoc.title||'—' }}</div></div>
+              <div>
+                <div class="qt-meta-lbl">Status</div>
+                <span class="inv-status-badge" :class="badgeClass(viewDoc)" style="margin-top:4px;display:inline-flex">{{ displayStatus(viewDoc) }}</span>
+              </div>
+              <div>
+                <div class="qt-meta-lbl">Currency</div>
+                <div class="mono-sm">{{ viewDoc.currency || 'INR' }}</div>
+              </div>
+              <div style="grid-column:1/-1" v-if="viewDoc.title">
+                <div class="qt-meta-lbl">Title</div>
+                <div>{{ viewDoc.title }}</div>
+              </div>
             </div>
 
+            <!-- Line Items -->
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <template v-else-if="viewItems.length">
-              <div class="qt-section-title">Line Items</div>
+            <template v-else>
+              <div class="qt-section-title" style="margin-top:12px">Line Items</div>
               <div class="qt-view-items">
-                <div class="qt-view-items-head"><span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span></div>
-                <div v-for="it in viewItems" :key="it.name" class="qt-view-items-row">
-                  <span><strong>{{ it.item_name||it.item_code }}</strong>
-                    <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div></span>
-                  <span class="ta-r mono-sm">{{ it.qty }}</span>
-                  <span class="ta-r mono-sm">{{ fmtCur(it.rate) }}</span>
-                  <span class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(it.amount) }}</span>
+                <div class="qt-view-items-head">
+                  <span>Item</span>
+                  <span class="ta-r">Qty</span>
+                  <span class="ta-r">Rate</span>
+                  <span class="ta-r">Amount</span>
+                </div>
+                <template v-if="viewItems.length">
+                  <div v-for="(it, idx) in viewItems" :key="idx" class="qt-view-items-row">
+                    <span>
+                      <strong>{{ it.item_name || it.item_code || '—' }}</strong>
+                      <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div>
+                    </span>
+                    <span class="ta-r mono-sm">{{ it.qty }}</span>
+                    <span class="ta-r mono-sm">{{ fmtDocCur(it.rate, viewDoc) }}</span>
+                    <span class="ta-r mono-sm" style="font-weight:600">{{ fmtDocCur(it.amount, viewDoc) }}</span>
+                  </div>
+                </template>
+                <div v-else style="padding:16px;text-align:center;color:#9ca3af;font-size:13px">
+                  No line items found.
                 </div>
               </div>
+
+              <!-- Totals summary -->
+              <div v-if="viewDoc.grand_total" style="display:flex;justify-content:flex-end;padding:10px 12px;border-top:1px solid #e8ecf0;gap:32px;font-size:13px">
+                <span style="color:#6b7280">Grand Total</span>
+                <span style="font-family:monospace;font-weight:700;color:#1a6ef7;font-size:15px">{{ fmtDocCur(viewDoc.grand_total, viewDoc) }}</span>
+              </div>
             </template>
-            <div v-if="viewDoc.terms" class="qt-terms">
+
+            <div v-if="viewDoc.terms" class="qt-terms" style="margin-top:12px">
               <div class="qt-meta-lbl">Terms & Conditions</div>
               <div style="white-space:pre-wrap;font-size:12.5px;color:#374151">{{ viewDoc.terms }}</div>
             </div>
@@ -496,7 +543,6 @@ import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
-import TimelineStepper from "../components/TimelineStepper.vue";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
@@ -588,6 +634,17 @@ function fmtCur(v) {
     style: "currency", currency: "INR", minimumFractionDigits: 2,
   }).format(flt(v));
 }
+function fmtDocCur(v, doc) {
+  const cur = doc?.currency || "INR";
+  const locale = cur === "INR" ? "en-IN" : "en-US";
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency", currency: cur, minimumFractionDigits: 2,
+    }).format(flt(v));
+  } catch {
+    return fmtCur(v);
+  }
+}
 
 // ── Form ──────────────────────────────────────────────────────────────
 const form = reactive({
@@ -651,7 +708,7 @@ function headerBg(q) {
   if (s === "Declined" || s === "Lost" || s === "Expired")
     return "linear-gradient(135deg,#7f1d1d,#dc2626)";
   if (s === "Sent")      return "linear-gradient(135deg,#1e3a5f,#1a6ef7)";
-  return "linear-gradient(135deg,#374151,#6b7280)";
+  return "linear-gradient(135deg,#1e3a5f,#2563eb)";
 }
 function pillCls(k) {
   return { draft:"pc-muted", sent:"pc-blue", accepted:"pc-green", declined:"pc-red", expired:"pc-red", converted:"pc-purple" }[k] || "pc-muted";
@@ -672,7 +729,7 @@ async function load() {
     const co = await resolveCompany();
     list.value = await apiList("Quotation", {
       fields: ["name","customer","customer_name","transaction_date",
-               "valid_till","status","grand_total","title"],
+               "valid_till","status","grand_total","title","currency"],
       filters: [["company","=",co]],
       limit: 500,
       order: "transaction_date desc",
@@ -995,18 +1052,39 @@ async function openView(q) {
   viewItems.value   = [];
   conv.sales_orders   = [];
   conv.sales_invoices = [];
+
+  // Fetch full doc and items in parallel
   try {
-    const [doc, convData] = await Promise.all([
-      apiGet("Quotation", q.name),
-      apiGET("zoho_books_clone.api.docs.get_quote_conversions", { quotation_name: q.name }).catch(() => null),
-    ]);
-    viewItems.value = doc?.items || [];
-    viewDoc.value   = { ...q, ...doc };
+    const doc = await apiGet("Quotation", q.name);
+    const merged = doc?.message || doc || {};
+    viewDoc.value = { ...q, ...merged };
+
+    // Try doc.items first; if empty fetch child table directly
+    let items = merged.items || [];
+    if (!items.length) {
+      try {
+        items = await apiList("Quotation Item", {
+          fields: ["item_code","item_name","description","qty","rate","amount","uom","discount_percentage","hsn_code"],
+          filters: [["parent","=",q.name]],
+          limit: 200,
+          order: "idx asc",
+        }) || [];
+      } catch {}
+    }
+    viewItems.value = items;
+  } catch (e) {
+    console.warn("openView doc fetch failed:", e);
+  }
+
+  // Fetch conversions independently — failure is non-fatal
+  try {
+    const convData = await apiGET("zoho_books_clone.api.docs.get_quote_conversions", { quotation_name: q.name });
     if (convData) {
       conv.sales_orders   = convData.sales_orders   || [];
       conv.sales_invoices = convData.sales_invoices || [];
     }
   } catch {}
+
   viewLoading.value = false;
 }
 
@@ -1335,7 +1413,7 @@ onMounted(() => {
 .qt-dheader-title { font-size: 15px; font-weight: 600; color: #111827; }
 .qt-dclose { background: transparent; border: none; cursor: pointer; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; }
 .qt-dclose:hover { background: #f3f4f6; color: #111827; }
-.qt-dbody { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.qt-dbody { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; background: #fff; color: #111827; }
 .qt-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .qt-field { display: flex; flex-direction: column; gap: 4px; }
 .qt-label { font-size: 12px; font-weight: 600; color: #374151; }
@@ -1356,6 +1434,21 @@ textarea.qt-input { resize: vertical; }
 .qt-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 3px 0; }
 .qt-total-row.grand { font-weight: 700; font-size: 14px; color: #111827; border-top: 1px solid #e5e7eb; padding-top: 6px; }
 
+/* Inline timeline — mirrors Invoice */
+.qt-timeline { display:flex; align-items:center; padding:14px 20px; background:#fff; border-bottom:1px solid #e8ecf0; flex-shrink:0; }
+.qt-tl-step { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.qt-tl-dot { width:22px; height:22px; border-radius:50%; border:2px solid #d1d5db; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; color:#9ca3af; flex-shrink:0; transition:all .2s; }
+.qt-tl-step.done .qt-tl-dot { background:#059669; border-color:#059669; color:#fff; }
+.qt-tl-step.danger .qt-tl-dot { background:#dc2626; border-color:#dc2626; color:#fff; }
+.qt-tl-step.current:not(.done):not(.danger) .qt-tl-dot { border-color:#1a6ef7; color:#1a6ef7; }
+.qt-tl-label { font-size:11px; font-weight:600; color:#9ca3af; white-space:nowrap; }
+.qt-tl-step.done .qt-tl-label { color:#059669; }
+.qt-tl-step.danger .qt-tl-label { color:#dc2626; }
+.qt-tl-step.current:not(.done):not(.danger) .qt-tl-label { color:#1a6ef7; }
+.qt-tl-line { flex:1; height:2px; background:#e5e7eb; min-width:16px; }
+.qt-tl-line.done { background:#059669; }
+.qt-tl-line.danger { background:#dc2626; }
+
 .qt-view-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; padding: 20px; flex-shrink: 0; color: #fff; }
 .qt-view-num { font-size: 18px; font-weight: 700; font-family: monospace; color: #fff; }
 .qt-view-sub { font-size: 13px; color: rgba(255,255,255,.8); margin-top: 2px; }
@@ -1367,13 +1460,15 @@ textarea.qt-input { resize: vertical; }
 .qt-tab:hover { color: #2563eb; }
 .qt-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
 .qt-tab-count { background: #2563eb; color: #fff; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.qt-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.qt-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; color: #111827; }
 .qt-meta-lbl { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
-.qt-view-items { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+.qt-view-items { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; }
 .qt-view-items-head { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-.qt-view-items-row { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
-.qt-terms { padding: 10px 12px; background: #f8fafc; border-radius: 6px; }
-.qt-conv-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12.5px; align-items: center; }
+.qt-view-items-row { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; padding: 10px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 13px; color: #111827; background: #fff; }
+.qt-view-items-row:hover { background: #f8faff; }
+.qt-view-items-row strong { color: #1a1a2e; font-weight: 600; }
+.qt-terms { padding: 10px 12px; background: #f8fafc; border-radius: 6px; color: #374151; }
+.qt-conv-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12.5px; align-items: center; background: #fff; color: #111827; }
 .qt-dfooter { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid #e5e7eb; flex-shrink: 0; flex-wrap: wrap; }
 
 .qt-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 520px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 70; display: flex; flex-direction: column; overflow: hidden; }

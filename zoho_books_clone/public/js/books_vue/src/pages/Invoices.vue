@@ -231,7 +231,7 @@
             </div>
             <div>
               <label class="inv-lbl">Currency</label>
-              <select v-model="form.currency" class="inv-fi" @change="form.exchange_rate = form.currency==='INR'?1:form.exchange_rate">
+              <select v-model="form.currency" class="inv-fi" @change="onCurrencyChange">
                 <option v-for="(sym,code) in CURRENCY_SYMBOLS" :key="code" :value="code">{{ code }} {{ sym }}</option>
               </select>
             </div>
@@ -523,8 +523,8 @@
               <div><div class="inv-meta-lbl">Invoice Date</div><div>{{ fmtDate(viewInv.posting_date) }}</div></div>
               <div><div class="inv-meta-lbl">Due Date</div><div :class="isOverdue(viewInv)?'text-danger':''">{{ fmtDate(viewInv.due_date)||'—' }}</div></div>
               <div><div class="inv-meta-lbl">Place of Supply</div><div>{{ viewInv.place_of_supply||'—' }}</div></div>
-              <div><div class="inv-meta-lbl">Grand Total</div><div style="font-weight:700;font-family:monospace;font-size:15px">{{ fmtAmt(viewInv.grand_total) }}</div></div>
-              <div><div class="inv-meta-lbl">Balance Due</div><div :class="viewInv.outstanding_amount>0?'text-danger':'text-success'" style="font-weight:700;font-family:monospace">{{ fmtAmt(viewInv.outstanding_amount) }}</div></div>
+              <div><div class="inv-meta-lbl">Grand Total</div><div style="font-weight:700;font-family:monospace;font-size:15px">{{ fmtAmt(viewInv.grand_total, viewInv.currency) }}</div></div>
+              <div><div class="inv-meta-lbl">Balance Due</div><div :class="viewInv.outstanding_amount>0?'text-danger':'text-success'" style="font-weight:700;font-family:monospace">{{ fmtAmt(viewInv.outstanding_amount, viewInv.currency) }}</div></div>
             </div>
 
             <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading details…</div>
@@ -539,9 +539,9 @@
                   <div><div style="font-weight:500">{{ it.item_name||it.item_code }}</div><div v-if="it.description" style="font-size:11.5px;color:#9ca3af">{{ it.description }}</div></div>
                   <div class="mono-sm text-muted">{{ it.hsn_code||'—' }}</div>
                   <div style="text-align:right;font-family:monospace">{{ flt(it.qty) }}</div>
-                  <div style="text-align:right;font-family:monospace">{{ fmtAmt(it.rate) }}</div>
+                  <div style="text-align:right;font-family:monospace">{{ fmtAmt(it.rate, viewInv.currency) }}</div>
                   <div style="text-align:right;font-family:monospace">{{ it.discount_percentage ? it.discount_percentage+'%' : '—' }}</div>
-                  <div style="text-align:right;font-family:monospace;font-weight:600">{{ fmtAmt(it.amount) }}</div>
+                  <div style="text-align:right;font-family:monospace;font-weight:600">{{ fmtAmt(it.amount, viewInv.currency) }}</div>
                 </div>
               </div>
               <div v-else style="color:#9ca3af;font-size:13px;margin-bottom:16px">No item details available.</div>
@@ -551,20 +551,20 @@
                 <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;margin-bottom:8px">Taxes</div>
                 <div v-for="(tx,i) in viewInv.taxes" :key="i" style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#374151">
                   <span>{{ tx.description||tx.account_head }}</span>
-                  <span class="mono-sm">{{ fmtAmt(tx.tax_amount||tx.amount) }}</span>
+                  <span class="mono-sm">{{ fmtAmt(tx.tax_amount||tx.amount, viewInv.currency) }}</span>
                 </div>
               </div>
 
               <!-- Totals -->
               <div style="background:#f8fafc;border-radius:8px;padding:12px 16px;margin-bottom:16px">
                 <div style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;margin-bottom:4px">
-                  <span>Subtotal</span><span class="mono-sm">{{ fmtAmt((viewInv.grand_total||0)-(viewInv.total_taxes_and_charges||0)) }}</span>
+                  <span>Subtotal</span><span class="mono-sm">{{ fmtAmt((viewInv.grand_total||0)-(viewInv.total_taxes_and_charges||0), viewInv.currency) }}</span>
                 </div>
                 <div v-if="viewInv.total_taxes_and_charges" style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;margin-bottom:6px">
-                  <span>Total Tax</span><span class="mono-sm">{{ fmtAmt(viewInv.total_taxes_and_charges) }}</span>
+                  <span>Total Tax</span><span class="mono-sm">{{ fmtAmt(viewInv.total_taxes_and_charges, viewInv.currency) }}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;border-top:1px solid #e8ecf0;padding-top:8px">
-                  <span>Grand Total</span><span style="font-family:monospace;color:#1a6ef7">{{ fmtAmt(viewInv.grand_total) }}</span>
+                  <span>Grand Total</span><span style="font-family:monospace;color:#1a6ef7">{{ fmtAmt(viewInv.grand_total, viewInv.currency) }}</span>
                 </div>
               </div>
 
@@ -763,9 +763,10 @@ const confirmModal = reactive({ open:false, loading:false, title:"", message:"",
 
 // ── Helpers ────────────────────────────────────────────────────────────
 const currencySymbol = computed(() => CURRENCY_SYMBOLS[form.currency] || "₹");
-function fmtAmt(v) {
-  const sym = CURRENCY_SYMBOLS[form.currency] || "₹";
-  const locale = form.currency === "INR" ? "en-IN" : "en-US";
+function fmtAmt(v, currency) {
+  const cur = currency || form.currency || "INR";
+  const sym = CURRENCY_SYMBOLS[cur] || "₹";
+  const locale = cur === "INR" ? "en-IN" : "en-US";
   return sym + Number(v||0).toLocaleString(locale,{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 const isOverseas = computed(() => form.gst_treatment === "Overseas");
@@ -959,6 +960,27 @@ function applyPaymentTerms() {
   form.due_date=d.toISOString().slice(0,10);
 }
 
+// ── Currency change & exchange rate fetch ──────────────────────────────
+async function onCurrencyChange() {
+  if (form.currency === "INR") {
+    form.exchange_rate = 1;
+    return;
+  }
+  form.exchange_rate = await fetchExchangeRate(form.currency) || form.exchange_rate || 1;
+}
+async function fetchExchangeRate(currency) {
+  if (!currency || currency === "INR") return 1;
+  try {
+    const r = await apiGET("frappe.client.get_value", {
+      doctype: "Currency Exchange",
+      filters: JSON.stringify([["from_currency","=",currency],["to_currency","=","INR"]]),
+      fieldname: "exchange_rate",
+    });
+    if (r?.message?.exchange_rate) return flt(r.message.exchange_rate);
+  } catch {}
+  return null; // let caller decide fallback
+}
+
 // ── Customer change: auto-fill address, currency, GST treatment ───────
 async function onCustomerChange() {
   form.billing_address="";
@@ -975,8 +997,15 @@ async function onCustomerChange() {
       }),
     ]);
 
-    // Apply currency from customer
-    if (custDoc?.default_currency) form.currency = custDoc.default_currency;
+    // Apply currency from customer, and fetch exchange rate if foreign
+    if (custDoc?.default_currency) {
+      form.currency = custDoc.default_currency;
+      if (form.currency !== "INR") {
+        form.exchange_rate = await fetchExchangeRate(form.currency) || 1;
+      } else {
+        form.exchange_rate = 1;
+      }
+    }
 
     // Apply payment terms from customer (only if user hasn't changed it yet)
     if (custDoc?.payment_terms && !form.payment_terms) {
@@ -1031,7 +1060,7 @@ function openAdd() {
 }
 async function openEdit(inv) {
   editingName.value=inv.name;
-  Object.assign(form,{customer:inv.customer||"",currency: inv.currency || "INR",posting_date:inv.posting_date||todayStr(),due_date:inv.due_date||dueDateDefault(),po_no:"",payment_terms:"",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:inv.docstatus||0});
+  Object.assign(form,{customer:inv.customer||"",currency:inv.currency||"INR",exchange_rate:inv.exchange_rate||1,posting_date:inv.posting_date||todayStr(),due_date:inv.due_date||dueDateDefault(),po_no:"",payment_terms:"",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:inv.docstatus||0});
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
   taxRows.value=[];
   drawerOpen.value=true;
@@ -1041,7 +1070,7 @@ async function openEdit(inv) {
       customer:doc.customer||"",posting_date:doc.posting_date||todayStr(),due_date:doc.due_date||dueDateDefault(),
       po_no:doc.po_no||"",payment_terms:doc.payment_terms||"",place_of_supply:doc.place_of_supply||"",
       billing_address:doc.billing_address||"",terms:doc.terms||"",remarks:doc.remarks||"",docstatus:doc.docstatus||0,
-      currency:doc.currency||"INR",exchange_rate:doc.conversion_rate||1,gst_treatment:doc.gst_category||"",
+      currency:doc.currency||"INR",exchange_rate:doc.exchange_rate||1,gst_treatment:doc.gst_category||"",
     });
     lines.value=(doc.items||[]).map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:it.hsn_code||"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:it.uom||"Nos",discount_percentage:flt(it.discount_percentage)||0,discount_amount:flt(it.discount_amount)||0,amount:flt(it.amount)||0}));
     taxRows.value=(doc.taxes||[]).map((tx,i)=>({id:Date.now()+100+i,description:tx.description||"",rate:flt(tx.rate)||0,account_head:tx.account_head||taxAccountHead.value,amount:flt(tx.tax_amount)||0}));
@@ -1064,7 +1093,7 @@ async function saveInvoice(docstatus) {
     const company=await resolveCompany();
     const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0}));
     const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>({doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate}));
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",conversion_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular"};
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular"};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
     if (docstatus===1) await apiSubmit("Sales Invoice",saved.name);

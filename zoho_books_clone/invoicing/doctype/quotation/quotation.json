@@ -21,7 +21,10 @@
   "notes",
   "naming_series",
   "currency",
-  "amended_from"
+  "amended_from",
+  "remarks",
+  "billing_address",
+  "exchange_rate"
  ],
  "fields": [
   {
@@ -128,11 +131,26 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Text Editor",
+   "label": "Internal Remarks"
+  },
+  {
+   "fieldname": "exchange_rate",
+   "fieldtype": "Data",
+   "label": "Exchange Rate"
+  },
+  {
+   "fieldname": "billing_address",
+   "fieldtype": "Small Text",
+   "label": "Address"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-23 13:07:31.445012",
+ "modified": "2026-05-23 15:55:56.476684",
  "modified_by": "Administrator",
  "module": "Invoicing",
  "name": "Quotation",

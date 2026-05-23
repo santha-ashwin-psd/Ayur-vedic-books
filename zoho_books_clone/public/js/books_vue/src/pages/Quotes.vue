@@ -183,7 +183,7 @@
             <label class="qt-lbl">Customer <span class="qt-req">*</span></label>
             <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer"
               :createable="true" createDoctype="Customer"
-              @search="fetchCustomers" />
+              @search="fetchCustomers" @update:modelValue="onCustomerChange" />
           </div>
           <div>
             <label class="qt-lbl">Quote Date <span class="qt-req">*</span></label>
@@ -213,7 +213,7 @@
         <div class="qt-sec-lbl">Billing Address</div>
         <div class="qt-fg" style="margin-bottom:14px">
           <div>
-            <label class="qt-lbl">Address</label>
+            <label class="qt-lbl">Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
             <textarea v-model="form.billing_address" class="qt-fi" rows="2" style="resize:vertical" placeholder="Auto-filled from customer, or enter manually"></textarea>
           </div>
         </div>
@@ -612,6 +612,7 @@ const viewDoc     = ref(null);
 const viewTab     = ref("details");
 const viewLoading = ref(false);
 const viewItems   = ref([]);
+const addressLoading = ref(false);
 const conv        = reactive({ sales_orders: [], sales_invoices: [] });
 const customers   = ref([]);
 const items       = ref([]);
@@ -898,14 +899,16 @@ async function fetchItems(q = "") {
     const f = [["disabled","=",0]];
     if (q) f.push(["item_name","like","%" + q + "%"]);
     const r = await apiList("Item", {
-      fields: ["name","item_name","standard_rate","stock_uom"], filters: f, limit: 30, order: "item_name asc",
+      fields: ["name","item_name","standard_rate","stock_uom","hsn_code","description"], filters: f, limit: 30, order: "item_name asc",
     });
     items.value = r.map(x => ({
       ...x,
-      label: x.item_name || x.name,
-      value: x.name,
-      rate:  x.standard_rate || 0,
-      uom:   x.stock_uom || "Nos",
+      label:       x.item_name || x.name,
+      value:       x.name,
+      rate:        x.standard_rate || 0,
+      uom:         x.stock_uom || "Nos",
+      hsn_code:    x.hsn_code || "",
+      description: x.description || "",
     }));
   } catch { items.value = []; }
 }
@@ -927,30 +930,32 @@ function calcLine(line) {
 // Fires when user picks an item from SearchableSelect
 // mirrors Invoice's onItemChange
 async function onItemSelect(line, opt) {
-  // opt can be an option object or a raw string value
   const code = opt?.value ?? opt;
   line.item_code = code;
 
   // Fill from already-loaded items list
   const found = items.value.find(i => i.name === code || i.value === code);
   if (found) {
-    line.item_name = found.item_name || found.label || code;
-    line.rate      = flt(found.standard_rate ?? found.rate);
-    line.uom       = found.stock_uom || found.uom || "Nos";
+    line.item_name  = found.item_name || found.label || code;
+    line.rate       = flt(found.standard_rate ?? found.rate);
+    line.uom        = found.stock_uom || found.uom || "Nos";
+    if (found.hsn_code)    line.hsn_code    = found.hsn_code;
+    if (found.description) line.description = found.description;
     calcLine(line);
   }
 
-  // Fetch HSN code from full Item doc — exactly like Invoice
+  // Fetch full Item doc for any fields not in the list
   if (code) {
     try {
       const doc = await apiGet("Item", code);
-      if (doc?.gst_hsn_code) line.hsn_code = doc.gst_hsn_code;
-      if (doc?.item_name)    line.item_name = doc.item_name;
+      if (doc?.item_name)    line.item_name  = doc.item_name;
+      if (doc?.hsn_code)     line.hsn_code   = doc.hsn_code;
+      if (doc?.description)  line.description = doc.description;
       if (!found) {
         line.rate = flt(doc.standard_rate || 0);
         line.uom  = doc.stock_uom || "Nos";
-        calcLine(line);
       }
+      calcLine(line);
     } catch {}
   }
 }
@@ -982,25 +987,44 @@ function applyTaxPreset(preset) {
 }
 
 // ── Customer change: auto-fill currency & address ─────────────────────
-watch(() => form.customer, async (newVal) => {
-  if (!newVal) return;
+// ── Customer change: auto-fill address, currency (mirrors Invoice) ────
+async function onCustomerChange() {
+  form.billing_address = "";
+  if (!form.customer) return;
+  addressLoading.value = true;
   try {
-    const custDoc = await apiGet("Customer", newVal);
+    const [custDoc, addrs] = await Promise.all([
+      apiGet("Customer", form.customer),
+      apiList("Address", {
+        fields: ["address_line1","address_line2","city","state","pincode"],
+        filters: [
+          ["Dynamic Link","link_name","=",form.customer],
+          ["Dynamic Link","link_doctype","=","Customer"],
+        ],
+        order: "`tabAddress`.modified desc",
+        limit: 1,
+      }),
+    ]);
+
+    // Currency + exchange rate
     if (custDoc?.default_currency) {
       form.currency = custDoc.default_currency;
       form.exchange_rate = form.currency === "INR"
         ? 1
         : (await fetchExchangeRate(form.currency) || 1);
     }
-    if (custDoc?.customer_primary_address) {
-      try {
-        const addr = await apiGet("Address", custDoc.customer_primary_address);
-        const parts = [addr?.address_line1, addr?.address_line2, addr?.city, addr?.state, addr?.pincode].filter(Boolean);
-        if (parts.length) form.billing_address = parts.join(", ");
-      } catch {}
-    }
+
+    // Billing address — prefer linked Address record, fall back to Customer doc fields
+    const addrSrc = addrs?.[0] || null;
+    const addrFields = addrSrc
+      ? [addrSrc.address_line1, addrSrc.address_line2, addrSrc.city, addrSrc.state, addrSrc.pincode]
+      : [custDoc?.address_line1, custDoc?.address_line2, custDoc?.city, custDoc?.state, custDoc?.pincode];
+    const builtAddr = addrFields.filter(Boolean).join(", ");
+    if (builtAddr) form.billing_address = builtAddr;
   } catch {}
-});
+  addressLoading.value = false;
+}
+watch(() => form.customer, (newVal) => { if (newVal) onCustomerChange(); });
 
 // ── Currency change & exchange rate fetch ─────────────────────────────
 async function onCurrencyChange() {
@@ -1074,7 +1098,7 @@ async function openEdit(q) {
         item_code:            it.item_code            || "",
         item_name:            it.item_name            || it.item_code || "",
         description:          it.description          || "",
-        hsn_code:             it.gst_hsn_code         || it.hsn_code || "",
+        hsn_code:             it.hsn_code            || "",
         qty:                  flt(it.qty)             || 1,
         rate:                 flt(it.rate)            || 0,
         uom:                  it.uom                  || "Nos",
@@ -1172,9 +1196,8 @@ async function saveQT(newStatus) {
         rate:                 flt(l.rate),
         uom:                  l.uom || "Nos",
         amount:               flt(l.amount),
-        gst_hsn_code:         l.hsn_code || "",
+        hsn_code:             l.hsn_code || "",
         discount_percentage:  flt(l.discount_percentage) || 0,
-        discount_amount:      flt(l.discount_amount)     || 0,
       }));
 
     // Taxes — mirrors Invoice saveInvoice exactly
@@ -1335,7 +1358,9 @@ async function bulkEmail() {
 
 // ── Export CSV ────────────────────────────────────────────────────────
 function exportCSV() {
-  const rows = sorted.value;
+  const rows = selected.value.size > 0
+    ? sorted.value.filter(q => selected.value.has(q.name))
+    : sorted.value;
   const head = ["Quote #","Customer","Date","Valid Till","Status","Amount"];
   const esc  = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
   const out  = [head.map(esc).join(",")];

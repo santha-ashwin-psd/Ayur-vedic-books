@@ -1670,7 +1670,6 @@ onMounted(() => {
 .qt-dheader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 60px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
 .qt-dheader-title { font-size: 15px; font-weight: 600; color: #111827; }
 .qt-dclose { background: transparent; border: none; cursor: pointer; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; }
-.qt-dclose:hover { background: #f3f4f6; color: #111827; }
 .qt-dbody { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; background: #fff; color: #111827; }
 .qt-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .qt-field { display: flex; flex-direction: column; gap: 4px; }

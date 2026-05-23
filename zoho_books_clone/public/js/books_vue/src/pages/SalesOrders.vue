@@ -2,166 +2,258 @@
   <div class="so-page">
 
     <!-- ── Toolbar ── -->
-    <div class="so-actions">
-      <div class="so-search-wrap">
-        <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-        <input v-model="search" placeholder="Search orders, customers…" class="so-search-input" />
-      </div>
-      <div class="so-pills">
-        <button v-for="t in tabs" :key="t.key"
-          class="so-pill" :class="{active:activeTab===t.key}"
-          @click="activeTab=t.key">
-          {{ t.label }}
-          <span v-if="t.key!=='all'" class="so-pill-count">{{ counts[t.key] }}</span>
-        </button>
-      </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
-        <button class="so-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
-        <button class="so-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <button class="so-btn-primary" @click="openNew">
+    <div class="inv-toolbar">
+      <h2 class="inv-heading">All Sales Orders</h2>
+      <div class="inv-toolbar-right">
+        <div class="inv-search-wrap">
+          <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+          <input v-model="search" placeholder="Search orders, customers…" class="inv-search-input"/>
+        </div>
+        <button class="inv-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
+        <button class="inv-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
+        <button class="inv-btn-primary" @click="openNew">
           <span v-html="icon('plus',13)"></span> New Sales Order
         </button>
       </div>
     </div>
 
     <!-- ── Summary strip ── -->
-    <SummaryStrip :cards="[
-      { label: 'Total Orders', value: list.length },
-      { label: 'To Deliver', value: counts.toDeliver, accent: '#d97706' },
-      { label: 'To Invoice', value: counts.toInvoice, accent: '#1a6ef7' },
-      { label: 'Pipeline Value', value: fmtCur(summary.totalValue), accent: '#059669' },
-    ]" />
+    <div class="inv-sum-strip">
+      <div class="inv-sum-card">
+        <div class="inv-sum-lbl">Total Orders</div>
+        <div class="inv-sum-val">{{ list.length }}</div>
+      </div>
+      <div class="inv-sum-card" style="border-left:3px solid #d97706">
+        <div class="inv-sum-lbl" style="color:#d97706">To Deliver</div>
+        <div class="inv-sum-val" style="color:#d97706">{{ counts.toDeliver }}</div>
+      </div>
+      <div class="inv-sum-card" style="border-left:3px solid #1a6ef7">
+        <div class="inv-sum-lbl" style="color:#1a6ef7">To Invoice</div>
+        <div class="inv-sum-val" style="color:#1a6ef7">{{ counts.toInvoice }}</div>
+      </div>
+      <div class="inv-sum-card" style="border-left:3px solid #059669">
+        <div class="inv-sum-lbl" style="color:#059669">Pipeline Value</div>
+        <div class="inv-sum-val" style="color:#059669;font-size:18px">{{ fmtCur(summary.totalValue) }}</div>
+      </div>
+    </div>
 
-    <!-- ── Bulk action bar ── -->
-    <BulkActionBar :count="selected.size" @clear="selected=new Set()">
-      <button @click="bulkEmail"><span v-html="icon('mail',13)"></span> Send Email</button>
-      <button class="bab-danger" @click="bulkDelete">Delete</button>
-      <button @click="exportCSV"><span v-html="icon('download',13)"></span> Export CSV</button>
-    </BulkActionBar>
+    <!-- ── Filter bar ── -->
+    <div class="inv-filter-bar">
+      <div class="inv-pills">
+        <button v-for="t in tabs" :key="t.key"
+          class="inv-pill" :class="{active:activeTab===t.key}"
+          @click="activeTab=t.key">
+          {{ t.label }}
+          <span v-if="t.key!=='all'" class="inv-pill-count" :class="pillCls(t.key)">{{ counts[t.key] }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Bulk actions bar ── -->
+    <div v-if="selected.size>0" class="inv-bulk-bar">
+      <span class="inv-bulk-count">{{ selected.size }} selected</span>
+      <button class="inv-bulk-btn" @click="bulkEmail"><span v-html="icon('mail',13)"></span> Send Email</button>
+      <button class="inv-bulk-btn inv-bulk-danger" @click="bulkDelete">Delete</button>
+      <button class="inv-bulk-btn" @click="exportCSV"><span v-html="icon('download',13)"></span> Export CSV</button>
+      <button class="inv-bulk-clear" @click="selected=new Set()">✕ Clear</button>
+    </div>
 
     <!-- ── Table ── -->
-    <div class="so-card">
-      <table class="so-table">
-        <thead>
-          <tr>
-            <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
-            <th @click="sortBy('name')" class="sortable">Order # <span v-html="sortArrow('name')"></span></th>
-            <th @click="sortBy('customer_name')" class="sortable">Customer <span v-html="sortArrow('customer_name')"></span></th>
-            <th @click="sortBy('transaction_date')" class="sortable">Date <span v-html="sortArrow('transaction_date')"></span></th>
-            <th @click="sortBy('delivery_date')" class="sortable">Delivery <span v-html="sortArrow('delivery_date')"></span></th>
-            <th>Status</th>
-            <th @click="sortBy('grand_total')" class="sortable ta-r">Amount <span v-html="sortArrow('grand_total')"></span></th>
-            <th style="width:120px;text-align:center">Actions</th>
-          </tr>
-        </thead>
+    <div class="inv-table-wrap">
+      <table class="inv-table">
+        <thead><tr>
+          <th class="th-check"><input type="checkbox" @change="toggleAll" :checked="allChecked"/></th>
+          <th class="sortable" @click="sortBy('transaction_date')">DATE <span class="sort-arrow">{{ sortArrowTxt('transaction_date') }}</span></th>
+          <th class="sortable" @click="sortBy('name')">ORDER # <span class="sort-arrow">{{ sortArrowTxt('name') }}</span></th>
+          <th class="sortable" @click="sortBy('customer_name')">CUSTOMER <span class="sort-arrow">{{ sortArrowTxt('customer_name') }}</span></th>
+          <th class="sortable" @click="sortBy('delivery_date')">DELIVERY <span class="sort-arrow">{{ sortArrowTxt('delivery_date') }}</span></th>
+          <th class="sortable" @click="sortBy('status')">STATUS <span class="sort-arrow">{{ sortArrowTxt('status') }}</span></th>
+          <th class="ta-r sortable" @click="sortBy('grand_total')">AMOUNT <span class="sort-arrow">{{ sortArrowTxt('grand_total') }}</span></th>
+          <th style="width:120px;text-align:center">ACTIONS</th>
+        </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="8"><div class="so-shimmer"></div></td></tr>
+            <tr v-for="n in 7" :key="n" class="shimmer-row">
+              <td><div class="shimmer" style="width:14px;height:14px;border-radius:3px"></div></td>
+              <td><div class="shimmer" style="width:80px"></div></td>
+              <td><div class="shimmer" style="width:110px"></div></td>
+              <td><div class="shimmer" style="width:130px"></div></td>
+              <td><div class="shimmer" style="width:80px"></div></td>
+              <td><div class="shimmer" style="width:90px"></div></td>
+              <td><div class="shimmer" style="width:80px;margin-left:auto"></div></td>
+              <td></td>
+            </tr>
           </template>
           <template v-else>
-            <tr v-for="o in sorted" :key="o.name" class="so-row" :class="{selected:selected.has(o.name)}">
-              <td><input type="checkbox" :checked="selected.has(o.name)" @change="toggle(o.name)" /></td>
-              <td @click="openView(o)"><span class="so-num">{{ o.name }}</span></td>
-              <td @click="openView(o)">{{ o.customer_name || o.customer || '—' }}</td>
+            <tr v-for="o in sorted" :key="o.name" class="inv-row" :class="{selected:selected.has(o.name)}">
+              <td class="td-check" @click.stop>
+                <input type="checkbox" :checked="selected.has(o.name)" @change="toggle(o.name)"/>
+              </td>
               <td @click="openView(o)" class="text-muted mono-sm">{{ fmtDate(o.transaction_date) }}</td>
+              <td @click="openView(o)"><span class="inv-link">{{ o.name }}</span></td>
+              <td @click="openView(o)"><span class="inv-customer">{{ o.customer_name || o.customer || '—' }}</span></td>
               <td @click="openView(o)" :class="isPastDelivery(o)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(o.delivery_date)||'—' }}</td>
-              <td @click="openView(o)"><span class="so-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span></td>
-              <td @click="openView(o)" class="ta-r mono-sm">{{ fmtCur(o.grand_total) }}</td>
-              <td class="so-act-cell">
-                <button class="so-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button class="so-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                <button class="so-act-btn so-act-conv" v-if="canInvoice(o)" @click="openInvoiceModal(o)" title="Invoice"><span v-html="icon('arrow-right',13)"></span></button>
-                <button class="so-act-btn so-act-del" @click="deleteSO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+              <td @click="openView(o)">
+                <span class="inv-status-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span>
+              </td>
+              <td class="ta-r mono-sm" @click="openView(o)">{{ fmtCur(o.grand_total) }}</td>
+              <td style="text-align:center" @click.stop>
+                <div style="display:flex;gap:4px;justify-content:center">
+                  <button class="inv-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
+                  <button class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                  <button v-if="canInvoice(o)" class="inv-act-btn inv-act-conv" @click="openInvoiceModal(o)" title="Invoice"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+                  <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteSO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                </div>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="8" class="so-empty">No sales orders match</td></tr>
+            <tr v-if="!sorted.length">
+              <td colspan="8" class="empty-state">
+                <div class="empty-inner">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".3"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+                  <p>{{ search ? 'No sales orders match' : 'No sales orders yet' }}</p>
+                  <button v-if="!search" class="inv-btn-primary" style="margin-top:4px" @click="openNew">
+                    <span v-html="icon('plus',13)"></span> New Sales Order
+                  </button>
+                </div>
+              </td>
+            </tr>
           </template>
         </tbody>
       </table>
     </div>
+    <div v-if="!loading && sorted.length" style="text-align:right;font-size:12px;color:#9ca3af;padding:6px 20px">
+      {{ sorted.length }} of {{ list.length }} orders
+    </div>
 
     <!-- ── Create / Edit Drawer ── -->
-    <div v-if="drawerOpen" class="so-overlay" @click.self="drawerOpen=false"></div>
-    <div class="so-drawer" :class="{open:drawerOpen}">
-      <div class="so-dheader">
-        <div class="so-dheader-title">{{ editingName ? 'Edit Sales Order' : 'New Sales Order' }}</div>
-        <button class="so-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
-      </div>
-      <div class="so-dbody">
-        <div class="so-fields-grid">
-          <div class="so-field" style="grid-column:1/-1">
-            <label class="so-label">Customer <span class="req">*</span></label>
-            <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer…"
-              :createable="true" createDoctype="Customer"
-              @search="fetchCustomers" />
+    <div v-if="drawerOpen" class="so-drawer-bg" @click.self="drawerOpen=false">
+      <div class="so-drawer-panel">
+
+        <!-- Header -->
+        <div class="so-dh">
+          <div>
+            <div class="so-dh-title">{{ editingName ? 'Edit Sales Order' : 'New Sales Order' }}</div>
+            <div class="so-dh-sub">{{ editingName || 'Fill in the details below' }}</div>
           </div>
-          <div class="so-field">
-            <label class="so-label">Order Date <span class="req">*</span></label>
-            <input v-model="form.transaction_date" type="date" class="so-input" />
-          </div>
-          <div class="so-field">
-            <label class="so-label">Delivery Date</label>
-            <input v-model="form.delivery_date" type="date" class="so-input" />
-          </div>
-          <div class="so-field">
-            <label class="so-label">Customer PO #</label>
-            <input v-model="form.po_number" type="text" class="so-input" placeholder="Customer's purchase order #" />
-          </div>
-          <div class="so-field">
-            <label class="so-label">Shipping Address</label>
-            <input v-model="form.shipping_address" type="text" class="so-input" placeholder="Optional" />
-          </div>
+          <button class="so-dclose-new" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
 
-        <div class="so-section-title">Items</div>
-        <div class="so-items-table">
-          <div class="so-items-head">
-            <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
-          </div>
-          <div v-for="line in lines" :key="line.id" class="so-items-row">
-            <div><SearchableSelect v-model="line.item_code" :options="items"
-              placeholder="Item…" :createable="true" createDoctype="Item"
-              @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
-            <div><input v-model="line.description" class="so-input" placeholder="Description" /></div>
-            <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="so-input ta-r" @input="calcLine(line)" /></div>
-            <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="so-input ta-r" @input="calcLine(line)" /></div>
-            <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
-            <div><button @click="removeLine(line.id)" class="so-rm-line"><span v-html="icon('x',12)"></span></button></div>
-          </div>
-          <button class="so-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
-        </div>
+        <!-- Body -->
+        <div class="so-dbody">
 
-        <div class="so-totals">
-          <div class="so-field" style="max-width:160px">
-            <label class="so-label">Tax Rate %</label>
-            <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="so-input" />
+          <div class="so-sec-lbl">Order Details</div>
+          <div class="so-fg so-fg3">
+            <div style="grid-column:1/3">
+              <label class="so-lbl">Customer <span class="so-req">*</span></label>
+              <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer…"
+                :createable="true" createDoctype="Customer"
+                @search="fetchCustomers" @update:modelValue="onCustomerChange" />
+            </div>
+            <div>
+              <label class="so-lbl">Order Date <span class="so-req">*</span></label>
+              <input v-model="form.transaction_date" type="date" class="so-fi"/>
+            </div>
+            <div>
+              <label class="so-lbl">Delivery Date</label>
+              <input v-model="form.delivery_date" type="date" class="so-fi"/>
+            </div>
+            <div>
+              <label class="so-lbl">Customer PO #</label>
+              <input v-model="form.po_number" type="text" class="so-fi" placeholder="Customer's purchase order #"/>
+            </div>
+            <div style="grid-column:1/-1">
+              <label class="so-lbl">Shipping Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
+              <input v-model="form.shipping_address" type="text" class="so-fi" placeholder="Auto-filled from customer, or enter manually"/>
+            </div>
           </div>
-          <div class="so-totals-right">
-            <div class="so-total-row"><span>Subtotal</span><span>{{ fmtCur(subtotal) }}</span></div>
-            <div class="so-total-row"><span>Tax ({{ form.tax_rate||0 }}%)</span><span>{{ fmtCur(taxAmount) }}</span></div>
-            <div class="so-total-row grand"><span>Total</span><span>{{ fmtCur(subtotal+taxAmount) }}</span></div>
-          </div>
-        </div>
 
-        <div class="so-field">
-          <label class="so-label">Terms & Conditions</label>
-          <textarea v-model="form.terms" rows="3" class="so-input" placeholder="Optional"></textarea>
+          <!-- Line Items -->
+          <div class="so-sec-lbl" style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f2f5;padding-top:16px;margin-top:4px">
+            LINE ITEMS
+            <button class="so-add-item-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+          </div>
+
+          <div class="so-lines-wrap">
+            <div class="so-lines-head">
+              <div>ITEM <span class="so-req">*</span></div>
+              <div>DESCRIPTION</div>
+              <div class="ta-r">QTY</div>
+              <div class="ta-r">RATE (₹)</div>
+              <div class="ta-r">AMOUNT</div>
+              <div></div>
+            </div>
+            <div v-for="line in lines" :key="line.id" class="so-lines-row">
+              <div style="min-width:0">
+                <SearchableSelect v-model="line.item_code" :options="items"
+                  placeholder="Item…" :createable="true" createDoctype="Item"
+                  @search="fetchItems" @select="v=>onItemSelect(line,v)"/>
+              </div>
+              <div><input v-model="line.description" class="so-ci" placeholder="Description"/></div>
+              <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="so-ci so-ci-r" @input="calcLine(line)"/></div>
+              <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="so-ci so-ci-r" @input="calcLine(line)"/></div>
+              <div class="ta-r mono-sm" style="display:flex;align-items:center;justify-content:flex-end;font-weight:600;font-size:13px">{{ fmtCur(line.amount) }}</div>
+              <div style="display:flex;align-items:center;justify-content:center">
+                <button @click="removeLine(line.id)" class="so-rm-line"><span v-html="icon('x',12)"></span></button>
+              </div>
+            </div>
+            <div v-if="!lines.length" class="so-lines-empty">No items yet — click <strong>Add Item</strong> to begin.</div>
+            <button class="so-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+          </div>
+
+          <!-- Totals -->
+          <div class="so-totals-wrap">
+            <div class="so-tax-section">
+              <div class="so-tax-header">
+                <span class="so-tax-title">Tax</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <label class="so-lbl" style="margin:0;white-space:nowrap">Tax Rate %</label>
+                <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="so-ci" style="max-width:100px"/>
+              </div>
+            </div>
+            <div class="so-totals-right-panel">
+              <div class="so-total-row-item">
+                <span>Subtotal</span>
+                <span class="so-total-amt">{{ fmtCur(subtotal) }}</span>
+              </div>
+              <div class="so-total-row-item" style="color:#6b7280;font-size:12px">
+                <span>Tax ({{ form.tax_rate||0 }}%)</span>
+                <span class="so-total-amt">{{ fmtCur(taxAmount) }}</span>
+              </div>
+              <div class="so-total-row-item so-grand-total">
+                <span>Grand Total</span>
+                <span class="so-total-amt" style="font-size:16px;color:#1a6ef7">{{ fmtCur(subtotal+taxAmount) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terms -->
+          <div class="so-sec-lbl">Notes & Terms</div>
+          <div style="margin-bottom:14px">
+            <label class="so-lbl">Terms & Conditions <span style="color:#9ca3af;font-weight:400">(printed on order)</span></label>
+            <textarea v-model="form.terms" rows="3" class="so-fi" style="resize:vertical" placeholder="Payment terms, delivery terms…"></textarea>
+          </div>
+
+        </div><!-- /so-dbody -->
+
+        <div class="so-dfooter-new">
+          <div style="font-size:12px;color:#9ca3af">{{ editingName ? 'Editing: '+editingName : 'New sales order' }}</div>
+          <div style="display:flex;gap:10px">
+            <button class="so-btn-ghost" @click="drawerOpen=false">Cancel</button>
+            <button class="so-btn-ghost" style="border-color:#3b82f6;color:#3b82f6" :disabled="drawerSaving" @click="saveSO('Draft')">
+              <span v-html="icon('save',13)"></span> Save Draft
+            </button>
+            <button class="inv-btn-primary" :disabled="drawerSaving" @click="saveSO('To Deliver')">
+              <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Confirm Order' }}
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="so-dfooter">
-        <button class="so-btn-ghost" @click="drawerOpen=false">Cancel</button>
-        <button class="so-btn-save" :disabled="drawerSaving" @click="saveSO('Draft')">
-          <span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}
-        </button>
-        <button class="so-btn-primary" :disabled="drawerSaving" @click="saveSO('To Deliver')">
-          <span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Confirm Order' }}
-        </button>
       </div>
     </div>
 
     <!-- ── View Drawer ── -->
     <div v-if="viewOpen" class="so-overlay" @click.self="viewOpen=false"></div>
-    <div class="so-drawer so-view-drawer" :class="{open:viewOpen}">
+    <div class="so-view-drawer-panel" :class="{open:viewOpen}">
       <template v-if="viewDoc">
         <div class="so-view-head" :style="`background:${headerBg(viewDoc)}`">
           <div>
@@ -170,12 +262,25 @@
           </div>
           <div style="text-align:right">
             <div class="so-view-amount">{{ fmtCur(viewDoc.grand_total) }}</div>
-            <span class="so-badge so-badge-white">{{ displayStatus(viewDoc) }}</span>
+            <span class="inv-status-badge so-badge-white" style="margin-top:4px;display:inline-flex">{{ displayStatus(viewDoc) }}</span>
           </div>
-          <button class="so-dclose so-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+          <button class="so-dclose-view" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
 
-        <TimelineStepper :steps="timelineSteps" />
+        <!-- Inline timeline -->
+        <div class="so-timeline">
+          <template v-for="(step, i) in timelineSteps" :key="i">
+            <div class="so-tl-step" :class="{ done: step.done, danger: step.danger, current: step.current }">
+              <div class="so-tl-dot">
+                <span v-if="step.done && !step.danger" v-html="icon('check', 9)"></span>
+                <span v-else-if="step.danger" style="font-size:9px;font-weight:700">!</span>
+              </div>
+              <div class="so-tl-label">{{ step.label }}</div>
+            </div>
+            <div v-if="i < timelineSteps.length - 1" class="so-tl-line"
+              :class="{ done: timelineSteps[i+1]?.done, danger: timelineSteps[i+1]?.danger }"></div>
+          </template>
+        </div>
 
         <div class="so-tabs">
           <button class="so-tab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
@@ -185,31 +290,42 @@
           </button>
         </div>
 
-        <div class="so-dbody">
+        <div class="so-vbody">
           <template v-if="viewTab==='details'">
             <div class="so-meta-grid">
               <div><div class="so-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.transaction_date) }}</div></div>
-              <div><div class="so-meta-lbl">Delivery Date</div>
+              <div>
+                <div class="so-meta-lbl">Delivery Date</div>
                 <div class="mono-sm" :class="isPastDelivery(viewDoc)?'text-danger':''">{{ fmtDate(viewDoc.delivery_date)||'—' }}</div>
               </div>
               <div><div class="so-meta-lbl">Customer PO</div><div class="mono-sm">{{ viewDoc.po_number||'—' }}</div></div>
               <div><div class="so-meta-lbl">From Quote</div><div class="mono-sm">{{ viewDoc.ref_quote||'—' }}</div></div>
             </div>
+
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
             <template v-else-if="viewItems.length">
-              <div class="so-section-title">Line Items</div>
+              <div class="so-section-title" style="margin-top:12px">Line Items</div>
               <div class="so-view-items">
-                <div class="so-view-items-head"><span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span></div>
+                <div class="so-view-items-head">
+                  <span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span>
+                </div>
                 <div v-for="it in viewItems" :key="it.name" class="so-view-items-row">
-                  <span><strong>{{ it.item_name||it.item_code }}</strong>
-                    <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div></span>
+                  <span>
+                    <strong>{{ it.item_name||it.item_code }}</strong>
+                    <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div>
+                  </span>
                   <span class="ta-r mono-sm">{{ it.qty }}</span>
                   <span class="ta-r mono-sm">{{ fmtCur(it.rate) }}</span>
                   <span class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(it.amount) }}</span>
                 </div>
               </div>
+              <div v-if="viewDoc.grand_total" style="display:flex;justify-content:flex-end;padding:10px 12px;border-top:1px solid #e8ecf0;gap:32px;font-size:13px">
+                <span style="color:#6b7280">Grand Total</span>
+                <span style="font-family:monospace;font-weight:700;color:#1a6ef7;font-size:15px">{{ fmtCur(viewDoc.grand_total) }}</span>
+              </div>
             </template>
-            <div v-if="viewDoc.terms" class="so-terms">
+
+            <div v-if="viewDoc.terms" class="so-terms" style="margin-top:12px">
               <div class="so-meta-lbl">Terms & Conditions</div>
               <div style="white-space:pre-wrap;font-size:12.5px;color:#374151">{{ viewDoc.terms }}</div>
             </div>
@@ -218,7 +334,7 @@
           <template v-if="viewTab==='fulfill'">
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
             <template v-else-if="fulfill.lines.length">
-              <div style="font-size:12px;color:#6b7280">Status: <strong>{{ fulfill.computed_status }}</strong></div>
+              <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Status: <strong>{{ fulfill.computed_status }}</strong></div>
               <div class="so-fulfill-tbl">
                 <div class="so-fulfill-head">
                   <span>Item</span>
@@ -247,12 +363,12 @@
             <template v-else>
               <div v-if="viewDoc.ref_quote" class="so-section-title">Originating Quote</div>
               <div v-if="viewDoc.ref_quote" class="so-link-row">
-                <span class="so-num">{{ viewDoc.ref_quote }}</span>
+                <span class="inv-link">{{ viewDoc.ref_quote }}</span>
                 <span class="text-muted">Quotation</span>
               </div>
               <div v-if="links.sales_invoices.length" class="so-section-title">Sales Invoices</div>
               <div v-for="si in links.sales_invoices" :key="si.name" class="so-link-row">
-                <span class="so-num">{{ si.name }}</span>
+                <span class="inv-link">{{ si.name }}</span>
                 <span class="text-muted">{{ fmtDate(si.posting_date) }}</span>
                 <span class="text-muted">Out: {{ fmtCur(si.outstanding_amount) }}</span>
                 <span style="text-align:right;font-weight:600">{{ fmtCur(si.grand_total) }}</span>
@@ -265,7 +381,7 @@
           </template>
         </div>
 
-        <div class="so-dfooter">
+        <div class="so-vfooter">
           <button class="so-btn-ghost" @click="viewOpen=false">Close</button>
           <button class="so-btn-save" @click="openEdit(viewDoc);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
@@ -273,24 +389,25 @@
           <button class="so-btn-ghost" @click="emailSO(viewDoc)">
             <span v-html="icon('mail',13)"></span> Email
           </button>
-          <button class="so-btn-ghost" @click="printSO(viewDoc)" title="Print preview">
-            🖨 Print
-          </button>
-          <button v-if="canInvoice(viewDoc)" class="so-btn-primary" @click="openInvoiceModal(viewDoc)">→ Invoice</button>
+          <button class="so-btn-ghost" @click="printSO(viewDoc)" title="Print preview">🖨 Print</button>
+          <button v-if="canInvoice(viewDoc)" class="inv-btn-primary" @click="openInvoiceModal(viewDoc)">→ Invoice</button>
           <button class="so-btn-danger" @click="cancelSO(viewDoc)">Cancel</button>
           <button class="so-btn-danger" @click="deleteSO(viewDoc)">Delete</button>
         </div>
       </template>
     </div>
 
-    <!-- ── Convert-to-Invoice modal (partial-qty) ── -->
+    <!-- ── Convert-to-Invoice modal ── -->
     <div v-if="invModal.open" class="so-overlay" @click.self="invModal.open=false" style="z-index:60"></div>
-    <div v-if="invModal.open" class="so-apply-dialog">
-      <div class="so-dheader" style="background:linear-gradient(135deg,#1e3a5f,#1a6ef7);color:#fff;height:auto;padding:14px 18px">
-        <div style="color:#fff;font-weight:700">Convert to Invoice — {{ invModal.soName }}</div>
-        <button class="so-dclose" style="color:#fff" @click="invModal.open=false"><span v-html="icon('x',16)"></span></button>
+    <div v-if="invModal.open" class="so-inv-dialog">
+      <div class="so-dh" style="border-radius:12px 12px 0 0">
+        <div>
+          <div class="so-dh-title">Convert to Invoice</div>
+          <div class="so-dh-sub">{{ invModal.soName }}</div>
+        </div>
+        <button class="so-dclose-new" @click="invModal.open=false"><span v-html="icon('x',16)"></span></button>
       </div>
-      <div class="so-dbody">
+      <div class="so-vbody" style="padding:20px 24px;gap:12px">
         <div style="font-size:12.5px;color:#374151">Enter the quantity to invoice for each line (defaults to remaining):</div>
         <div class="so-inv-tbl">
           <div class="so-inv-head">
@@ -300,20 +417,20 @@
             <span>{{ l.item_name||l.item_code }}</span>
             <span class="ta-r mono-sm text-muted">{{ l.remaining_to_bill }}</span>
             <input v-model.number="l.toInvoice" type="number" min="0" :max="l.remaining_to_bill" step="0.001"
-              class="so-input ta-r" style="font-family:monospace;width:90px" />
+              class="so-ci so-ci-r" style="width:90px"/>
           </div>
         </div>
-        <div class="so-field">
-          <label class="so-label">Due Date</label>
-          <input v-model="invModal.dueDate" type="date" class="so-input" />
+        <div>
+          <label class="so-lbl">Due Date</label>
+          <input v-model="invModal.dueDate" type="date" class="so-fi" style="max-width:200px"/>
         </div>
         <div style="text-align:right;font-size:13px;color:#6b7280">
-          Invoice Total: <strong style="color:#111827">{{ fmtCur(invModalTotal) }}</strong>
+          Invoice Total: <strong style="color:#1a6ef7;font-size:15px;font-family:monospace">{{ fmtCur(invModalTotal) }}</strong>
         </div>
       </div>
-      <div class="so-dfooter">
+      <div class="so-vfooter">
         <button class="so-btn-ghost" @click="invModal.open=false" :disabled="invModal.saving">Cancel</button>
-        <button class="so-btn-primary" :disabled="invModal.saving||invModalTotal<=0" @click="submitInvoice">
+        <button class="inv-btn-primary" :disabled="invModal.saving||invModalTotal<=0" @click="submitInvoice">
           {{ invModal.saving ? 'Creating…' : `Create Invoice ${fmtCur(invModalTotal)}` }}
         </button>
       </div>
@@ -332,9 +449,8 @@ import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
-import SummaryStrip from "../components/SummaryStrip.vue";
-import BulkActionBar from "../components/BulkActionBar.vue";
-import TimelineStepper from "../components/TimelineStepper.vue";
+
+
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
@@ -360,6 +476,7 @@ const viewLoading = ref(false), viewItems = ref([]);
 const fulfill = reactive({ lines: [], computed_status: "" });
 const links = reactive({ sales_invoices: [], delivery_challans: [] });
 const customers = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref("");
+const addressLoading = ref(false);
 const sortCol = ref("transaction_date"), sortDir = ref("desc");
 const actionRunning = ref(false);
 
@@ -477,6 +594,14 @@ const sorted = computed(() => {
 });
 function sortBy(col) { if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc"; else { sortCol.value = col; sortDir.value = "asc"; } }
 function sortArrow(col) { if (sortCol.value !== col) return '<span style="color:#d1d5db">⇅</span>'; return sortDir.value === "asc" ? "↑" : "↓"; }
+function sortArrowTxt(col) { if (sortCol.value !== col) return "⇅"; return sortDir.value === "asc" ? "↑" : "↓"; }
+function pillCls(key) {
+  if (key === "toDeliver") return "pc-orange";
+  if (key === "toInvoice") return "pc-blue";
+  if (key === "closed")    return "pc-green";
+  if (key === "cancelled") return "pc-red";
+  return "pc-muted";
+}
 
 const allChecked = computed(() => sorted.value.length > 0 && sorted.value.every(o => selected.value.has(o.name)));
 function toggle(n) { const s = new Set(selected.value); s.has(n) ? s.delete(n) : s.add(n); selected.value = s; }
@@ -527,7 +652,7 @@ async function openEdit(o) {
   Object.assign(form, {
     customer: o.customer || "", transaction_date: o.transaction_date || todayStr(),
     delivery_date: o.delivery_date || deliveryDefault(), po_number: o.po_number || "",
-    shipping_address: o.shipping_address || "", tax_rate: 0, terms: o.terms || "",
+    shipping_address: "", tax_rate: 0, terms: o.terms || "",
   });
   lines.value = [blankLine()];
   fetchCustomers(""); fetchItems("");
@@ -543,6 +668,7 @@ async function openEdit(o) {
     if (doc?.taxes?.[0]?.rate) form.tax_rate = doc.taxes[0].rate;
     if (doc?.taxes?.[0]?.account_head) taxAccountHead.value = doc.taxes[0].account_head;
     if (doc?.terms) form.terms = doc.terms;
+    if (doc?.shipping_address) form.shipping_address = doc.shipping_address;
   } catch {}
 }
 async function openView(o) {
@@ -575,15 +701,61 @@ async function fetchCustomers(q = "") {
     customers.value = r.map(x => ({ ...x, label: x.customer_name || x.name, value: x.name }));
   } catch { customers.value = []; }
 }
+
+// ── Customer change: auto-fill shipping address from customer ship_* fields ──
+async function onCustomerChange() {
+  form.shipping_address = "";
+  if (!form.customer) return;
+  addressLoading.value = true;
+  try {
+    const custDoc = await apiGet("Customer", form.customer);
+    // Build shipping address from ship_* fields, fall back to billing fields
+    const shipFields = [
+      custDoc?.ship_address_line1, custDoc?.ship_address_line2,
+      custDoc?.ship_city, custDoc?.ship_state, custDoc?.ship_pincode, custDoc?.ship_country,
+    ];
+    const billingFields = [
+      custDoc?.address_line1, custDoc?.address_line2,
+      custDoc?.city, custDoc?.state, custDoc?.pincode, custDoc?.country,
+    ];
+    const builtAddr = shipFields.filter(Boolean).join(", ")
+      || billingFields.filter(Boolean).join(", ");
+    if (builtAddr) form.shipping_address = builtAddr;
+  } catch {}
+  addressLoading.value = false;
+}
 async function fetchItems(q = "") {
   try {
     const f = [["disabled", "=", 0]];
     if (q) f.push(["item_name", "like", "%" + q + "%"]);
-    const r = await apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom"], filters: f, limit: 30, order: "item_name asc" });
-    items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_rate || 0 }));
+    const r = await apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom", "description"], filters: f, limit: 30, order: "item_name asc" });
+    items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_rate || 0, uom: x.stock_uom || "Nos", description: x.description || "" }));
   } catch { items.value = []; }
 }
-function onItemSelect(line, opt) { line.item_code = opt?.value ?? opt; if (opt?.rate) { line.rate = Number(opt.rate) || 0; calcLine(line); } }
+async function onItemSelect(line, opt) {
+  const code = opt?.value ?? opt;
+  line.item_code = code;
+
+  // Fill from already-loaded items list
+  const found = items.value.find(i => i.name === code || i.value === code);
+  if (found) {
+    line.rate = flt(found.standard_rate ?? found.rate);
+    if (found.description) line.description = found.description;
+    calcLine(line);
+  }
+
+  // Fetch full Item doc to get any fields not in the list
+  if (code) {
+    try {
+      const doc = await apiGet("Item", code);
+      if (doc?.description)  line.description = doc.description;
+      if (!found) {
+        line.rate = flt(doc.standard_rate || 0);
+      }
+      calcLine(line);
+    } catch {}
+  }
+}
 function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
 function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
@@ -742,114 +914,221 @@ onMounted(() => { load(); loadTaxAccount(); });
 </script>
 
 <style scoped>
-.so-page { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
-.so-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.so-search-wrap { display: flex; align-items: center; gap: 8px; background: #f3f4f6; border-radius: 8px; padding: 6px 12px; min-width: 220px; }
-.so-search-input { border: none; background: transparent; outline: none; font: inherit; color: #111827; width: 100%; font-size: 13px; }
-.so-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-.so-pill { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 600; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
-.so-pill:hover { color: #2563eb; border-color: #2563eb; }
-.so-pill.active { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
-.so-pill-count { background: #f3f4f6; color: #6b7280; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.so-pill.active .so-pill-count { background: #2563eb; color: #fff; }
-.so-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.so-btn-primary:hover:not(:disabled) { background: #1d4ed8; }
-.so-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-.so-btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #374151; cursor: pointer; }
-.so-btn-ghost:hover { background: #f9fafb; }
-.so-btn-save { display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.so-btn-save:hover { background: #dcfce7; }
-.so-btn-save:disabled { opacity: .5; cursor: not-allowed; }
-.so-btn-danger { display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; border: 1px solid #dc2626; color: #dc2626; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.so-btn-danger:hover { background: #fee2e2; }
+/* ══ Page ══ */
+.so-page { display:flex; flex-direction:column; gap:0; padding:0; background:#f8fafc; min-height:100vh; }
 
-.so-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
-.so-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.so-table th { background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 11.5px; font-weight: 600; color: #374151; text-align: left; white-space: nowrap; }
-.so-table th.sortable { cursor: pointer; user-select: none; }
-.so-table th.sortable:hover { color: #2563eb; }
-.ta-r { text-align: right !important; }
-.so-row td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; cursor: pointer; }
-.so-row:last-child td { border-bottom: none; }
-.so-row:hover td { background: #f9fafb; }
-.so-row.selected td { background: #eff6ff; }
-.so-num { font-family: monospace; font-size: 12.5px; color: #2563eb; font-weight: 600; }
-.mono-sm { font-family: monospace; font-size: 12.5px; }
-.text-muted { color: #6b7280; }
-.text-danger { color: #dc2626; }
-.text-success { color: #059669; }
-.so-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
-.so-bdg-grey   { background: #f3f4f6; color: #6b7280; }
-.so-bdg-blue   { background: #dbeafe; color: #1a6ef7; }
-.so-bdg-green  { background: #d1fae5; color: #059669; }
-.so-bdg-orange { background: #fef3c7; color: #d97706; }
-.so-bdg-red    { background: #fee2e2; color: #dc2626; }
-.so-badge-white { background: rgba(255,255,255,.2); color: #fff !important; border: 1px solid rgba(255,255,255,.4); }
-.so-act-cell { display: flex; gap: 4px; justify-content: flex-end; cursor: default !important; }
-.so-act-btn { background: transparent; border: 1px solid #e5e7eb; border-radius: 6px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #6b7280; }
-.so-act-btn:hover { background: #f3f4f6; color: #2563eb; }
-.so-act-conv { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
-.so-act-conv:hover { background: #dbeafe; }
-.so-act-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-.so-empty { text-align: center; color: #9ca3af; padding: 48px !important; cursor: default !important; }
-.so-shimmer { height: 13px; background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%); border-radius: 4px; animation: shimmer 1.2s infinite; background-size: 200% 100%; }
+/* ══ Toolbar ══ */
+.inv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 12px; gap:12px; flex-wrap:wrap; background:#fff; border-bottom:1px solid #e8ecf0; }
+.inv-heading { font-size:18px; font-weight:700; color:#1a1a2e; margin:0; }
+.inv-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.inv-search-wrap { display:flex; align-items:center; gap:8px; background:#f3f4f6; border-radius:8px; padding:7px 12px; min-width:240px; }
+.inv-search-input { border:none; background:transparent; outline:none; font:inherit; color:#111827; width:100%; font-size:13px; }
+.inv-btn-primary { display:inline-flex; align-items:center; gap:6px; background:#1a6ef7; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.inv-btn-primary:hover:not(:disabled) { background:#155fd4; }
+.inv-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+.inv-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:7px 12px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
+.inv-btn-ghost:hover { background:#f8fafc; }
+
+/* ══ Summary strip ══ */
+.inv-sum-strip { display:flex; gap:0; background:#fff; border-bottom:1px solid #e8ecf0; }
+.inv-sum-card { flex:1; padding:16px 24px; display:flex; flex-direction:column; gap:4px; border-left:3px solid transparent; }
+.inv-sum-lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; }
+.inv-sum-val { font-size:26px; font-weight:800; color:#1a1a2e; font-family:monospace; }
+
+/* ══ Filter bar ══ */
+.inv-filter-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 24px; background:#fff; border-bottom:1px solid #e8ecf0; gap:12px; flex-wrap:wrap; }
+.inv-pills { display:flex; gap:6px; flex-wrap:wrap; }
+.inv-pill { padding:5px 14px; border-radius:20px; font-size:12.5px; font-weight:600; border:1px solid #e2e8f0; background:#fff; color:#6b7280; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px; transition:all .12s; }
+.inv-pill:hover { color:#1a6ef7; border-color:#1a6ef7; }
+.inv-pill.active { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
+.inv-pill-count { padding:1px 7px; border-radius:999px; font-size:11px; font-weight:700; background:#f3f4f6; color:#6b7280; }
+.inv-pill.active .inv-pill-count { background:#1a6ef7; color:#fff; }
+.pc-muted   { background:#f3f4f6 !important; color:#6b7280 !important; }
+.pc-blue    { background:#dbeafe !important; color:#1a6ef7 !important; }
+.pc-green   { background:#d1fae5 !important; color:#059669 !important; }
+.pc-orange  { background:#fef3c7 !important; color:#d97706 !important; }
+.pc-red     { background:#fee2e2 !important; color:#dc2626 !important; }
+
+/* ══ Bulk bar ══ */
+.inv-bulk-bar { display:flex; align-items:center; gap:8px; padding:8px 24px; background:#eff6ff; border-bottom:1px solid #bfdbfe; flex-wrap:wrap; }
+.inv-bulk-count { font-size:13px; font-weight:700; color:#1a6ef7; margin-right:4px; }
+.inv-bulk-btn { display:inline-flex; align-items:center; gap:5px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:5px 12px; font-size:12.5px; font-weight:600; color:#374151; cursor:pointer; font-family:inherit; }
+.inv-bulk-btn:hover { background:#f8fafc; border-color:#1a6ef7; color:#1a6ef7; }
+.inv-bulk-danger { border-color:rgba(220,38,38,.3); color:#dc2626; }
+.inv-bulk-danger:hover { background:#fee2e2; border-color:#dc2626; }
+.inv-bulk-clear { background:none; border:none; font-size:12.5px; color:#6b7280; cursor:pointer; font-family:inherit; padding:4px 8px; border-radius:4px; }
+.inv-bulk-clear:hover { background:#e0e7ff; color:#1a6ef7; }
+
+/* ══ Table ══ */
+.inv-table-wrap { background:#fff; overflow-x:auto; flex:1; }
+.inv-table { width:100%; border-collapse:collapse; font-size:13px; }
+.inv-table thead tr { background:#f8fafc; }
+.inv-table th { padding:10px 12px; border-bottom:2px solid #e8ecf0; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; text-align:left; white-space:nowrap; user-select:none; }
+.inv-table th.sortable { cursor:pointer; }
+.inv-table th.sortable:hover { color:#1a6ef7; }
+.th-check { width:36px; }
+.sort-arrow { font-size:11px; color:#1a6ef7; margin-left:2px; }
+.ta-r { text-align:right !important; }
+.inv-row td { padding:11px 12px; border-bottom:1px solid #f0f2f5; vertical-align:middle; cursor:pointer; color:#374151; }
+.inv-row:last-child td { border-bottom:none; }
+.inv-row:hover td { background:#f8faff; }
+.inv-row.selected td { background:#eaf1ff; }
+.td-check { cursor:default !important; width:36px; }
+.inv-link { font-family:monospace; font-size:12.5px; color:#1a6ef7; font-weight:700; }
+.inv-customer { font-weight:600; color:#1a1a2e; }
+.mono-sm { font-family:monospace; font-size:12.5px; }
+.text-muted { color:#9ca3af; }
+.text-danger { color:#dc2626; font-weight:600; }
+.text-success { color:#059669; font-weight:600; }
+
+/* ══ Status badges ══ */
+.inv-status-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:.03em; white-space:nowrap; }
+.so-bdg-grey   { background:#f3f4f6; color:#6b7280; }
+.so-bdg-blue   { background:#dbeafe; color:#1a6ef7; }
+.so-bdg-green  { background:#d1fae5; color:#059669; }
+.so-bdg-orange { background:#fef3c7; color:#d97706; }
+.so-bdg-red    { background:#fee2e2; color:#dc2626; }
+.so-badge-white { background:rgba(255,255,255,.2); color:#fff !important; border:1px solid rgba(255,255,255,.4); }
+
+/* ══ Action buttons ══ */
+.inv-act-btn { background:transparent; border:1px solid #e2e8f0; border-radius:6px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#6b7280; }
+.inv-act-btn:hover { background:#f3f4f6; color:#1a6ef7; border-color:#1a6ef7; }
+.inv-act-conv { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
+.inv-act-conv:hover { background:#dbeafe; }
+
+/* ══ Shimmer skeleton ══ */
+.shimmer-row td { padding:10px 12px; border-bottom:1px solid #f0f2f5; }
+.shimmer { height:13px; border-radius:4px; background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
 @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
-.so-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.2); z-index: 40; }
-.so-drawer { position: fixed; top: 0; right: -600px; bottom: 0; width: 600px; max-width: 96vw; background: #fff; border-left: 1px solid #e5e7eb; box-shadow: -8px 0 24px rgba(0,0,0,.08); z-index: 50; display: flex; flex-direction: column; transition: right .22s ease; }
-.so-drawer.open { right: 0; }
-.so-view-drawer { width: 540px; right: -540px; }
-.so-view-drawer.open { right: 0; }
-.so-dheader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 60px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
-.so-dheader-title { font-size: 15px; font-weight: 600; color: #111827; }
-.so-dclose { background: transparent; border: none; cursor: pointer; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; }
-.so-dclose:hover { background: #f3f4f6; color: #111827; }
-.so-dbody { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-.so-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.so-field { display: flex; flex-direction: column; gap: 4px; }
-.so-label { font-size: 12px; font-weight: 600; color: #374151; }
-.req { color: #dc2626; }
-.so-input { width: 100%; box-sizing: border-box; border: 1px solid #e5e7eb; border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; outline: none; background: #fff; color: #111827; }
-.so-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
-textarea.so-input { resize: vertical; }
-.so-section-title { font-size: 12px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; }
-.so-items-table { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-.so-items-head { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: #374151; }
-.so-items-row { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; }
-.so-add-line { background: transparent; border: none; color: #2563eb; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 8px 12px; display: inline-flex; align-items: center; gap: 6px; }
-.so-add-line:hover { background: #eff6ff; }
-.so-rm-line { background: transparent; border: 1px solid #e5e7eb; border-radius: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca3af; }
-.so-rm-line:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-.so-totals { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.so-totals-right { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
-.so-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 3px 0; }
-.so-total-row.grand { font-weight: 700; font-size: 14px; color: #111827; border-top: 1px solid #e5e7eb; padding-top: 6px; }
+/* ══ Empty state ══ */
+.empty-state { text-align:center; padding:56px 20px !important; cursor:default !important; color:#9ca3af; }
+.empty-inner { display:flex; flex-direction:column; align-items:center; gap:8px; }
+.empty-inner p { font-size:14px; color:#9ca3af; margin:0; }
 
-.so-view-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; padding: 20px; flex-shrink: 0; color: #fff; }
-.so-view-num { font-size: 18px; font-weight: 700; font-family: monospace; color: #fff; }
-.so-view-sub { font-size: 13px; color: rgba(255,255,255,.8); margin-top: 2px; }
-.so-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #fff; }
-.so-vclose { position: absolute; top: 12px; right: 12px; color: #fff; }
-.so-vclose:hover { background: rgba(255,255,255,.18); color: #fff; }
-.so-tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: #fff; }
-.so-tab { background: transparent; border: none; padding: 10px 14px; font: inherit; font-size: 12.5px; font-weight: 600; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; display: inline-flex; align-items: center; gap: 6px; }
-.so-tab:hover { color: #2563eb; }
-.so-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
-.so-tab-count { background: #2563eb; color: #fff; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.so-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.so-meta-lbl { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
-.so-view-items { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.so-view-items-head { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-.so-view-items-row { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
-.so-terms { padding: 10px 12px; background: #f8fafc; border-radius: 6px; }
-.so-link-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12.5px; align-items: center; }
-.so-fulfill-tbl { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.so-fulfill-head { display: grid; grid-template-columns: 2fr 80px 100px 90px 110px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-.so-fulfill-row { display: grid; grid-template-columns: 2fr 80px 100px 90px 110px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
-.so-dfooter { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid #e5e7eb; flex-shrink: 0; flex-wrap: wrap; }
+/* ══ Shared button styles ══ */
+.so-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:7px 12px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
+.so-btn-ghost:hover { background:#f8fafc; }
+.so-btn-save { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #16a34a; color:#16a34a; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.so-btn-save:hover { background:#dcfce7; }
+.so-btn-save:disabled { opacity:.5; cursor:not-allowed; }
+.so-btn-danger { display:inline-flex; align-items:center; gap:6px; background:#fef2f2; border:1px solid #dc2626; color:#dc2626; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.so-btn-danger:hover { background:#fee2e2; }
 
-.so-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 540px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 70; display: flex; flex-direction: column; overflow: hidden; }
-.so-inv-tbl { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.so-inv-head { display: grid; grid-template-columns: 2fr 100px 110px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-.so-inv-row { display: grid; grid-template-columns: 2fr 100px 110px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
+/* ══ Create / Edit Drawer ══ */
+.so-drawer-bg { position:fixed; inset:0; z-index:8000; background:rgba(15,23,42,.45); display:flex; justify-content:flex-end; backdrop-filter:blur(2px); }
+.so-drawer-panel { width:720px; max-width:96vw; height:100%; background:#fff; display:flex; flex-direction:column; box-shadow:-20px 0 60px rgba(0,0,0,.15); overflow:hidden; }
+
+/* Blue gradient header */
+.so-dh { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; background:linear-gradient(135deg,#1e3a5f,#1a6ef7); flex-shrink:0; }
+.so-dh-title { color:#fff; font-size:16px; font-weight:700; }
+.so-dh-sub   { color:rgba(255,255,255,.75); font-size:12px; margin-top:2px; }
+.so-dclose-new { background:rgba(255,255,255,.15); border:none; cursor:pointer; width:30px; height:30px; border-radius:8px; color:#fff; display:grid; place-items:center; }
+.so-dclose-new:hover { background:rgba(255,255,255,.25); }
+
+/* Body */
+.so-dbody { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; }
+
+/* Section labels */
+.so-sec-lbl { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#9ca3af; margin-bottom:12px; margin-top:4px; padding-top:16px; border-top:1px solid #f0f2f5; display:block; }
+.so-sec-lbl:first-child { border-top:none; padding-top:0; margin-top:0; }
+.so-fg { display:grid; gap:12px; margin-bottom:14px; }
+.so-fg2 { grid-template-columns:1fr 1fr; }
+.so-fg3 { grid-template-columns:1fr 1fr 1fr; }
+.so-lbl { display:block; font-size:11.5px; font-weight:600; color:#495057; margin-bottom:5px; }
+.so-req { color:#dc2626; }
+.so-fi { width:100%; border:1px solid #e2e8f0; border-radius:6px; padding:7px 10px; font-size:13px; font-family:inherit; outline:none; box-sizing:border-box; }
+.so-fi:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.08); }
+textarea.so-fi { resize:vertical; }
+
+/* Add item button */
+.so-add-item-btn { display:inline-flex; align-items:center; gap:5px; border:1px solid rgba(26,110,247,.3); background:#eaf1ff; color:#1a6ef7; border-radius:6px; padding:4px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+.so-add-item-btn:hover { background:#dbeafe; }
+
+/* Line items grid */
+.so-lines-wrap { border:1px solid #e8ecf0; border-radius:8px; overflow:visible; margin-bottom:0; }
+.so-lines-head { display:grid; grid-template-columns:2fr 2fr 0.7fr 0.9fr 0.9fr 30px; gap:6px; padding:7px 10px; background:#f8fafc; border-bottom:1px solid #e8ecf0; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; }
+.so-lines-row { display:grid; grid-template-columns:2fr 2fr 0.7fr 0.9fr 0.9fr 30px; gap:6px; padding:5px 10px; border-bottom:1px solid #f0f2f5; align-items:center; }
+.so-lines-row:last-of-type { border-bottom:none; }
+.so-lines-empty { padding:16px; text-align:center; color:#9ca3af; font-size:13px; border-bottom:1px solid #f0f2f5; }
+.so-ci { width:100%; border:1px solid #e2e8f0; border-radius:5px; padding:5px 7px; font-size:12.5px; font-family:inherit; outline:none; box-sizing:border-box; }
+.so-ci:focus { border-color:#1a6ef7; box-shadow:0 0 0 2px rgba(26,110,247,.08); }
+.so-ci-r { text-align:right; }
+.so-rm-line { background:none; border:1px solid rgba(220,38,38,.3); border-radius:4px; padding:3px 5px; cursor:pointer; color:#dc2626; display:inline-flex; align-items:center; flex-shrink:0; }
+.so-rm-line:hover { background:#fee2e2; }
+.so-add-line-btn { display:inline-flex; align-items:center; gap:5px; border:none; background:transparent; color:#1a6ef7; font-size:12.5px; font-weight:600; cursor:pointer; padding:8px 12px; width:100%; }
+.so-add-line-btn:hover { background:#f0f7ff; }
+
+/* Totals section */
+.so-totals-wrap { border-top:1px solid #e8ecf0; padding:12px 14px; background:#f8fafc; display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; margin-top:0; }
+.so-tax-section { flex:1; min-width:240px; }
+.so-tax-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.so-tax-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; }
+.so-totals-right-panel { min-width:240px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
+.so-total-row-item { display:flex; justify-content:space-between; align-items:center; width:240px; font-size:13px; color:#374151; }
+.so-total-amt { font-family:monospace; font-weight:600; font-size:13px; }
+.so-grand-total { border-top:1px solid #e8ecf0; padding-top:7px; margin-top:2px; font-weight:700; }
+
+/* Footer */
+.so-dfooter-new { padding:14px 24px; border-top:1px solid #e8ecf0; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; flex-shrink:0; }
+
+/* ══ View Drawer ══ */
+.so-overlay { position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:7900; backdrop-filter:blur(2px); }
+.so-view-drawer-panel { position:fixed; top:0; right:-560px; bottom:0; width:560px; max-width:96vw; background:#fff; display:flex; flex-direction:column; box-shadow:-20px 0 60px rgba(0,0,0,.15); z-index:7950; transition:right .22s ease; overflow:hidden; }
+.so-view-drawer-panel.open { right:0; }
+
+.so-view-head { position:relative; display:flex; align-items:flex-start; justify-content:space-between; padding:20px 24px; flex-shrink:0; color:#fff; }
+.so-view-num { font-size:18px; font-weight:700; font-family:monospace; color:#fff; }
+.so-view-sub { font-size:13px; color:rgba(255,255,255,.8); margin-top:2px; }
+.so-view-amount { font-size:22px; font-weight:800; font-family:monospace; color:#fff; }
+.so-dclose-view { position:absolute; top:12px; right:12px; background:rgba(255,255,255,.15); border:none; cursor:pointer; width:30px; height:30px; border-radius:8px; color:#fff; display:grid; place-items:center; }
+.so-dclose-view:hover { background:rgba(255,255,255,.25); }
+
+.so-tabs { display:flex; gap:4px; padding:0 20px; border-bottom:1px solid #e8ecf0; flex-shrink:0; background:#fff; }
+.so-tab { background:transparent; border:none; padding:10px 14px; font:inherit; font-size:12.5px; font-weight:600; color:#6b7280; cursor:pointer; border-bottom:2px solid transparent; display:inline-flex; align-items:center; gap:6px; }
+.so-tab:hover { color:#1a6ef7; }
+.so-tab.active { color:#1a6ef7; border-bottom-color:#1a6ef7; }
+.so-tab-count { background:#1a6ef7; color:#fff; padding:1px 7px; border-radius:999px; font-size:11px; font-weight:700; }
+
+.so-vbody { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:14px; }
+.so-vfooter { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:14px 20px; border-top:1px solid #e8ecf0; flex-shrink:0; flex-wrap:wrap; background:#f8fafc; }
+
+.so-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.so-meta-lbl { font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
+.so-section-title { font-size:10.5px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:.6px; padding-bottom:6px; border-bottom:1px solid #f0f2f5; margin-top:4px; }
+
+.so-view-items { display:flex; flex-direction:column; border:1px solid #e8ecf0; border-radius:6px; }
+.so-view-items-head { display:grid; grid-template-columns:2.5fr 70px 90px 100px; gap:8px; background:#f8fafc; padding:8px 12px; font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; }
+.so-view-items-row { display:grid; grid-template-columns:2.5fr 70px 90px 100px; gap:8px; padding:10px 12px; border-top:1px solid #f3f4f6; align-items:center; font-size:13px; color:#111827; background:#fff; }
+.so-view-items-row:hover { background:#f8faff; }
+.so-view-items-row strong { color:#1a1a2e; font-weight:600; }
+
+.so-terms { padding:10px 12px; background:#f8fafc; border-radius:6px; color:#374151; }
+
+.so-fulfill-tbl { display:flex; flex-direction:column; border:1px solid #e8ecf0; border-radius:6px; overflow:hidden; }
+.so-fulfill-head { display:grid; grid-template-columns:2fr 80px 100px 90px 110px; gap:8px; background:#f8fafc; padding:8px 12px; font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; }
+.so-fulfill-row { display:grid; grid-template-columns:2fr 80px 100px 90px 110px; gap:8px; padding:8px 12px; border-top:1px solid #f3f4f6; align-items:center; font-size:12.5px; }
+
+.so-link-row { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; padding:8px 12px; border:1px solid #e8ecf0; border-radius:6px; font-size:12.5px; align-items:center; background:#fff; color:#111827; }
+
+/* ══ Invoice modal ══ */
+.so-inv-dialog { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:520px; max-width:96vw; background:#fff; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,.2); z-index:8100; display:flex; flex-direction:column; overflow:hidden; }
+.so-inv-tbl { display:flex; flex-direction:column; border:1px solid #e8ecf0; border-radius:6px; overflow:hidden; }
+.so-inv-head { display:grid; grid-template-columns:2fr 100px 110px; gap:8px; background:#f8fafc; padding:8px 12px; font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; }
+.so-inv-row { display:grid; grid-template-columns:2fr 100px 110px; gap:8px; padding:8px 12px; border-top:1px solid #f3f4f6; align-items:center; font-size:12.5px; }
+
+/* ══ Inline timeline ══ */
+.so-timeline { display:flex; align-items:center; padding:14px 20px; background:#fff; border-bottom:1px solid #e8ecf0; flex-shrink:0; }
+.so-tl-step { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.so-tl-dot { width:22px; height:22px; border-radius:50%; border:2px solid #d1d5db; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; color:#9ca3af; flex-shrink:0; transition:all .2s; }
+.so-tl-step.done .so-tl-dot { background:#059669; border-color:#059669; color:#fff; }
+.so-tl-step.danger .so-tl-dot { background:#dc2626; border-color:#dc2626; color:#fff; }
+.so-tl-step.current:not(.done):not(.danger) .so-tl-dot { border-color:#1a6ef7; color:#1a6ef7; }
+.so-tl-label { font-size:11px; font-weight:600; color:#9ca3af; white-space:nowrap; }
+.so-tl-step.done .so-tl-label { color:#059669; }
+.so-tl-step.danger .so-tl-label { color:#dc2626; }
+.so-tl-step.current:not(.done):not(.danger) .so-tl-label { color:#1a6ef7; }
+.so-tl-line { flex:1; height:2px; background:#e5e7eb; min-width:16px; }
+.so-tl-line.done { background:#059669; }
+.so-tl-line.danger { background:#dc2626; }
 </style>

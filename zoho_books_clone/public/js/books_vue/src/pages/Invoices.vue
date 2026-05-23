@@ -332,7 +332,11 @@
                 <div class="inv-tax-header">
                   <span class="inv-tax-title">Taxes</span>
                   <div class="inv-tax-presets">
-                    <template v-if="!isOverseas">
+                    <template v-if="form.currency !== 'INR'">
+                      <!-- Non-INR currency: GST not applicable, only allow custom tax -->
+                      <span style="font-size:11.5px;color:#6b7280;font-style:italic">GST presets not applicable for foreign currency invoices</span>
+                    </template>
+                    <template v-else-if="!isOverseas">
                       <button v-for="p in TAX_PRESETS" :key="p.label" class="inv-preset-btn" @click="applyTaxPreset(p)">{{ p.label }}</button>
                     </template>
                     <template v-else>
@@ -881,7 +885,7 @@ async function load() {
   try {
     list.value=await apiList("Sales Invoice",{
       fields:["name","customer","customer_name","posting_date","due_date",
-              "grand_total","outstanding_amount","status","docstatus"],
+              "grand_total","outstanding_amount","status","docstatus","po_no"],
       limit:500, order:"posting_date desc",
     })||[];
   } catch { list.value=[]; toast("Could not load invoices","error"); }

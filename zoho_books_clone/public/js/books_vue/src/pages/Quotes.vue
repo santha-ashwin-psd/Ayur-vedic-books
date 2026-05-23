@@ -2,84 +2,135 @@
   <div class="qt-page">
 
     <!-- ── Toolbar ── -->
-    <div class="qt-actions">
-      <div class="qt-search-wrap">
-        <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-        <input v-model="search" placeholder="Search quotes, customers…" class="qt-search-input" />
-      </div>
-      <div class="qt-pills">
-        <button v-for="t in tabs" :key="t.key"
-          class="qt-pill" :class="{active:activeTab===t.key}"
-          @click="activeTab=t.key">
-          {{ t.label }}
-          <span v-if="t.key!=='all'" class="qt-pill-count">{{ counts[t.key] }}</span>
-        </button>
-      </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
-        <button class="qt-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
-        <button class="qt-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <button class="qt-btn-primary" @click="openNew">
+    <div class="inv-toolbar">
+      <h2 class="inv-heading">All Quotations</h2>
+      <div class="inv-toolbar-right">
+        <div class="inv-search-wrap">
+          <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+          <input v-model="search" placeholder="Search quotes, customers…" class="inv-search-input"/>
+        </div>
+        <button class="inv-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
+        <button class="inv-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
+        <button class="inv-btn-primary" @click="openNew">
           <span v-html="icon('plus',13)"></span> New Quotation
         </button>
       </div>
     </div>
 
     <!-- ── Summary strip ── -->
-    <SummaryStrip :cards="[
-      { label: 'Total Quotes', value: list.length },
-      { label: 'Sent',     value: counts.sent,     accent: '#1a6ef7' },
-      { label: 'Accepted', value: counts.accepted, accent: '#16a34a' },
-      { label: 'Expired',  value: counts.expired,  accent: '#dc2626' },
-    ]" />
+    <div class="inv-sum-strip">
+      <div class="inv-sum-card">
+        <div class="inv-sum-lbl">Total Quotes</div>
+        <div class="inv-sum-val">{{ list.length }}</div>
+      </div>
+      <div class="inv-sum-card" style="border-left:3px solid #1a6ef7">
+        <div class="inv-sum-lbl" style="color:#1a6ef7">Sent</div>
+        <div class="inv-sum-val" style="color:#1a6ef7">{{ counts.sent }}</div>
+      </div>
+      <div class="inv-sum-card" style="border-left:3px solid #059669">
+        <div class="inv-sum-lbl" style="color:#059669">Accepted</div>
+        <div class="inv-sum-val" style="color:#059669">{{ counts.accepted }}</div>
+      </div>
+      <div class="inv-sum-card" style="border-left:3px solid #dc2626">
+        <div class="inv-sum-lbl" style="color:#dc2626">Expired</div>
+        <div class="inv-sum-val" style="color:#dc2626">{{ counts.expired }}</div>
+      </div>
+    </div>
 
-    <!-- ── Bulk action bar ── -->
-    <BulkActionBar :count="selected.size" @clear="selected=new Set()">
-      <button @click="bulkEmail"><span v-html="icon('mail',13)"></span> Send Email</button>
-      <button @click="bulkMarkSent">Mark as Sent</button>
-      <button @click="bulkMarkExpired">Mark Expired</button>
-      <button class="bab-danger" @click="bulkDelete">Delete Drafts</button>
-      <button @click="exportCSV"><span v-html="icon('download',13)"></span> Export CSV</button>
-    </BulkActionBar>
+    <!-- ── Filter bar ── -->
+    <div class="inv-filter-bar">
+      <div class="inv-pills">
+        <button v-for="t in tabs" :key="t.key"
+          class="inv-pill" :class="{active:activeTab===t.key}"
+          @click="activeTab=t.key">
+          {{ t.label }}
+          <span v-if="t.key!=='all'" class="inv-pill-count" :class="pillCls(t.key)">{{ counts[t.key] }}</span>
+        </button>
+      </div>
+      <div class="inv-filter-right">
+        <select v-model="filterCustomer" class="inv-filter-select">
+          <option value="">All Customers</option>
+          <option v-for="c in customers" :key="c.name" :value="c.name">{{ c.customer_name || c.label }}</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ── Bulk actions bar ── -->
+    <div v-if="selected.size>0" class="inv-bulk-bar">
+      <span class="inv-bulk-count">{{ selected.size }} selected</span>
+      <button class="inv-bulk-btn" @click="bulkEmail"><span v-html="icon('mail',13)"></span> Send Email</button>
+      <button class="inv-bulk-btn" @click="bulkMarkSent">Mark as Sent</button>
+      <button class="inv-bulk-btn" @click="bulkMarkExpired">Mark Expired</button>
+      <button class="inv-bulk-btn inv-bulk-danger" @click="bulkDelete">Delete Drafts</button>
+      <button class="inv-bulk-btn" @click="exportCSV"><span v-html="icon('download',13)"></span> Export CSV</button>
+      <button class="inv-bulk-clear" @click="selected=new Set()">✕ Clear</button>
+    </div>
 
     <!-- ── Table ── -->
-    <div class="qt-card">
-      <table class="qt-table">
-        <thead>
-          <tr>
-            <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
-            <th @click="sortBy('name')" class="sortable">Quote # <span v-html="sortArrow('name')"></span></th>
-            <th @click="sortBy('customer_name')" class="sortable">Customer <span v-html="sortArrow('customer_name')"></span></th>
-            <th @click="sortBy('transaction_date')" class="sortable">Date <span v-html="sortArrow('transaction_date')"></span></th>
-            <th @click="sortBy('valid_till')" class="sortable">Valid Till <span v-html="sortArrow('valid_till')"></span></th>
-            <th>Status</th>
-            <th @click="sortBy('grand_total')" class="sortable ta-r">Amount <span v-html="sortArrow('grand_total')"></span></th>
-            <th style="width:120px;text-align:center">Actions</th>
-          </tr>
-        </thead>
+    <div class="inv-table-wrap">
+      <table class="inv-table">
+        <thead><tr>
+          <th class="th-check"><input type="checkbox" @change="toggleAll" :checked="allChecked"/></th>
+          <th class="sortable" @click="sortBy('transaction_date')">DATE <span class="sort-arrow">{{ sortArrowTxt('transaction_date') }}</span></th>
+          <th class="sortable" @click="sortBy('name')">QUOTE # <span class="sort-arrow">{{ sortArrowTxt('name') }}</span></th>
+          <th class="sortable" @click="sortBy('customer_name')">CUSTOMER <span class="sort-arrow">{{ sortArrowTxt('customer_name') }}</span></th>
+          <th class="sortable" @click="sortBy('valid_till')">VALID TILL <span class="sort-arrow">{{ sortArrowTxt('valid_till') }}</span></th>
+          <th class="sortable" @click="sortBy('status')">STATUS <span class="sort-arrow">{{ sortArrowTxt('status') }}</span></th>
+          <th class="ta-r sortable" @click="sortBy('grand_total')">AMOUNT <span class="sort-arrow">{{ sortArrowTxt('grand_total') }}</span></th>
+          <th style="width:120px;text-align:center">ACTIONS</th>
+        </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="8"><div class="qt-shimmer"></div></td></tr>
+            <tr v-for="n in 7" :key="n" class="shimmer-row">
+              <td><div class="shimmer" style="width:14px;height:14px;border-radius:3px"></div></td>
+              <td><div class="shimmer" style="width:80px"></div></td>
+              <td><div class="shimmer" style="width:110px"></div></td>
+              <td><div class="shimmer" style="width:130px"></div></td>
+              <td><div class="shimmer" style="width:80px"></div></td>
+              <td><div class="shimmer" style="width:90px"></div></td>
+              <td><div class="shimmer" style="width:80px;margin-left:auto"></div></td>
+              <td></td>
+            </tr>
           </template>
           <template v-else>
-            <tr v-for="q in sorted" :key="q.name" class="qt-row" :class="{selected:selected.has(q.name)}">
-              <td><input type="checkbox" :checked="selected.has(q.name)" @change="toggle(q.name)" /></td>
-              <td @click="openView(q)"><span class="qt-num">{{ q.name }}</span></td>
-              <td @click="openView(q)">{{ q.customer_name || q.customer || '—' }}</td>
+            <tr v-for="q in sorted" :key="q.name" class="inv-row" :class="{selected:selected.has(q.name)}">
+              <td class="td-check" @click.stop>
+                <input type="checkbox" :checked="selected.has(q.name)" @change="toggle(q.name)"/>
+              </td>
               <td @click="openView(q)" class="text-muted mono-sm">{{ fmtDate(q.transaction_date) }}</td>
-              <td @click="openView(q)" :class="isExpired(q)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(q.valid_till)||'—' }}</td>
-              <td @click="openView(q)"><span class="qt-badge" :class="badgeClass(q)">{{ displayStatus(q) }}</span></td>
-              <td @click="openView(q)" class="ta-r mono-sm">{{ fmtCur(q.grand_total) }}</td>
-              <td class="qt-act-cell">
-                <button class="qt-act-btn" @click="openView(q)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button class="qt-act-btn" @click="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                <button class="qt-act-btn qt-act-conv" v-if="canConvert(q)" @click="openConvertModal(q)" title="Convert"><span v-html="icon('arrow-right',13)"></span></button>
-                <button class="qt-act-btn qt-act-del" @click="deleteQT(q)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+              <td @click="openView(q)"><span class="inv-link">{{ q.name }}</span></td>
+              <td @click="openView(q)"><span class="inv-customer">{{ q.customer_name || q.customer || '—' }}</span></td>
+              <td @click="openView(q)" :class="isExpired(q)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(q.valid_till) || '—' }}</td>
+              <td @click="openView(q)">
+                <span class="inv-status-badge" :class="badgeClass(q)">{{ displayStatus(q) }}</span>
+              </td>
+              <td class="ta-r mono-sm" @click="openView(q)">{{ fmtCur(q.grand_total) }}</td>
+              <td style="text-align:center" @click.stop>
+                <div style="display:flex;gap:4px;justify-content:center">
+                  <button class="inv-act-btn" @click="openView(q)" title="View"><span v-html="icon('eye',13)"></span></button>
+                  <button class="inv-act-btn" @click="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                  <button v-if="canConvert(q)" class="inv-act-btn inv-act-conv" @click="openConvertModal(q)" title="Convert to Invoice / SO"><span v-html="icon('arrow-right',13)"></span></button>
+                  <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteQT(q)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                </div>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="8" class="qt-empty">No quotations match</td></tr>
+            <tr v-if="!sorted.length">
+              <td colspan="8" class="empty-state">
+                <div class="empty-inner">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <p>{{ search || filterCustomer ? 'No quotations match' : 'No quotations yet' }}</p>
+                  <button v-if="!search && !filterCustomer" class="inv-btn-primary" style="margin-top:4px" @click="openNew">
+                    <span v-html="icon('plus',13)"></span> New Quotation
+                  </button>
+                </div>
+              </td>
+            </tr>
           </template>
         </tbody>
       </table>
+    </div>
+    <div v-if="!loading && sorted.length" style="text-align:right;font-size:12px;color:#9ca3af;padding:6px 20px">
+      {{ sorted.length }} of {{ list.length }} quotations
     </div>
 
     <!-- ── Create / Edit Drawer ── -->
@@ -445,8 +496,6 @@ import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
-import SummaryStrip from "../components/SummaryStrip.vue";
-import BulkActionBar from "../components/BulkActionBar.vue";
 import TimelineStepper from "../components/TimelineStepper.vue";
 
 const { toast } = useToast();
@@ -521,6 +570,7 @@ const taxRows     = ref([]);          // ← replaces single tax_rate
 const taxAccountHead = ref("");
 const sortCol     = ref("transaction_date");
 const sortDir     = ref("desc");
+const filterCustomer = ref("");
 
 const convertModal = reactive({
   open: false, saving: false, qtName: "",
@@ -603,6 +653,13 @@ function headerBg(q) {
   if (s === "Sent")      return "linear-gradient(135deg,#1e3a5f,#1a6ef7)";
   return "linear-gradient(135deg,#374151,#6b7280)";
 }
+function pillCls(k) {
+  return { draft:"pc-muted", sent:"pc-blue", accepted:"pc-green", declined:"pc-red", expired:"pc-red", converted:"pc-purple" }[k] || "pc-muted";
+}
+function sortArrowTxt(col) {
+  if (sortCol.value !== col) return "";
+  return sortDir.value === "asc" ? "↑" : "↓";
+}
 function canConvert(q) {
   const s = effectiveStatus(q);
   return s !== "Converted" && s !== "Declined" && s !== "Lost";
@@ -667,6 +724,7 @@ const filtered = computed(() => {
       return s === activeTab.value;
     });
   }
+  if (filterCustomer.value) r = r.filter(q => q.customer === filterCustomer.value);
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
     r = r.filter(x =>
@@ -1161,57 +1219,112 @@ onMounted(() => {
 });
 </script>
 <style scoped>
-.qt-page { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
-.qt-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.qt-search-wrap { display: flex; align-items: center; gap: 8px; background: #f3f4f6; border-radius: 8px; padding: 6px 12px; min-width: 220px; }
-.qt-search-input { border: none; background: transparent; outline: none; font: inherit; color: #111827; width: 100%; font-size: 13px; }
-.qt-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-.qt-pill { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 600; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
-.qt-pill:hover { color: #2563eb; border-color: #2563eb; }
-.qt-pill.active { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
-.qt-pill-count { background: #f3f4f6; color: #6b7280; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.qt-pill.active .qt-pill-count { background: #2563eb; color: #fff; }
-.qt-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.qt-btn-primary:hover:not(:disabled) { background: #1d4ed8; }
-.qt-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-.qt-btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #374151; cursor: pointer; }
-.qt-btn-ghost:hover { background: #f9fafb; }
-.qt-btn-save { display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.qt-btn-save:hover { background: #dcfce7; }
-.qt-btn-save:disabled { opacity: .5; cursor: not-allowed; }
-.qt-btn-danger { display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; border: 1px solid #dc2626; color: #dc2626; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.qt-btn-danger:hover { background: #fee2e2; }
+/* ══ List page — mirrors Invoices exactly ══ */
+.qt-page { display:flex; flex-direction:column; gap:0; padding:0; background:#f8fafc; min-height:100vh; }
 
-.qt-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
-.qt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.qt-table th { background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 11.5px; font-weight: 600; color: #374151; text-align: left; white-space: nowrap; }
-.qt-table th.sortable { cursor: pointer; user-select: none; }
-.qt-table th.sortable:hover { color: #2563eb; }
-.ta-r { text-align: right !important; }
-.qt-row td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; cursor: pointer; }
-.qt-row:last-child td { border-bottom: none; }
-.qt-row:hover td { background: #f9fafb; }
-.qt-row.selected td { background: #eff6ff; }
-.qt-num { font-family: monospace; font-size: 12.5px; color: #2563eb; font-weight: 600; }
-.mono-sm { font-family: monospace; font-size: 12.5px; }
-.text-muted { color: #6b7280; }
-.text-danger { color: #dc2626; }
-.qt-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
-.qt-bdg-grey   { background: #f3f4f6; color: #6b7280; }
-.qt-bdg-blue   { background: #dbeafe; color: #1a6ef7; }
-.qt-bdg-green  { background: #d1fae5; color: #059669; }
-.qt-bdg-purple { background: #ede9fe; color: #7c3aed; }
-.qt-bdg-red    { background: #fee2e2; color: #dc2626; }
-.qt-badge-white { background: rgba(255,255,255,.2); color: #fff !important; border: 1px solid rgba(255,255,255,.4); }
-.qt-act-cell { display: flex; gap: 4px; justify-content: flex-end; cursor: default !important; }
-.qt-act-btn { background: transparent; border: 1px solid #e5e7eb; border-radius: 6px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #6b7280; }
-.qt-act-btn:hover { background: #f3f4f6; color: #2563eb; }
-.qt-act-conv { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
-.qt-act-conv:hover { background: #dbeafe; }
-.qt-act-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-.qt-empty { text-align: center; color: #9ca3af; padding: 48px !important; cursor: default !important; }
-.qt-shimmer { height: 13px; background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%); border-radius: 4px; animation: shimmer 1.2s infinite; background-size: 200% 100%; }
+/* Toolbar */
+.inv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 12px; gap:12px; flex-wrap:wrap; background:#fff; border-bottom:1px solid #e8ecf0; }
+.inv-heading { font-size:18px; font-weight:700; color:#1a1a2e; margin:0; }
+.inv-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.inv-search-wrap { display:flex; align-items:center; gap:8px; background:#f3f4f6; border-radius:8px; padding:7px 12px; min-width:240px; }
+.inv-search-input { border:none; background:transparent; outline:none; font:inherit; color:#111827; width:100%; font-size:13px; }
+.inv-btn-primary { display:inline-flex; align-items:center; gap:6px; background:#1a6ef7; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.inv-btn-primary:hover:not(:disabled) { background:#155fd4; }
+.inv-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+.inv-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:7px 12px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
+.inv-btn-ghost:hover { background:#f8fafc; }
+
+/* Summary strip */
+.inv-sum-strip { display:flex; gap:0; background:#fff; border-bottom:1px solid #e8ecf0; }
+.inv-sum-card { flex:1; padding:16px 24px; display:flex; flex-direction:column; gap:4px; border-left:3px solid transparent; }
+.inv-sum-lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; }
+.inv-sum-val { font-size:26px; font-weight:800; color:#1a1a2e; font-family:monospace; }
+
+/* Filter bar */
+.inv-filter-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 24px; background:#fff; border-bottom:1px solid #e8ecf0; gap:12px; flex-wrap:wrap; }
+.inv-pills { display:flex; gap:6px; flex-wrap:wrap; }
+.inv-pill { padding:5px 14px; border-radius:20px; font-size:12.5px; font-weight:600; border:1px solid #e2e8f0; background:#fff; color:#6b7280; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px; transition:all .12s; }
+.inv-pill:hover { color:#1a6ef7; border-color:#1a6ef7; }
+.inv-pill.active { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
+.inv-pill-count { padding:1px 7px; border-radius:999px; font-size:11px; font-weight:700; background:#f3f4f6; color:#6b7280; }
+.inv-pill.active .inv-pill-count { background:#1a6ef7; color:#fff; }
+.pc-muted  { background:#f3f4f6 !important; color:#6b7280 !important; }
+.pc-blue   { background:#dbeafe !important; color:#1a6ef7 !important; }
+.pc-green  { background:#d1fae5 !important; color:#059669 !important; }
+.pc-red    { background:#fee2e2 !important; color:#dc2626 !important; }
+.pc-purple { background:#ede9fe !important; color:#7c3aed !important; }
+.inv-filter-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.inv-filter-select { border:1px solid #e2e8f0; border-radius:6px; padding:6px 10px; font-size:12.5px; font-family:inherit; outline:none; background:#fff; color:#374151; cursor:pointer; }
+.inv-filter-select:focus { border-color:#1a6ef7; }
+
+/* Bulk bar */
+.inv-bulk-bar { display:flex; align-items:center; gap:8px; padding:8px 24px; background:#eff6ff; border-bottom:1px solid #bfdbfe; flex-wrap:wrap; }
+.inv-bulk-count { font-size:13px; font-weight:700; color:#1a6ef7; margin-right:4px; }
+.inv-bulk-btn { display:inline-flex; align-items:center; gap:5px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:5px 12px; font-size:12.5px; font-weight:600; color:#374151; cursor:pointer; font-family:inherit; }
+.inv-bulk-btn:hover { background:#f8fafc; border-color:#1a6ef7; color:#1a6ef7; }
+.inv-bulk-danger { border-color:rgba(220,38,38,.3); color:#dc2626; }
+.inv-bulk-danger:hover { background:#fee2e2; border-color:#dc2626; color:#dc2626; }
+.inv-bulk-clear { background:none; border:none; font-size:12.5px; color:#6b7280; cursor:pointer; font-family:inherit; padding:4px 8px; border-radius:4px; }
+.inv-bulk-clear:hover { background:#e0e7ff; color:#1a6ef7; }
+
+/* Table */
+.inv-table-wrap { background:#fff; border-top:none; overflow-x:auto; flex:1; }
+.inv-table { width:100%; border-collapse:collapse; font-size:13px; }
+.inv-table thead tr { background:#f8fafc; }
+.inv-table th { padding:10px 12px; border-bottom:2px solid #e8ecf0; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; text-align:left; white-space:nowrap; user-select:none; }
+.inv-table th.sortable { cursor:pointer; }
+.inv-table th.sortable:hover { color:#1a6ef7; }
+.th-check { width:36px; }
+.sort-arrow { font-size:11px; color:#1a6ef7; margin-left:2px; }
+.ta-r { text-align:right !important; }
+.inv-row td { padding:11px 12px; border-bottom:1px solid #f0f2f5; vertical-align:middle; cursor:pointer; color:#374151; }
+.inv-row:last-child td { border-bottom:none; }
+.inv-row:hover td { background:#f8faff; }
+.inv-row.selected td { background:#eaf1ff; }
+.td-check { cursor:default !important; width:36px; }
+.inv-link { font-family:monospace; font-size:12.5px; color:#1a6ef7; font-weight:700; }
+.inv-customer { font-weight:600; color:#1a1a2e; }
+.mono-sm { font-family:monospace; font-size:12.5px; }
+.text-muted { color:#9ca3af; }
+.text-danger { color:#dc2626; font-weight:600; }
+.text-success { color:#059669; font-weight:600; }
+
+/* Status badges */
+.inv-status-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:.03em; white-space:nowrap; }
+.qt-bdg-grey   { background:#f3f4f6; color:#6b7280; }
+.qt-bdg-blue   { background:#dbeafe; color:#1a6ef7; }
+.qt-bdg-green  { background:#d1fae5; color:#059669; }
+.qt-bdg-purple { background:#ede9fe; color:#7c3aed; }
+.qt-bdg-red    { background:#fee2e2; color:#dc2626; }
+.qt-badge-white { background:rgba(255,255,255,.2); color:#fff !important; border:1px solid rgba(255,255,255,.4); }
+
+/* Action buttons */
+.inv-act-btn { background:transparent; border:1px solid #e2e8f0; border-radius:6px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#6b7280; }
+.inv-act-btn:hover { background:#f3f4f6; color:#1a6ef7; border-color:#1a6ef7; }
+.inv-act-conv { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
+.inv-act-conv:hover { background:#dbeafe; }
+
+/* Shimmer skeleton */
+.shimmer-row td { padding:10px 12px; border-bottom:1px solid #f0f2f5; }
+.shimmer { height:13px; border-radius:4px; background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
 @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* Empty state */
+.empty-state { text-align:center; padding:56px 20px !important; cursor:default !important; color:#9ca3af; }
+.empty-inner { display:flex; flex-direction:column; align-items:center; gap:8px; }
+.empty-inner p { font-size:14px; color:#9ca3af; margin:0; }
+
+/* Shared button styles also used by drawer footer */
+.qt-btn-primary { display:inline-flex; align-items:center; gap:6px; background:#1a6ef7; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.qt-btn-primary:hover:not(:disabled) { background:#155fd4; }
+.qt-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+.qt-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:7px 12px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
+.qt-btn-ghost:hover { background:#f8fafc; }
+.qt-btn-save { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #16a34a; color:#16a34a; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.qt-btn-save:hover { background:#dcfce7; }
+.qt-btn-save:disabled { opacity:.5; cursor:not-allowed; }
+.qt-btn-danger { display:inline-flex; align-items:center; gap:6px; background:#fef2f2; border:1px solid #dc2626; color:#dc2626; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.qt-btn-danger:hover { background:#fee2e2; }
 
 .qt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.2); z-index: 40; }
 .qt-drawer { position: fixed; top: 0; right: -600px; bottom: 0; width: 600px; max-width: 96vw; background: #fff; border-left: 1px solid #e5e7eb; box-shadow: -8px 0 24px rgba(0,0,0,.08); z-index: 50; display: flex; flex-direction: column; transition: right .22s ease; }

@@ -1,7 +1,7 @@
 <template>
   <header class="bv-topbar">
     <div class="bv-topbar-title">{{ title }}</div>
-    <div class="bv-topbar-divider"></div>
+    <!-- <div class="bv-topbar-divider"></div>
 
     <div class="bv-topbar-search">
       <IconSvg name="search" :size="13" />
@@ -10,7 +10,7 @@
         placeholder="Search invoices, customers, items…"
         @keydown.enter="doSearch"
       />
-    </div>
+    </div> -->
 
     <div class="bv-topbar-spacer"></div>
 

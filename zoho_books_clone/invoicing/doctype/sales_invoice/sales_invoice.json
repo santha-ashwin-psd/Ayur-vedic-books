@@ -21,6 +21,7 @@
   "company",
   "fiscal_year",
   "place_of_supply",
+  "po_no",
   "section_items",
   "items",
   "section_taxes",
@@ -38,7 +39,9 @@
   "is_return",
   "return_against",
   "sales_order",
-  "amended_from"
+  "amended_from",
+  "billing_address",
+  "remarks"
  ],
  "fields": [
   {
@@ -249,11 +252,26 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "po_no",
+   "fieldtype": "Data",
+   "label": "PO Number"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Text Editor",
+   "label": "Internal Remarks"
+  },
+  {
+   "fieldname": "billing_address",
+   "fieldtype": "Small Text",
+   "label": "Address"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-22 19:21:27.238161",
+ "modified": "2026-05-23 10:21:11.300725",
  "modified_by": "Administrator",
  "module": "Invoicing",
  "name": "Sales Invoice",

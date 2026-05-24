@@ -77,126 +77,149 @@
 
   <!-- ===== View Drawer ===== -->
   <Teleport to="body">
-    <div v-if="viewOpen" style="position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40" @click.self="viewOpen=false"></div>
-    <div :style="'position:fixed;top:0;right:0;bottom:0;width:520px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 24px rgba(0,0,0,.08);z-index:50;display:flex;flex-direction:column;transition:transform .22s;transform:'+(viewOpen?'translateX(0)':'translateX(100%)')">
+    <!-- ============================ VIEW DRAWER -->
+    <div v-if="viewOpen" class="dc-overlay" @click.self="viewOpen=false"></div>
+    <div class="dc-drawer dc-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:#EDF2FF">
-          <div>
-            <div style="font-size:15px;font-weight:700;font-family:monospace;color:#1a1a2e">{{viewDoc.name}}</div>
-            <div style="font-size:12px;color:#6b7280;margin-top:1px">Delivery Challan · {{viewDoc.posting_date}}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="b-badge" :class="statusClass(viewDoc)">{{statusLabel(viewDoc)}}</span>
-            <button @click="viewOpen=false" style="background:none;border:none;cursor:pointer;padding:4px" v-html="icon('x',16)"></button>
+        <div class="dc-view-head" :class="dcHeadClass(viewDoc)">
+          <div class="dc-view-head-row">
+            <div>
+              <div class="dc-view-num">{{ viewDoc.name }}</div>
+              <div class="dc-view-sub">Delivery Challan · {{ viewDoc.posting_date }}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="b-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+              <button class="dc-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+            </div>
           </div>
         </div>
-        <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px">
-          <!-- Meta grid -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Customer</div><div style="font-weight:600">{{viewDoc.customer_name||viewDoc.customer||'—'}}</div></div>
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Date</div><div>{{viewDoc.posting_date||'—'}}</div></div>
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">LR / Tracking #</div><div class="mono" style="font-size:12.5px">{{viewDoc.lr_no||'—'}}</div></div>
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Transporter</div><div style="font-size:12.5px">{{viewDoc.transporter_name||'—'}}</div></div>
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Delivery Address</div><div style="font-size:12.5px">{{viewDoc.shipping_address||viewDoc.customer_address||'—'}}</div></div>
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Remarks</div><div style="font-size:12.5px">{{viewDoc.remarks||'—'}}</div></div>
+
+        <div class="dc-dbody">
+          <div class="dc-section">
+            <div class="dc-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
+            <div class="dc-meta-grid">
+              <div><div class="dc-meta-lbl">Customer</div><div style="font-weight:600">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</div></div>
+              <div><div class="dc-meta-lbl">Date</div><div>{{ viewDoc.posting_date||'—' }}</div></div>
+              <div><div class="dc-meta-lbl">LR / Tracking #</div><div class="mono">{{ viewDoc.lr_no||'—' }}</div></div>
+              <div><div class="dc-meta-lbl">Transporter</div><div>{{ viewDoc.transporter_name||'—' }}</div></div>
+              <div style="grid-column:1/-1"><div class="dc-meta-lbl">Delivery Address</div><div>{{ viewDoc.shipping_address||viewDoc.customer_address||'—' }}</div></div>
+              <div v-if="viewDoc.remarks" style="grid-column:1/-1"><div class="dc-meta-lbl">Remarks</div><div>{{ viewDoc.remarks }}</div></div>
+            </div>
           </div>
 
-          <!-- Items -->
-          <div>
-            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Items</div>
-            <table class="b-table" style="font-size:12px">
+          <div class="dc-section">
+            <div class="dc-section-hdr">
+              <span v-html="icon('box',13)"></span><span>Items</span>
+              <span style="margin-left:auto;font-size:11.5px;color:#6b7280;text-transform:none;letter-spacing:0">
+                {{ (viewDoc.items||[]).length }} line{{ (viewDoc.items||[]).length!==1?'s':'' }}
+              </span>
+            </div>
+            <table class="b-table" style="font-size:12.5px">
               <thead><tr><th>Item</th><th class="ta-r">Qty</th><th>UOM</th></tr></thead>
               <tbody>
                 <tr v-for="it in viewDoc.items||[]" :key="it.name">
-                  <td>{{it.item_name||it.item_code}}</td>
-                  <td class="ta-r mono">{{it.qty}}</td>
-                  <td class="c-muted">{{it.uom||'Nos'}}</td>
+                  <td>{{ it.item_name||it.item_code }}</td>
+                  <td class="ta-r mono">{{ it.qty }}</td>
+                  <td class="c-muted">{{ it.uom||'Nos' }}</td>
                 </tr>
-                <tr v-if="!(viewDoc.items||[]).length">
-                  <td colspan="3" class="b-empty">No items</td>
-                </tr>
+                <tr v-if="!(viewDoc.items||[]).length"><td colspan="3" class="b-empty">No items</td></tr>
               </tbody>
             </table>
           </div>
         </div>
-        <div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end">
+
+        <div class="dc-dfooter">
           <button class="b-btn b-btn-ghost" @click="viewOpen=false">Close</button>
           <button v-if="viewDoc.docstatus===0" class="b-btn b-btn-primary" @click="submitChallan" :disabled="submitting">
-            {{submitting?'Submitting…':'Submit Challan'}}
+            {{ submitting?'Submitting…':'Submit Challan' }}
           </button>
         </div>
       </template>
     </div>
 
-    <!-- ===== New Challan Drawer ===== -->
-    <div v-if="newOpen" style="position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40" @click.self="newOpen=false"></div>
-    <div :style="'position:fixed;top:0;right:0;bottom:0;width:560px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 24px rgba(0,0,0,.08);z-index:50;display:flex;flex-direction:column;transition:transform .22s;transform:'+(newOpen?'translateX(0)':'translateX(100%)')">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;border-bottom:1px solid #e5e7eb;flex-shrink:0">
-        <span style="font-size:15px;font-weight:700">New Delivery Challan</span>
-        <button @click="newOpen=false" style="background:none;border:none;cursor:pointer;padding:4px" v-html="icon('x',16)"></button>
+    <!-- ============================ NEW CHALLAN DRAWER -->
+    <div v-if="newOpen" class="dc-overlay" @click.self="newOpen=false"></div>
+    <div class="dc-drawer" :class="{open:newOpen}">
+      <div class="dc-dheader">
+        <div class="dc-dheader-left">
+          <div class="dc-dheader-ico"><span v-html="icon('warehouse',18)"></span></div>
+          <div>
+            <div class="dc-dheader-title">New Delivery Challan</div>
+            <div class="dc-dheader-sub">Dispatch goods to a customer, with or without an invoice</div>
+          </div>
+        </div>
+        <button class="dc-dclose" @click="newOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
-      <div style="flex:1;overflow-y:auto;padding:20px;display:grid;gap:14px;align-content:start">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="nim-field">
-            <label class="nim-label">Customer <span style="color:#c92a2a">*</span></label>
-            <input class="nim-input" v-model="form.customer" placeholder="Customer ID" @input="onCustInput"/>
-            <div v-if="custSuggestions.length" style="position:relative">
-              <div style="position:absolute;top:2px;left:0;right:0;background:#fff;border:1px solid #E2E8F0;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:180px;overflow-y:auto">
-                <div v-for="s in custSuggestions" :key="s.name"
-                  @click="pickCustomer(s)"
-                  style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #F8F9FA"
-                  onmouseover="this.style.background='#F8F9FA'" onmouseout="this.style.background=''">
-                  {{s.customer_name||s.name}}
+
+      <div class="dc-dbody">
+        <!-- Section: Customer & Date -->
+        <div class="dc-section">
+          <div class="dc-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
+          <div class="dc-grid">
+            <div class="dc-field">
+              <label class="dc-flbl">Customer <span class="req">*</span></label>
+              <div style="position:relative">
+                <input class="dc-input" v-model="form.customer" placeholder="Customer ID" @input="onCustInput"/>
+                <div v-if="custSuggestions.length" class="dc-suggest">
+                  <div v-for="s in custSuggestions" :key="s.name" class="dc-suggest-item" @click="pickCustomer(s)">
+                    {{ s.customer_name||s.name }}
+                  </div>
                 </div>
               </div>
             </div>
+            <div class="dc-field">
+              <label class="dc-flbl">Date <span class="req">*</span></label>
+              <input class="dc-input" type="date" v-model="form.posting_date"/>
+            </div>
           </div>
-          <div class="nim-field">
-            <label class="nim-label">Date <span style="color:#c92a2a">*</span></label>
-            <input class="nim-input" type="date" v-model="form.posting_date"/>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="nim-field">
-            <label class="nim-label">LR / Tracking #</label>
-            <input class="nim-input" v-model="form.lr_no" placeholder="e.g. LR12345"/>
-          </div>
-          <div class="nim-field">
-            <label class="nim-label">Transporter</label>
-            <input class="nim-input" v-model="form.transporter_name" placeholder="Transporter name"/>
-          </div>
-        </div>
-        <div class="nim-field">
-          <label class="nim-label">Delivery Address</label>
-          <input class="nim-input" v-model="form.shipping_address" placeholder="Shipping address"/>
-        </div>
-        <div class="nim-field">
-          <label class="nim-label">Remarks</label>
-          <input class="nim-input" v-model="form.remarks" placeholder="Optional remarks"/>
         </div>
 
-        <!-- Items -->
-        <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <label class="nim-label" style="margin:0">Items <span style="color:#c92a2a">*</span></label>
-            <button class="b-btn b-btn-ghost" style="padding:4px 10px;font-size:12px" @click="addItem">
+        <!-- Section: Transport -->
+        <div class="dc-section">
+          <div class="dc-section-hdr"><span v-html="icon('warehouse',13)"></span><span>Transport</span></div>
+          <div class="dc-grid">
+            <div class="dc-field">
+              <label class="dc-flbl">LR / Tracking #</label>
+              <input class="dc-input" v-model="form.lr_no" placeholder="e.g. LR12345"/>
+            </div>
+            <div class="dc-field">
+              <label class="dc-flbl">Transporter</label>
+              <input class="dc-input" v-model="form.transporter_name" placeholder="e.g. BlueDart, VRL"/>
+            </div>
+            <div class="dc-field" style="grid-column:1/-1">
+              <label class="dc-flbl">Delivery Address</label>
+              <input class="dc-input" v-model="form.shipping_address" placeholder="Shipping address"/>
+            </div>
+            <div class="dc-field" style="grid-column:1/-1">
+              <label class="dc-flbl">Remarks</label>
+              <input class="dc-input" v-model="form.remarks" placeholder="Optional remarks"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Items -->
+        <div class="dc-section">
+          <div class="dc-section-hdr">
+            <span v-html="icon('box',13)"></span><span>Items <span class="req">*</span></span>
+            <button class="b-btn b-btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:12px" @click="addItem">
               <span v-html="icon('plus',11)" style="vertical-align:-1px;margin-right:3px"></span> Add Item
             </button>
           </div>
-          <div v-for="(it,i) in form.items" :key="i" style="display:grid;grid-template-columns:2fr 80px 80px 28px;gap:8px;margin-bottom:8px;align-items:center">
-            <input class="nim-input" v-model="it.item_code" placeholder="Item code" style="font-size:12px"/>
-            <input class="nim-input" type="number" v-model="it.qty" placeholder="Qty" min="0.01" step="0.01" style="font-size:12px"/>
-            <input class="nim-input" v-model="it.uom" placeholder="UOM" style="font-size:12px"/>
-            <button @click="removeItem(i)" style="background:none;border:none;cursor:pointer;color:#C92A2A;padding:2px" v-html="icon('trash',12)"></button>
+          <div v-for="(it,i) in form.items" :key="i" class="dc-item-row">
+            <input class="dc-input" v-model="it.item_code" placeholder="Item code"/>
+            <input class="dc-input ta-r" type="number" v-model="it.qty" placeholder="Qty" min="0.01" step="0.01"/>
+            <input class="dc-input" v-model="it.uom" placeholder="UOM"/>
+            <button class="dc-rm" @click="removeItem(i)"><span v-html="icon('trash',12)"></span></button>
           </div>
-          <div v-if="!form.items.length" style="font-size:12px;color:#868E96;text-align:center;padding:10px;background:#F8F9FA;border-radius:6px">
-            No items yet — click Add Item
-          </div>
+          <div v-if="!form.items.length" class="dc-items-empty">No items yet — click Add Item</div>
         </div>
       </div>
-      <div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end">
-        <button class="b-btn b-btn-ghost" @click="newOpen=false">Cancel</button>
-        <button class="b-btn b-btn-primary" @click="saveChallan" :disabled="saving">{{saving?'Saving…':'Save Challan'}}</button>
+
+      <div class="dc-dfooter">
+        <button class="b-btn b-btn-ghost" @click="newOpen=false" :disabled="saving">Cancel</button>
+        <button class="b-btn b-btn-primary" @click="saveChallan" :disabled="saving">
+          {{ saving?'Saving…':'Save Challan' }}
+        </button>
       </div>
     </div>
   </Teleport>
@@ -246,6 +269,12 @@ function statusLabel(r) {
   if (r.status === "Delivered") return "Delivered";
   if (r.docstatus === 1) return "To Deliver";
   return "Draft";
+}
+
+function dcHeadClass(r) {
+  if (r.docstatus === 2) return "cancelled";
+  if (r.status === "Delivered") return "delivered";
+  return "";
 }
 
 function statusClass(r) {
@@ -406,4 +435,53 @@ onMounted(load);
 .rec-search-wrap{display:flex;align-items:center;gap:8px;background:#f3f4f6;border-radius:8px;padding:6px 12px;}
 .rec-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
 .sortable{cursor:pointer;user-select:none;}.sortable:hover{color:#2563eb;}
+
+/* DC Drawer */
+.dc-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(2px);z-index:40;}
+.dc-drawer{position:fixed;top:0;right:-580px;bottom:0;width:580px;max-width:96vw;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
+.dc-drawer.open{right:0;}
+.dc-view-drawer{width:560px;right:-560px;}.dc-view-drawer.open{right:0;}
+
+.dc-dheader{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}
+.dc-dheader-left{display:flex;align-items:flex-start;gap:12px;}
+.dc-dheader-ico{width:38px;height:38px;border-radius:10px;background:#fff;border:1px solid rgba(37,99,235,.18);display:inline-flex;align-items:center;justify-content:center;color:#2563eb;box-shadow:0 1px 3px rgba(15,23,42,.06);flex-shrink:0;}
+.dc-dheader-title{font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.01em;}
+.dc-dheader-sub{font-size:12px;color:#475569;margin-top:3px;font-weight:500;}
+.dc-dclose{background:rgba(255,255,255,.6);border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;transition:background .15s;}
+.dc-dclose:hover{background:#fff;color:#111827;}
+
+.dc-view-head{padding:18px 20px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);flex-shrink:0;}
+.dc-view-head.delivered{background:linear-gradient(135deg,#f0fdf4 0%,#bbf7d0 100%);}
+.dc-view-head.cancelled{background:linear-gradient(135deg,#f3f4f6 0%,#e5e7eb 100%);}
+.dc-view-head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.dc-view-num{font-size:18px;font-weight:700;font-family:monospace;color:#111827;}
+.dc-view-sub{font-size:12.5px;color:#475569;margin-top:2px;}
+
+.dc-dbody{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc;}
+.dc-section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
+.dc-section-hdr{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;}
+.dc-section-hdr svg{color:#2563eb;}
+.dc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.dc-field{display:flex;flex-direction:column;gap:4px;}
+.dc-flbl{font-size:12px;font-weight:600;color:#374151;}
+.dc-input{border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;transition:border-color .15s, box-shadow .15s;width:100%;box-sizing:border-box;}
+.dc-input:hover:not(:disabled){border-color:#cbd5e1;}
+.dc-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+.req{color:#dc2626;}
+
+.dc-suggest{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.10);z-index:100;max-height:200px;overflow-y:auto;}
+.dc-suggest-item{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6;}
+.dc-suggest-item:hover{background:#f9fafb;}
+.dc-suggest-item:last-child{border-bottom:none;}
+
+.dc-item-row{display:grid;grid-template-columns:2fr 90px 90px 32px;gap:8px;align-items:center;}
+.dc-rm{background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;color:#dc2626;height:32px;display:inline-flex;align-items:center;justify-content:center;}
+.dc-rm:hover{background:#fee2e2;}
+.dc-items-empty{font-size:12px;color:#868E96;text-align:center;padding:14px;background:#f9fafb;border:1px dashed #e5e7eb;border-radius:8px;}
+
+.dc-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.dc-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;font-weight:600;}
+
+.dc-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0;}
+.mono{font-family:monospace;}
 </style>

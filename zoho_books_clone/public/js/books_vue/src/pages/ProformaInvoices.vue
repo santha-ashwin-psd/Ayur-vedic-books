@@ -56,108 +56,130 @@
 
   <!-- View / Convert drawer -->
   <Teleport to="body">
-    <div v-if="viewOpen" style="position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40" @click.self="viewOpen=false"></div>
-    <div :style="'position:fixed;top:0;right:0;bottom:0;width:520px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 24px rgba(0,0,0,.08);z-index:50;display:flex;flex-direction:column;transition:transform .22s;transform:'+(viewOpen?'translateX(0)':'translateX(100%)')">
+    <div v-if="viewOpen" class="pf-overlay" @click.self="viewOpen=false"></div>
+    <div class="pf-drawer pf-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:#FFF9DB">
-          <div>
-            <div style="font-size:15px;font-weight:700;font-family:monospace;color:#1a1a2e">{{viewDoc.name}}</div>
-            <div style="font-size:12px;color:#876800;margin-top:1px">Proforma Invoice · {{viewDoc.posting_date}}</div>
+        <div class="pf-view-head">
+          <div class="pf-view-head-row">
+            <div>
+              <div class="pf-view-num">{{ viewDoc.name }}</div>
+              <div class="pf-view-sub">Proforma Invoice · {{ viewDoc.posting_date }}</div>
+            </div>
+            <button class="pf-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
           </div>
-          <button @click="viewOpen=false" style="background:none;border:none;cursor:pointer;padding:4px" v-html="icon('x',16)"></button>
+          <div class="pf-view-amount">₹{{ fmtAmt(viewDoc.grand_total) }}</div>
         </div>
-        <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:3px">Customer</div><div style="font-weight:600">{{viewDoc.customer_name||viewDoc.customer}}</div></div>
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:3px">Date</div><div>{{viewDoc.posting_date}}</div></div>
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:3px">Grand Total</div><div style="font-weight:700;color:#2F9E44;font-family:monospace">₹{{fmtAmt(viewDoc.grand_total)}}</div></div>
-            <div><div style="font-size:11px;color:#9ca3af;text-transform:uppercase;margin-bottom:3px">Remarks</div><div style="font-size:12.5px">{{viewDoc.remarks||'—'}}</div></div>
+
+        <div class="pf-dbody">
+          <div class="pf-section">
+            <div class="pf-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
+            <div class="pf-meta-grid">
+              <div><div class="pf-meta-lbl">Customer</div><div style="font-weight:600">{{ viewDoc.customer_name||viewDoc.customer }}</div></div>
+              <div><div class="pf-meta-lbl">Date</div><div>{{ viewDoc.posting_date }}</div></div>
+              <div><div class="pf-meta-lbl">Valid Until</div><div>{{ viewDoc.due_date||'—' }}</div></div>
+              <div><div class="pf-meta-lbl">Grand Total</div><div class="mono" style="color:#16a34a;font-weight:700">₹{{ fmtAmt(viewDoc.grand_total) }}</div></div>
+              <div style="grid-column:1/-1" v-if="viewDoc.remarks"><div class="pf-meta-lbl">Remarks</div><div>{{ viewDoc.remarks }}</div></div>
+            </div>
           </div>
-          <div v-if="(viewDoc.items||[]).length">
-            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Items</div>
-            <table class="b-table" style="font-size:12px">
+
+          <div class="pf-section" v-if="(viewDoc.items||[]).length">
+            <div class="pf-section-hdr">
+              <span v-html="icon('box',13)"></span><span>Items</span>
+              <span style="margin-left:auto;font-size:11.5px;color:#6b7280;text-transform:none;letter-spacing:0">{{ (viewDoc.items||[]).length }} line{{ (viewDoc.items||[]).length!==1?'s':'' }}</span>
+            </div>
+            <table class="b-table" style="font-size:12.5px">
               <thead><tr><th>Item</th><th class="ta-r">Qty</th><th class="ta-r">Rate</th><th class="ta-r">Amount</th></tr></thead>
               <tbody>
                 <tr v-for="it in viewDoc.items" :key="it.name||it.item_code">
-                  <td>{{it.item_name||it.item_code}}</td>
-                  <td class="ta-r">{{it.qty}}</td>
-                  <td class="ta-r mono">₹{{fmtAmt(it.rate)}}</td>
-                  <td class="ta-r mono fw-700">₹{{fmtAmt(it.amount)}}</td>
+                  <td>{{ it.item_name||it.item_code }}</td>
+                  <td class="ta-r">{{ it.qty }}</td>
+                  <td class="ta-r mono">₹{{ fmtAmt(it.rate) }}</td>
+                  <td class="ta-r mono fw-700">₹{{ fmtAmt(it.amount) }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
-        <div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end">
+
+        <div class="pf-dfooter">
           <button class="b-btn b-btn-ghost" @click="viewOpen=false">Close</button>
-          <button class="b-btn" style="background:#FFF9DB;color:#E67700;border-color:#FFD43B" @click="printProforma">
-            <span v-html="icon('print',13)" style="vertical-align:-1px;margin-right:4px"></span> Print
+          <button class="b-btn pf-btn-amber" @click="printProforma">
+            <span v-html="icon('print',13)"></span> Print
           </button>
           <button class="b-btn b-btn-primary" @click="convertToInvoice" :disabled="converting">
-            {{converting ? 'Converting…' : '→ Convert to Invoice'}}
+            {{ converting ? 'Converting…' : '→ Convert to Invoice' }}
           </button>
         </div>
       </template>
     </div>
 
     <!-- New Proforma drawer -->
-    <div v-if="newOpen" style="position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40" @click.self="newOpen=false"></div>
-    <div :style="'position:fixed;top:0;right:0;bottom:0;width:560px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 24px rgba(0,0,0,.08);z-index:50;display:flex;flex-direction:column;transition:transform .22s;transform:'+(newOpen?'translateX(0)':'translateX(100%)')">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;border-bottom:1px solid #e5e7eb;flex-shrink:0">
-        <span style="font-size:15px;font-weight:700">New Proforma Invoice</span>
-        <button @click="newOpen=false" style="background:none;border:none;cursor:pointer;padding:4px" v-html="icon('x',16)"></button>
+    <div v-if="newOpen" class="pf-overlay" @click.self="newOpen=false"></div>
+    <div class="pf-drawer" :class="{open:newOpen}">
+      <div class="pf-dheader">
+        <div class="pf-dheader-left">
+          <div class="pf-dheader-ico"><span v-html="icon('invoices',18)"></span></div>
+          <div>
+            <div class="pf-dheader-title">New Proforma Invoice</div>
+            <div class="pf-dheader-sub">A draft quote-style invoice for advance billing</div>
+          </div>
+        </div>
+        <button class="pf-dclose" @click="newOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
-      <div style="flex:1;overflow-y:auto;padding:20px;display:grid;gap:14px;align-content:start">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="nim-field" style="grid-column:1/-1">
-            <label class="nim-label">Customer <span style="color:#c92a2a">*</span></label>
-            <input class="nim-input" v-model="form.customer" placeholder="Customer ID" @input="onCustInput"/>
-            <div v-if="custSugg.length" style="position:relative">
-              <div style="position:absolute;top:2px;left:0;right:0;background:#fff;border:1px solid #E2E8F0;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:180px;overflow-y:auto">
-                <div v-for="s in custSugg" :key="s.name" @click="pickCust(s)"
-                  style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #F8F9FA"
-                  onmouseover="this.style.background='#F8F9FA'" onmouseout="this.style.background=''">
-                  {{s.customer_name||s.name}}
+
+      <div class="pf-dbody">
+        <!-- Customer & Date -->
+        <div class="pf-section">
+          <div class="pf-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
+          <div class="pf-grid">
+            <div class="pf-field" style="grid-column:1/-1">
+              <label class="pf-flbl">Customer <span class="req">*</span></label>
+              <div style="position:relative">
+                <input class="pf-input" v-model="form.customer" placeholder="Customer ID" @input="onCustInput"/>
+                <div v-if="custSugg.length" class="pf-suggest">
+                  <div v-for="s in custSugg" :key="s.name" class="pf-suggest-item" @click="pickCust(s)">
+                    {{ s.customer_name||s.name }}
+                  </div>
                 </div>
               </div>
             </div>
+            <div class="pf-field">
+              <label class="pf-flbl">Date <span class="req">*</span></label>
+              <input class="pf-input" type="date" v-model="form.posting_date"/>
+            </div>
+            <div class="pf-field">
+              <label class="pf-flbl">Valid Until</label>
+              <input class="pf-input" type="date" v-model="form.due_date"/>
+            </div>
+            <div class="pf-field" style="grid-column:1/-1">
+              <label class="pf-flbl">Remarks</label>
+              <input class="pf-input" v-model="form.remarks" placeholder="e.g. Proforma Invoice for advance payment"/>
+            </div>
           </div>
-          <div class="nim-field">
-            <label class="nim-label">Date <span style="color:#c92a2a">*</span></label>
-            <input class="nim-input" type="date" v-model="form.posting_date"/>
-          </div>
-          <div class="nim-field">
-            <label class="nim-label">Valid Until</label>
-            <input class="nim-input" type="date" v-model="form.due_date"/>
-          </div>
-        </div>
-        <div class="nim-field">
-          <label class="nim-label">Remarks</label>
-          <input class="nim-input" v-model="form.remarks" placeholder="e.g. Proforma Invoice for advance payment"/>
         </div>
 
         <!-- Items -->
-        <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <label class="nim-label" style="margin:0">Items <span style="color:#c92a2a">*</span></label>
-            <button class="b-btn b-btn-ghost" style="padding:4px 10px;font-size:12px" @click="addItem">
+        <div class="pf-section">
+          <div class="pf-section-hdr">
+            <span v-html="icon('box',13)"></span><span>Items <span class="req">*</span></span>
+            <button class="b-btn b-btn-ghost" style="margin-left:auto;padding:4px 10px;font-size:12px" @click="addItem">
               <span v-html="icon('plus',11)" style="vertical-align:-1px;margin-right:3px"></span> Add Item
             </button>
           </div>
-          <div v-for="(it,i) in form.items" :key="i" style="display:grid;grid-template-columns:2fr 70px 90px 28px;gap:8px;margin-bottom:8px;align-items:center">
-            <input class="nim-input" v-model="it.item_code" placeholder="Item code" style="font-size:12px" @change="onItemChange(it)"/>
-            <input class="nim-input" type="number" v-model="it.qty" placeholder="Qty" min="0.01" style="font-size:12px" @input="calcAmount(it)"/>
-            <input class="nim-input" type="number" v-model="it.rate" placeholder="Rate" min="0" style="font-size:12px" @input="calcAmount(it)"/>
-            <button @click="removeItem(i)" style="background:none;border:none;cursor:pointer;color:#C92A2A;padding:2px" v-html="icon('trash',12)"></button>
+          <div v-for="(it,i) in form.items" :key="i" class="pf-item-row">
+            <input class="pf-input" v-model="it.item_code" placeholder="Item code" @change="onItemChange(it)"/>
+            <input class="pf-input ta-r" type="number" v-model="it.qty" placeholder="Qty" min="0.01" @input="calcAmount(it)"/>
+            <input class="pf-input ta-r" type="number" v-model="it.rate" placeholder="Rate" min="0" @input="calcAmount(it)"/>
+            <button class="pf-rm" @click="removeItem(i)"><span v-html="icon('trash',12)"></span></button>
           </div>
-          <div style="text-align:right;font-size:13px;font-weight:700;color:#2F9E44;margin-top:8px;font-family:monospace">
-            Total: ₹{{fmtAmt(itemTotal)}}
-          </div>
+          <div v-if="!form.items.length" class="pf-items-empty">No items yet — click Add Item</div>
+          <div class="pf-total"><span>Total</span><span class="mono">₹{{ fmtAmt(itemTotal) }}</span></div>
         </div>
       </div>
-      <div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end">
-        <button class="b-btn b-btn-ghost" @click="newOpen=false">Cancel</button>
-        <button class="b-btn b-btn-primary" @click="saveProforma" :disabled="saving">{{saving?'Saving…':'Save Proforma'}}</button>
+
+      <div class="pf-dfooter">
+        <button class="b-btn b-btn-ghost" @click="newOpen=false" :disabled="saving">Cancel</button>
+        <button class="b-btn b-btn-primary" @click="saveProforma" :disabled="saving">{{ saving?'Saving…':'Save Proforma' }}</button>
       </div>
     </div>
 
@@ -330,3 +352,56 @@ async function doDelete() {
 import { onMounted } from "vue";
 onMounted(load);
 </script>
+
+<style scoped>
+.pf-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(2px);z-index:40;}
+.pf-drawer{position:fixed;top:0;right:-580px;bottom:0;width:580px;max-width:96vw;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
+.pf-drawer.open{right:0;}
+.pf-view-drawer{width:560px;right:-560px;}.pf-view-drawer.open{right:0;}
+
+.pf-dheader{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#fff9db 0%,#ffe066 100%);}
+.pf-dheader-left{display:flex;align-items:flex-start;gap:12px;}
+.pf-dheader-ico{width:38px;height:38px;border-radius:10px;background:#fff;border:1px solid rgba(202,138,4,.25);display:inline-flex;align-items:center;justify-content:center;color:#ca8a04;box-shadow:0 1px 3px rgba(15,23,42,.06);flex-shrink:0;}
+.pf-dheader-title{font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.01em;}
+.pf-dheader-sub{font-size:12px;color:#876800;margin-top:3px;font-weight:500;}
+.pf-dclose{background:rgba(255,255,255,.65);border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;transition:background .15s;}
+.pf-dclose:hover{background:#fff;color:#111827;}
+
+.pf-view-head{padding:18px 20px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#fff9db 0%,#ffe066 100%);flex-shrink:0;}
+.pf-view-head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.pf-view-num{font-size:18px;font-weight:700;font-family:monospace;color:#111827;}
+.pf-view-sub{font-size:12.5px;color:#876800;margin-top:2px;}
+.pf-view-amount{font-size:24px;font-weight:800;color:#16a34a;font-family:monospace;margin-top:10px;}
+
+.pf-dbody{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc;}
+.pf-section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
+.pf-section-hdr{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;}
+.pf-section-hdr svg{color:#ca8a04;}
+
+.pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.pf-field{display:flex;flex-direction:column;gap:4px;}
+.pf-flbl{font-size:12px;font-weight:600;color:#374151;}
+.pf-input{border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;transition:border-color .15s,box-shadow .15s;width:100%;box-sizing:border-box;}
+.pf-input:hover:not(:disabled){border-color:#cbd5e1;}
+.pf-input:focus{border-color:#ca8a04;box-shadow:0 0 0 3px rgba(202,138,4,.15);}
+.req{color:#dc2626;}
+
+.pf-suggest{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.10);z-index:100;max-height:200px;overflow-y:auto;}
+.pf-suggest-item{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6;}
+.pf-suggest-item:hover{background:#fff9db;}
+.pf-suggest-item:last-child{border-bottom:none;}
+
+.pf-item-row{display:grid;grid-template-columns:2fr 80px 100px 32px;gap:8px;align-items:center;}
+.pf-rm{background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;color:#dc2626;height:32px;display:inline-flex;align-items:center;justify-content:center;}
+.pf-rm:hover{background:#fee2e2;}
+.pf-items-empty{font-size:12px;color:#868E96;text-align:center;padding:14px;background:#f9fafb;border:1px dashed #e5e7eb;border-radius:8px;}
+.pf-total{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:linear-gradient(135deg,#fff9db,#fff);border:1px solid #ffe066;border-radius:8px;font-size:14px;font-weight:700;color:#0f172a;}
+
+.pf-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.pf-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;font-weight:600;}
+
+.pf-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0;}
+.pf-btn-amber{background:#fff9db;color:#a16207;border:1px solid #ffd43b;}
+.pf-btn-amber:hover{background:#fff3bf;}
+.mono{font-family:monospace;}
+</style>

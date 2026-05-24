@@ -31,5 +31,5 @@ defineProps({
 }
 .ssm-card:hover { box-shadow: 0 2px 8px rgba(15,23,42,.06); }
 .ssm-lbl { font-size: 12px; font-weight: 600; color: #6b7280; }
-.ssm-val { font-size: 22px; font-weight: 700; color: #111827; font-family: 'Inter', sans-serif; }
+.ssm-val { font-size: 22px; font-weight: 700; color: #111827; font-family: 'Plus Jakarta Sans', 'Lato', sans-serif; }
 </style>

@@ -121,88 +121,138 @@
     <div v-if="drawerOpen" class="rec-overlay" @click.self="onOverlayClose"></div>
     <div class="rec-drawer" :class="{open:drawerOpen}">
       <div class="rec-dheader" :class="editMode?'edit':''">
-        <div>
-          <div class="rec-dheader-title">{{ editMode?'Edit Subscription':'New Recurring Subscription' }}</div>
-          <div v-if="editMode" class="rec-dheader-sub">{{ form._name }}</div>
+        <div class="rec-dheader-left">
+          <div class="rec-dheader-ico" :class="editMode?'edit':''">
+            <span v-html="icon(editMode?'edit':'repeat',18)"></span>
+          </div>
+          <div>
+            <div class="rec-dheader-title">{{ editMode?'Edit Subscription':'New Recurring Subscription' }}</div>
+            <div class="rec-dheader-sub">
+              {{ editMode ? form._name : 'Schedule a document to repeat on a cadence' }}
+            </div>
+          </div>
         </div>
         <button class="rec-dclose" @click="onOverlayClose"><span v-html="icon('x',16)"></span></button>
       </div>
+
       <div class="rec-dbody">
-        <div class="rec-fields-grid">
-          <div class="rec-field" style="grid-column:1/-1">
-            <label class="rec-label">Reference Document Type <span class="req">*</span></label>
-            <select v-model="form.reference_doctype" class="rec-select" :disabled="editMode" @change="onTypeChange">
-              <option value="Sales Invoice">Sales Invoice</option>
-              <option value="Purchase Invoice">Purchase Invoice</option>
-              <option value="Quotation">Quotation</option>
-              <option value="Journal Entry">Journal Entry</option>
-            </select>
+        <!-- Intro/context card when a reference is selected -->
+        <div v-if="form.reference_document && referenceMeta.party" class="rec-ctx-card">
+          <div class="rec-ctx-ico"><span v-html="icon('folder',16)"></span></div>
+          <div style="flex:1;min-width:0">
+            <div class="rec-ctx-doctype">{{ form.reference_doctype }}</div>
+            <div class="rec-ctx-name">{{ form.reference_document }}</div>
           </div>
-          <div class="rec-field" style="grid-column:1/-1">
-            <label class="rec-label">Reference Document <span class="req">*</span></label>
-            <SearchableSelect
-              v-model="form.reference_document"
-              :options="refDocs"
-              :disabled="editMode"
-              placeholder="Search a saved document…"
-              @search="fetchRefDocs"
-            />
-            <div v-if="form.reference_document && referenceMeta.party" class="rec-meta-inline">
-              <span class="rec-meta-chip">{{ referenceMeta.party_label }}: {{ referenceMeta.party }}</span>
-              <span class="rec-meta-chip">Amount: {{ fmtCurrency(referenceMeta.amount) }}</span>
+          <div class="rec-ctx-meta">
+            <div class="rec-ctx-party">{{ referenceMeta.party }}</div>
+            <div class="rec-ctx-amount mono">{{ fmtCurrency(referenceMeta.amount) }}</div>
+          </div>
+        </div>
+
+        <!-- Section: Reference -->
+        <div class="rec-section">
+          <div class="rec-section-hdr">
+            <span v-html="icon('folder',13)"></span>
+            <span>Reference Document</span>
+          </div>
+          <div class="rec-fields-grid">
+            <div class="rec-field" style="grid-column:1/-1">
+              <label class="rec-label">Document Type <span class="req">*</span></label>
+              <select v-model="form.reference_doctype" class="rec-select" :disabled="editMode" @change="onTypeChange">
+                <option value="Sales Invoice">Sales Invoice</option>
+                <option value="Purchase Invoice">Purchase Invoice</option>
+                <option value="Quotation">Quotation</option>
+                <option value="Journal Entry">Journal Entry</option>
+              </select>
+            </div>
+            <div class="rec-field" style="grid-column:1/-1">
+              <label class="rec-label">Source Document <span class="req">*</span></label>
+              <SearchableSelect
+                v-model="form.reference_document"
+                :options="refDocs"
+                :disabled="editMode"
+                placeholder="Search a saved document…"
+                @search="fetchRefDocs"
+              />
+              <div class="rec-field-help" v-if="!form.reference_document">
+                Pick an existing {{ form.reference_doctype.toLowerCase() }} to use as the template.
+              </div>
             </div>
           </div>
-          <div class="rec-field">
-            <label class="rec-label">Frequency <span class="req">*</span></label>
-            <select v-model="form.frequency" class="rec-select">
-              <option value="Daily">Daily</option>
-              <option value="Weekly">Weekly</option>
-              <option value="Monthly">Monthly</option>
-              <option value="Quarterly">Quarterly</option>
-              <option value="Half-yearly">Half-yearly</option>
-              <option value="Yearly">Yearly</option>
-            </select>
+        </div>
+
+        <!-- Section: Schedule -->
+        <div class="rec-section">
+          <div class="rec-section-hdr">
+            <span v-html="icon('refresh',13)"></span>
+            <span>Schedule</span>
           </div>
-          <div class="rec-field">
-            <label class="rec-label">Submit on Creation</label>
-            <select v-model="form.submit_on_creation" class="rec-select">
-              <option :value="1">Yes — auto-submit</option>
-              <option :value="0">No — save as draft</option>
-            </select>
+          <div class="rec-fields-grid">
+            <div class="rec-field">
+              <label class="rec-label">Frequency <span class="req">*</span></label>
+              <select v-model="form.frequency" class="rec-select">
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Half-yearly">Half-yearly</option>
+                <option value="Yearly">Yearly</option>
+              </select>
+            </div>
+            <div class="rec-field">
+              <label class="rec-label">Submit on Creation</label>
+              <select v-model="form.submit_on_creation" class="rec-select">
+                <option :value="1">Yes — auto-submit</option>
+                <option :value="0">No — save as draft</option>
+              </select>
+            </div>
+            <div class="rec-field">
+              <label class="rec-label">Start Date <span class="req">*</span></label>
+              <input v-model="form.start_date" type="date" class="rec-input" :disabled="editMode" />
+            </div>
+            <div class="rec-field">
+              <label class="rec-label">End Date <span class="rec-hint">(optional)</span></label>
+              <input v-model="form.end_date" type="date" class="rec-input" :min="form.start_date" />
+            </div>
+            <div v-if="planHint" class="rec-plan-hint" style="grid-column:1/-1">
+              <span v-html="icon('info',13)"></span>
+              <span>{{ planHint }}</span>
+            </div>
           </div>
-          <div class="rec-field">
-            <label class="rec-label">Start Date <span class="req">*</span></label>
-            <input v-model="form.start_date" type="date" class="rec-input" :disabled="editMode" />
-          </div>
-          <div class="rec-field">
-            <label class="rec-label">End Date <span class="rec-hint">(optional)</span></label>
-            <input v-model="form.end_date" type="date" class="rec-input" :min="form.start_date" />
-          </div>
-          <div v-if="planHint" class="rec-plan-hint" style="grid-column:1/-1">
-            <span v-html="icon('info',13)"></span> {{ planHint }}
-          </div>
-          <div class="rec-field" style="grid-column:1/-1">
-            <label class="rec-label">
-              <input type="checkbox" v-model="form._notify" style="margin-right:6px;vertical-align:middle" />
-              Notify by email when generated
+        </div>
+
+        <!-- Section: Notification -->
+        <div class="rec-section">
+          <div class="rec-section-hdr">
+            <span v-html="icon('mail',13)"></span>
+            <span>Notification</span>
+            <label class="rec-toggle">
+              <input type="checkbox" v-model="form._notify" />
+              <span class="rec-toggle-slider"></span>
             </label>
           </div>
-          <div v-if="form._notify" class="rec-field" style="grid-column:1/-1">
-            <label class="rec-label">Recipients <span class="rec-hint">(comma separated)</span></label>
-            <input v-model="form.recipients" type="text" class="rec-input" placeholder="finance@company.com, owner@company.com" />
+          <div v-if="!form._notify" class="rec-section-empty">
+            Email notifications are off. Toggle to email someone every time a document is generated.
           </div>
-          <div v-if="form._notify" class="rec-field" style="grid-column:1/-1">
-            <label class="rec-label">Email Subject</label>
-            <input v-model="form.subject" type="text" class="rec-input" placeholder="Your recurring {doctype} {name}" />
-          </div>
-          <div v-if="form._notify" class="rec-field" style="grid-column:1/-1">
-            <label class="rec-label">Email Message</label>
-            <textarea v-model="form.message" class="rec-input" rows="3" placeholder="Hello, please find your latest invoice attached…"></textarea>
+          <div v-else class="rec-fields-grid">
+            <div class="rec-field" style="grid-column:1/-1">
+              <label class="rec-label">Recipients <span class="rec-hint">(comma separated)</span></label>
+              <input v-model="form.recipients" type="text" class="rec-input" placeholder="finance@company.com, owner@company.com" />
+            </div>
+            <div class="rec-field" style="grid-column:1/-1">
+              <label class="rec-label">Email Subject</label>
+              <input v-model="form.subject" type="text" class="rec-input" placeholder="Your recurring invoice is ready" />
+            </div>
+            <div class="rec-field" style="grid-column:1/-1">
+              <label class="rec-label">Email Message</label>
+              <textarea v-model="form.message" class="rec-input" rows="3" placeholder="Hello, please find your latest document attached…"></textarea>
+            </div>
           </div>
         </div>
       </div>
+
       <div class="rec-dfooter">
-        <button class="rec-btn-ghost" @click="onOverlayClose">Cancel</button>
+        <button class="rec-btn-ghost" @click="onOverlayClose" :disabled="drawerSaving">Cancel</button>
         <button class="rec-btn-primary" :disabled="drawerSaving" @click="saveRec">
           <span v-html="icon('check',13)"></span>
           {{ drawerSaving?'Saving…':(editMode?'Save Changes':'Create Subscription') }}
@@ -807,24 +857,53 @@ function exportCSV() {
 
 /* drawer */
 .rec-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(2px);z-index:40;}
-.rec-drawer{position:fixed;top:0;right:-540px;bottom:0;width:540px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(0,0,0,.10);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
+.rec-drawer{position:fixed;top:0;right:-560px;bottom:0;width:560px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
 .rec-drawer.open{right:0;}
 .rec-view-drawer{width:600px;right:-600px;}.rec-view-drawer.open{right:0;}
-.rec-dheader{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#eff6ff,#fff);}
-.rec-dheader.edit{background:linear-gradient(135deg,#fef3c7,#fff);}
-.rec-dheader-title{font-size:15px;font-weight:700;color:#111827;}
-.rec-dheader-sub{font-size:12px;color:#6b7280;font-family:monospace;margin-top:2px;}
-.rec-dclose{background:transparent;border:none;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;}
-.rec-dclose:hover{background:rgba(0,0,0,.05);color:#111827;}
-.rec-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;}
+.rec-dheader{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}
+.rec-dheader.edit{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);}
+.rec-dheader-left{display:flex;align-items:flex-start;gap:12px;}
+.rec-dheader-ico{width:38px;height:38px;border-radius:10px;background:#fff;border:1px solid rgba(37,99,235,.18);display:inline-flex;align-items:center;justify-content:center;color:#2563eb;box-shadow:0 1px 3px rgba(15,23,42,.06);flex-shrink:0;}
+.rec-dheader-ico.edit{color:#ca8a04;border-color:rgba(202,138,4,.25);}
+.rec-dheader-title{font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.01em;}
+.rec-dheader-sub{font-size:12px;color:#475569;margin-top:3px;font-weight:500;}
+.rec-dclose{background:rgba(255,255,255,.6);border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;transition:background .15s;}
+.rec-dclose:hover{background:#fff;color:#111827;}
+.rec-dbody{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:18px;background:#f8fafc;}
+
+/* Intro card showing chosen reference */
+.rec-ctx-card{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;box-shadow:0 1px 2px rgba(15,23,42,.04);}
+.rec-ctx-ico{width:36px;height:36px;border-radius:8px;background:#eff6ff;color:#2563eb;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.rec-ctx-doctype{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
+.rec-ctx-name{font-family:monospace;font-size:13px;color:#0f172a;font-weight:600;margin-top:1px;}
+.rec-ctx-meta{text-align:right;display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+.rec-ctx-party{font-size:12px;color:#475569;font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rec-ctx-amount{font-size:14px;font-weight:700;color:#0f172a;}
+
+/* Sections */
+.rec-section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
+.rec-section-hdr{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;}
+.rec-section-hdr svg{color:#2563eb;}
+.rec-section-empty{font-size:12.5px;color:#6b7280;font-style:italic;line-height:1.5;}
+.rec-field-help{font-size:11.5px;color:#9ca3af;margin-top:4px;}
+
+/* Toggle (right side of section header) */
+.rec-toggle{position:relative;margin-left:auto;width:34px;height:18px;display:inline-block;cursor:pointer;}
+.rec-toggle input{opacity:0;width:0;height:0;}
+.rec-toggle-slider{position:absolute;inset:0;background:#cbd5e1;border-radius:18px;transition:background .18s;}
+.rec-toggle-slider::before{content:"";position:absolute;width:14px;height:14px;left:2px;top:2px;background:#fff;border-radius:50%;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.15);}
+.rec-toggle input:checked + .rec-toggle-slider{background:#2563eb;}
+.rec-toggle input:checked + .rec-toggle-slider::before{transform:translateX(16px);}
+
 .rec-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .rec-field{display:flex;flex-direction:column;gap:4px;}
 .rec-label{font-size:12px;font-weight:600;color:#374151;}
 .rec-hint{font-weight:400;color:#9ca3af;font-size:11px;}
 .req{color:#dc2626;}
-.rec-input,.rec-select{border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
-.rec-input:focus,.rec-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.10);}
-.rec-input:disabled,.rec-select:disabled{background:#f9fafb;color:#9ca3af;cursor:not-allowed;}
+.rec-input,.rec-select{border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;transition:border-color .15s, box-shadow .15s;}
+.rec-input:hover:not(:disabled),.rec-select:hover:not(:disabled){border-color:#cbd5e1;}
+.rec-input:focus,.rec-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+.rec-input:disabled,.rec-select:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;border-color:#e2e8f0;}
 .rec-meta-inline{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
 .rec-meta-chip{background:#f3f4f6;color:#374151;padding:3px 10px;border-radius:10px;font-size:11.5px;font-weight:500;}
 .rec-plan-hint{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:8px 12px;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:8px;}

@@ -42,7 +42,7 @@ defineProps({
   background: rgba(255,255,255,.22); color: rgba(255,255,255,.7);
   display: grid; place-items: center; font-size: 12px; font-weight: 700;
   border: 2px solid transparent; transition: all .2s;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Lato', sans-serif;
 }
 .tls-step.done .tls-dot { background: #059669; color: #fff; }
 .tls-step.danger .tls-dot { background: #dc2626; color: #fff; }

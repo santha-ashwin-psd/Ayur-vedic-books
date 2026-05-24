@@ -69,103 +69,155 @@
     <!-- Create / Edit drawer -->
     <div v-if="drawerOpen" class="pmt-overlay" @click.self="drawerOpen=false"></div>
     <div class="pmt-drawer" :class="{open:drawerOpen}">
-      <div class="pmt-dheader">
-        <div class="pmt-dheader-title">{{ editingName?'Edit Payment':'New Payment' }}</div>
+      <div class="pmt-dheader" :class="form.payment_type==='Pay'?'pay':'recv'">
+        <div class="pmt-dheader-left">
+          <div class="pmt-dheader-ico" :class="form.payment_type==='Pay'?'pay':'recv'">
+            <span v-html="icon(form.payment_type==='Pay'?'expense':'invoices',18)"></span>
+          </div>
+          <div>
+            <div class="pmt-dheader-title">{{ editingName?'Edit Payment':'New Payment' }}</div>
+            <div class="pmt-dheader-sub">
+              {{ editingName ? editingName : (form.payment_type==='Pay'?'Record an outgoing payment to a vendor':'Record a payment received from a customer') }}
+            </div>
+          </div>
+        </div>
         <button class="pmt-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
 
       <div class="pmt-dbody">
-        <!-- Payment type -->
-        <div class="pmt-field">
-          <label class="pmt-label">Payment Type</label>
+        <!-- Section: Payment Type -->
+        <div class="pmt-section">
+          <div class="pmt-section-hdr-bar">
+            <span v-html="icon('refresh',13)"></span>
+            <span>Payment Type</span>
+          </div>
           <div class="pmt-radio-group">
             <label class="pmt-radio" :class="{checked:form.payment_type==='Receive'}" @click="setPaymentType('Receive')">
-              <span class="pmt-radio-dot" :class="{on:form.payment_type==='Receive'}"></span>Received (from customer)
+              <span class="pmt-radio-dot" :class="{on:form.payment_type==='Receive'}"></span>
+              <div>
+                <div class="pmt-radio-title">Received</div>
+                <div class="pmt-radio-sub">from a customer</div>
+              </div>
             </label>
             <label class="pmt-radio" :class="{checked:form.payment_type==='Pay'}" @click="setPaymentType('Pay')">
-              <span class="pmt-radio-dot" :class="{on:form.payment_type==='Pay'}"></span>Paid Out (to vendor)
+              <span class="pmt-radio-dot" :class="{on:form.payment_type==='Pay'}"></span>
+              <div>
+                <div class="pmt-radio-title">Paid Out</div>
+                <div class="pmt-radio-sub">to a vendor</div>
+              </div>
             </label>
           </div>
         </div>
 
-        <div class="pmt-fields-grid">
-          <div class="pmt-field">
-            <label class="pmt-label">{{ form.payment_type==='Receive'?'Customer':'Vendor' }} <span class="req">*</span></label>
-            <SearchableSelect v-model="form.party" :options="partyOptions"
-              :placeholder="form.payment_type==='Receive'?'Select customer…':'Select vendor…'"
-              @search="fetchParties" @select="onPartySelect" />
+        <!-- Section: Party & Amount -->
+        <div class="pmt-section">
+          <div class="pmt-section-hdr-bar">
+            <span v-html="icon('user',13)"></span>
+            <span>{{ form.payment_type==='Receive'?'Customer & Amount':'Vendor & Amount' }}</span>
           </div>
-          <div class="pmt-field">
-            <label class="pmt-label">Mode of Payment</label>
-            <select v-model="form.mode_of_payment" class="pmt-select">
-              <option value="">— Select —</option>
-              <option v-for="m in paymentModes" :key="m" :value="m">{{ m }}</option>
-            </select>
-          </div>
-          <div class="pmt-field">
-            <label class="pmt-label">Amount <span class="req">*</span></label>
-            <input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="pmt-input" placeholder="0.00" @input="syncUnallocated" />
-          </div>
-          <div class="pmt-field">
-            <label class="pmt-label">Payment Date <span class="req">*</span></label>
-            <input v-model="form.payment_date" type="date" class="pmt-input" />
-          </div>
-          <div class="pmt-field">
-            <label class="pmt-label">Reference / Cheque No</label>
-            <input v-model="form.reference_no" type="text" class="pmt-input" placeholder="e.g. CHQ-001" />
-          </div>
-          <div class="pmt-field">
-            <label class="pmt-label">Reference Date</label>
-            <input v-model="form.reference_date" type="date" class="pmt-input" />
-          </div>
-        </div>
-
-        <div class="pmt-fields-grid" style="margin-top:0">
-          <div class="pmt-field">
-            <label class="pmt-label">Paid From Account</label>
-            <SearchableSelect v-model="form.paid_from" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
-          </div>
-          <div class="pmt-field">
-            <label class="pmt-label">Paid To Account</label>
-            <SearchableSelect v-model="form.paid_to" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
-          </div>
-        </div>
-
-        <!-- Invoice linking -->
-        <div class="pmt-section-hdr">
-          <span>Outstanding Invoices</span>
-          <span class="pmt-unalloc" :class="unallocated<-0.01?'red':unallocated>0.01?'orange':''">
-            Unallocated: {{ fmtCur(unallocated) }}
-          </span>
-        </div>
-        <div v-if="!form.party" class="pmt-inv-empty">Select a party to load outstanding invoices</div>
-        <div v-else-if="invLoading" class="pmt-inv-empty"><span style="color:#9ca3af">Loading invoices…</span></div>
-        <div v-else-if="!outstandingInvoices.length" class="pmt-inv-empty">No outstanding {{ form.payment_type==='Receive'?'invoices':'bills' }} for this party</div>
-        <div v-else class="pmt-inv-table">
-          <div class="pmt-inv-head">
-            <div></div><div>Document</div><div>Date</div>
-            <div class="ta-r">Outstanding</div><div class="ta-r">Allocate</div>
-          </div>
-          <div v-for="ref in invoiceRefs" :key="ref.reference_name" class="pmt-inv-row">
-            <div><input type="checkbox" v-model="ref.checked" @change="onRefCheck(ref)" /></div>
-            <div><span class="pmt-inv-name">{{ ref.reference_name }}</span></div>
-            <div class="mono-sm text-muted">{{ fmtDate(ref.due_date) }}</div>
-            <div class="ta-r mono-sm">{{ fmtCur(ref.outstanding_amount) }}</div>
-            <div>
-              <input v-if="ref.checked" v-model.number="ref.allocated_amount" type="number" min="0" :max="ref.outstanding_amount" step="0.01" class="pmt-alloc-input" @input="syncUnallocated" />
-              <span v-else class="mono-sm text-muted">—</span>
+          <div class="pmt-fields-grid">
+            <div class="pmt-field" style="grid-column:1/-1">
+              <label class="pmt-label">{{ form.payment_type==='Receive'?'Customer':'Vendor' }} <span class="req">*</span></label>
+              <SearchableSelect v-model="form.party" :options="partyOptions"
+                :placeholder="form.payment_type==='Receive'?'Select customer…':'Select vendor…'"
+                @search="fetchParties" @select="onPartySelect" />
+            </div>
+            <div class="pmt-field">
+              <label class="pmt-label">Amount <span class="req">*</span></label>
+              <input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="pmt-input" placeholder="0.00" @input="syncUnallocated" />
+            </div>
+            <div class="pmt-field">
+              <label class="pmt-label">Mode of Payment</label>
+              <select v-model="form.mode_of_payment" class="pmt-select">
+                <option value="">— Select —</option>
+                <option v-for="m in paymentModes" :key="m" :value="m">{{ m }}</option>
+              </select>
             </div>
           </div>
         </div>
 
-        <div class="pmt-field" style="margin-top:4px">
-          <label class="pmt-label">Remarks</label>
-          <textarea v-model="form.remarks" rows="2" class="pmt-input" placeholder="Optional notes…"></textarea>
+        <!-- Section: Reference & Dates -->
+        <div class="pmt-section">
+          <div class="pmt-section-hdr-bar">
+            <span v-html="icon('hash',13)"></span>
+            <span>Reference & Dates</span>
+          </div>
+          <div class="pmt-fields-grid">
+            <div class="pmt-field">
+              <label class="pmt-label">Payment Date <span class="req">*</span></label>
+              <input v-model="form.payment_date" type="date" class="pmt-input" />
+            </div>
+            <div class="pmt-field">
+              <label class="pmt-label">Reference Date</label>
+              <input v-model="form.reference_date" type="date" class="pmt-input" />
+            </div>
+            <div class="pmt-field" style="grid-column:1/-1">
+              <label class="pmt-label">Reference / Cheque No</label>
+              <input v-model="form.reference_no" type="text" class="pmt-input" placeholder="e.g. CHQ-001, NEFT-78902" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Accounts -->
+        <div class="pmt-section">
+          <div class="pmt-section-hdr-bar">
+            <span v-html="icon('ledger',13)"></span>
+            <span>Accounts</span>
+          </div>
+          <div class="pmt-fields-grid">
+            <div class="pmt-field">
+              <label class="pmt-label">Paid From</label>
+              <SearchableSelect v-model="form.paid_from" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
+            </div>
+            <div class="pmt-field">
+              <label class="pmt-label">Paid To</label>
+              <SearchableSelect v-model="form.paid_to" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Allocation -->
+        <div class="pmt-section">
+          <div class="pmt-section-hdr-bar">
+            <span v-html="icon('check',13)"></span>
+            <span>Outstanding {{ form.payment_type==='Receive'?'Invoices':'Bills' }}</span>
+            <span class="pmt-unalloc" :class="unallocated<-0.01?'red':unallocated>0.01?'orange':''">
+              Unallocated: {{ fmtCur(unallocated) }}
+            </span>
+          </div>
+          <div v-if="!form.party" class="pmt-inv-empty">Select a party to load outstanding invoices</div>
+          <div v-else-if="invLoading" class="pmt-inv-empty"><span style="color:#9ca3af">Loading invoices…</span></div>
+          <div v-else-if="!outstandingInvoices.length" class="pmt-inv-empty">No outstanding {{ form.payment_type==='Receive'?'invoices':'bills' }} for this party</div>
+          <div v-else class="pmt-inv-table">
+            <div class="pmt-inv-head">
+              <div></div><div>Document</div><div>Date</div>
+              <div class="ta-r">Outstanding</div><div class="ta-r">Allocate</div>
+            </div>
+            <div v-for="ref in invoiceRefs" :key="ref.reference_name" class="pmt-inv-row">
+              <div><input type="checkbox" v-model="ref.checked" @change="onRefCheck(ref)" /></div>
+              <div><span class="pmt-inv-name">{{ ref.reference_name }}</span></div>
+              <div class="mono-sm text-muted">{{ fmtDate(ref.due_date) }}</div>
+              <div class="ta-r mono-sm">{{ fmtCur(ref.outstanding_amount) }}</div>
+              <div>
+                <input v-if="ref.checked" v-model.number="ref.allocated_amount" type="number" min="0" :max="ref.outstanding_amount" step="0.01" class="pmt-alloc-input" @input="syncUnallocated" />
+                <span v-else class="mono-sm text-muted">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Notes -->
+        <div class="pmt-section">
+          <div class="pmt-section-hdr-bar">
+            <span v-html="icon('mail',13)"></span>
+            <span>Notes</span>
+          </div>
+          <textarea v-model="form.remarks" rows="3" class="pmt-input" placeholder="Optional notes about this payment…"></textarea>
         </div>
       </div>
 
       <div class="pmt-dfooter">
-        <button class="pmt-btn-ghost" @click="drawerOpen=false">Cancel</button>
+        <button class="pmt-btn-ghost" @click="drawerOpen=false" :disabled="drawerSaving">Cancel</button>
         <button class="pmt-btn-save" :disabled="drawerSaving" @click="savePayment(0)">
           <span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}
         </button>
@@ -236,7 +288,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiPOST, apiDelete, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useConfirm } from "../composables/useConfirm.js";
@@ -389,10 +441,26 @@ async function fetchParties(q = "") {
   catch { partyOptions.value = []; }
 }
 
-async function onPartySelect(val) {
-  form.party = val;
-  await fetchOutstandingInvoices(val, form.payment_type);
+async function onPartySelect(opt) {
+  // SearchableSelect's @select emits the full {label, value} option object;
+  // v-model="form.party" already updates form.party via update:modelValue.
+  // Outstanding-invoice loading is handled by the watch() below, so this
+  // handler is now a no-op kept for backwards compatibility.
+  const party = (opt && typeof opt === "object") ? opt.value : opt;
+  if (party && typeof party === "string" && party !== form.party) form.party = party;
 }
+
+// Reload outstanding invoices/bills whenever the party OR payment type changes,
+// regardless of which UI control mutated them.
+watch(() => [form.party, form.payment_type], async ([p, t], [oldP, oldT]) => {
+  if (!p) {
+    outstandingInvoices.value = [];
+    invoiceRefs.value = [];
+    return;
+  }
+  if (p === oldP && t === oldT) return;
+  await fetchOutstandingInvoices(p, t);
+});
 
 async function fetchOutstandingInvoices(party, pmtType) {
   if (!party) return;
@@ -517,15 +585,32 @@ onMounted(load);
 .pmt-empty{text-align:center;color:#9ca3af;padding:48px 20px!important;font-size:13px;cursor:default!important;}
 .pmt-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.pmt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40;}
-.pmt-drawer{position:fixed;top:0;right:-540px;bottom:0;width:540px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 24px rgba(0,0,0,.08);z-index:50;display:flex;flex-direction:column;transition:right .22s ease;}
+.pmt-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(2px);z-index:40;}
+.pmt-drawer{position:fixed;top:0;right:-580px;bottom:0;width:580px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
 .pmt-drawer.open{right:0;}
-.pmt-view-drawer{width:460px;right:-460px;}.pmt-view-drawer.open{right:0;}
-.pmt-dheader{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;border-bottom:1px solid #e5e7eb;flex-shrink:0;}
-.pmt-dheader-title{font-size:15px;font-weight:600;color:#111827;}
-.pmt-dclose{background:transparent;border:none;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;}
-.pmt-dclose:hover{background:#f3f4f6;}
-.pmt-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;}
+.pmt-view-drawer{width:520px;right:-520px;}.pmt-view-drawer.open{right:0;}
+
+.pmt-dheader{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}
+.pmt-dheader.recv{background:linear-gradient(135deg,#f0fdf4 0%,#bbf7d0 100%);}
+.pmt-dheader.pay{background:linear-gradient(135deg,#fff1f2 0%,#fecaca 100%);}
+.pmt-dheader-left{display:flex;align-items:flex-start;gap:12px;}
+.pmt-dheader-ico{width:38px;height:38px;border-radius:10px;background:#fff;border:1px solid rgba(37,99,235,.18);display:inline-flex;align-items:center;justify-content:center;color:#2563eb;box-shadow:0 1px 3px rgba(15,23,42,.06);flex-shrink:0;}
+.pmt-dheader-ico.recv{color:#16a34a;border-color:rgba(22,163,74,.22);}
+.pmt-dheader-ico.pay{color:#dc2626;border-color:rgba(220,38,38,.25);}
+.pmt-dheader-title{font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.01em;}
+.pmt-dheader-sub{font-size:12px;color:#475569;margin-top:3px;font-weight:500;}
+.pmt-dclose{background:rgba(255,255,255,.6);border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;transition:background .15s;}
+.pmt-dclose:hover{background:#fff;color:#111827;}
+
+.pmt-dbody{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc;}
+
+/* Section cards */
+.pmt-section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
+.pmt-section-hdr-bar{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;}
+.pmt-section-hdr-bar svg{color:#2563eb;}
+.pmt-section-hdr-bar .pmt-unalloc{margin-left:auto;text-transform:none;font-size:11.5px;font-weight:700;color:#16a34a;}
+.pmt-section-hdr-bar .pmt-unalloc.red{color:#dc2626;}
+.pmt-section-hdr-bar .pmt-unalloc.orange{color:#ea580c;}
 .pmt-view-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;padding:20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;}
 .head-green{background:#f0fdf4;}.head-red{background:#fff1f2;}
 .pmt-view-num{font-size:18px;font-weight:700;font-family:monospace;color:#111827;}
@@ -535,28 +620,34 @@ onMounted(load);
 .pmt-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .pmt-field{display:flex;flex-direction:column;gap:4px;}
 .pmt-label{font-size:12px;font-weight:600;color:#374151;}.req{color:#dc2626;}
-.pmt-input{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
-.pmt-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08);}
-textarea.pmt-input{resize:vertical;}
+.pmt-input,.pmt-select{border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;transition:border-color .15s, box-shadow .15s;}
+.pmt-input:hover:not(:disabled),.pmt-select:hover:not(:disabled){border-color:#cbd5e1;}
+.pmt-input:focus,.pmt-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+.pmt-input:disabled,.pmt-select:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;border-color:#e2e8f0;}
+textarea.pmt-input{resize:vertical;font-family:inherit;}
 .pmt-select{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;cursor:pointer;}
 .pmt-select:focus{border-color:#2563eb;}
-.pmt-radio-group{display:flex;gap:10px;flex-wrap:wrap;}
-.pmt-radio{display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;font-size:13px;color:#374151;user-select:none;}
-.pmt-radio.checked{border-color:#2563eb;background:#eff6ff;color:#2563eb;}
-.pmt-radio-dot{width:14px;height:14px;border-radius:50%;border:2px solid #d1d5db;display:inline-block;flex-shrink:0;}
+.pmt-radio-group{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.pmt-radio{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid #e5e7eb;border-radius:10px;cursor:pointer;font-size:13px;color:#374151;user-select:none;transition:border-color .15s,background .15s,box-shadow .15s;}
+.pmt-radio:hover{border-color:#cbd5e1;}
+.pmt-radio.checked{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 3px rgba(37,99,235,.10);}
+.pmt-radio-dot{width:16px;height:16px;border-radius:50%;border:2px solid #d1d5db;display:inline-block;flex-shrink:0;transition:border-color .15s, background .15s;}
 .pmt-radio-dot.on{border-color:#2563eb;background:#2563eb;box-shadow:inset 0 0 0 3px #fff;}
+.pmt-radio-title{font-weight:600;color:#0f172a;font-size:13px;line-height:1.2;}
+.pmt-radio.checked .pmt-radio-title{color:#1d4ed8;}
+.pmt-radio-sub{font-size:11.5px;color:#6b7280;margin-top:2px;}
 .pmt-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .pmt-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
 /* Invoice section */
 .pmt-section-hdr{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;padding-bottom:6px;border-bottom:1px solid #f3f4f6;}
 .pmt-unalloc{font-family:monospace;font-size:12px;font-weight:600;color:#6b7280;}
-.pmt-inv-empty{font-size:12.5px;color:#9ca3af;padding:12px 0;text-align:center;}
-.pmt-inv-table{border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;font-size:12.5px;}
-.pmt-inv-head{display:grid;grid-template-columns:24px 1fr 90px 90px 90px;gap:8px;background:#f9fafb;padding:8px 10px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;}
+.pmt-inv-empty{font-size:12.5px;color:#9ca3af;padding:18px 0;text-align:center;background:#f9fafb;border:1px dashed #e5e7eb;border-radius:8px;}
+.pmt-inv-table{border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;font-size:12.5px;background:#fff;}
+.pmt-inv-head{display:grid;grid-template-columns:24px 1fr 90px 90px 90px;gap:8px;background:#f9fafb;padding:8px 10px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;}
 .pmt-inv-row{display:grid;grid-template-columns:24px 1fr 90px 90px 90px;gap:8px;padding:8px 10px;border-top:1px solid #f3f4f6;align-items:center;}
 .pmt-inv-row:hover{background:#f9fafb;}
 .pmt-inv-name{font-family:monospace;color:#2563eb;font-weight:600;}
-.pmt-alloc-input{width:80px;border:1px solid #e5e7eb;border-radius:4px;padding:3px 6px;font:inherit;font-size:12px;text-align:right;outline:none;}
-.pmt-alloc-input:focus{border-color:#2563eb;}
-.pmt-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
+.pmt-alloc-input{width:80px;border:1px solid #e2e8f0;border-radius:6px;padding:4px 8px;font:inherit;font-size:12px;text-align:right;outline:none;}
+.pmt-alloc-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.10);}
+.pmt-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0;}
 </style>

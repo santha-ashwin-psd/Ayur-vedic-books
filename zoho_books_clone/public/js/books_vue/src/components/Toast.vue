@@ -27,7 +27,7 @@ const { items } = useToast();
   pointer-events: auto;
   color: #fff; padding: 12px 20px; border-radius: 8px;
   font-size: 13px; font-weight: 500;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Lato', system-ui, sans-serif;
   box-shadow: 0 4px 20px rgba(0,0,0,.2);
   max-width: 360px; line-height: 1.4;
   animation: bv-toast-in .2s ease;

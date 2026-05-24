@@ -51,7 +51,7 @@ defineEmits(["close"]);
   box-shadow: 0 12px 40px rgba(0, 0, 0, .2);
   animation: nim-dialog-in .2s cubic-bezier(.34, 1.56, .64, 1);
   overflow: hidden;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Lato', system-ui, sans-serif;
 }
 .nim-dialog-header {
   display: flex; align-items: center; justify-content: space-between;

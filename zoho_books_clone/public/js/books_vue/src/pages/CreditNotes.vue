@@ -405,6 +405,17 @@ async function load() {
       limit: 500,
       order: "posting_date desc",
     });
+    // Frappe sometimes omits customer_name on return invoices — resolve missing ones
+    const missingNames = [...new Set(list.value.filter(c => !c.customer_name && c.customer).map(c => c.customer))];
+    if (missingNames.length) {
+      const custRows = await apiList("Customer", {
+        fields: ["name", "customer_name"],
+        filters: [["name", "in", missingNames]],
+        limit: missingNames.length,
+      }).catch(() => []);
+      const nameMap = Object.fromEntries(custRows.map(r => [r.name, r.customer_name || r.name]));
+      list.value = list.value.map(c => c.customer_name ? c : { ...c, customer_name: nameMap[c.customer] || c.customer });
+    }
     const submitted = list.value.filter(c => c.docstatus === 1);
     const balances = await Promise.all(submitted.map(c =>
       apiGET("zoho_books_clone.api.docs.get_credit_note_balance", { credit_note_name: c.name }).catch(() => null)

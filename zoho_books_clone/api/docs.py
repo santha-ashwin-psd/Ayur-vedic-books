@@ -1026,8 +1026,33 @@ def apply_credit_note_to_invoice(credit_note, invoice, amount):
     except Exception as exc:
         frappe.log_error(f"recompute_outstanding failed for {invoice}: {exc}",
                          "apply_credit_note_to_invoice")
+
+    # Recompute the invoice status based on the updated outstanding_amount.
+    # recompute_outstanding_from_gl only updates the numeric field; the status
+    # field ("Unpaid" / "Partly Paid" / "Paid") must be set explicitly.
+    try:
+        outstanding_now = flt(frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount"))
+        inv_doc = frappe.get_doc("Sales Invoice", invoice)
+        if outstanding_now <= 0:
+            new_status = "Paid"
+        elif outstanding_now < flt(inv_doc.grand_total):
+            new_status = "Partly Paid"
+        else:
+            new_status = "Unpaid"
+        frappe.db.set_value("Sales Invoice", invoice, "status", new_status, update_modified=True)
+    except Exception as exc:
+        frappe.log_error(f"status update failed for {invoice}: {exc}",
+                         "apply_credit_note_to_invoice")
+
     frappe.db.commit()
-    return {"journal_entry": je.name, "credit_note": credit_note, "invoice": invoice, "applied": amount}
+    return {
+        "journal_entry": je.name,
+        "credit_note": credit_note,
+        "invoice": invoice,
+        "applied": amount,
+        "invoice_status": new_status if 'new_status' in dir() else None,
+        "invoice_outstanding": outstanding_now if 'outstanding_now' in dir() else None,
+    }
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])

@@ -212,6 +212,8 @@ import { useRouter } from "vue-router";
 import { apiList, apiGet, apiGET, apiSave, apiDelete, apiSubmit, resolveCompany } from "../api/client.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useToast } from "../composables/useToast.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import DocLink from "../components/DocLink.vue";
 import { icon } from "../utils/icons.js";
 
 const { toast } = useToast();
@@ -393,7 +395,13 @@ async function doDelete() {
 }
 
 import { onMounted } from "vue";
-onMounted(load);
+onMounted(async () => {
+  await load();
+  useOpenFromQuery({
+    list: () => filtered.value,
+    openByName: (n) => { const r = filtered.value.find(x => x.name === n); if (r) openView(r); },
+  });
+});
 </script>
 
 <style scoped>

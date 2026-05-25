@@ -99,11 +99,11 @@
           <div class="dc-section">
             <div class="dc-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
             <div class="dc-meta-grid">
-              <div><div class="dc-meta-lbl">Customer</div><div style="font-weight:600">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</div></div>
+              <div><div class="dc-meta-lbl">Customer</div><div><DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</DocLink></div></div>
               <div><div class="dc-meta-lbl">Date</div><div>{{ viewDoc.posting_date||'—' }}</div></div>
               <div><div class="dc-meta-lbl">LR / Tracking #</div><div class="mono">{{ viewDoc.lr_no||'—' }}</div></div>
               <div><div class="dc-meta-lbl">Transporter</div><div>{{ viewDoc.transporter_name||'—' }}</div></div>
-              <div v-if="viewDoc.sales_order" style="grid-column:1/-1"><div class="dc-meta-lbl">Sales Order</div><div class="mono" style="color:#3B5BDB">{{ viewDoc.sales_order }}</div></div>
+              <div v-if="viewDoc.sales_order" style="grid-column:1/-1"><div class="dc-meta-lbl">Sales Order</div><div><DocLink doctype="Sales Order" :name="viewDoc.sales_order" /></div></div>
               <div v-if="viewDoc.shipping_address||viewDoc.customer_address" style="grid-column:1/-1"><div class="dc-meta-lbl">Delivery Address</div><div>{{ viewDoc.shipping_address||viewDoc.customer_address }}</div></div>
               <div v-if="viewDoc.remarks" style="grid-column:1/-1"><div class="dc-meta-lbl">Remarks</div><div>{{ viewDoc.remarks }}</div></div>
             </div>
@@ -280,6 +280,8 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import DocLink from "../components/DocLink.vue";
 import { icon } from "../utils/icons.js";
 import { flt } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
@@ -735,7 +737,13 @@ async function saveChallan(submit) {
   finally { saving.value = false; }
 }
 
-onMounted(load);
+onMounted(async () => {
+  await load();
+  useOpenFromQuery({
+    list: () => sorted.value,
+    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+  });
+});
 </script>
 
 <style scoped>

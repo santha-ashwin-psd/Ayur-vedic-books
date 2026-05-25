@@ -185,7 +185,9 @@
           <div class="cn-view-head-body">
             <div class="cn-view-head-left">
               <div class="cn-view-num">{{ viewDoc.name }}</div>
-              <div class="cn-view-sub">{{ viewDoc.customer_name||viewDoc.customer }}</div>
+              <div class="cn-view-sub">
+                <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer }}</DocLink>
+              </div>
             </div>
             <div class="cn-view-head-right">
               <div class="cn-view-amount">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div>
@@ -207,7 +209,7 @@
           <template v-if="viewTab==='details'">
             <div class="cn-meta-grid">
               <div><div class="cn-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}</div></div>
-              <div><div class="cn-meta-lbl">Against Invoice</div><div class="mono-sm">{{ viewDoc.return_against||'—' }}</div></div>
+              <div><div class="cn-meta-lbl">Against Invoice</div><div><DocLink doctype="Sales Invoice" :name="viewDoc.return_against" /></div></div>
               <div><div class="cn-meta-lbl">Total Credit</div><div class="mono-sm" style="color:#7f1d1d;font-weight:600">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div></div>
               <div><div class="cn-meta-lbl">Available Balance</div>
                 <div class="mono-sm" :class="viewBalance>0?'text-danger':'text-success'">{{ fmtCur(viewBalance) }}</div>
@@ -234,9 +236,9 @@
             <div v-else-if="viewApplications.length">
               <div class="cn-app-head"><span>Invoice</span><span>Date</span><span>Journal Entry</span><span class="ta-r">Amount Applied</span></div>
               <div v-for="a in viewApplications" :key="a.payment_entry+'_'+a.invoice" class="cn-app-row">
-                <span class="mono-sm cn-num">{{ a.invoice }}</span>
+                <DocLink doctype="Sales Invoice" :name="a.invoice" />
                 <span class="mono-sm">{{ fmtDate(a.date) }}</span>
-                <span class="mono-sm text-muted">{{ a.payment_entry }}</span>
+                <DocLink doctype="Payment Entry" :name="a.payment_entry" />
                 <span class="ta-r mono-sm" style="font-weight:600;color:#059669">{{ fmtCur(a.amount) }}</span>
               </div>
             </div>
@@ -345,6 +347,8 @@ import { apiList, apiSave, apiGet, apiGET, apiPOST, apiSubmit, apiDelete, resolv
 import { useToast } from "../composables/useToast.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import DocLink from "../components/DocLink.vue";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
@@ -754,7 +758,13 @@ function exportCSV() {
   toast.success(`CSV exported — ${rows.length} note(s)`);
 }
 
-onMounted(load);
+onMounted(async () => {
+  await load();
+  useOpenFromQuery({
+    list: () => sorted.value,
+    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+  });
+});
 </script>
 
 <style scoped>

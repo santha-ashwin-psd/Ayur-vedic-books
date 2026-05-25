@@ -544,6 +544,8 @@ import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import DocLink from "../components/DocLink.vue";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
@@ -1547,11 +1549,18 @@ function printQuote(data) {
 }
 
 // ── Mount ─────────────────────────────────────────────────────────────
-onMounted(() => {
-  load();
+onMounted(async () => {
+  await load();
   loadTaxAccount();
-  fetchCustomers("");   // pre-load — mirrors Invoice
-  fetchItems("");       // pre-load — mirrors Invoice
+  fetchCustomers("");
+  fetchItems("");
+  useOpenFromQuery({
+    list: () => sorted.value,
+    openByName: (n) => {
+      const row = sorted.value.find(r => r.name === n);
+      if (row) openView(row);
+    },
+  });
 });
 </script>
 <style scoped>

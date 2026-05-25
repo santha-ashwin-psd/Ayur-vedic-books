@@ -3,18 +3,22 @@
     <div v-if="state.open" class="mr-overlay" @click.self="onClose"></div>
     <div v-if="state.open" class="mr-drawer">
       <div class="mr-header">
-        <div>
-          <div class="mr-title">Make Recurring</div>
-          <div class="mr-sub">{{ state.doctype }} · {{ state.name }}</div>
+        <div class="mr-header-left">
+          <div class="mr-header-ico"><span v-html="icon('repeat',18)"></span></div>
+          <div>
+            <div class="mr-title">Make Recurring</div>
+            <div class="mr-sub">{{ state.doctype }} · {{ state.name }}</div>
+          </div>
         </div>
         <button class="mr-close" @click="onClose"><span v-html="icon('x',16)"></span></button>
       </div>
 
       <div class="mr-body">
+        <!-- Context card showing the source doc -->
         <div v-if="state.partyLabel || state.amount" class="mr-context">
-          <div v-if="state.partyLabel" class="mr-context-row">
-            <span class="mr-context-lbl">Party</span>
-            <span class="mr-context-val">{{ state.partyLabel }}</span>
+          <div class="mr-context-row">
+            <span class="mr-context-lbl">{{ state.partyLabel ? 'Party' : 'Reference' }}</span>
+            <span class="mr-context-val">{{ state.partyLabel || state.name }}</span>
           </div>
           <div v-if="state.amount" class="mr-context-row">
             <span class="mr-context-lbl">Template Amount</span>
@@ -22,49 +26,55 @@
           </div>
         </div>
 
-        <div class="mr-grid">
-          <div class="mr-field">
-            <label>Frequency <span class="req">*</span></label>
-            <select v-model="form.frequency" class="mr-input">
-              <option value="Daily">Daily</option>
-              <option value="Weekly">Weekly</option>
-              <option value="Monthly">Monthly</option>
-              <option value="Quarterly">Quarterly</option>
-              <option value="Half-yearly">Half-yearly</option>
-              <option value="Yearly">Yearly</option>
-            </select>
+        <!-- Section: Schedule -->
+        <div class="mr-section">
+          <div class="mr-section-hdr"><span v-html="icon('refresh',13)"></span><span>Schedule</span></div>
+          <div class="mr-grid">
+            <div class="mr-field">
+              <label>Frequency <span class="req">*</span></label>
+              <select v-model="form.frequency" class="mr-input">
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Half-yearly">Half-yearly</option>
+                <option value="Yearly">Yearly</option>
+              </select>
+            </div>
+            <div class="mr-field">
+              <label>Submit on Creation</label>
+              <select v-model="form.submit_on_creation" class="mr-input">
+                <option :value="1">Yes — auto-submit</option>
+                <option :value="0">No — save as draft</option>
+              </select>
+            </div>
+            <div class="mr-field">
+              <label>Start Date <span class="req">*</span></label>
+              <input v-model="form.start_date" type="date" class="mr-input" />
+            </div>
+            <div class="mr-field">
+              <label>End Date <span class="hint">(optional)</span></label>
+              <input v-model="form.end_date" type="date" class="mr-input" :min="minEndDate" />
+            </div>
+            <div v-if="planHint" class="mr-plan" style="grid-column:1/-1">
+              <span v-html="icon('info',13)"></span> {{ planHint }}
+            </div>
           </div>
+        </div>
 
-          <div class="mr-field">
-            <label>Submit on Creation</label>
-            <select v-model="form.submit_on_creation" class="mr-input">
-              <option :value="1">Yes — auto-submit</option>
-              <option :value="0">No — save as draft</option>
-            </select>
-          </div>
-
-          <div class="mr-field">
-            <label>Start Date <span class="req">*</span></label>
-            <input v-model="form.start_date" type="date" class="mr-input" />
-          </div>
-
-          <div class="mr-field">
-            <label>End Date <span class="hint">(optional)</span></label>
-            <input v-model="form.end_date" type="date" class="mr-input" :min="minEndDate" />
-          </div>
-
-          <div v-if="planHint" class="mr-plan" style="grid-column:1/-1">
-            <span v-html="icon('info',13)"></span> {{ planHint }}
-          </div>
-
-          <div class="mr-field" style="grid-column:1/-1">
-            <label>
-              <input type="checkbox" v-model="form._notify" style="margin-right:6px;vertical-align:middle" />
-              Notify by email when generated
+        <!-- Section: Notification -->
+        <div class="mr-section">
+          <div class="mr-section-hdr">
+            <span v-html="icon('mail',13)"></span><span>Notification</span>
+            <label class="mr-toggle">
+              <input type="checkbox" v-model="form._notify" />
+              <span class="mr-toggle-slider"></span>
             </label>
           </div>
-
-          <template v-if="form._notify">
+          <div v-if="!form._notify" class="mr-section-empty">
+            Email notifications are off. Toggle to email someone every time a document is generated.
+          </div>
+          <div v-else class="mr-grid">
             <div class="mr-field" style="grid-column:1/-1">
               <label>Recipients <span class="hint">(comma separated)</span></label>
               <input v-model="form.recipients" type="text" class="mr-input"
@@ -80,7 +90,7 @@
               <textarea v-model="form.message" class="mr-input" rows="3"
                         placeholder="Hello, please find your latest document attached…"></textarea>
             </div>
-          </template>
+          </div>
         </div>
       </div>
 
@@ -201,33 +211,60 @@ async function submit() {
 </script>
 
 <style scoped>
-.mr-overlay{position:fixed;inset:0;background:rgba(15,23,42,.32);backdrop-filter:blur(2px);z-index:1900;}
-.mr-drawer{position:fixed;top:0;right:0;bottom:0;width:520px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(0,0,0,.12);z-index:1910;display:flex;flex-direction:column;animation:slideIn .22s cubic-bezier(.32,.72,0,1);}
+/* MakeRecurringDialog sits on top of every page drawer (Invoices is 8000, Banking ~9999) */
+.mr-overlay{position:fixed;inset:0;background:rgba(15,23,42,.42);backdrop-filter:blur(3px);z-index:11000;}
+.mr-drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:96vw;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-16px 0 40px rgba(15,23,42,.18);z-index:11010;display:flex;flex-direction:column;animation:slideIn .24s cubic-bezier(.32,.72,0,1);}
 @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
-.mr-header{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#eff6ff,#fff);flex-shrink:0;}
-.mr-title{font-size:15px;font-weight:700;color:#111827;}
-.mr-sub{font-size:12px;color:#6b7280;font-family:monospace;margin-top:2px;}
-.mr-close{background:transparent;border:none;cursor:pointer;color:#6b7280;width:32px;height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;}
-.mr-close:hover{background:rgba(0,0,0,.05);color:#111827;}
-.mr-body{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;}
-.mr-context{background:#f9fafb;border:1px solid #f3f4f6;border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:6px;}
-.mr-context-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;}
-.mr-context-lbl{color:#6b7280;font-weight:600;text-transform:uppercase;font-size:10.5px;letter-spacing:.04em;}
-.mr-context-val{color:#0f172a;font-weight:600;}
+
+/* Header — gradient + icon badge, matching every other premium drawer */
+.mr-header{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);flex-shrink:0;}
+.mr-header-left{display:flex;align-items:flex-start;gap:12px;}
+.mr-header-ico{width:38px;height:38px;border-radius:10px;background:#fff;border:1px solid rgba(37,99,235,.18);display:inline-flex;align-items:center;justify-content:center;color:#2563eb;box-shadow:0 1px 3px rgba(15,23,42,.06);flex-shrink:0;}
+.mr-title{font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.01em;}
+.mr-sub{font-size:12px;color:#475569;margin-top:3px;font-weight:500;font-family:monospace;}
+.mr-close{background:rgba(255,255,255,.6);border:none;cursor:pointer;color:#475569;width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;transition:background .15s;}
+.mr-close:hover{background:#fff;color:#111827;}
+
+/* Body — slate background + sectioned white cards */
+.mr-body{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc;}
+
+/* Context strip showing the source doc */
+.mr-context{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;box-shadow:0 1px 2px rgba(15,23,42,.04);}
+.mr-context-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;gap:12px;}
+.mr-context-row + .mr-context-row{border-top:1px dashed #f1f5f9;padding-top:8px;}
+.mr-context-lbl{color:#6b7280;font-weight:600;text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;flex-shrink:0;}
+.mr-context-val{color:#0f172a;font-weight:700;text-align:right;}
 .mono{font-family:monospace;}
+
+/* Section cards */
+.mr-section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
+.mr-section-hdr{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;}
+.mr-section-hdr svg{color:#2563eb;}
+.mr-section-empty{font-size:12.5px;color:#6b7280;font-style:italic;line-height:1.5;}
+
+/* iOS-style toggle (sits at the right of the section header) */
+.mr-toggle{position:relative;margin-left:auto;width:34px;height:18px;display:inline-block;cursor:pointer;}
+.mr-toggle input{opacity:0;width:0;height:0;}
+.mr-toggle-slider{position:absolute;inset:0;background:#cbd5e1;border-radius:18px;transition:background .18s;}
+.mr-toggle-slider::before{content:"";position:absolute;width:14px;height:14px;left:2px;top:2px;background:#fff;border-radius:50%;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.15);}
+.mr-toggle input:checked + .mr-toggle-slider{background:#2563eb;}
+.mr-toggle input:checked + .mr-toggle-slider::before{transform:translateX(16px);}
+
 .mr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .mr-field{display:flex;flex-direction:column;gap:4px;}
 .mr-field label{font-size:12px;font-weight:600;color:#374151;}
 .req{color:#dc2626;}
 .hint{font-weight:400;color:#9ca3af;font-size:11px;}
-.mr-input{border:1px solid #e5e7eb;border-radius:7px;padding:8px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
-.mr-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.10);}
+.mr-input{border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;transition:border-color .15s,box-shadow .15s;}
+.mr-input:hover:not(:disabled){border-color:#cbd5e1;}
+.mr-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
 .mr-plan{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:8px 12px;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:8px;}
+
 .mr-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0;}
-.mr-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid #e5e7eb;border-radius:8px;padding:8px 14px;font-size:13px;color:#374151;cursor:pointer;}
-.mr-btn-ghost:hover{background:#f9fafb;}
+.mr-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid #e5e7eb;border-radius:8px;padding:8px 14px;font-size:13px;color:#374151;cursor:pointer;font-family:inherit;}
+.mr-btn-ghost:hover:not(:disabled){background:#f9fafb;}
 .mr-btn-ghost:disabled{opacity:.5;cursor:not-allowed;}
-.mr-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
-.mr-btn-primary:hover{background:#1d4ed8;}
+.mr-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+.mr-btn-primary:hover:not(:disabled){background:#1d4ed8;}
 .mr-btn-primary:disabled{opacity:.5;cursor:not-allowed;}
 </style>

@@ -454,7 +454,7 @@
           <div>
             <div class="inv-dh-title" style="color:#fff">{{ viewInv.name }}</div>
             <div class="inv-dh-sub" style="color:rgba(255,255,255,.75)">
-              {{ viewInv.customer_name||viewInv.customer }} · {{ fmtDate(viewInv.posting_date) }}
+              <DocLink doctype="Customer" :name="viewInv.customer" :mono-style="false">{{ viewInv.customer_name||viewInv.customer }}</DocLink> · {{ fmtDate(viewInv.posting_date) }}
             </div>
           </div>
           <button class="inv-dclose" style="color:#fff;background:rgba(255,255,255,.15)" @click="viewOpen=false">
@@ -521,7 +521,7 @@
           <template v-if="viewTab==='details'">
             <div class="inv-view-meta">
               <div><div class="inv-meta-lbl">Status</div><span class="inv-status-badge" :class="statusCls(viewInv)">{{ statusLabel(viewInv) }}</span></div>
-              <div><div class="inv-meta-lbl">Customer</div><div style="font-weight:600">{{ viewInv.customer_name||viewInv.customer }}</div></div>
+              <div><div class="inv-meta-lbl">Customer</div><div><DocLink doctype="Customer" :name="viewInv.customer" :mono-style="false">{{ viewInv.customer_name||viewInv.customer }}</DocLink></div></div>
               <div v-if="viewInv.po_no"><div class="inv-meta-lbl">PO Number</div><div class="mono-sm">{{ viewInv.po_no }}</div></div>
               <div><div class="inv-meta-lbl">Invoice Date</div><div>{{ fmtDate(viewInv.posting_date) }}</div></div>
               <div><div class="inv-meta-lbl">Due Date</div><div :class="isOverdue(viewInv)?'text-danger':''">{{ fmtDate(viewInv.due_date)||'—' }}</div></div>
@@ -588,10 +588,11 @@
             <div v-if="viewPaymentsLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading payments…</div>
             <template v-else>
               <div v-if="viewPayments.length" style="border:1px solid #e8ecf0;border-radius:8px;overflow:hidden">
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:8px 14px;background:#f8fafc;border-bottom:1px solid #e8ecf0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af">
-                  <div>Date</div><div>Mode</div><div>Reference</div><div style="text-align:right">Amount</div>
+                <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;gap:8px;padding:8px 14px;background:#f8fafc;border-bottom:1px solid #e8ecf0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af">
+                  <div>Payment #</div><div>Date</div><div>Mode</div><div>Reference</div><div style="text-align:right">Amount</div>
                 </div>
-                <div v-for="(p,i) in viewPayments" :key="i" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding:9px 14px;border-bottom:1px solid #f0f2f5;font-size:13px">
+                <div v-for="(p,i) in viewPayments" :key="i" style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;gap:8px;padding:9px 14px;border-bottom:1px solid #f0f2f5;font-size:13px">
+                  <div><DocLink doctype="Payment Entry" :name="p.payment_entry || p.name" /></div>
                   <div class="mono-sm">{{ fmtDate(p.payment_date) }}</div>
                   <div>{{ p.mode_of_payment||'—' }}</div>
                   <div class="text-muted mono-sm">{{ p.reference_no||'—' }}</div>
@@ -660,6 +661,8 @@ import { useToast } from "../composables/useToast.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { usePaymentDialog } from "../composables/usePaymentDialog.js";
 import { useMakeRecurring } from "../composables/useMakeRecurring.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import DocLink from "../components/DocLink.vue";
 import { useReturnNote } from "../composables/useReturnNote.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -1412,8 +1415,18 @@ function printViewInvoice() {
   });
 }
 
-onMounted(() => {
-  load(); loadCustomers(); loadItems(); loadTaxAccount(); loadBranding();
+onMounted(async () => {
+  await load();
+  loadCustomers(); loadItems(); loadTaxAccount(); loadBranding();
+
+  // Cross-document deep link: /invoices?open=INV-...
+  useOpenFromQuery({
+    list: () => sorted.value,
+    openByName: (n) => {
+      const row = sorted.value.find(r => r.name === n);
+      if (row) openView(row);
+    },
+  });
 
   // Apply AI-driven URL params (set by AppShell AI handlers via router.push)
   const q = route.query;

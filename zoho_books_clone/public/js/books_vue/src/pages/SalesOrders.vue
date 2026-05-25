@@ -444,6 +444,8 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import DocLink from "../components/DocLink.vue";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
@@ -913,7 +915,14 @@ function exportCSV() {
   toast.success(`CSV exported — ${rows.length} order(s)`);
 }
 
-onMounted(() => { load(); loadTaxAccount(); });
+onMounted(async () => {
+  await load();
+  loadTaxAccount();
+  useOpenFromQuery({
+    list: () => sorted.value,
+    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+  });
+});
 </script>
 
 <style scoped>

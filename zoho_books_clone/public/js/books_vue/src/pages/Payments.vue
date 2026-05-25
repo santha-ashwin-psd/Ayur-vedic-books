@@ -245,7 +245,11 @@
         <div class="pmt-view-head" :class="viewPmt.payment_type==='Receive'?'head-green':'head-red'">
           <div>
             <div class="pmt-view-num">{{ viewPmt.name }}</div>
-            <div class="pmt-view-party">{{ viewPmt.party_name||viewPmt.party||'—' }}</div>
+            <div class="pmt-view-party">
+              <DocLink :doctype="viewPmt.party_type || (viewPmt.payment_type==='Receive'?'Customer':'Supplier')" :name="viewPmt.party" :mono-style="false">
+                {{ viewPmt.party_name || viewPmt.party || '—' }}
+              </DocLink>
+            </div>
           </div>
           <div style="text-align:right">
             <div class="pmt-view-amount">{{ fmtCur(viewPmt.paid_amount) }}</div>
@@ -271,7 +275,7 @@
               <div class="pmt-inv-head"><div></div><div>Document</div><div class="ta-r">Outstanding</div><div class="ta-r">Allocated</div></div>
               <div v-for="r in viewPmt.references" :key="r.reference_name" class="pmt-inv-row">
                 <div></div>
-                <div><span class="pmt-inv-name">{{ r.reference_name }}</span></div>
+                <div><DocLink :doctype="r.reference_doctype || (viewPmt.payment_type==='Receive'?'Sales Invoice':'Purchase Invoice')" :name="r.reference_name" /></div>
                 <div class="ta-r mono-sm">{{ fmtCur(r.outstanding_amount) }}</div>
                 <div class="ta-r mono-sm green">{{ fmtCur(r.allocated_amount) }}</div>
               </div>
@@ -303,6 +307,8 @@ import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiPOST, apiDelete, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useConfirm } from "../composables/useConfirm.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import DocLink from "../components/DocLink.vue";
 const { confirm } = useConfirm();
 
 async function cancelPmt(p) {
@@ -623,7 +629,13 @@ async function savePayment(submit) {
   finally { drawerSaving.value = false; }
 }
 
-onMounted(load);
+onMounted(async () => {
+  await load();
+  useOpenFromQuery({
+    list: () => sorted.value,
+    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+  });
+});
 </script>
 
 <style scoped>

@@ -87,7 +87,7 @@
               </td>
               <td><span class="rec-num">{{ r.name }}</span></td>
               <td class="text-muted">{{ r.reference_doctype||'—' }}</td>
-              <td><span class="rec-ref">{{ r.reference_document||'—' }}</span></td>
+              <td @click.stop><DocLink :doctype="r.reference_doctype" :name="r.reference_document" /></td>
               <td class="text-muted">{{ r.party||'—' }}</td>
               <td style="text-align:right" class="mono-sm">{{ fmtCurrency(r.amount) }}</td>
               <td>{{ freqLabel(r.frequency) }}</td>
@@ -327,7 +327,7 @@
           <!-- Details tab -->
           <div v-if="viewTab==='details'">
             <div class="rec-meta-grid">
-              <div><div class="rec-meta-lbl">Reference</div><div class="mono-sm">{{ viewDoc.reference_document||'—' }}</div></div>
+              <div><div class="rec-meta-lbl">Reference</div><div><DocLink :doctype="viewDoc.reference_doctype" :name="viewDoc.reference_document" /></div></div>
               <div><div class="rec-meta-lbl">{{ viewDoc.party_label||'Party' }}</div><div>{{ viewDoc.party||'—' }}</div></div>
               <div><div class="rec-meta-lbl">Frequency</div><div>{{ freqLabel(viewDoc.frequency) }}</div></div>
               <div><div class="rec-meta-lbl">Template Amount</div><div class="mono-sm">{{ fmtCurrency(viewDoc.template_amount) }}</div></div>
@@ -355,7 +355,7 @@
               </thead>
               <tbody>
                 <tr v-for="d in viewDoc.runs" :key="d.name">
-                  <td><span class="rec-num">{{ d.name }}</span></td>
+                  <td><DocLink :doctype="viewDoc.reference_doctype" :name="d.name" /></td>
                   <td class="text-muted mono-sm">{{ fmtDate(d.creation) }}</td>
                   <td style="text-align:right" class="mono-sm">{{ fmtCurrency(d.grand_total) }}</td>
                   <td>
@@ -390,6 +390,8 @@ import { ref, reactive, computed, onMounted, watch } from "vue";
 import { apiSave, apiGET, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import DocLink from "../components/DocLink.vue";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
@@ -531,7 +533,13 @@ async function load() {
     loading.value = false;
   }
 }
-onMounted(load);
+onMounted(async () => {
+  await load();
+  useOpenFromQuery({
+    list: () => sorted.value,
+    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+  });
+});
 
 // ----- view drawer
 async function openView(r) {
@@ -542,9 +550,19 @@ async function openView(r) {
   viewDoc.value = { ...r, runs: r.runs || [], upcoming: r.upcoming || [], total_billed: r.total_billed || 0, runs_count: r.runs_count || 0 };
   try {
     const detail = await apiGET("zoho_books_clone.api.recurring.get_subscription", { name: r.name });
-    const d = detail?.message ?? detail ?? {};
-    if (!d.name) return; // backend returned empty — keep optimistic view
-    viewDoc.value = { ...d, runs: d.runs || [], upcoming: d.upcoming || [], runs_count: d.runs_count || 0, total_billed: d.total_billed || 0 };
+    // apiGET already unwraps `.message`, so `detail` is the dict directly.
+    const d = (detail && typeof detail === "object") ? detail : {};
+    // Merge: keep optimistic fields and overlay detail-only fields. Detail's
+    // `runs` always wins (it's the authoritative source), even if empty.
+    viewDoc.value = {
+      ...viewDoc.value,
+      ...d,
+      runs: Array.isArray(d.runs) ? d.runs : (viewDoc.value.runs || []),
+      upcoming: Array.isArray(d.upcoming) ? d.upcoming : (viewDoc.value.upcoming || []),
+      runs_count: (d.runs_count != null) ? d.runs_count
+                  : (Array.isArray(d.runs) ? d.runs.length : (viewDoc.value.runs_count || 0)),
+      total_billed: (d.total_billed != null) ? d.total_billed : (viewDoc.value.total_billed || 0),
+    };
   } catch (e) {
     toast.error(e.message || "Failed to load subscription detail");
   }

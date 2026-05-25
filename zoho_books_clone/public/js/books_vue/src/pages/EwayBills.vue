@@ -72,7 +72,7 @@
           <template v-else>
             <tr v-for="r in sortedRows" :key="r.name" class="ew-row" @click="openView(r)">
               <td><span class="ew-irn mono-sm">{{ r.ewb_no || '—' }}</span></td>
-              <td><span class="ew-code">{{ r.invoice_no }}</span></td>
+              <td @click.stop><DocLink doctype="Sales Invoice" :name="r.invoice_no" /></td>
               <td class="mono-sm text-muted">{{ fmtDate(r.invoice_date) }}</td>
               <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.customer_name || r.customer }}</td>
               <td class="text-muted">{{ r.transporter || '—' }}</td>
@@ -227,7 +227,7 @@
             <div>
               <div class="ew-view-num">{{ viewDoc.ewb_no || viewDoc.name }}</div>
               <div class="ew-view-sub">
-                Invoice {{ viewDoc.invoice_no }} · {{ viewDoc.customer_name || viewDoc.customer }}
+                Invoice <DocLink doctype="Sales Invoice" :name="viewDoc.invoice_no" :mono-style="false" /> · <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name || viewDoc.customer }}</DocLink>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
@@ -301,7 +301,7 @@
           <div class="ew-section">
             <div class="ew-section-hdr"><span v-html="icon('folder',13)"></span><span>Document Details</span></div>
             <div class="ew-meta-grid">
-              <div><div class="ew-meta-lbl">Invoice</div><div class="mono-sm">{{ viewDoc.invoice_no }}</div></div>
+              <div><div class="ew-meta-lbl">Invoice</div><div><DocLink doctype="Sales Invoice" :name="viewDoc.invoice_no" /></div></div>
               <div><div class="ew-meta-lbl">Invoice Date</div><div class="mono-sm">{{ fmtDate(viewDoc.invoice_date) }}</div></div>
               <div><div class="ew-meta-lbl">Customer</div><div>{{ viewDoc.customer_name || viewDoc.customer }}</div></div>
               <div><div class="ew-meta-lbl">Amount</div><div class="mono-sm">{{ fmtCur(viewDoc.grand_total) }}</div></div>
@@ -332,6 +332,8 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { apiGET, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import DocLink from "../components/DocLink.vue";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 
@@ -425,7 +427,13 @@ async function load() {
     loading.value = false;
   }
 }
-onMounted(load);
+onMounted(async () => {
+  await load();
+  useOpenFromQuery({
+    list: () => sortedRows.value,
+    openByName: (n) => { const r = sortedRows.value.find(x => x.name === n); if (r) openView(r); },
+  });
+});
 
 // ----- generate list drawer
 const genListOpen = ref(false);

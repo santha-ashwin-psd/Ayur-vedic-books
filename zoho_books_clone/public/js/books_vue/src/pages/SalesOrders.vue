@@ -443,6 +443,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { useRoute } from "vue-router";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import DocLink from "../components/DocLink.vue";
@@ -455,6 +456,7 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 
 
 const { toast } = useToast();
+const route = useRoute();
 const { confirm } = useConfirm();
 const { printDoc } = useLivePreview();
 function printSO(d) { printDoc(d, { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
@@ -919,8 +921,8 @@ onMounted(async () => {
   await load();
   loadTaxAccount();
   useOpenFromQuery({
-    list: () => sorted.value,
-    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+    route,
+    openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }),
   });
 });
 </script>

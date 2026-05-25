@@ -543,6 +543,7 @@
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { useRoute } from "vue-router";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import DocLink from "../components/DocLink.vue";
@@ -553,6 +554,7 @@ import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const route = useRoute();
 const { confirm } = useConfirm();
 const { printDoc } = useLivePreview();
 function printQT(d) {
@@ -1555,11 +1557,8 @@ onMounted(async () => {
   fetchCustomers("");
   fetchItems("");
   useOpenFromQuery({
-    list: () => sorted.value,
-    openByName: (n) => {
-      const row = sorted.value.find(r => r.name === n);
-      if (row) openView(row);
-    },
+    route,
+    openByName: (n) => openView(list.value.find(r => r.name === n) || { name: n }),
   });
 });
 </script>

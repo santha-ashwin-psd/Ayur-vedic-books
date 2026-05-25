@@ -279,6 +279,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
+import { useRoute } from "vue-router";
 import { useToast } from "../composables/useToast.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import DocLink from "../components/DocLink.vue";
@@ -287,6 +288,7 @@ import { flt } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const route = useRoute();
 
 const TABS = [
   { k: "all",       l: "All" },
@@ -740,8 +742,8 @@ async function saveChallan(submit) {
 onMounted(async () => {
   await load();
   useOpenFromQuery({
-    list: () => sorted.value,
-    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+    route,
+    openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }),
   });
 });
 </script>

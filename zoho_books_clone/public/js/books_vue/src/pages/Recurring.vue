@@ -389,6 +389,7 @@
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { apiSave, apiGET, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { useRoute } from "vue-router";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import DocLink from "../components/DocLink.vue";
@@ -397,6 +398,7 @@ import { fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const route = useRoute();
 const { confirm } = useConfirm();
 
 // state
@@ -536,8 +538,8 @@ async function load() {
 onMounted(async () => {
   await load();
   useOpenFromQuery({
-    list: () => sorted.value,
-    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+    route,
+    openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }),
   });
 });
 

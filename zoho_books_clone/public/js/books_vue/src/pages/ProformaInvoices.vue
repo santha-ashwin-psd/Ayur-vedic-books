@@ -208,7 +208,7 @@
 
 <script setup>
 import { ref, reactive, computed } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiSave, apiDelete, apiSubmit, resolveCompany } from "../api/client.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useToast } from "../composables/useToast.js";
@@ -218,6 +218,7 @@ import { icon } from "../utils/icons.js";
 
 const { toast } = useToast();
 const router = useRouter();
+const route = useRoute();
 
 const list      = ref([]);
 const loading   = ref(false);
@@ -398,8 +399,8 @@ import { onMounted } from "vue";
 onMounted(async () => {
   await load();
   useOpenFromQuery({
-    list: () => filtered.value,
-    openByName: (n) => { const r = filtered.value.find(x => x.name === n); if (r) openView(r); },
+    route,
+    openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }),
   });
 });
 </script>

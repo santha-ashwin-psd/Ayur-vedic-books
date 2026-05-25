@@ -346,6 +346,7 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
+import { useRoute } from "vue-router";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import DocLink from "../components/DocLink.vue";
@@ -359,6 +360,7 @@ import BulkActionBar from "../components/BulkActionBar.vue";
 import TimelineStepper from "../components/TimelineStepper.vue";
 
 const { toast } = useToast();
+const route = useRoute();
 const { confirm } = useConfirm();
 const { printDoc } = useLivePreview();
 function printCN(d) { printDoc(d, { title: "CREDIT NOTE", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
@@ -761,8 +763,8 @@ function exportCSV() {
 onMounted(async () => {
   await load();
   useOpenFromQuery({
-    list: () => sorted.value,
-    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+    route,
+    openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }),
   });
 });
 </script>

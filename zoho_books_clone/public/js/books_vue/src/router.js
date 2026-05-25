@@ -7,6 +7,7 @@ import { createRouter, createWebHashHistory } from "vue-router";
 import PhaseAHome           from "./pages/PhaseAHome.vue";
 import Dashboard            from "./pages/Dashboard.vue";
 import Customers            from "./pages/Customers.vue";
+import CustomerProfile      from "./pages/CustomerProfile.vue";
 import Vendors              from "./pages/Vendors.vue";
 import InventoryItems       from "./pages/InventoryItems.vue";
 import InventoryItemGroups  from "./pages/InventoryItemGroups.vue";
@@ -83,6 +84,12 @@ const routes = [
     path: "/customers",
     name: "customers",
     component: Customers,
+    meta: { module: "customers" },
+  },
+  {
+    path: "/customers/:name",
+    name: "customer-profile",
+    component: CustomerProfile,
     meta: { module: "customers" },
   },
   {

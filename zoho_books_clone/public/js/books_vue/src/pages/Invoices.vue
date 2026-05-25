@@ -1421,10 +1421,10 @@ onMounted(async () => {
 
   // Cross-document deep link: /invoices?open=INV-...
   useOpenFromQuery({
-    list: () => sorted.value,
+    route,
     openByName: (n) => {
-      const row = sorted.value.find(r => r.name === n);
-      if (row) openView(row);
+      const row = list.value.find(r => r.name === n) || { name: n };
+      openView(row);
     },
   });
 

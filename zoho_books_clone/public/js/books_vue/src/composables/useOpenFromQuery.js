@@ -1,49 +1,50 @@
 // Cross-document deep-link helper.
 //
-// Drop into any list page that has an "open the view drawer for record X"
-// function. The composable:
-//   1. After the initial `load()` resolves, checks if `?open=NAME` is in the URL
-//      and triggers the open handler.
-//   2. Watches the query so back/forward and in-app navigation keep working.
+// IMPORTANT: this composable internally calls `useRoute()`, which MUST be
+// invoked while a component instance is active. To make that safe under any
+// caller pattern (sync setup, async onMounted, etc.) we resolve the route
+// once at construction and then walk it via the cached reference.
 //
-// Usage:
-//   import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
-//   ...
+// Two-step usage from a list page:
+//
+//   import { useRoute } from "vue-router";
+//   const route = useRoute();      // SYNC in setup
+//
 //   onMounted(async () => {
 //     await load();
-//     useOpenFromQuery({
-//       list: () => list.value,             // reactive list getter
-//       openByName: (name) => {
-//         const r = list.value.find(x => x.name === name);
-//         if (r) openView(r);
-//       },
+//     openFromQuery({
+//       route,
+//       openByName: (n) => openView(list.value.find(r => r.name === n) || { name: n }),
 //     });
 //   });
+//
+// The watcher lives for the component's lifetime (auto-stopped on unmount
+// by Vue's watch effect scope).
 
-import { watch } from "vue";
-import { useRoute } from "vue-router";
+import { watch, getCurrentInstance } from "vue";
 
-export function useOpenFromQuery({ list, openByName, paramKey = "open" } = {}) {
-  const route = useRoute();
+export function openFromQuery({ route, openByName, paramKey = "open" } = {}) {
+  if (!route || typeof openByName !== "function") return;
 
   const tryOpen = (name) => {
-    if (!name || typeof openByName !== "function") return;
-    // If the list isn't yet loaded, openByName may not find a row — caller
-    // should ensure load() has resolved before invoking this composable.
+    if (!name) return;
     openByName(String(name));
   };
 
-  // Fire once for the current query (handles initial mount + page refresh).
+  // Fire immediately for the current URL state.
   tryOpen(route.query?.[paramKey]);
 
-  // Keep working across in-app navigation (clicking a DocLink that points to
-  // the same page, e.g. SO → SO inside the same list).
-  const stop = watch(
-    () => route.query?.[paramKey],
-    (next) => {
-      if (next) tryOpen(next);
-    }
-  );
-
-  return { stop };
+  // Re-fire when the query param changes (in-app navigation between docs).
+  // Guarded by getCurrentInstance() so we don't leak a watcher if called
+  // outside a component context (e.g. tests).
+  if (getCurrentInstance()) {
+    watch(
+      () => route.query?.[paramKey],
+      (next) => { if (next) tryOpen(next); }
+    );
+  }
 }
+
+// Legacy alias for the existing callers — keeps every page working without
+// editing nine files. New code should prefer the `openFromQuery` name.
+export { openFromQuery as useOpenFromQuery };

@@ -632,8 +632,8 @@ async function savePayment(submit) {
 onMounted(async () => {
   await load();
   useOpenFromQuery({
-    list: () => sorted.value,
-    openByName: (n) => { const r = sorted.value.find(x => x.name === n); if (r) openView(r); },
+    route,
+    openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }),
   });
 });
 </script>

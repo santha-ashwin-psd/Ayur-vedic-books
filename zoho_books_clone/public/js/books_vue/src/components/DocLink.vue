@@ -25,29 +25,40 @@ const props = defineProps({
  * Returns null for doctypes we don't have a list page for — the link is
  * rendered as plain text in that case.
  */
+/**
+ * Doctype routing convention:
+ *   - "list:/path"     → opens the list page with ?open=NAME (auto-opens drawer)
+ *   - "path:/path"     → opens a dedicated profile page using :name path param
+ */
 const DOCTYPE_ROUTE = {
-  "Sales Invoice":     "/invoices",
-  "Purchase Invoice":  "/purchases",
-  "Quotation":         "/quotes",
-  "Sales Order":       "/sales-orders",
-  "Purchase Order":    "/purchase-orders",
-  "Payment Entry":     "/payments-received",
-  "Credit Note":       "/credit-notes",
-  "Debit Note":        "/debit-notes",
-  "Delivery Note":     "/delivery-challans",
-  "Purchase Receipt":  "/purchase-receipts",
-  "Auto Repeat":       "/recurring",
-  "E Way Bill":        "/eway-bills",
-  "Customer":          "/customers",
-  "Supplier":          "/vendors",
-  "Item":              "/inventory/items",
-  "Journal Entry":     "/accounting/journal-entries",
-  "Expense":           "/expenses",
+  "Sales Invoice":     "list:/invoices",
+  "Purchase Invoice":  "list:/purchases",
+  "Quotation":         "list:/quotes",
+  "Sales Order":       "list:/sales-orders",
+  "Purchase Order":    "list:/purchase-orders",
+  "Payment Entry":     "list:/payments-received",
+  "Credit Note":       "list:/credit-notes",
+  "Debit Note":        "list:/debit-notes",
+  "Delivery Note":     "list:/delivery-challans",
+  "Purchase Receipt":  "list:/purchase-receipts",
+  "Auto Repeat":       "list:/recurring",
+  "E Way Bill":        "list:/eway-bills",
+  "Customer":          "path:/customers",
+  "Supplier":          "path:/vendors",
+  "Item":              "list:/inventory/items",
+  "Journal Entry":     "list:/accounting/journal-entries",
+  "Expense":           "list:/expenses",
 };
 
 const to = computed(() => {
-  const base = DOCTYPE_ROUTE[props.doctype];
-  if (!base || !props.name) return null;
+  const spec = DOCTYPE_ROUTE[props.doctype];
+  if (!spec || !props.name) return null;
+  const [kind, base] = spec.split(":");
+  if (kind === "path") {
+    // Profile pages: /customers/CUST-2026-00004
+    return { path: `${base}/${encodeURIComponent(props.name)}` };
+  }
+  // List pages: /invoices?open=INV-2026-00072
   return { path: base, query: { open: props.name } };
 });
 </script>

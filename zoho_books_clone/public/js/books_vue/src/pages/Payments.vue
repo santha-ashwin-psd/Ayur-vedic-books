@@ -22,6 +22,17 @@
       <div class="pmt-sum-card"><div class="pmt-sum-lbl">Count</div><div class="pmt-sum-val">{{ filtered.length }}</div></div>
     </div>
 
+    <!-- Bulk action bar (light style, matching Sales Orders/Quotes/Invoices) -->
+    <div v-if="selected.size" class="inv-bulk-bar">
+      <span class="inv-bulk-count">{{ selected.size }} selected</span>
+      <button class="inv-bulk-btn" @click="bulkCancel" :disabled="bulkBusy">Cancel Submitted</button>
+      <button class="inv-bulk-btn inv-bulk-danger" @click="bulkDelete" :disabled="bulkBusy">Delete Drafts</button>
+      <button class="inv-bulk-btn" @click="bulkExport" :disabled="bulkBusy">
+        <span v-html="icon('download',13)"></span> Export CSV
+      </button>
+      <button class="inv-bulk-clear" @click="selected = new Set()">✕ Clear</button>
+    </div>
+
     <div class="pmt-card">
       <table class="pmt-table">
         <thead><tr>
@@ -313,6 +324,64 @@ async function deletePmt(p) {
     await load();
   } catch (e) { toast.error(e.message || "Delete failed"); }
 }
+
+// ─── Bulk actions ──────────────────────────────────────────────────────
+const bulkBusy = ref(false);
+function selectedRows() {
+  return sorted.value.filter(p => selected.value.has(p.name));
+}
+async function bulkCancel() {
+  const rows = selectedRows().filter(p => p.docstatus === 1);
+  if (!rows.length) { toast.info?.("No submitted payments selected") || toast.error("No submitted payments selected"); return; }
+  if (!await confirm({ title: `Cancel ${rows.length} payment(s)?`, body: "Linked invoices/bills will reflect the reversal.", okLabel: "Cancel All", okStyle: "danger" })) return;
+  bulkBusy.value = true;
+  let ok = 0, fail = 0;
+  for (const p of rows) {
+    try { await apiPOST("zoho_books_clone.api.docs.cancel_payment_entry_safe", { payment_entry_name: p.name }); ok++; }
+    catch { fail++; }
+  }
+  bulkBusy.value = false;
+  toast.success(`${ok} cancelled${fail?`, ${fail} failed`:''}`);
+  selected.value = new Set();
+  await load();
+}
+async function bulkDelete() {
+  const rows = selectedRows().filter(p => p.docstatus === 0 || p.docstatus === 2);
+  if (!rows.length) { toast.error("No draft/cancelled payments selected"); return; }
+  if (!await confirm({ title: `Delete ${rows.length} payment(s)?`, body: "Only drafts and cancelled records can be deleted. This cannot be undone.", okLabel: "Delete All", okStyle: "danger" })) return;
+  bulkBusy.value = true;
+  let ok = 0, fail = 0;
+  for (const p of rows) {
+    try { await apiDelete("Payment Entry", p.name); ok++; }
+    catch { fail++; }
+  }
+  bulkBusy.value = false;
+  toast.success(`${ok} deleted${fail?`, ${fail} failed`:''}`);
+  selected.value = new Set();
+  await load();
+}
+function bulkExport() {
+  const rows = selectedRows();
+  if (!rows.length) return;
+  const headers = ["Payment #","Party","Mode","Reference","Reference Date","Payment Date","Type","Amount","Status"];
+  const lines = rows.map(p => [
+    p.name, p.party_name || p.party || "", p.mode_of_payment || "",
+    p.reference_no || "", p.reference_date || "", p.payment_date || "",
+    p.payment_type === "Receive" ? "Received" : "Paid Out",
+    p.paid_amount,
+    p.docstatus === 1 ? "Submitted" : p.docstatus === 2 ? "Cancelled" : "Draft",
+  ]);
+  const esc = (v) => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = "﻿" + [headers, ...lines].map(r => r.map(esc).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `payments-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`${rows.length} row(s) exported`);
+}
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -576,6 +645,16 @@ onMounted(load);
 .pmt-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 .pmt-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
 .green{color:#16a34a!important;}.red{color:#dc2626!important;}.orange{color:#ea580c!important;}
+.inv-bulk-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;flex-wrap:wrap;}
+.inv-bulk-count{font-size:13px;font-weight:700;color:#1a6ef7;margin-right:4px;}
+.inv-bulk-btn{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:5px 12px;font-size:12.5px;font-weight:600;color:#374151;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s,color .15s;}
+.inv-bulk-btn:hover:not(:disabled){background:#f8fafc;border-color:#1a6ef7;color:#1a6ef7;}
+.inv-bulk-btn:disabled{opacity:.5;cursor:not-allowed;}
+.inv-bulk-danger{border-color:rgba(220,38,38,.3);color:#dc2626;}
+.inv-bulk-danger:hover:not(:disabled){background:#fee2e2;border-color:#dc2626;color:#dc2626;}
+.inv-bulk-clear{background:none;border:none;font-size:12.5px;color:#6b7280;cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:4px;}
+.inv-bulk-clear:hover{background:#e0e7ff;color:#1a6ef7;}
+
 .pmt-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .pmt-table{width:100%;border-collapse:collapse;font-size:13px;}
 .pmt-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}

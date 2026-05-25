@@ -733,7 +733,11 @@ async function bulkEmail() {
 }
 
 function exportCSV() {
-  const rows = sorted.value;
+  // Export selected rows if any are selected; otherwise export the full filtered view.
+  const rows = selected.value.size
+    ? sorted.value.filter(c => selected.value.has(c.name))
+    : sorted.value;
+  if (!rows.length) return;
   const head = ["Credit Note","Customer","Date","Against Invoice","Status","Amount","Available Balance"];
   const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const out = [head.map(esc).join(",")];

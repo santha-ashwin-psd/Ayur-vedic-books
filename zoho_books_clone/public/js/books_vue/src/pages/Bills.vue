@@ -685,7 +685,10 @@ async function bulkEmail() {
 }
 
 function exportCSV() {
-  const rows = sorted.value;
+  const rows = selected.value.size
+    ? sorted.value.filter(b => selected.value.has(b.name))
+    : sorted.value;
+  if (!rows.length) return;
   const head = ["Bill #","Vendor","Vendor Bill #","Date","Due Date","Status","Amount","Balance"];
   const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const lines = [head.map(esc).join(",")];

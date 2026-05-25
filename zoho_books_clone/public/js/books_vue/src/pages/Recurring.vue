@@ -49,15 +49,14 @@
     </div>
 
     <!-- ============================================================ BULK BAR -->
-    <div v-if="selected.length" class="rec-bulk">
-      <div class="rec-bulk-count">{{ selected.length }} selected</div>
-      <div style="display:flex;gap:8px;margin-left:auto">
-        <button class="rec-btn-ghost" @click="bulkDo('pause')">Pause</button>
-        <button class="rec-btn-ghost" @click="bulkDo('resume')">Resume</button>
-        <button class="rec-btn-ghost rec-btn-danger" @click="bulkDo('cancel')">Cancel</button>
-        <button class="rec-btn-ghost rec-btn-danger" @click="bulkDo('delete')">Delete</button>
-        <button class="rec-btn-ghost" @click="selected=[]">Clear</button>
-      </div>
+    <div v-if="selected.length" class="inv-bulk-bar">
+      <span class="inv-bulk-count">{{ selected.length }} selected</span>
+      <button class="inv-bulk-btn" @click="bulkDo('pause')">Pause</button>
+      <button class="inv-bulk-btn" @click="bulkDo('resume')">Resume</button>
+      <button class="inv-bulk-btn inv-bulk-danger" @click="bulkDo('cancel')">Cancel</button>
+      <button class="inv-bulk-btn inv-bulk-danger" @click="bulkDo('delete')">Delete</button>
+      <button class="inv-bulk-btn" @click="exportCSV"><span v-html="icon('download',13)"></span> Export CSV</button>
+      <button class="inv-bulk-clear" @click="selected=[]">✕ Clear</button>
     </div>
 
     <!-- ============================================================ TABLE -->
@@ -784,8 +783,13 @@ async function saveRec() {
 
 // ----- export
 function exportCSV() {
+  // If any rows are selected, export only those; otherwise export the filtered view.
+  const source = selected.value.length
+    ? sorted.value.filter((r) => selected.value.includes(r.name))
+    : sorted.value;
+  if (!source.length) return;
   const headers = ["Subscription #", "Type", "Reference", "Party", "Amount", "Frequency", "Start Date", "End Date", "Next Run", "Status", "Runs"];
-  const rows = sorted.value.map((r) => [
+  const rows = source.map((r) => [
     r.name, r.reference_doctype, r.reference_document, r.party, r.amount, r.frequency,
     r.start_date, r.end_date, r.next_schedule_date, r.ui_status, r.runs_count,
   ]);
@@ -830,12 +834,15 @@ function exportCSV() {
 .rec-sum-val{font-size:22px;font-weight:700;color:#111827;font-family:monospace;}
 .green{color:#16a34a!important;}.orange{color:#ea580c!important;}.red{color:#dc2626!important;}.blue{color:#2563eb!important;}
 
-.rec-bulk{display:flex;align-items:center;gap:10px;background:#1e293b;color:#fff;border-radius:10px;padding:8px 14px;}
-.rec-bulk-count{font-weight:600;font-size:13px;}
-.rec-bulk .rec-btn-ghost{color:#cbd5e1;border-color:#334155;background:transparent;}
-.rec-bulk .rec-btn-ghost:hover{background:#334155;color:#fff;}
-.rec-bulk .rec-btn-danger{color:#fca5a5;border-color:#7f1d1d;}
-.rec-bulk .rec-btn-danger:hover{background:#7f1d1d;color:#fff;}
+.inv-bulk-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;flex-wrap:wrap;}
+.inv-bulk-count{font-size:13px;font-weight:700;color:#1a6ef7;margin-right:4px;}
+.inv-bulk-btn{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:5px 12px;font-size:12.5px;font-weight:600;color:#374151;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s,color .15s;}
+.inv-bulk-btn:hover:not(:disabled){background:#f8fafc;border-color:#1a6ef7;color:#1a6ef7;}
+.inv-bulk-btn:disabled{opacity:.5;cursor:not-allowed;}
+.inv-bulk-danger{border-color:rgba(220,38,38,.3);color:#dc2626;}
+.inv-bulk-danger:hover:not(:disabled){background:#fee2e2;border-color:#dc2626;color:#dc2626;}
+.inv-bulk-clear{background:none;border:none;font-size:12.5px;color:#6b7280;cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:4px;}
+.inv-bulk-clear:hover{background:#e0e7ff;color:#1a6ef7;}
 
 .rec-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .rec-table{width:100%;border-collapse:collapse;font-size:13px;}

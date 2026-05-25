@@ -1003,7 +1003,10 @@ async function bulkSetDisabled(disable) {
 }
 
 function exportCSV() {
-  const rows = filtered.value;
+  const rows = selectedRows.value.size
+    ? filtered.value.filter(v => selectedRows.value.has(v.name))
+    : filtered.value;
+  if (!rows.length) return;
   const head = ["Vendor","Type","GSTIN","Email","Mobile","City","State","Outstanding","Status"];
   const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const out = [head.map(esc).join(",")];

@@ -373,21 +373,14 @@ def record_payment(
         "allocated_amount":   amount_received,
     })
 
+    # Bank charges: your Payment Entry doctype has no deductions child table,
+    # so we note the charge in remarks and reduce received_amount so the net
+    # deposit to the bank account is accurate.
     if bank_charges > 0:
-        charges_account = (
-            frappe.db.get_value("Account", {"account_name": "Bank Charges", "company": company, "is_group": 0}, "name")
-            or frappe.db.get_value("Account", {"account_type": "Expense", "company": company, "is_group": 0}, "name")
-            or debtors_account
-        )
-        # Resolve Cost Center from our own DocType — not the built-in Company DocType
-        cost_center = frappe.db.get_value(
-            "Cost Center", {"company": company, "is_group": 0}, "name"
-        )
-        pe.append("deductions", {
-            "account":     charges_account,
-            "cost_center": cost_center or "",
-            "amount":      bank_charges,
-        })
+        net_received = amount_received - bank_charges
+        pe.received_amount = net_received if net_received > 0 else amount_received
+        charge_note = f" | Bank Charges: \u20b9{bank_charges:,.2f} (Net received: \u20b9{pe.received_amount:,.2f})"
+        pe.remarks = (pe.remarks or "") + charge_note
 
     pe.insert(ignore_permissions=True)
     if not save_as_draft:

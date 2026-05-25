@@ -43,7 +43,7 @@
             <tr v-for="p in sorted" :key="p.name" class="pmt-row" :class="{selected:selected.has(p.name)}">
               <td><input type="checkbox" :checked="selected.has(p.name)" @change="toggle(p.name)" /></td>
               <td @click="openView(p)"><span class="pmt-num">{{ p.name }}</span></td>
-              <td @click="openView(p)">{{ p.party||'—' }}</td>
+              <td @click="openView(p)">{{ p.party_name||p.party||'—' }}</td>
               <td @click="openView(p)" class="text-muted">{{ p.mode_of_payment||'—' }}</td>
               <td @click="openView(p)" class="text-muted mono-sm">{{ p.reference_no||'—' }}</td>
               <td @click="openView(p)" class="text-muted mono-sm">{{ fmtDate(p.payment_date) }}</td>
@@ -234,7 +234,7 @@
         <div class="pmt-view-head" :class="viewPmt.payment_type==='Receive'?'head-green':'head-red'">
           <div>
             <div class="pmt-view-num">{{ viewPmt.name }}</div>
-            <div class="pmt-view-party">{{ viewPmt.party||'—' }}</div>
+            <div class="pmt-view-party">{{ viewPmt.party_name||viewPmt.party||'—' }}</div>
           </div>
           <div style="text-align:right">
             <div class="pmt-view-amount">{{ fmtCur(viewPmt.paid_amount) }}</div>
@@ -355,7 +355,7 @@ async function load() {
   loading.value = true;
   try {
     list.value = await apiList("Payment Entry", {
-      fields: ["name","party","party_type","paid_amount","payment_type","payment_date",
+      fields: ["name","party","party_name","party_type","paid_amount","payment_type","payment_date",
                "mode_of_payment","reference_no","reference_date","paid_from","paid_to","remarks","docstatus"],
       limit: 200, order: "payment_date desc",
     });
@@ -368,7 +368,7 @@ const filtered = computed(() => {
   if (activeTab.value !== "all") r = r.filter(p => p.payment_type === activeTab.value);
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
-    r = r.filter(p => (p.name||"").toLowerCase().includes(q) || (p.party||"").toLowerCase().includes(q) || (p.reference_no||"").toLowerCase().includes(q));
+    r = r.filter(p => (p.name||"").toLowerCase().includes(q) || (p.party_name||p.party||"").toLowerCase().includes(q) || (p.reference_no||"").toLowerCase().includes(q));
   }
   return r;
 });
@@ -437,8 +437,13 @@ function setPaymentType(type) {
 
 async function fetchParties(q = "") {
   const dt = form.payment_type === "Receive" ? "Customer" : "Supplier";
-  try { const rows = await apiLinkValues(dt, q||""); partyOptions.value = rows.map(r=>({label:r.name,value:r.name})); }
-  catch { partyOptions.value = []; }
+  const nameField = dt === "Customer" ? "customer_name" : "supplier_name";
+  try {
+    const filters = [["disabled", "=", 0]];
+    if (q) filters.push([nameField, "like", "%" + q + "%"]);
+    const rows = await apiList(dt, { fields: ["name", nameField], filters, limit: 30, order: nameField + " asc" });
+    partyOptions.value = rows.map(r => ({ label: r[nameField] || r.name, value: r.name }));
+  } catch { partyOptions.value = []; }
 }
 
 async function onPartySelect(opt) {
@@ -525,9 +530,12 @@ async function savePayment(submit) {
       outstanding_amount: flt(r.outstanding_amount),
       allocated_amount: flt(r.allocated_amount),
     }));
+    // Resolve party_name from the selected option so Frappe stores it on the record
+    const selectedPartyOpt = partyOptions.value.find(o => o.value === form.party);
+    const partyName = selectedPartyOpt?.label || form.party;
     const doc = {
       doctype: "Payment Entry", company,
-      payment_type: form.payment_type, party_type: form.party_type, party: form.party,
+      payment_type: form.payment_type, party_type: form.party_type, party: form.party, party_name: partyName,
       mode_of_payment: form.mode_of_payment || "Cash",
       paid_amount: flt(form.paid_amount), received_amount: flt(form.paid_amount),
       payment_date: form.payment_date,

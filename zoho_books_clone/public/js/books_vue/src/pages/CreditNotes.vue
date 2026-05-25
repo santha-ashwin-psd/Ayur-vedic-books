@@ -181,18 +181,20 @@
     <div class="cn-drawer cn-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
         <div class="cn-view-head" :style="`background:${statusBg(viewDoc)}`">
-          <div>
-            <div class="cn-view-num">{{ viewDoc.name }}</div>
-            <div class="cn-view-sub">{{ viewDoc.customer_name||viewDoc.customer }}</div>
-          </div>
-          <div style="text-align:right">
-            <div class="cn-view-amount">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div>
-            <span class="cn-badge cn-badge-white">{{ statusLabel(viewDoc) }}</span>
-          </div>
           <button class="cn-dclose cn-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+          <div class="cn-view-head-body">
+            <div class="cn-view-head-left">
+              <div class="cn-view-num">{{ viewDoc.name }}</div>
+              <div class="cn-view-sub">{{ viewDoc.customer_name||viewDoc.customer }}</div>
+            </div>
+            <div class="cn-view-head-right">
+              <div class="cn-view-amount">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div>
+              <span class="cn-badge cn-badge-white">{{ statusLabel(viewDoc) }}</span>
+            </div>
+          </div>
         </div>
 
-        <TimelineStepper :steps="timelineSteps" />
+        <div class="cn-stepper-wrap"><TimelineStepper :steps="timelineSteps" /></div>
 
         <div class="cn-tabs">
           <button class="cn-tab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
@@ -836,11 +838,14 @@ textarea.cn-input { resize: vertical; }
 .cn-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 8px 0; }
 .cn-total-row.grand { font-weight: 700; font-size: 15px; color: #111827; border-top: 2px solid #e5e7eb; padding-top: 10px; }
 
-.cn-view-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; padding: 20px; flex-shrink: 0; color: #fff; }
+.cn-view-head { position: relative; display: flex; flex-direction: column; padding: 16px 20px 20px; flex-shrink: 0; color: #fff; gap: 0; }
+.cn-view-head-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.cn-view-head-left { display: flex; flex-direction: column; gap: 2px; }
+.cn-view-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
 .cn-view-num { font-size: 18px; font-weight: 700; font-family: monospace; color: #fff; }
 .cn-view-sub { font-size: 13px; color: rgba(255,255,255,.8); margin-top: 2px; }
-.cn-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #fff; }
-.cn-vclose { position: absolute; top: 12px; right: 12px; color: #fff; }
+.cn-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #fff; line-height: 1; }
+.cn-vclose { align-self: flex-end; margin-left: auto; color: #fff; margin-bottom: 4px; }
 .cn-vclose:hover { background: rgba(255,255,255,.18); color: #fff; }
 .cn-tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: #fff; }
 .cn-tab { background: transparent; border: none; padding: 10px 14px; font: inherit; font-size: 12.5px; font-weight: 600; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; display: inline-flex; align-items: center; gap: 6px; }
@@ -858,4 +863,7 @@ textarea.cn-input { resize: vertical; }
 .cn-dfooter { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid #e5e7eb; background:#fff; flex-shrink: 0; flex-wrap: wrap; }
 
 .cn-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 70; display: flex; flex-direction: column; overflow: hidden; }
+
+.cn-stepper-wrap { background: #fff; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; color: #374151 !important; }
+.cn-stepper-wrap * { color: #374151 !important; }
 </style>

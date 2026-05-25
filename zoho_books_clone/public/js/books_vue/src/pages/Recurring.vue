@@ -160,9 +160,7 @@
               <label class="rec-label">Document Type <span class="req">*</span></label>
               <select v-model="form.reference_doctype" class="rec-select" :disabled="editMode" @change="onTypeChange">
                 <option value="Sales Invoice">Sales Invoice</option>
-                <option value="Purchase Invoice">Purchase Invoice</option>
                 <option value="Quotation">Quotation</option>
-                <option value="Journal Entry">Journal Entry</option>
               </select>
             </div>
             <div class="rec-field" style="grid-column:1/-1">
@@ -390,7 +388,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
-import { apiSave, apiGET, apiPOST, apiLinkValues, resolveCompany } from "../api/client.js";
+import { apiSave, apiGET, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
@@ -643,9 +641,10 @@ function openNew() {
     subject: "",
     message: "",
   });
-  refDocs.value = [];
   Object.assign(referenceMeta, { party_label: "", party: "", amount: 0 });
   drawerOpen.value = true;
+  // Pre-load submitted docs for the default doctype
+  fetchRefDocs("");
 }
 
 function openEdit(doc) {
@@ -680,12 +679,27 @@ function onTypeChange() {
   form.reference_document = "";
   refDocs.value = [];
   Object.assign(referenceMeta, { party_label: "", party: "", amount: 0 });
+  // Immediately load submitted docs for the newly selected doctype
+  fetchRefDocs("");
 }
 
 async function fetchRefDocs(q = "") {
+  const doctype = form.reference_doctype || "Sales Invoice";
   try {
-    const r = await apiLinkValues(form.reference_doctype || "Sales Invoice", q);
-    refDocs.value = r.map((x) => ({ label: x.name, value: x.name }));
+    // Sales Invoices: only submitted (docstatus=1) — must be posted to ledger.
+    // Quotations: all statuses (draft, submitted, etc.) are valid templates.
+    const filters = doctype === "Sales Invoice" ? [["docstatus", "=", 1]] : [];
+    if (q) filters.push(["name", "like", `%${q}%`]);
+
+    const r = await apiGET("frappe.client.get_list", {
+      doctype,
+      filters: JSON.stringify(filters),
+      fields: JSON.stringify(["name"]),
+      limit: 50,
+      order_by: "name asc",
+    });
+    const rows = Array.isArray(r) ? r : (r?.message ?? []);
+    refDocs.value = rows.map((x) => ({ label: x.name, value: x.name }));
   } catch {
     refDocs.value = [];
   }
@@ -700,7 +714,6 @@ watch(() => form.reference_document, async (v) => {
   try {
     const fieldsByType = {
       "Sales Invoice": ["customer_name", "grand_total"],
-      "Purchase Invoice": ["supplier_name", "grand_total"],
       "Quotation": ["customer_name", "grand_total"],
     };
     const fields = fieldsByType[form.reference_doctype];
@@ -712,7 +725,7 @@ watch(() => form.reference_document, async (v) => {
     });
     const row = r?.message || {};
     Object.assign(referenceMeta, {
-      party_label: form.reference_doctype === "Purchase Invoice" ? "Supplier" : "Customer",
+      party_label: form.reference_doctype === "Customer",
       party: row[fields[0]] || "",
       amount: Number(row[fields[1]]) || 0,
     });

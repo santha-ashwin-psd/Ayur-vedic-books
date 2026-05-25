@@ -20,7 +20,7 @@ export const NAV = [
   { path: "/credit-notes",                  label: "Credit Notes",     icon: "creditnote", module: "invoices"   },
   { path: "/payments-received",             label: "Payments Received",icon: "rupee",      module: "payments"   },
   { path: "/delivery-challans",             label: "Delivery Challans",icon: "truck",      module: "invoices"   },
-  { path: "/proforma-invoices",             label: "Proforma Invoices",icon: "file",       module: "invoices"   },
+  // { path: "/proforma-invoices",             label: "Proforma Invoices",icon: "file",       module: "invoices"   },
   { path: "/eway-bills",                    label: "e-Way Bills",      icon: "truck",      module: "invoices"   },
 
   { section: "Purchases" },

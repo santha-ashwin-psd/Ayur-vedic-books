@@ -70,7 +70,7 @@
             <tr v-for="n in 8" :key="n"><td colspan="10"><div class="ew-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="r in sortedRows" :key="r.name" class="ew-row" @click="openView(r)">
+            <tr v-for="r in paged" :key="r.name" class="ew-row" @click="openView(r)">
               <td><span class="ew-irn mono-sm">{{ r.ewb_no || '—' }}</span></td>
               <td @click.stop><DocLink doctype="Sales Invoice" :name="r.invoice_no" /></td>
               <td class="mono-sm text-muted">{{ fmtDate(r.invoice_date) }}</td>
@@ -98,6 +98,10 @@
           </template>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="!loading && sortedRows.length">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sortedRows.length" />
     </div>
 
     <!-- ============================ GENERATE LIST DRAWER (pick invoice) -->
@@ -334,7 +338,9 @@ import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
+import Pagination from "../components/Pagination.vue";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 
@@ -381,6 +387,8 @@ const sortedRows = computed(() => {
     return sortDir.value === "asc" ? c : -c;
   });
 });
+
+const { page, pageSize, paged } = usePagination(sortedRows, { storageKey: "eway-bills" });
 
 function sort(col) {
   if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc";

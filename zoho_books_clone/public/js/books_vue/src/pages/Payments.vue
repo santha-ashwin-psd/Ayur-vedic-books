@@ -51,7 +51,7 @@
             <tr v-for="n in 8" :key="n"><td colspan="9"><div class="pmt-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="p in sorted" :key="p.name" class="pmt-row" :class="{selected:selected.has(p.name)}">
+            <tr v-for="p in paged" :key="p.name" class="pmt-row" :class="{selected:selected.has(p.name)}">
               <td><input type="checkbox" :checked="selected.has(p.name)" @change="toggle(p.name)" /></td>
               <td @click="openView(p)"><span class="pmt-num">{{ p.name }}</span></td>
               <td @click="openView(p)">{{ p.party_name||p.party||'—' }}</td>
@@ -75,6 +75,10 @@
           </template>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="!loading && sorted.length">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
     </div>
 
     <!-- Create / Edit drawer -->
@@ -308,7 +312,9 @@ import { useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiPOST, apiDelete, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
+import Pagination from "../components/Pagination.vue";
 const { confirm } = useConfirm();
 
 async function cancelPmt(p) {
@@ -457,6 +463,8 @@ const sorted = computed(() => {
 });
 function sort(col) { if (sortCol.value===col) sortDir.value=sortDir.value==="asc"?"desc":"asc"; else{sortCol.value=col;sortDir.value="asc";} }
 function sortArrow(col) { if (sortCol.value!==col) return '<span style="color:#d1d5db">⇅</span>'; return sortDir.value==="asc"?"↑":"↓"; }
+
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "payments" });
 
 const summaryReceived = computed(() => list.value.filter(p=>p.payment_type==="Receive").reduce((s,p)=>s+flt(p.paid_amount),0));
 const summaryPaid = computed(() => list.value.filter(p=>p.payment_type==="Pay").reduce((s,p)=>s+flt(p.paid_amount),0));

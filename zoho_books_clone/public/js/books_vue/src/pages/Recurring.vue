@@ -81,7 +81,7 @@
             <tr v-for="n in 6" :key="n"><td colspan="10"><div class="rec-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="r in sorted" :key="r.name" class="rec-row" :class="{selected:selected.includes(r.name)}" @click="openView(r)">
+            <tr v-for="r in paged" :key="r.name" class="rec-row" :class="{selected:selected.includes(r.name)}" @click="openView(r)">
               <td @click.stop>
                 <input type="checkbox" :checked="selected.includes(r.name)" @change="toggleOne(r.name)" />
               </td>
@@ -114,6 +114,10 @@
           </template>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="!loading && sorted.length">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
     </div>
 
     <!-- ============================================================ CREATE / EDIT DRAWER -->
@@ -392,7 +396,9 @@ import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
+import Pagination from "../components/Pagination.vue";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
@@ -474,6 +480,8 @@ const sorted = computed(() => {
     return sortDir.value === "asc" ? c : -c;
   });
 });
+
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "recurring" });
 
 const allSelected = computed(() => sorted.value.length > 0 && sorted.value.every((r) => selected.value.includes(r.name)));
 

@@ -40,7 +40,7 @@
         <tr v-else-if="!filtered.length">
           <td colspan="6" class="b-empty">{{ search ? 'No proforma invoices match your search' : 'No proforma invoices yet' }}</td>
         </tr>
-        <tr v-else v-for="p in filtered" :key="p.name" class="clickable" @click="openView(p)">
+        <tr v-else v-for="p in paged" :key="p.name" class="clickable" @click="openView(p)">
           <td><span class="mono" style="font-size:12px;color:#3B5BDB">{{p.name}}</span></td>
           <td class="fw-600">{{p.customer_name||p.customer||'—'}}</td>
           <td class="c-muted" style="font-size:12.5px">{{p.posting_date||'—'}}</td>
@@ -52,6 +52,10 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <div v-if="!loading && filtered.length" style="margin-top:12px">
+    <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="filtered.length" />
   </div>
 
   <!-- View / Convert drawer -->
@@ -213,7 +217,9 @@ import { apiList, apiGet, apiGET, apiSave, apiDelete, apiSubmit, resolveCompany 
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useToast } from "../composables/useToast.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
+import Pagination from "../components/Pagination.vue";
 import { icon } from "../utils/icons.js";
 
 const { toast } = useToast();
@@ -251,6 +257,8 @@ const filtered = computed(() => {
     (p.customer_name||"").toLowerCase().includes(q)
   );
 });
+
+const { page, pageSize, paged } = usePagination(filtered, { storageKey: "proforma" });
 
 async function load() {
   loading.value = true;

@@ -102,7 +102,7 @@
           </tr>
         </template>
         <template v-else>
-          <tr v-for="inv in sorted" :key="inv.name" class="inv-row" :class="{ selected: selectedRows.has(inv.name) }">
+          <tr v-for="inv in paged" :key="inv.name" class="inv-row" :class="{ selected: selectedRows.has(inv.name) }">
             <td class="td-check" @click.stop>
               <input type="checkbox" :checked="selectedRows.has(inv.name)" @change="toggleRow(inv.name)"/>
             </td>
@@ -142,8 +142,12 @@
       </tbody>
     </table>
   </div>
-  <div v-if="!loading&&sorted.length" style="text-align:right;font-size:12px;color:#9ca3af;padding:6px 20px">
-    {{ sorted.length }} of {{ list.length }} invoices
+  <div v-if="!loading && sorted.length" style="padding:12px 20px 4px">
+    <Pagination
+      v-model:page="page"
+      v-model:page-size="pageSize"
+      :total-items="sorted.length"
+    />
   </div>
 
   <!-- ══ Modals / Drawers ══ -->
@@ -662,7 +666,9 @@ import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { usePaymentDialog } from "../composables/usePaymentDialog.js";
 import { useMakeRecurring } from "../composables/useMakeRecurring.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
+import Pagination from "../components/Pagination.vue";
 import { useReturnNote } from "../composables/useReturnNote.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -848,6 +854,8 @@ const sorted = computed(()=>[...filtered.value].sort((a,b)=>{
   const va=a[sortKey.value]??"",vb=b[sortKey.value]??"";
   if (va<vb) return -1*sortDir.value; if (va>vb) return 1*sortDir.value; return 0;
 }));
+
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "invoices" });
 
 const subtotal  = computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
 const totalTax  = computed(()=>taxRows.value.reduce((s,r)=>s+flt(r.amount),0));

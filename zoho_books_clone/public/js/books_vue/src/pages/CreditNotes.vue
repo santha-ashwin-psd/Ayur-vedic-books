@@ -60,7 +60,7 @@
             <tr v-for="n in 6" :key="n"><td colspan="9"><div class="cn-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="c in sorted" :key="c.name" class="cn-row" :class="{selected:selected.has(c.name)}">
+            <tr v-for="c in paged" :key="c.name" class="cn-row" :class="{selected:selected.has(c.name)}">
               <td><input type="checkbox" :checked="selected.has(c.name)" @change="toggle(c.name)" /></td>
               <td @click="openView(c)"><span class="cn-num">{{ c.name }}</span></td>
               <td @click="openView(c)">{{ c.customer_name || c.customer || '—' }}</td>
@@ -83,6 +83,10 @@
           </template>
         </tbody>
       </table>
+    </div>
+
+    <div v-if="!loading && sorted.length" style="padding:12px 0 4px">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
     </div>
 
     <!-- ── Create / Edit Drawer ── -->
@@ -349,7 +353,9 @@ import { useDocStatus } from "../composables/useDocStatus.js";
 import { useRoute } from "vue-router";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
+import Pagination from "../components/Pagination.vue";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
@@ -466,6 +472,8 @@ const sorted = computed(() => {
 });
 function sortBy(col) { if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc"; else { sortCol.value = col; sortDir.value = "asc"; } }
 function sortArrow(col) { if (sortCol.value !== col) return '<span style="color:#d1d5db">⇅</span>'; return sortDir.value === "asc" ? "↑" : "↓"; }
+
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "credit-notes" });
 
 const allChecked = computed(() => sorted.value.length > 0 && sorted.value.every(c => selected.value.has(c.name)));
 function toggle(n) { const s = new Set(selected.value); s.has(n) ? s.delete(n) : s.add(n); selected.value = s; }

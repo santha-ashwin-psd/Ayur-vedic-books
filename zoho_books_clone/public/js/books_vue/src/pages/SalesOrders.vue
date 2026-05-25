@@ -85,7 +85,7 @@
             </tr>
           </template>
           <template v-else>
-            <tr v-for="o in sorted" :key="o.name" class="inv-row" :class="{selected:selected.has(o.name)}">
+            <tr v-for="o in paged" :key="o.name" class="inv-row" :class="{selected:selected.has(o.name)}">
               <td class="td-check" @click.stop>
                 <input type="checkbox" :checked="selected.has(o.name)" @change="toggle(o.name)"/>
               </td>
@@ -121,8 +121,8 @@
         </tbody>
       </table>
     </div>
-    <div v-if="!loading && sorted.length" style="text-align:right;font-size:12px;color:#9ca3af;padding:6px 20px">
-      {{ sorted.length }} of {{ list.length }} orders
+    <div v-if="!loading && sorted.length" style="padding:12px 20px 4px">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
     </div>
 
     <!-- ── Create / Edit Drawer ── -->
@@ -446,7 +446,9 @@ import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
+import Pagination from "../components/Pagination.vue";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
@@ -596,6 +598,9 @@ const sorted = computed(() => {
     return sortDir.value === "asc" ? c : -c;
   });
 });
+
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "sales-orders" });
+
 function sortBy(col) { if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc"; else { sortCol.value = col; sortDir.value = "asc"; } }
 function sortArrow(col) { if (sortCol.value !== col) return '<span style="color:#d1d5db">⇅</span>'; return sortDir.value === "asc" ? "↑" : "↓"; }
 function sortArrowTxt(col) { if (sortCol.value !== col) return "⇅"; return sortDir.value === "asc" ? "↑" : "↓"; }

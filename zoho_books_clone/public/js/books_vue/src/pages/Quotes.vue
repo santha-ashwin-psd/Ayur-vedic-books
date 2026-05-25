@@ -93,7 +93,7 @@
             </tr>
           </template>
           <template v-else>
-            <tr v-for="q in sorted" :key="q.name" class="inv-row" :class="{selected:selected.has(q.name)}">
+            <tr v-for="q in paged" :key="q.name" class="inv-row" :class="{selected:selected.has(q.name)}">
               <td class="td-check" @click.stop>
                 <input type="checkbox" :checked="selected.has(q.name)" @change="toggle(q.name)"/>
               </td>
@@ -129,8 +129,8 @@
         </tbody>
       </table>
     </div>
-    <div v-if="!loading && sorted.length" style="text-align:right;font-size:12px;color:#9ca3af;padding:6px 20px">
-      {{ sorted.length }} of {{ list.length }} quotations
+    <div v-if="!loading && sorted.length" style="padding:12px 20px 4px">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
     </div>
 
     <!-- ── Create / Edit Drawer ── -->
@@ -546,7 +546,9 @@ import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
+import Pagination from "../components/Pagination.vue";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
@@ -823,6 +825,8 @@ const sorted = computed(() => {
     return sortDir.value === "asc" ? c : -c;
   });
 });
+
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "quotes" });
 
 function sortBy(col) {
   if (sortCol.value === col)

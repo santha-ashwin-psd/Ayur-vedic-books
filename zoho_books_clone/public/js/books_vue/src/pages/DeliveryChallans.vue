@@ -59,7 +59,7 @@
         <tr v-else-if="!sorted.length">
           <td colspan="7" class="b-empty">{{search?'No challans match your search':'No delivery challans yet'}}</td>
         </tr>
-        <tr v-else v-for="r in sorted" :key="r.name" class="clickable dc-row" @click="openView(r)">
+        <tr v-else v-for="r in paged" :key="r.name" class="clickable dc-row" @click="openView(r)">
           <td><span class="mono" style="font-size:12px;color:#3B5BDB">{{r.name}}</span></td>
           <td class="fw-600">{{r.customer_name||r.customer||'—'}}</td>
           <td class="c-muted" style="font-size:12.5px">{{r.posting_date||'—'}}</td>
@@ -73,6 +73,10 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <div v-if="!loading && sorted.length">
+    <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
   </div>
 
   <!-- ===== Drawers ===== -->
@@ -282,7 +286,9 @@ import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, resolveCompany } 
 import { useRoute } from "vue-router";
 import { useToast } from "../composables/useToast.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
+import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
+import Pagination from "../components/Pagination.vue";
 import { icon } from "../utils/icons.js";
 import { flt } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
@@ -470,6 +476,8 @@ const sorted = computed(() => {
     return sortDir.value === "asc" ? c : -c;
   });
 });
+
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "delivery-challans" });
 
 function sort(col) {
   if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc";

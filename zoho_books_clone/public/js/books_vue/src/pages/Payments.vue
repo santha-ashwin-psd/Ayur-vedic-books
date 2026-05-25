@@ -15,12 +15,12 @@
       </div>
     </div>
 
-    <div class="pmt-summary" v-if="!loading">
-      <div class="pmt-sum-card"><div class="pmt-sum-lbl">Total Received</div><div class="pmt-sum-val green">{{ fmtCur(summaryReceived) }}</div></div>
-      <div class="pmt-sum-card"><div class="pmt-sum-lbl">Total Paid Out</div><div class="pmt-sum-val red">{{ fmtCur(summaryPaid) }}</div></div>
-      <div class="pmt-sum-card"><div class="pmt-sum-lbl">Net</div><div class="pmt-sum-val" :class="(summaryReceived-summaryPaid)>=0?'green':'red'">{{ fmtCur(summaryReceived-summaryPaid) }}</div></div>
-      <div class="pmt-sum-card"><div class="pmt-sum-lbl">Count</div><div class="pmt-sum-val">{{ filtered.length }}</div></div>
-    </div>
+    <SummaryStrip v-if="!loading" :cards="[
+      { label: 'Total Received', tone: 'success', value: fmtCur(summaryReceived), valueClass: 'green' },
+      { label: 'Total Paid Out', tone: summaryPaid>0?'danger':'default', value: fmtCur(summaryPaid), valueClass: summaryPaid>0?'red':'' },
+      { label: 'Net', tone: 'accent', value: fmtCur(summaryReceived - summaryPaid), valueClass: (summaryReceived-summaryPaid)>=0?'green':'red' },
+      { label: 'Count', tone: 'default', value: filtered.length },
+    ]" />
 
     <!-- Bulk action bar (light style, matching Sales Orders/Quotes/Invoices) -->
     <div v-if="selected.size" class="inv-bulk-bar">
@@ -315,6 +315,7 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
 import Pagination from "../components/Pagination.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
 const { confirm } = useConfirm();
 
 async function cancelPmt(p) {

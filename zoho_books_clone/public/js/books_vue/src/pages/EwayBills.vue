@@ -25,28 +25,13 @@
     </div>
 
     <!-- ============================ SUMMARY -->
-    <div class="ew-summary" v-if="!loading">
-      <div class="ew-sum-card accent">
-        <div class="ew-sum-lbl">TOTAL INVOICES</div>
-        <div class="ew-sum-val">{{ stats.total_invoices }}</div>
-      </div>
-      <div class="ew-sum-card">
-        <div class="ew-sum-lbl">GENERATED</div>
-        <div class="ew-sum-val green">{{ stats.generated }}</div>
-      </div>
-      <div class="ew-sum-card" :class="{warn: stats.pending>0}">
-        <div class="ew-sum-lbl">PENDING</div>
-        <div class="ew-sum-val" :class="stats.pending>0?'orange':''">{{ stats.pending }}</div>
-      </div>
-      <div class="ew-sum-card" :class="{danger: stats.expired>0 || stats.expiring_soon>0}">
-        <div class="ew-sum-lbl">EXPIRING / EXPIRED</div>
-        <div class="ew-sum-val red">{{ stats.expiring_soon }} / {{ stats.expired }}</div>
-      </div>
-      <div class="ew-sum-card">
-        <div class="ew-sum-lbl">TOTAL VALUE</div>
-        <div class="ew-sum-val">{{ fmtCur(stats.total_value) }}</div>
-      </div>
-    </div>
+    <SummaryStrip v-if="!loading" :cards="[
+      { label: 'Total Invoices', tone: 'accent', value: stats.total_invoices },
+      { label: 'Generated', tone: 'success', value: stats.generated, valueClass: 'green' },
+      { label: 'Pending', tone: stats.pending>0?'warn':'default', value: stats.pending, valueClass: stats.pending>0?'orange':'' },
+      { label: 'Expiring / Expired', tone: (stats.expired>0||stats.expiring_soon>0)?'danger':'default', value: `${stats.expiring_soon} / ${stats.expired}`, valueClass: (stats.expired>0||stats.expiring_soon>0)?'red':'' },
+      { label: 'Total Value', tone: 'default', value: fmtCur(stats.total_value) },
+    ]" />
 
     <!-- ============================ TABLE -->
     <div class="ew-card">
@@ -341,6 +326,7 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
 import Pagination from "../components/Pagination.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 

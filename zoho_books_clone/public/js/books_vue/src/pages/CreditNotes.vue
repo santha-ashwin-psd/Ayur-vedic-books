@@ -26,10 +26,10 @@
 
     <!-- ── Summary strip ── -->
     <SummaryStrip :cards="[
-      { label: 'Total Credit Notes', value: list.length },
-      { label: 'Issued', value: counts.issued, accent: '#16a34a' },
-      { label: 'Open Balance', value: fmtCur(summary.openBalance), accent: '#dc2626' },
-      { label: 'Total Credit Value', value: fmtCur(summary.totalValue), accent: '#7f1d1d' },
+      { label: 'Total Credit Notes', tone: 'accent', value: list.length },
+      { label: 'Issued', tone: 'success', value: counts.issued, valueClass: 'green' },
+      { label: 'Open Balance', tone: summary.openBalance>0?'danger':'default', value: fmtCur(summary.openBalance), valueClass: summary.openBalance>0?'red':'' },
+      { label: 'Total Credit Value', tone: 'warn', value: fmtCur(summary.totalValue) },
     ]" />
 
     <!-- ── Bulk action bar ── -->

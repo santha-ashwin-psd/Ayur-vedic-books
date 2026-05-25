@@ -25,28 +25,13 @@
     </div>
 
     <!-- ============================================================ SUMMARY -->
-    <div class="rec-summary" v-if="!loading">
-      <div class="rec-sum-card" :class="{accent:true}">
-        <div class="rec-sum-lbl">TOTAL</div>
-        <div class="rec-sum-val">{{ stats.total }}</div>
-      </div>
-      <div class="rec-sum-card">
-        <div class="rec-sum-lbl">ACTIVE</div>
-        <div class="rec-sum-val green">{{ stats.active }}</div>
-      </div>
-      <div class="rec-sum-card">
-        <div class="rec-sum-lbl">PAUSED</div>
-        <div class="rec-sum-val orange">{{ stats.paused }}</div>
-      </div>
-      <div class="rec-sum-card" :class="{warn: stats.due_today>0}">
-        <div class="rec-sum-lbl">DUE TODAY</div>
-        <div class="rec-sum-val" :class="stats.due_today>0?'blue':''">{{ stats.due_today }}</div>
-      </div>
-      <div class="rec-sum-card" :class="{danger: stats.overdue>0}">
-        <div class="rec-sum-lbl">OVERDUE</div>
-        <div class="rec-sum-val" :class="stats.overdue>0?'red':''">{{ stats.overdue }}</div>
-      </div>
-    </div>
+    <SummaryStrip v-if="!loading" :cards="[
+      { label: 'Total', tone: 'accent', value: stats.total },
+      { label: 'Active', tone: 'success', value: stats.active, valueClass: 'green' },
+      { label: 'Paused', tone: stats.paused>0?'warn':'default', value: stats.paused, valueClass: stats.paused>0?'orange':'' },
+      { label: 'Due Today', tone: stats.due_today>0?'info':'default', value: stats.due_today, valueClass: stats.due_today>0?'blue':'' },
+      { label: 'Overdue', tone: stats.overdue>0?'danger':'default', value: stats.overdue, valueClass: stats.overdue>0?'red':'' },
+    ]" />
 
     <!-- ============================================================ BULK BAR -->
     <div v-if="selected.length" class="inv-bulk-bar">
@@ -399,6 +384,7 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
 import Pagination from "../components/Pagination.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";

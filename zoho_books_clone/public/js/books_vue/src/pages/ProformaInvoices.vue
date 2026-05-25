@@ -12,13 +12,12 @@
     </div>
   </div>
 
-  <!-- Info banner -->
-  <div style="background:linear-gradient(135deg,#FFF9DB,#FFF3BF);border:1px solid #FFD43B;border-radius:10px;padding:12px 18px;display:flex;gap:12px;align-items:center">
-    <span style="font-size:18px">📋</span>
-    <div style="font-size:12.5px;color:#876800">
-      <b>Proforma Invoices</b> are pre-invoices sent to customers for advance payment or customs. They are kept as drafts and can be converted to real invoices once accepted.
-    </div>
-  </div>
+  <!-- Summary strip -->
+  <SummaryStrip v-if="!loading" :cards="[
+    { label: 'Total Proformas', tone: 'accent', value: list.length },
+    { label: 'In Filter', tone: 'info', value: filtered.length, valueClass: 'blue' },
+    { label: 'Pipeline Value', tone: 'warn', value: '₹' + fmtAmt(list.reduce((s,p) => s + (Number(p.grand_total)||0), 0)) },
+  ]" />
 
   <!-- Table -->
   <div class="b-card" style="padding:0;overflow:hidden">
@@ -220,6 +219,7 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
 import Pagination from "../components/Pagination.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
 import { icon } from "../utils/icons.js";
 
 const { toast } = useToast();

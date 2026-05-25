@@ -19,24 +19,12 @@
   </div>
 
   <!-- Summary strip -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" v-if="!loading">
-    <div class="b-card b-card-body" style="padding:14px 16px">
-      <div class="dc-strip-lbl">Draft</div>
-      <div class="dc-strip-val" style="color:#E67700">{{counts.draft}}</div>
-    </div>
-    <div class="b-card b-card-body" style="padding:14px 16px">
-      <div class="dc-strip-lbl">To Deliver</div>
-      <div class="dc-strip-val" style="color:#1971C2">{{counts.toDeliver}}</div>
-    </div>
-    <div class="b-card b-card-body" style="padding:14px 16px">
-      <div class="dc-strip-lbl">Delivered</div>
-      <div class="dc-strip-val" style="color:#2F9E44">{{counts.delivered}}</div>
-    </div>
-    <div class="b-card b-card-body" style="padding:14px 16px">
-      <div class="dc-strip-lbl">Total</div>
-      <div class="dc-strip-val" style="color:#111827">{{list.length}}</div>
-    </div>
-  </div>
+  <SummaryStrip v-if="!loading" :cards="[
+    { label: 'Total', tone: 'accent', value: list.length },
+    { label: 'Draft', tone: counts.draft>0?'warn':'default', value: counts.draft, valueClass: counts.draft>0?'orange':'' },
+    { label: 'To Deliver', tone: 'info', value: counts.toDeliver, valueClass: 'blue' },
+    { label: 'Delivered', tone: 'success', value: counts.delivered, valueClass: 'green' },
+  ]" />
 
   <!-- Table -->
   <div class="b-card" style="padding:0;overflow:hidden">
@@ -289,6 +277,7 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
 import Pagination from "../components/Pagination.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
 import { icon } from "../utils/icons.js";
 import { flt } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";

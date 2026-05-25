@@ -585,11 +585,25 @@ async function fetchItems(q = "") {
   try {
     const f = [["disabled", "=", 0]];
     if (q) f.push(["item_name", "like", "%" + q + "%"]);
-    const r = await apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom"], filters: f, limit: 30, order: "item_name asc" });
-    items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_rate || 0 }));
+    const r = await apiList("Item", { fields: ["name", "item_name", "description", "standard_rate", "stock_uom"], filters: f, limit: 30, order: "item_name asc" });
+    items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_rate || 0, description: x.description || "" }));
   } catch { items.value = []; }
 }
-function onItemSelect(line, opt) { line.item_code = opt?.value ?? opt; if (opt?.rate) { line.rate = Number(opt.rate) || 0; calcLine(line); } }
+async function onItemSelect(line, opt) {
+  line.item_code = opt?.value ?? opt;
+  if (opt?.rate)        { line.rate        = Number(opt.rate) || 0; }
+  if (opt?.item_name)   { line.item_name   = opt.item_name; }
+  if (opt?.description) { line.description = opt.description; }
+  else if (opt?.value) {
+    // description not in option cache — fetch from Item doc directly
+    try {
+      const doc = await apiGet("Item", opt.value);
+      if (doc?.description) line.description = doc.description;
+      if (doc?.item_name)   line.item_name   = doc.item_name;
+    } catch {}
+  }
+  calcLine(line);
+}
 function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
 function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
@@ -826,7 +840,7 @@ onMounted(() => { load(); loadTaxAccount(); });
 .po-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
 textarea.po-input { resize: vertical; }
 .po-section-title { font-size: 12px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; }
-.po-items-table { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.po-items-table { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 8px; }
 .po-items-head { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: #374151; }
 .po-items-row { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; }
 .po-add-line { background: transparent; border: none; color: #2563eb; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 8px 12px; display: inline-flex; align-items: center; gap: 6px; }

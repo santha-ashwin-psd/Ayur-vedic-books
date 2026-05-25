@@ -746,7 +746,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.rec-search-wrap{display:flex;align-items:center;gap:8px;background:#f3f4f6;border-radius:8px;padding:6px 12px;}
+.rec-search-wrap{display:flex;align-items:center;gap:8px;background:#ffffff;border-radius:8px;padding:6px 12px;}
 .rec-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
 .sortable{cursor:pointer;user-select:none;}.sortable:hover{color:#2563eb;}
 .dc-strip-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
@@ -759,7 +759,7 @@ onMounted(async () => {
 
 /* Row */
 .dc-row:hover td{background:#f9fafb;}
-.dc-act-btn{background:transparent;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;font:inherit;font-size:14px;margin:0 2px;}
+.dc-act-btn{background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;font:inherit;font-size:14px;margin:0 2px;}
 .dc-act-btn:hover{background:#f3f4f6;color:#2563eb;}
 
 /* Drawer */

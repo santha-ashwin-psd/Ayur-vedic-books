@@ -134,14 +134,14 @@
           <div class="pf-grid">
             <div class="pf-field" style="grid-column:1/-1">
               <label class="pf-flbl">Customer <span class="req">*</span></label>
-              <div style="position:relative">
-                <input class="pf-input" v-model="form.customer" placeholder="Customer ID" @input="onCustInput"/>
-                <div v-if="custSugg.length" class="pf-suggest">
-                  <div v-for="s in custSugg" :key="s.name" class="pf-suggest-item" @click="pickCust(s)">
-                    {{ s.customer_name||s.name }}
-                  </div>
-                </div>
-              </div>
+              <SearchableSelect
+                v-model="form.customer"
+                :options="customers"
+                placeholder="Select customer…"
+                :createable="true"
+                createDoctype="Customer"
+                @search="fetchCustomers"
+              />
             </div>
             <div class="pf-field">
               <label class="pf-flbl">Date <span class="req">*</span></label>
@@ -167,9 +167,17 @@
             </button>
           </div>
           <div v-for="(it,i) in form.items" :key="i" class="pf-item-row">
-            <input class="pf-input" v-model="it.item_code" placeholder="Item code" @change="onItemChange(it)"/>
-            <input class="pf-input ta-r" type="number" v-model="it.qty" placeholder="Qty" min="0.01" @input="calcAmount(it)"/>
-            <input class="pf-input ta-r" type="number" v-model="it.rate" placeholder="Rate" min="0" @input="calcAmount(it)"/>
+            <SearchableSelect
+              v-model="it.item_code"
+              :options="items"
+              placeholder="Select item…"
+              :createable="true"
+              createDoctype="Item"
+              @search="fetchItems"
+              @select="opt => onItemSelect(it, opt)"
+            />
+            <input class="pf-input ta-r" type="number" v-model.number="it.qty" placeholder="Qty" min="0.01" @input="calcAmount(it)"/>
+            <input class="pf-input ta-r" type="number" v-model.number="it.rate" placeholder="Rate" min="0" @input="calcAmount(it)"/>
             <button class="pf-rm" @click="removeItem(i)"><span v-html="icon('trash',12)"></span></button>
           </div>
           <div v-if="!form.items.length" class="pf-items-empty">No items yet — click Add Item</div>
@@ -201,7 +209,8 @@
 <script setup>
 import { ref, reactive, computed } from "vue";
 import { useRouter } from "vue-router";
-import { apiList, apiGET, apiSave, apiDelete, apiSubmit, apiLinkValues, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiSave, apiDelete, apiSubmit, resolveCompany } from "../api/client.js";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 
@@ -218,8 +227,9 @@ const saving    = ref(false);
 const converting = ref(false);
 const showDel   = ref(false);
 const delTarget = ref(null);
-const custSugg  = ref([]);
-let custTimer   = null;
+const custSugg  = ref([]);   // kept for compat, unused after SearchableSelect migration
+const customers = ref([]);
+const items     = ref([]);
 
 const form = reactive({
   customer: "", posting_date: new Date().toISOString().slice(0,10),
@@ -283,6 +293,8 @@ async function convertToInvoice() {
 function openNew() {
   Object.assign(form, { customer:"", posting_date: new Date().toISOString().slice(0,10), due_date:"", remarks:"Proforma Invoice", items:[] });
   custSugg.value = [];
+  fetchCustomers("");
+  fetchItems("");
   addItem();
   newOpen.value = true;
 }
@@ -290,23 +302,54 @@ function openNew() {
 function addItem() { form.items.push({ item_code:"", qty:1, rate:0, amount:0 }); }
 function removeItem(i) { form.items.splice(i, 1); }
 function calcAmount(it) { it.amount = (parseFloat(it.qty)||0) * (parseFloat(it.rate)||0); }
+// ── Dropdown fetchers ─────────────────────────────────────────────────────────
+async function fetchCustomers(q = "") {
+  try {
+    const f = [["disabled", "=", 0]];
+    if (q) f.push(["customer_name", "like", "%" + q + "%"]);
+    const r = await apiList("Customer", { fields: ["name", "customer_name"], filters: f, limit: 30, order: "customer_name asc" });
+    customers.value = (r || []).map(x => ({ ...x, label: x.customer_name || x.name, value: x.name }));
+  } catch { customers.value = []; }
+}
+
+async function fetchItems(q = "") {
+  try {
+    const f = [["disabled", "=", 0]];
+    if (q) f.push(["item_name", "like", "%" + q + "%"]);
+    const r = await apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom", "description"], filters: f, limit: 30, order: "item_name asc" });
+    items.value = (r || []).map(x => ({
+      ...x,
+      label: x.item_name || x.name,
+      value: x.name,
+      rate: x.standard_rate || 0,
+      uom: x.stock_uom || "Nos",
+      description: x.description || "",
+    }));
+  } catch { items.value = []; }
+}
+
+function onItemSelect(it, opt) {
+  const code = opt?.value ?? opt;
+  it.item_code = code;
+  const found = items.value.find(i => i.value === code || i.name === code);
+  if (found) {
+    it.rate      = found.rate ?? 0;
+    it.item_name = found.label || found.item_name || code;
+    it.description = found.description || "";
+    calcAmount(it);
+  }
+}
+
+// ── Kept for backward compat (no longer wired to template) ───────────────────
+function onCustInput() {}
+function pickCust(s) { form.customer = s.name; custSugg.value = []; }
 async function onItemChange(it) {
   if (!it.item_code) return;
   try {
-    const doc = await apiGET("Item", it.item_code);
+    const doc = await apiGet("Item", it.item_code);
     if (doc?.standard_rate) { it.rate = doc.standard_rate; calcAmount(it); }
   } catch {}
 }
-
-function onCustInput() {
-  clearTimeout(custTimer);
-  const txt = form.customer.trim();
-  if (txt.length < 2) { custSugg.value = []; return; }
-  custTimer = setTimeout(async () => {
-    try { custSugg.value = await apiLinkValues("Customer", txt); } catch { custSugg.value = []; }
-  }, 250);
-}
-function pickCust(s) { form.customer = s.name; custSugg.value = []; }
 
 async function saveProforma() {
   if (!form.customer.trim()) { toast.error("Customer is required"); return; }
@@ -321,11 +364,11 @@ async function saveProforma() {
       due_date: form.due_date || form.posting_date,
       company,
       notes: form.remarks || "Proforma Invoice",
-      items: form.items.filter(it => it.item_code.trim()).map(it => ({
+      items: form.items.filter(it => it.item_code?.trim()).map(it => ({
         doctype: "Sales Invoice Item",
         item_code: it.item_code,
-        item_name: it.item_code,
-        description: it.item_code,
+        item_name: it.item_name || it.item_code,
+        description: it.description || it.item_name || it.item_code,
         qty: parseFloat(it.qty) || 1,
         rate: parseFloat(it.rate) || 0,
         amount: parseFloat(it.amount) || 0,

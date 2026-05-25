@@ -711,7 +711,7 @@ onMounted(() => { load(); loadTaxAccount(); });
 <style scoped>
 .bill-page { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
 .bill-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.bill-search-wrap { display: flex; align-items: center; gap: 8px; background: #f3f4f6; border-radius: 8px; padding: 6px 12px; min-width: 220px; }
+.bill-search-wrap { display: flex; align-items: center; gap: 8px; background: #ffffff; border-radius: 8px; padding: 6px 12px; min-width: 220px; }
 .bill-search-input { border: none; background: transparent; outline: none; font: inherit; color: #111827; width: 100%; font-size: 13px; }
 .bill-pills { display: flex; gap: 6px; }
 .bill-pill { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 600; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
@@ -722,7 +722,7 @@ onMounted(() => { load(); loadTaxAccount(); });
 .bill-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .bill-btn-primary:hover:not(:disabled) { background: #1d4ed8; }
 .bill-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-.bill-btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #374151; cursor: pointer; }
+.bill-btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #374151; cursor: pointer; }
 .bill-btn-ghost:hover { background: #f9fafb; }
 .bill-btn-save { display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .bill-btn-save:hover { background: #dcfce7; }
@@ -787,7 +787,7 @@ textarea.bill-input { resize: vertical; }
 .bill-copy-btn { background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; padding: 4px 10px; border-radius: 6px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
 .bill-copy-btn:hover { background: #dcfce7; }
 .bill-copy-btn:disabled { opacity: .5; cursor: not-allowed; }
-.bill-items-table { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.bill-items-table { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 8px; }
 .bill-items-head { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: #374151; }
 .bill-items-row { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; }
 .bill-add-line { background: transparent; border: none; color: #2563eb; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 8px 12px; display: inline-flex; align-items: center; gap: 6px; }

@@ -51,7 +51,7 @@ defineProps({
   font-size: 12px; font-weight: 600;
   color: rgba(255,255,255,.75); white-space: nowrap;
 }
-.tls-step.done .tls-lbl, .tls-step.current .tls-lbl { color: #fff; }
+.tls-step.done .tls-lbl, .tls-step.current .tls-lbl { color: #000000; }
 .tls-step.danger .tls-lbl { color: #fecaca; }
 .tls-line {
   flex: 1; height: 2px; min-width: 24px;

@@ -117,16 +117,8 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="nim-field" style="grid-column:1/-1">
             <label class="nim-label">Supplier <span style="color:#c92a2a">*</span></label>
-            <input class="nim-input" v-model="form.supplier" placeholder="Supplier ID" @input="onSupInput"/>
-            <div v-if="supSugg.length" style="position:relative">
-              <div style="position:absolute;top:2px;left:0;right:0;background:#fff;border:1px solid #E2E8F0;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:180px;overflow-y:auto">
-                <div v-for="s in supSugg" :key="s.name" @click="pickSup(s)"
-                  style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #F8F9FA"
-                  onmouseover="this.style.background='#F8F9FA'" onmouseout="this.style.background=''">
-                  {{s.supplier_name||s.name}}
-                </div>
-              </div>
-            </div>
+            <SearchableSelect v-model="form.supplier" :options="vendorOptions"
+              placeholder="Search supplier…" @search="fetchVendors" @select="onSupSelect" />
           </div>
           <div class="nim-field">
             <label class="nim-label">Date <span style="color:#c92a2a">*</span></label>
@@ -134,7 +126,9 @@
           </div>
           <div class="nim-field">
             <label class="nim-label">Purchase Order #</label>
-            <input class="nim-input" v-model="form.purchase_order" placeholder="Optional PO reference"/>
+            <SearchableSelect v-model="form.purchase_order" :options="poOptions"
+              placeholder="Select PO (filtered by supplier)…"
+              @search="fetchPOs" @open="fetchPOs('')" />
           </div>
           <div class="nim-field" style="grid-column:1/-1">
             <label class="nim-label">Warehouse</label>
@@ -155,7 +149,7 @@
             </button>
           </div>
           <div v-for="(it,i) in form.items" :key="i" style="display:grid;grid-template-columns:2fr 70px 70px 60px 28px;gap:6px;margin-bottom:8px;align-items:center">
-            <input class="nim-input" v-model="it.item_code" placeholder="Item code" style="font-size:12px"/>
+            <SearchableSelect v-model="it.item_code" :options="itemOptions" placeholder="Search item…" @search="fetchItems" @select="opt => onItemSelect(it, opt)" style="font-size:12px"/>
             <input class="nim-input" type="number" v-model="it.qty" placeholder="Qty" min="0.01" style="font-size:12px"/>
             <input class="nim-input" type="number" v-model="it.accepted_qty" placeholder="Accept" min="0" style="font-size:12px"/>
             <input class="nim-input" v-model="it.uom" placeholder="UOM" style="font-size:12px"/>
@@ -177,7 +171,8 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGET, apiSave, apiSubmit, apiLinkValues, resolveCompany } from "../api/client.js";
+import { apiList, apiGET, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 
@@ -195,6 +190,9 @@ const saving    = ref(false);
 const submitting = ref(false);
 const supSugg   = ref([]);
 let supTimer    = null;
+const vendorOptions = ref([]);
+const itemOptions   = ref([]);
+const poOptions     = ref([]);
 
 const form = reactive({
   supplier: "", posting_date: new Date().toISOString().slice(0,10),
@@ -225,7 +223,7 @@ async function load() {
     // No standalone Purchase Receipt doctype in this build. Synthesise the list
     // from Purchase Order lines with received_qty > 0.
     const rows = await apiGET("zoho_books_clone.api.docs.get_purchase_receipt_list", { limit: 500 }) || [];
-    list.value = rows.map(r => ({
+    const rawList = rows.map(r => ({
       name: r.purchase_order,
       supplier: r.supplier,
       supplier_name: r.supplier_name,
@@ -240,6 +238,14 @@ async function load() {
       docstatus: r.status === "Cancelled" ? 2 : 1,
       grand_total: r.grand_total,
     }));
+    list.value = rawList;
+    // Resolve missing supplier_name — backend may omit it
+    const missing = [...new Set(rawList.filter(r => !r.supplier_name && r.supplier).map(r => r.supplier))];
+    if (missing.length) {
+      const sups = await apiList("Supplier", { fields: ["name","supplier_name"], filters: [["name","in",missing]], limit: missing.length }).catch(()=>[]);
+      const nameMap = Object.fromEntries(sups.map(s => [s.name, s.supplier_name || s.name]));
+      list.value = rawList.map(r => r.supplier_name ? r : { ...r, supplier_name: nameMap[r.supplier] || r.supplier });
+    }
   } catch (e) { console.warn("Purchase receipt load failed:", e.message); list.value = []; }
   finally { loading.value = false; }
 }
@@ -298,15 +304,51 @@ function openNew() {
 function addItem() { form.items.push({ item_code:"", qty:1, accepted_qty:1, uom:"Nos" }); }
 function removeItem(i) { form.items.splice(i, 1); }
 
-function onSupInput() {
-  clearTimeout(supTimer);
-  const txt = form.supplier.trim();
-  if (txt.length < 2) { supSugg.value = []; return; }
-  supTimer = setTimeout(async () => {
-    try { supSugg.value = await apiLinkValues("Supplier", txt); } catch { supSugg.value = []; }
-  }, 250);
+async function fetchVendors(q = "") {
+  try {
+    const filters = [["disabled", "=", 0]];
+    if (q) filters.push(["supplier_name", "like", `%${q}%`]);
+    const rows = await apiList("Supplier", { fields: ["name", "supplier_name"], filters, limit: 30, order: "supplier_name asc" });
+    vendorOptions.value = rows.map(r => ({ label: r.supplier_name || r.name, value: r.name }));
+  } catch { vendorOptions.value = []; }
 }
-function pickSup(s) { form.supplier = s.name; supSugg.value = []; }
+function onSupSelect(opt) {
+  form.supplier      = opt?.value ?? opt;
+  form.supplier_name = opt?.label ?? opt?.value ?? "";
+  // Reset PO and reload PO list for the new supplier
+  form.purchase_order = "";
+  poOptions.value = [];
+  fetchPOs("");
+}
+async function fetchPOs(q = "") {
+  try {
+    const filters = [["docstatus", "=", "[To Receive,Billed]"]]; // submitted POs only
+    if (form.supplier) filters.push(["supplier", "=", form.supplier]);
+    if (q) filters.push(["name", "like", `%${q}%`]);
+    const rows = await apiList("Purchase Order", {
+      fields: ["name", "supplier", "transaction_date", "grand_total"],
+      filters, limit: 30, order: "transaction_date desc",
+    });
+    poOptions.value = rows.map(r => ({
+      label: `${r.name}  (${r.transaction_date || ""})`,
+      value: r.name,
+    }));
+  } catch { poOptions.value = []; }
+}
+async function fetchItems(q = "") {
+  try {
+    const filters = [["disabled", "=", 0]];
+    if (q) filters.push(["item_name", "like", `%${q}%`]);
+    const rows = await apiList("Item", { fields: ["name", "item_name", "description", "stock_uom", "standard_rate"], filters, limit: 30, order: "item_name asc" });
+    itemOptions.value = rows.map(r => ({ label: r.item_name || r.name, value: r.name, description: r.description || "", uom: r.stock_uom || "Nos", rate: r.standard_rate || 0 }));
+  } catch { itemOptions.value = []; }
+}
+function onItemSelect(line, opt) {
+  line.item_code    = opt?.value ?? opt;
+  line.item_name    = opt?.label  || opt?.value || "";
+  line.description  = opt?.description || "";
+  line.uom          = opt?.uom   || line.uom || "Nos";
+}
 
 async function saveGRN() {
   if (!form.supplier.trim()) { toast.error("Supplier is required"); return; }
@@ -325,7 +367,7 @@ async function saveGRN() {
       items: form.items.filter(it => it.item_code.trim()).map(it => ({
         doctype: "Purchase Receipt Item",
         item_code: it.item_code,
-        item_name: it.item_code,
+        item_name: it.item_name || it.item_code,
         qty: parseFloat(it.qty) || 1,
         accepted_qty: parseFloat(it.accepted_qty) || parseFloat(it.qty) || 1,
         rejected_qty: 0,
@@ -344,5 +386,5 @@ async function saveGRN() {
   finally { saving.value = false; }
 }
 
-onMounted(load);
+onMounted(() => { load(); fetchVendors(""); fetchItems(""); fetchPOs(""); });
 </script>

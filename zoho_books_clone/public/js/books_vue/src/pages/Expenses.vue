@@ -69,8 +69,10 @@
       <div class="exp-dbody">
         <div class="exp-fields-grid">
           <div class="exp-field" style="grid-column:1/-1">
-            <label class="exp-label">Employee <span class="req">*</span></label>
-            <input v-model="form.employee_name" class="exp-input" placeholder="Employee name" />
+            <label class="exp-label">Vendor / Supplier <span class="req">*</span></label>
+            <SearchableSelect v-model="form.employee_name" :options="vendorOptions"
+              placeholder="Search supplier…" @search="fetchVendors" @open="fetchVendors('')"
+              @select="opt => { form.employee_name = opt?.value ?? opt; form.vendor_display = opt?.label ?? opt?.value ?? ''; }" />
           </div>
           <div class="exp-field">
             <label class="exp-label">Expense Date <span class="req">*</span></label>
@@ -87,37 +89,26 @@
             <label class="exp-label">Amount <span class="req">*</span></label>
             <input v-model.number="form.total_claimed_amount" type="number" min="0" step="0.01" class="exp-input" placeholder="0.00" />
           </div>
-          <div class="exp-field">
+          <!-- <div class="exp-field">
             <label class="exp-label">Currency</label>
             <input v-model="form.currency" type="text" class="exp-input" placeholder="INR" />
+          </div> -->
+          <div class="exp-field">
+            <label class="exp-label">Expense Account <span class="req">*</span></label>
+            <SearchableSelect v-model="form.expense_account" :options="expenseAccountOptions"
+              placeholder="Search expense account…"
+              @search="fetchExpenseAccounts" @open="fetchExpenseAccounts('')" />
+          </div>
+          <div class="exp-field">
+            <label class="exp-label">Paid Through <span class="req">*</span></label>
+            <SearchableSelect v-model="form.paid_through" :options="paidThroughOptions"
+              placeholder="Search bank / cash account…"
+              @search="fetchPaidThroughAccounts" @open="fetchPaidThroughAccounts('')" />
           </div>
           <div class="exp-field" style="grid-column:1/-1">
             <label class="exp-label">Description</label>
             <textarea v-model="form.remark" rows="2" class="exp-input" placeholder="What was this expense for?"></textarea>
           </div>
-        </div>
-
-        <div class="exp-section-title">Expense Lines</div>
-        <div class="exp-items-table">
-          <div class="exp-items-head">
-            <div>Category</div><div>Description</div><div class="ta-r">Amount</div><div></div>
-          </div>
-          <div v-for="line in lines" :key="line.id" class="exp-items-row">
-            <div>
-              <select v-model="line.expense_type" class="exp-select">
-                <option value="">— Select —</option>
-                <option v-for="c in expenseCategories" :key="c" :value="c">{{ c }}</option>
-              </select>
-            </div>
-            <div><input v-model="line.description" class="exp-input" placeholder="Description" /></div>
-            <div><input v-model.number="line.amount" type="number" min="0" step="0.01" class="exp-input ta-r" /></div>
-            <div><button @click="removeLine(line.id)" class="exp-rm-line"><span v-html="icon('x',12)"></span></button></div>
-          </div>
-          <button class="exp-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Line</button>
-        </div>
-
-        <div class="exp-total-row grand">
-          <span>Total</span><span>{{ fmtCur(lineTotal) }}</span>
         </div>
 
         <!-- Receipt upload -->
@@ -154,9 +145,25 @@
         <div class="exp-dbody">
           <div class="exp-meta-grid">
             <div><div class="exp-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}</div></div>
-            <div><div class="exp-meta-lbl">Employee</div><div>{{ viewDoc.employee_name||viewDoc.employee||'—' }}</div></div>
+            <div><div class="exp-meta-lbl">Vendor / Supplier</div><div>{{ viewDoc.employee_name||viewDoc.vendor||'—' }}</div></div>
+            <div><div class="exp-meta-lbl">Category</div><div>{{ viewDoc.expense_type||'—' }}</div></div>
+            <!-- <div><div class="exp-meta-lbl">Currency</div><div>{{ viewDoc.currency||'INR' }}</div></div> -->
+            <div style="grid-column:1/-1"><div class="exp-meta-lbl">Expense Account</div><div class="mono-sm" style="font-size:12.5px">{{ viewDoc.expense_account||'—' }}</div></div>
+            <div style="grid-column:1/-1"><div class="exp-meta-lbl">Paid Through</div><div class="mono-sm" style="font-size:12.5px">{{ viewDoc.paid_through||'—' }}</div></div>
           </div>
-          <div v-if="viewDoc.remark"><div class="exp-meta-lbl">Description</div><div style="font-size:13px;color:#374151;margin-top:4px">{{ viewDoc.remark }}</div></div>
+          <div v-if="viewDoc.remark||viewDoc.notes||viewDoc.description" style="margin-top:4px">
+            <div class="exp-meta-lbl">Description / Notes</div>
+            <div style="font-size:13px;color:#374151;margin-top:4px;line-height:1.5">{{ viewDoc.remark||viewDoc.notes||viewDoc.description }}</div>
+          </div>
+          <!-- Attachment -->
+          <div v-if="viewDoc.attach" style="margin-top:4px">
+            <div class="exp-meta-lbl">Receipt</div>
+            <a :href="viewDoc.attach" target="_blank" class="exp-attach-link">
+              <span v-html="icon('paperclip',13)"></span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ viewDoc.attach.split('/').pop() }}</span>
+              <span v-html="icon('externallink',12)" style="flex-shrink:0;color:#9ca3af"></span>
+            </a>
+          </div>
         </div>
         <div class="exp-dfooter">
           <button class="exp-btn-ghost" @click="viewOpen=false">Close</button>
@@ -169,7 +176,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -183,15 +190,54 @@ const expenseCategories=["Travel","Food & Meals","Accommodation","Office Supplie
 const list=ref([]),loading=ref(false),search=ref(""),selected=ref(new Set());
 const drawerOpen=ref(false),drawerSaving=ref(false),editingName=ref("");
 const viewOpen=ref(false),viewDoc=ref(null);
-const lines=ref([]);
 const receiptFile=ref(null);
 function onReceiptChange(e){const f=e.target.files[0];if(f)receiptFile.value=f;e.target.value="";}
 const sortCol=ref("posting_date"),sortDir=ref("desc");
 let _id=1;
-const blankLine=()=>({id:_id++,expense_type:"",description:"",amount:0});
-const employees=ref([]);
-async function fetchEmployees(q=""){try{const r=await apiLinkValues("Employee",q);employees.value=r.map(x=>({label:x.name,value:x.name}));}catch{employees.value=[];}}
-const form=reactive({posting_date:new Date().toISOString().slice(0,10),employee_name:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});
+const vendorOptions          = ref([]);
+const itemOptions            = ref([]);
+const expenseAccountOptions  = ref([]);
+const paidThroughOptions     = ref([]);
+
+async function fetchVendors(q = "") {
+  try {
+    const filters = [["disabled", "=", 0]];
+    if (q) filters.push(["supplier_name", "like", `%${q}%`]);
+    const rows = await apiList("Supplier", { fields: ["name", "supplier_name"], filters, limit: 30, order: "supplier_name asc" });
+    vendorOptions.value = rows.map(r => ({ label: r.supplier_name || r.name, value: r.name }));
+  } catch { vendorOptions.value = []; }
+}
+async function fetchExpenseItems(q = "") {
+  try {
+    const filters = [["disabled", "=", 0]];
+    if (q) filters.push(["item_name", "like", `%${q}%`]);
+    const rows = await apiList("Item", { fields: ["name", "item_name", "description", "standard_rate"], filters, limit: 30, order: "item_name asc" });
+    itemOptions.value = rows.map(r => ({ label: r.item_name || r.name, value: r.item_name || r.name, description: r.description || "", rate: r.standard_rate || 0 }));
+  } catch { itemOptions.value = []; }
+}
+async function fetchExpenseAccounts(q = "") {
+  try {
+    const company = await resolveCompany();
+    const filters = [["is_group","=",0],["disabled","=",0],["company","=",company],["account_type","=","Expense"]];
+    if (q) filters.push(["name","like",`%${q}%`]);
+    const rows = await apiList("Account", { fields:["name"], filters, limit:30, order:"name asc" });
+    expenseAccountOptions.value = rows.map(r => ({ label: r.name, value: r.name }));
+  } catch { expenseAccountOptions.value = []; }
+}
+async function fetchPaidThroughAccounts(q = "") {
+  try {
+    const company = await resolveCompany();
+    const filters = [["is_group","=",0],["disabled","=",0],["company","=",company],["account_type","in",["Bank","Cash"]]];
+    if (q) filters.push(["name","like",`%${q}%`]);
+    const rows = await apiList("Account", { fields:["name","account_type"], filters, limit:30, order:"name asc" });
+    paidThroughOptions.value = rows.map(r => ({ label: r.name, value: r.name }));
+  } catch { paidThroughOptions.value = []; }
+}
+function onExpItemSelect(line, opt) {
+  line.description = opt?.label || opt?.value || "";
+  if (opt?.rate) line.amount = opt.rate;
+}
+const form=reactive({posting_date:new Date().toISOString().slice(0,10),employee_name:"",vendor_display:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:""});
 
 async function load(){
   loading.value=true;
@@ -199,7 +245,7 @@ async function load(){
     const co=await resolveCompany();
     const raw=await apiList("Expense",{
       fields:["name","posting_date","expense_type","description","amount","tax_amount",
-              "total_amount","vendor","status","docstatus"],
+              "total_amount","vendor","status","docstatus","expense_account","paid_through","attach","notes"],
       filters:[["company","=",co]],
       limit:200,
       order:"posting_date desc",
@@ -208,9 +254,16 @@ async function load(){
     list.value=raw.map(e=>({
       ...e,
       // template uses these field names — provide compatibility aliases:
-      employee_name: e.vendor||"",   // show vendor in the "Employee" column
+      employee_name: e.vendor||"",   // resolved below
       total_claimed_amount: e.total_amount||e.amount||0,
     }));
+    // Resolve vendor display names client-side (Expense doctype has no vendor_name column)
+    const missingVendors = [...new Set(list.value.filter(e => e.employee_name && !e._vendor_name).map(e => e.employee_name))];
+    if (missingVendors.length) {
+      const sups = await apiList("Supplier", { fields: ["name","supplier_name"], filters: [["name","in",missingVendors]], limit: missingVendors.length }).catch(()=>[]);
+      const nameMap = Object.fromEntries(sups.map(s => [s.name, s.supplier_name || s.name]));
+      list.value = list.value.map(e => ({ ...e, employee_name: nameMap[e.employee_name] || e.employee_name }));
+    }
   }catch(e){toast.error(e.message||"Failed to load expenses");}
   finally{loading.value=false;}
 }
@@ -230,7 +283,7 @@ function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db
 const allChecked=computed(()=>sorted.value.length>0&&sorted.value.every(e=>selected.value.has(e.name)));
 function toggle(n){const s=new Set(selected.value);s.has(n)?s.delete(n):s.add(n);selected.value=s;}
 function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(x=>x.name)):new Set();}
-function openNew(){editingName.value="";receiptFile.value=null;Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:""});lines.value=[blankLine()];drawerOpen.value=true;}
+function openNew(){editingName.value="";receiptFile.value=null;Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",vendor_display:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:""});drawerOpen.value=true;}
 async function openEdit(e){
   editingName.value=e.name;
   try{
@@ -238,18 +291,14 @@ async function openEdit(e){
     Object.assign(form,{
       posting_date: doc.posting_date||"",
       employee_name: doc.vendor||"",   // template uses "Employee Name" label, we map it to vendor
+      expense_account: doc.expense_account||"",
+      paid_through:    doc.paid_through||"",
       expense_type: doc.expense_type||"",
       total_claimed_amount: flt(doc.total_amount||doc.amount),
       currency: "INR",
       remark: doc.description||doc.notes||"",
     });
     // Expense is FLAT (one row = one expense), so seed a single line for editing
-    lines.value=[{
-      id:_id++,
-      expense_type: doc.expense_type||"",
-      description:  doc.description||"",
-      amount:       flt(doc.amount||doc.total_amount),
-    }];
   }catch{
     Object.assign(form,{
       posting_date:e.posting_date||"",
@@ -259,59 +308,80 @@ async function openEdit(e){
       currency:"INR",
       remark:e.description||"",
     });
-    lines.value=[blankLine()];
   }
   drawerOpen.value=true;
 }
-function openView(e){viewDoc.value=e;viewOpen.value=true;}
-function addLine(){lines.value.push(blankLine());}
-function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
-const lineTotal=computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
+async function openView(e) {
+  viewDoc.value = e;
+  viewOpen.value = true;
+  // Fetch full doc to get expense_account, paid_through, attach, notes
+  try {
+    const full = await apiGet("Expense", e.name);
+    if (full) viewDoc.value = { ...e, ...full, employee_name: e.employee_name || full.vendor || "" };
+  } catch {}
+}
 
 async function saveExpense(submit){
-  // The `Expense` doctype is flat (one row = one expense). If the form has
-  // multiple lines, each gets saved as its own Expense record.
-  const validLines=lines.value.filter(l=>flt(l.amount)>0);
-  if(!validLines.length && !flt(form.total_claimed_amount)){
-    return toast.error("Enter an amount or at least one line");
+  if(!flt(form.total_claimed_amount)){
+    return toast.error("Enter an amount");
   }
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
-    // If the user only filled the header amount (no real lines), treat as single expense
-    const rows=validLines.length?validLines:[{
+    const amt=flt(form.total_claimed_amount);
+    const doc={
+      doctype:"Expense",
+      company,
+      posting_date:form.posting_date||new Date().toISOString().slice(0,10),
       expense_type:form.expense_type||"Miscellaneous",
       description:form.remark||"",
-      amount:flt(form.total_claimed_amount),
-    }];
-    let lastName="";
-    for(const [idx,l] of rows.entries()){
-      const amt=flt(l.amount);
-      const doc={
-        doctype:"Expense",
-        company,
-        posting_date:form.posting_date||new Date().toISOString().slice(0,10),
-        expense_type:l.expense_type||form.expense_type||"Miscellaneous",
-        description:l.description||form.remark||"",
-        amount:amt,
-        tax_amount:0,
-        total_amount:amt,
-        vendor:form.employee_name||"",   // map "Employee Name" UI label → vendor field
-        notes:form.remark||"",
-      };
-      // Only attach the existing name to the FIRST row when editing
-      if(editingName.value && idx===0) doc.name=editingName.value;
-      const saved=await apiSave(doc);
-      lastName=saved?.name||lastName;
-      if(submit && saved?.name) await apiSubmit("Expense",saved.name);
+      amount:amt,
+      tax_amount:0,
+      total_amount:amt,
+      vendor:form.employee_name||"",
+      expense_account: form.expense_account||"",
+      paid_through:    form.paid_through||"",
+      notes:form.remark||"",
+    };
+    if(editingName.value) doc.name=editingName.value;
+    const saved=await apiSave(doc);
+    // Upload attachment to Frappe and save the file URL in the `attach` field
+    if(receiptFile.value && saved?.name){
+      try{
+        const url = await uploadAttachment(receiptFile.value, "Expense", saved.name);
+        if(url){
+          await apiSave({ doctype:"Expense", name:saved.name, attach: url });
+        }
+      }catch(uploadErr){
+        // Non-fatal — expense saved, just warn about the attachment
+        toast.warning("Expense saved but attachment upload failed: " + (uploadErr.message||""));
+      }
     }
-    toast.success(`Expense ${lastName} ${submit?"submitted":"saved"}${rows.length>1?` (+${rows.length-1} more)`:""}`);
+    if(submit && saved?.name) await apiSubmit("Expense",saved.name);
+    toast.success(`Expense ${saved?.name} ${submit?"submitted":"saved"}`);
     drawerOpen.value=false;
     await load();
   }catch(e){toast.error(e.message||"Failed to save expense");}
   finally{drawerSaving.value=false;}
 }
-onMounted(load);
+
+async function uploadAttachment(file, doctype, docname) {
+  const fd = new FormData();
+  fd.append("file", file, file.name);
+  fd.append("doctype", doctype);
+  fd.append("docname", docname);
+  fd.append("fieldname", "attach");
+  fd.append("is_private", "0");
+  const res = await fetch("/api/method/upload_file", {
+    method: "POST",
+    headers: { "X-Frappe-CSRF-Token": window.csrf_token || frappe?.csrf_token || "" },
+    body: fd,
+  });
+  if(!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  const data = await res.json();
+  return data?.message?.file_url || data?.file_url || null;
+}
+onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseAccounts(""); fetchPaidThroughAccounts(""); });
 </script>
 
 <style scoped>
@@ -368,16 +438,6 @@ onMounted(load);
 textarea.exp-input{resize:vertical;}
 .exp-select{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;cursor:pointer;}
 .exp-select:focus{border-color:#2563eb;}
-.exp-section-title{font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px;border-bottom:1px solid #f3f4f6;}
-.exp-items-table{display:flex;flex-direction:column;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;}
-.exp-items-head{display:grid;grid-template-columns:1.5fr 2fr 100px 32px;gap:8px;background:#f9fafb;padding:8px 12px;font-size:11.5px;font-weight:600;color:#374151;}
-.exp-items-row{display:grid;grid-template-columns:1.5fr 2fr 100px 32px;gap:8px;padding:8px 12px;border-top:1px solid #f3f4f6;align-items:center;}
-.exp-add-line{background:transparent;border:none;color:#2563eb;font-size:12.5px;font-weight:600;cursor:pointer;padding:8px 12px;display:inline-flex;align-items:center;gap:6px;}
-.exp-add-line:hover{background:#eff6ff;}
-.exp-rm-line{background:transparent;border:1px solid #e5e7eb;border-radius:4px;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#9ca3af;}
-.exp-rm-line:hover{background:#fee2e2;color:#dc2626;border-color:#fca5a5;}
-.exp-total-row{display:flex;justify-content:space-between;gap:16px;font-size:13px;color:#374151;padding:8px 0;}
-.exp-total-row.grand{font-weight:700;font-size:15px;color:#111827;border-top:2px solid #e5e7eb;padding-top:10px;}
 .exp-view-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;padding:20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:#f0fdf4;}
 .exp-view-num{font-size:18px;font-weight:700;font-family:monospace;color:#111827;}
 .exp-view-sub{font-size:13px;color:#6b7280;margin-top:2px;}
@@ -385,5 +445,7 @@ textarea.exp-input{resize:vertical;}
 .exp-vclose{position:absolute;top:12px;right:12px;}
 .exp-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .exp-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.exp-attach-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:8px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:12.5px;font-weight:600;color:#2563eb;text-decoration:none;max-width:100%;}
+.exp-attach-link:hover{background:#dbeafe;}
 .exp-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
 </style>

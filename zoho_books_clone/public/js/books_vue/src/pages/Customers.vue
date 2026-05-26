@@ -2,6 +2,7 @@
 <div>
   <!-- ── FLAT TABLE VIEW (default) ── -->
   <div v-if="!selectedCustomer" class="b-page cust-page">
+
     <div class="cust-toolbar">
       <div class="cust-toolbar-left">
         <div class="cust-filters">
@@ -20,6 +21,26 @@
         </div>
         <button class="zb-tb-btn" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
         <button class="zb-tb-btn zb-tb-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
+      </div>
+    </div>
+
+    <!-- ── Summary Cards ── -->
+    <div class="kpi-grid" style="margin-bottom:18px">
+      <div v-for="kpi in custKpiCards" :key="kpi.key" class="books-card kpi-card">
+        <div class="kpi-icon" :style="{ background: kpi.iconBg }">
+          <span v-html="kpi.icon"></span>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-label">{{ kpi.label }}</div>
+          <div class="kpi-value" :class="kpi.valueClass">
+            <template v-if="loading">
+              <div class="b-shimmer" style="width:64px;height:20px;margin-top:4px;border-radius:4px"></div>
+            </template>
+            <template v-else>
+              {{ kpi.format === 'currency' ? fmt(kpi.value) : kpi.value }}
+            </template>
+          </div>
+        </div>
       </div>
     </div>
     <div class="b-card cust-table-card">
@@ -1137,6 +1158,37 @@ const counts = computed(() => ({
   disabled: list.value.filter((c) => c.disabled).length,
 }));
 
+const totalOutstanding = computed(() =>
+  list.value.reduce((s, c) => s + (c.outstanding || 0), 0)
+);
+
+const custKpiCards = computed(() => [
+  {
+    key: "total", label: "Total Customers", format: "number",
+    value: counts.value.all,
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    iconBg: "rgba(37,99,235,.1)", valueClass: "kv-blue",
+  },
+  {
+    key: "active", label: "Active", format: "number",
+    value: counts.value.active,
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>`,
+    iconBg: "rgba(22,163,74,.1)", valueClass: "kv-green",
+  },
+  {
+    key: "disabled", label: "Disabled", format: "number",
+    value: counts.value.disabled,
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>`,
+    iconBg: "rgba(220,38,38,.1)", valueClass: "kv-red",
+  },
+  {
+    key: "outstanding", label: "Total Outstanding", format: "currency",
+    value: totalOutstanding.value,
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+    iconBg: "rgba(217,119,6,.1)", valueClass: "kv-amber",
+  },
+]);
+
 const filtered = computed(() => {
   let r = list.value;
   if (activeFilter.value === "active")   r = r.filter((c) => !c.disabled);
@@ -1391,3 +1443,19 @@ watch(activeCustomerTab, (t) => { if (t === "statement" && !stmt.value) loadStat
 
 onMounted(load);
 </script>
+
+<style scoped>
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+@media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+
+.kpi-card  { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+.kpi-icon  { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.kpi-label { font-size: 11px; color: #6b7280; letter-spacing: .06em; text-transform: uppercase; }
+.kpi-value { font-size: 19px; font-weight: 700; margin-top: 3px; letter-spacing: -.02em; color: #111827; }
+
+.kv-blue  { color: #2563eb; }
+.kv-green { color: #16a34a; }
+.kv-red   { color: #dc2626; }
+.kv-amber { color: #d97706; }
+</style>

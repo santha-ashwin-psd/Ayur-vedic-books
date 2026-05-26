@@ -727,7 +727,7 @@ input[type=date].b-input { color-scheme: light; }
 .zb-pc-muted{background:#f3f4f6!important;color:#9ca3af!important;}
 
 /* ══ Search box — list pages ══ */
-.cust-search{display:flex;align-items:center;gap:8px;background:#f3f4f6;border-radius:8px;padding:6px 12px;min-width:200px;border:1px solid transparent;transition:.15s;}
+.cust-search{display:flex;align-items:center;gap:8px;background:#ffffff;border-radius:8px;padding:6px 12px;min-width:200px;border:1px solid transparent;transition:.15s;}
 .cust-search:focus-within{background:#fff;border-color:#2563eb;}
 .cust-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
 

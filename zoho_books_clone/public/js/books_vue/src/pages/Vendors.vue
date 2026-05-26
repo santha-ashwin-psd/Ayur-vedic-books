@@ -22,18 +22,25 @@
       </div>
     </div>
 
-    <SummaryStrip :cards="[
-      { label: 'Total Vendors',     value: listSummary.totalCount },
-      { label: 'Active',            value: listSummary.activeCount,        accent: '#16a34a' },
-      { label: 'With Open Balance', value: listSummary.vendorsWithBalance, accent: '#E67700' },
-      { label: 'Total Payable',     value: fmtCur(listSummary.totalPayable), accent: '#dc2626' },
-    ]" />
-
-    <BulkActionBar :count="selectedRows.size" @clear="clearSelection">
-      <button @click="bulkSetDisabled(true)">Disable</button>
-      <button @click="bulkSetDisabled(false)">Enable</button>
-      <button @click="exportCSV"><span v-html="icon('download',13)"></span> Export CSV</button>
-    </BulkActionBar>
+    <!-- ── Summary Cards ── -->
+    <div class="kpi-grid" style="margin-bottom:18px">
+      <div v-for="kpi in vendorKpiCards" :key="kpi.key" class="books-card kpi-card">
+        <div class="kpi-icon" :style="{ background: kpi.iconBg }">
+          <span v-html="kpi.icon"></span>
+        </div>
+        <div class="kpi-body">
+          <div class="kpi-label">{{ kpi.label }}</div>
+          <div class="kpi-value" :class="kpi.valueClass">
+            <template v-if="loading">
+              <div class="b-shimmer" style="width:64px;height:20px;margin-top:4px;border-radius:4px"></div>
+            </template>
+            <template v-else>
+              {{ kpi.format === 'currency' ? fmtCur(kpi.value) : kpi.value }}
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="b-card cust-table-card">
       <div class="cust-table-wrap">
         <table class="cust-table">
@@ -682,8 +689,7 @@ import {
   EMAIL_REGEX, GSTIN_REGEX, URL_REGEX,
   validateMobile, validatePhone, validatePincode, sanitizePincode, pincodePlaceholder, pincodeHint,
 } from "../composables/useValidation.js";
-import SummaryStrip from "../components/SummaryStrip.vue";
-import BulkActionBar from "../components/BulkActionBar.vue";
+
 
 const { toast } = useToast();
 
@@ -1026,13 +1032,39 @@ function exportCSV() {
   toast(`Exported ${rows.length} vendor(s)`, "success");
 }
 
-// Aggregate summary across all vendors (for the flat-list SummaryStrip)
-const listSummary = computed(() => ({
-  totalCount:  list.value.length,
-  activeCount: list.value.filter(v => !v.disabled).length,
-  totalPayable: Object.values(balancesByVendor.value).reduce((s, x) => s + Number(x || 0), 0),
-  vendorsWithBalance: Object.values(balancesByVendor.value).filter(x => Number(x) > 0).length,
-}));
+const totalPayable = computed(() =>
+  Object.values(balancesByVendor.value).reduce((s, x) => s + Number(x || 0), 0)
+);
+const vendorsWithBalance = computed(() =>
+  Object.values(balancesByVendor.value).filter(x => Number(x) > 0).length
+);
+
+const vendorKpiCards = computed(() => [
+  {
+    key: "total", label: "Total Vendors", format: "number",
+    value: list.value.length,
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    iconBg: "rgba(37,99,235,.1)", valueClass: "kv-blue",
+  },
+  {
+    key: "active", label: "Active", format: "number",
+    value: list.value.filter(v => !v.disabled).length,
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>`,
+    iconBg: "rgba(22,163,74,.1)", valueClass: "kv-green",
+  },
+  {
+    key: "with_balance", label: "With Open Balance", format: "number",
+    value: vendorsWithBalance.value,
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    iconBg: "rgba(217,119,6,.1)", valueClass: "kv-amber",
+  },
+  {
+    key: "total_payable", label: "Total Payable", format: "currency",
+    value: totalPayable.value,
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+    iconBg: "rgba(220,38,38,.1)", valueClass: "kv-red",
+  },
+]);
 
 function vendorInitials(name) {
   return (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
@@ -1063,3 +1095,19 @@ onMounted(async () => {
   loadAllBalances();
 });
 </script>
+
+<style scoped>
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+@media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+
+.kpi-card  { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+.kpi-icon  { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.kpi-label { font-size: 11px; color: #6b7280; letter-spacing: .06em; text-transform: uppercase; }
+.kpi-value { font-size: 19px; font-weight: 700; margin-top: 3px; letter-spacing: -.02em; color: #111827; }
+
+.kv-blue  { color: #2563eb; }
+.kv-green { color: #16a34a; }
+.kv-red   { color: #dc2626; }
+.kv-amber { color: #d97706; }
+</style>

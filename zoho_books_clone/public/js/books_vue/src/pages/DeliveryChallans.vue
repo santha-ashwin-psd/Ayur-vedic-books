@@ -390,7 +390,6 @@ async function load() {
                "status", "grand_total", "docstatus"],
       filters: [
         ["company", "=", company],
-        ["docstatus", "=", 1],
         ["status", "in", ["To Deliver", "Partially Delivered", "Submitted"]],
       ],
       limit: 500,
@@ -613,7 +612,7 @@ async function fetchItems(q = "") {
 
 async function fetchSalesOrders(q = "") {
   try {
-    const f = [["docstatus", "=", 1]];
+    const f = [];
     if (form.customer) f.push(["customer", "=", form.customer]);
     if (q) f.push(["name", "like", "%" + q + "%"]);
     const r = await apiList("Sales Order", {

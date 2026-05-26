@@ -14,12 +14,12 @@
       </div>
     </div>
 
-    <div class="exp-summary" v-if="!loading">
-      <div class="exp-sum-card"><div class="exp-sum-lbl">This Month</div><div class="exp-sum-val">{{ fmtCur(monthTotal) }}</div></div>
-      <div class="exp-sum-card"><div class="exp-sum-lbl">Unpaid</div><div class="exp-sum-val red">{{ fmtCur(unpaidTotal) }}</div></div>
-      <div class="exp-sum-card"><div class="exp-sum-lbl">Draft</div><div class="exp-sum-val orange">{{ counts.draft }}</div></div>
-      <div class="exp-sum-card"><div class="exp-sum-lbl">Total Records</div><div class="exp-sum-val">{{ list.length }}</div></div>
-    </div>
+    <SummaryStrip v-if="!loading" :cards="[
+      { label: 'Total Records', tone: 'accent',                                     value: list.length },
+      { label: 'This Month',    tone: 'default',                                    value: fmtCur(monthTotal) },
+      { label: 'Unpaid',        tone: unpaidTotal>0 ? 'danger' : 'default',         value: fmtCur(unpaidTotal), valueClass: unpaidTotal>0 ? 'red' : '' },
+      { label: 'Draft',         tone: counts.draft>0 ? 'warn' : 'default',          value: counts.draft,        valueClass: counts.draft>0 ? 'orange' : '' },
+    ]" />
 
     <div class="exp-card">
       <table class="exp-table">
@@ -40,7 +40,7 @@
             <tr v-for="n in 8" :key="n"><td colspan="8"><div class="exp-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="e in sorted" :key="e.name" class="exp-row" :class="{selected:selected.has(e.name)}">
+            <tr v-for="e in paged" :key="e.name" class="exp-row" :class="{selected:selected.has(e.name)}">
               <td><input type="checkbox" :checked="selected.has(e.name)" @change="toggle(e.name)" /></td>
               <td @click="openView(e)"><span class="exp-num">{{ e.name }}</span></td>
               <td @click="openView(e)">{{ e.expense_type||'—' }}</td>
@@ -57,6 +57,11 @@
           </template>
         </tbody>
       </table>
+    </div>
+
+    <!-- ── Pagination ── -->
+    <div v-if="!loading && sorted.length" style="padding:12px 4px 4px">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
     </div>
 
     <!-- Drawer -->
@@ -181,6 +186,9 @@ import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
+import Pagination from "../components/Pagination.vue";
+import { usePagination } from "../composables/usePagination.js";
 
 const { toast } = useToast();
 const activeTab=ref("all");
@@ -278,6 +286,7 @@ const counts=computed(()=>({draft:list.value.filter(e=>e.docstatus===0).length})
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 const filtered=computed(()=>{let r=list.value;if(activeTab.value==="draft")r=r.filter(e=>e.docstatus===0);if(activeTab.value==="submitted")r=r.filter(e=>e.docstatus===1&&statusLabel(e)!=="Paid");if(activeTab.value==="paid")r=r.filter(e=>statusLabel(e)==="Paid");if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(x=>(x.name||"").toLowerCase().includes(q)||(x.employee_name||"").toLowerCase().includes(q)||(x.expense_type||"").toLowerCase().includes(q));}return r;});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "expenses" });
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
 function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}
 const allChecked=computed(()=>sorted.value.length>0&&sorted.value.every(e=>selected.value.has(e.name)));
@@ -398,10 +407,7 @@ onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseA
 .exp-btn-ghost:hover{background:#f9fafb;}
 .exp-btn-save{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #16a34a;color:#16a34a;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
 .exp-btn-save:hover{background:#dcfce7;}.exp-btn-save:disabled{opacity:.5;cursor:not-allowed;}
-.exp-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-.exp-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
-.exp-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
-.exp-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
+
 .orange{color:#ea580c!important;}.red{color:#dc2626!important;}
 .exp-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .exp-table{width:100%;border-collapse:collapse;font-size:13px;}

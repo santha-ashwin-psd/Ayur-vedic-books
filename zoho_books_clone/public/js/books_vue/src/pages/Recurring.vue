@@ -519,8 +519,29 @@ async function load() {
       apiGET("zoho_books_clone.api.recurring.get_subscriptions", { limit: 200 }),
       apiGET("zoho_books_clone.api.recurring.get_subscription_stats", {}),
     ]);
-    list.value = Array.isArray(rows) ? rows : (rows?.message ?? []);
-    stats.value = st?.message ?? st ?? stats.value;
+    const allRows = Array.isArray(rows) ? rows : (rows?.message ?? []);
+
+    const filteredRows = allRows.filter(
+      (r) =>
+        r.reference_doctype === "Sales Invoice" ||
+        r.reference_doctype === "Quotation"
+    );
+
+    list.value = filteredRows;
+
+    stats.value = {
+      total: filteredRows.length,
+      active: filteredRows.filter(r => r.ui_status === "Active").length,
+      paused: filteredRows.filter(r => r.ui_status === "Paused").length,
+      completed: filteredRows.filter(r => r.ui_status === "Completed").length,
+      due_today: filteredRows.filter(r => r.is_due).length,
+      overdue: filteredRows.filter(
+        r =>
+          r.ui_status === "Active" &&
+          r.next_schedule_date &&
+          r.next_schedule_date < new Date().toISOString().slice(0, 10)
+      ).length,
+    };
   } catch (e) {
     console.warn("Failed to load subscriptions", e);
     list.value = [];

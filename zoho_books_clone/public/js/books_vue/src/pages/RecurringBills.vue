@@ -14,19 +14,19 @@
       </div>
     </div>
 
-    <div class="rec-summary" v-if="!loading">
-      <div class="rec-sum-card"><div class="rec-sum-lbl">Active</div><div class="rec-sum-val green">{{ counts.active }}</div></div>
-      <div class="rec-sum-card"><div class="rec-sum-lbl">Paused</div><div class="rec-sum-val orange">{{ counts.paused }}</div></div>
-      <div class="rec-sum-card"><div class="rec-sum-lbl">Cancelled</div><div class="rec-sum-val red">{{ counts.cancelled }}</div></div>
-      <div class="rec-sum-card"><div class="rec-sum-lbl">Total</div><div class="rec-sum-val">{{ list.length }}</div></div>
-    </div>
+    <SummaryStrip v-if="!loading" :cards="[
+      { label: 'Total',     tone: 'accent',                                      value: list.length },
+      { label: 'Active',    tone: 'success',                                     value: counts.active,    valueClass: 'green' },
+      { label: 'Paused',    tone: counts.paused>0 ? 'warn' : 'default',          value: counts.paused,    valueClass: counts.paused>0 ? 'orange' : '' },
+      { label: 'Cancelled', tone: counts.cancelled>0 ? 'danger' : 'default',     value: counts.cancelled, valueClass: counts.cancelled>0 ? 'red' : '' },
+    ]" />
 
     <div class="rec-card">
       <table class="rec-table">
         <thead>
           <tr>
             <th @click="sort('name')" class="sortable">Subscription # <span v-html="sortArrow('name')"></span></th>
-            <th @click="sort('reference_document')" class="sortable">Bill Reference <span v-html="sortArrow('reference_document')"></span></th>
+            <th @click="sort('reference_document')" class="sortable">PO Reference <span v-html="sortArrow('reference_document')"></span></th>
             <th @click="sort('frequency')" class="sortable">Frequency <span v-html="sortArrow('frequency')"></span></th>
             <th @click="sort('start_date')" class="sortable">Start Date <span v-html="sortArrow('start_date')"></span></th>
             <th @click="sort('next_schedule_date')" class="sortable">Next Run <span v-html="sortArrow('next_schedule_date')"></span></th>
@@ -39,7 +39,7 @@
             <tr v-for="n in 6" :key="n"><td colspan="7"><div class="rec-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="r in sorted" :key="r.name" class="rec-row" @click="openView(r)">
+            <tr v-for="r in paged" :key="r.name" class="rec-row" @click="openView(r)">
               <td><span class="rec-num">{{ r.name }}</span></td>
               <td><span class="rec-ref">{{ r.reference_document||'—' }}</span></td>
               <td>{{ r.frequency||'—' }}</td>
@@ -56,6 +56,11 @@
       </table>
     </div>
 
+    <!-- ── Pagination ── -->
+    <div v-if="!loading && sorted.length" style="padding:12px 4px 4px">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
+    </div>
+
     <!-- Create Drawer -->
     <div v-if="drawerOpen" class="rec-overlay" @click.self="drawerOpen=false"></div>
     <div class="rec-drawer" :class="{open:drawerOpen}">
@@ -66,8 +71,8 @@
       <div class="rec-dbody">
         <div class="rec-fields-grid">
           <div class="rec-field" style="grid-column:1/-1">
-            <label class="rec-label">Purchase Invoice <span class="req">*</span></label>
-            <SearchableSelect v-model="form.reference_document" :options="refDocs" placeholder="Select purchase invoice…" @search="fetchRefDocs" />
+            <label class="rec-label">Purchase Order <span class="req">*</span></label>
+            <SearchableSelect v-model="form.reference_document" :options="refDocs" placeholder="Select purchase order…" @search="fetchRefDocs" />
           </div>
           <div class="rec-field">
             <label class="rec-label">Frequency <span class="req">*</span></label>
@@ -97,7 +102,7 @@
           </div>
           <div class="rec-field">
             <label class="rec-label">Notify By Email</label>
-            <input v-model="form.notify_by_email" type="email" class="rec-input" placeholder="email@example.com" />
+            <input v-model="form.recipients" type="email" class="rec-input" placeholder="email@example.com" />
           </div>
         </div>
       </div>
@@ -114,7 +119,7 @@
     <div class="rec-drawer rec-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
         <div class="rec-view-head">
-          <div><div class="rec-view-num">{{ viewDoc.name }}</div><div class="rec-view-sub">Purchase Invoice · {{ viewDoc.frequency }}</div></div>
+          <div><div class="rec-view-num">{{ viewDoc.name }}</div><div class="rec-view-sub">Purchase Order · {{ viewDoc.frequency }}</div></div>
           <span class="rec-badge" :class="statusClass(viewDoc.status)">{{ viewDoc.status||'Active' }}</span>
           <button class="rec-dclose rec-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
@@ -125,7 +130,7 @@
             <div><div class="rec-meta-lbl">Start Date</div><div class="mono-sm">{{ fmtDate(viewDoc.start_date) }}</div></div>
             <div><div class="rec-meta-lbl">End Date</div><div class="mono-sm">{{ fmtDate(viewDoc.end_date)||'No end' }}</div></div>
             <div><div class="rec-meta-lbl">Next Run</div><div class="mono-sm" :class="isDue(viewDoc)?'text-accent':''">{{ fmtDate(viewDoc.next_schedule_date)||'—' }}</div></div>
-            <div><div class="rec-meta-lbl">Last Run</div><div class="mono-sm">{{ fmtDate(viewDoc.last_scheduled_date)||'Never' }}</div></div>
+            
           </div>
         </div>
         <div class="rec-dfooter"><button class="rec-btn-ghost" @click="viewOpen=false">Close</button></div>
@@ -141,6 +146,9 @@ import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
+import Pagination from "../components/Pagination.vue";
+import { usePagination } from "../composables/usePagination.js";
 
 const { toast } = useToast();
 const activeTab = ref("all");
@@ -153,17 +161,17 @@ const sortCol = ref("next_schedule_date"), sortDir = ref("asc");
 const form = reactive({
   reference_document: "", frequency: "Monthly",
   start_date: new Date().toISOString().slice(0, 10),
-  end_date: "", submit_on_creation: 1, notify_by_email: "",
+  end_date: "", submit_on_creation: 1, recipients: "",
 });
 
 async function load() {
   loading.value = true;
   try {
     list.value = await apiList("Auto Repeat", {
-      fields: ["name","reference_doctype","reference_document","frequency","start_date","end_date","next_schedule_date","last_scheduled_date","status"],
-      filters: [["reference_doctype","=","Purchase Invoice"]],
-      limit: 200, order: "next_schedule_date asc",
-    });
+      fields: ["name","reference_doctype","reference_document","frequency","start_date","end_date","next_schedule_date","status"],
+      filters: [["reference_doctype","=","Purchase Order"]],
+      limit: 500, order: "next_schedule_date asc",
+    }) || [];
   } catch (e) {
     console.warn("Auto Repeat load failed:", e.message);
     list.value = [];
@@ -197,37 +205,39 @@ const sorted = computed(() => {
     return sortDir.value === "asc" ? c : -c;
   });
 });
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "recurring-bills" });
 
 function sort(col) { if (sortCol.value===col) sortDir.value=sortDir.value==="asc"?"desc":"asc"; else { sortCol.value=col; sortDir.value="asc"; } }
 function sortArrow(col) { if (sortCol.value!==col) return '<span style="color:#d1d5db">⇅</span>'; return sortDir.value==="asc"?"↑":"↓"; }
 
 function openNew() {
-  Object.assign(form, { reference_document:"", frequency:"Monthly", start_date:new Date().toISOString().slice(0,10), end_date:"", submit_on_creation:1, notify_by_email:"" });
+  Object.assign(form, { reference_document:"", frequency:"Monthly", start_date:new Date().toISOString().slice(0,10), end_date:"", submit_on_creation:1, recipients:"" });
   refDocs.value = [];
   drawerOpen.value = true;
+  fetchRefDocs();
 }
 function openView(r) { viewDoc.value = r; viewOpen.value = true; }
 
 async function fetchRefDocs(q = "") {
   try {
-    const r = await apiLinkValues("Purchase Invoice", q, [["docstatus","=",1]]);
+    const r = await apiLinkValues("Purchase Order", q, [["docstatus","in",[0,1]]]);
     refDocs.value = r.map(x => ({ label: x.name, value: x.name }));
   } catch { refDocs.value = []; }
 }
 
 async function saveRec() {
-  if (!form.reference_document) return toast.error("Purchase invoice is required");
+  if (!form.reference_document) return toast.error("Purchase order is required");
   drawerSaving.value = true;
   try {
     const doc = {
       doctype: "Auto Repeat",
-      reference_doctype: "Purchase Invoice",
+      reference_doctype: "Purchase Order",
       reference_document: form.reference_document,
       frequency: form.frequency,
       start_date: form.start_date,
       end_date: form.end_date || null,
       submit_on_creation: form.submit_on_creation,
-      notify_by_email: form.notify_by_email || "",
+      recipients: form.recipients || "",
     };
     const saved = await apiSave(doc);
     toast.success(`Recurring bill ${saved?.name||""} created`);
@@ -252,10 +262,7 @@ onMounted(load);
 .rec-btn-primary:hover{background:#1d4ed8;}.rec-btn-primary:disabled{opacity:.5;cursor:not-allowed;}
 .rec-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;}
 .rec-btn-ghost:hover{background:#f9fafb;}
-.rec-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-.rec-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
-.rec-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
-.rec-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
+
 .green{color:#16a34a!important;}.orange{color:#ea580c!important;}.red{color:#dc2626!important;}
 .rec-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .rec-table{width:100%;border-collapse:collapse;font-size:13px;}

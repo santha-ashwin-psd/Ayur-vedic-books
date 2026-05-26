@@ -14,12 +14,12 @@
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" v-if="!loading">
-    <div class="b-card b-card-body" style="padding:14px 16px" v-for="s in summary" :key="s.label">
-      <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">{{s.label}}</div>
-      <div style="font-size:20px;font-weight:700;font-family:monospace" :style="{color:s.color}">{{s.val}}</div>
-    </div>
-  </div>
+  <SummaryStrip v-if="!loading" :cards="[
+    { label: 'Total',     tone: 'accent',                                       value: list.length },
+    { label: 'Draft',     tone: counts.draft>0 ? 'warn' : 'default',            value: counts.draft,     valueClass: counts.draft>0 ? 'orange' : '' },
+    { label: 'Received',  tone: 'success',                                      value: counts.received,  valueClass: 'green' },
+    { label: 'Cancelled', tone: counts.cancelled>0 ? 'danger' : 'default',      value: counts.cancelled, valueClass: counts.cancelled>0 ? 'red' : '' },
+  ]" />
 
   <div class="b-card" style="padding:0;overflow:hidden">
     <table class="b-table">
@@ -41,7 +41,7 @@
         <tr v-else-if="!sorted.length">
           <td colspan="7" class="b-empty">{{search ? 'No results' : 'No purchase receipts yet'}}</td>
         </tr>
-        <tr v-else v-for="r in sorted" :key="r.name" class="clickable" @click="openView(r)">
+        <tr v-else v-for="r in paged" :key="r.name" class="clickable" @click="openView(r)">
           <td><span class="mono" style="font-size:12px;color:#3B5BDB">{{r.name}}</span></td>
           <td class="fw-600">{{r.supplier_name||r.supplier||'—'}}</td>
           <td class="c-muted" style="font-size:12.5px">{{r.posting_date||'—'}}</td>
@@ -56,6 +56,11 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- ── Pagination ── -->
+  <div v-if="!loading && sorted.length" style="padding:12px 4px 4px">
+    <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
   </div>
 
   <Teleport to="body">
@@ -175,6 +180,9 @@ import { apiList, apiGET, apiSave, apiSubmit, resolveCompany } from "../api/clie
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
+import SummaryStrip from "../components/SummaryStrip.vue";
+import Pagination from "../components/Pagination.vue";
+import { usePagination } from "../composables/usePagination.js";
 
 const { toast } = useToast();
 
@@ -199,12 +207,11 @@ const form = reactive({
   purchase_order: "", set_warehouse: "", remarks: "", items: [],
 });
 
-const summary = computed(() => [
-  { label: "Draft",     val: list.value.filter(r=>r.docstatus===0).length, color:"#E67700" },
-  { label: "Received",  val: list.value.filter(r=>r.docstatus===1).length, color:"#2F9E44" },
-  { label: "Cancelled", val: list.value.filter(r=>r.docstatus===2).length, color:"#868E96" },
-  { label: "Total",     val: list.value.length,                            color:"#111827" },
-]);
+const counts = computed(() => ({
+  draft:     list.value.filter(r => r.docstatus === 0).length,
+  received:  list.value.filter(r => r.docstatus === 1).length,
+  cancelled: list.value.filter(r => r.docstatus === 2).length,
+}));
 
 function statusLabel(r) {
   if (r.docstatus===2) return "Cancelled";
@@ -265,6 +272,7 @@ const filtered = computed(() => {
 const sorted = computed(() => [...filtered.value].sort((a,b) =>
   (b.posting_date||"").localeCompare(a.posting_date||"")
 ));
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "purchase-receipts" });
 
 async function openView(r) {
   viewOpen.value = true;

@@ -25,11 +25,11 @@
     </div>
 
     <!-- ── Summary strip ── -->
-    <SummaryStrip :cards="[
-      { label: 'Total POs', value: list.length },
-      { label: 'To Receive', value: counts.toReceive, accent: '#d97706' },
-      { label: 'To Bill', value: counts.toBill, accent: '#1a6ef7' },
-      { label: 'Procurement Value', value: fmtCur(summary.totalValue), accent: '#059669' },
+    <SummaryStrip v-if="!loading" :cards="[
+      { label: 'Total POs',          tone: 'accent',                                    value: list.length },
+      { label: 'To Receive',         tone: counts.toReceive>0 ? 'warn' : 'default',     value: counts.toReceive,          valueClass: counts.toReceive>0 ? 'orange' : '' },
+      { label: 'To Bill',            tone: counts.toBill>0 ? 'info' : 'default',        value: counts.toBill,             valueClass: counts.toBill>0 ? 'blue' : '' },
+      { label: 'Procurement Value',  tone: 'success',                                   value: fmtCur(summary.totalValue), valueClass: 'green' },
     ]" />
 
     <!-- ── Bulk action bar ── -->
@@ -59,7 +59,7 @@
             <tr v-for="n in 6" :key="n"><td colspan="8"><div class="po-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="o in sorted" :key="o.name" class="po-row" :class="{selected:selected.has(o.name)}">
+            <tr v-for="o in paged" :key="o.name" class="po-row" :class="{selected:selected.has(o.name)}">
               <td><input type="checkbox" :checked="selected.has(o.name)" @change="toggle(o.name)" /></td>
               <td @click="openView(o)"><span class="po-num">{{ o.name }}</span></td>
               <td @click="openView(o)">{{ o.supplier_name || o.supplier || '—' }}</td>
@@ -78,6 +78,11 @@
           </template>
         </tbody>
       </table>
+    </div>
+
+    <!-- ── Pagination ── -->
+    <div v-if="!loading && sorted.length" style="padding:12px 4px 4px">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
     </div>
 
     <!-- ── Create / Edit Drawer ── -->
@@ -339,6 +344,8 @@ import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
+import Pagination from "../components/Pagination.vue";
+import { usePagination } from "../composables/usePagination.js";
 import BulkActionBar from "../components/BulkActionBar.vue";
 import TimelineStepper from "../components/TimelineStepper.vue";
 
@@ -477,6 +484,7 @@ const sorted = computed(() => {
     return sortDir.value === "asc" ? c : -c;
   });
 });
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "purchase-orders" });
 function sortBy(col) { if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc"; else { sortCol.value = col; sortDir.value = "asc"; } }
 function sortArrow(col) { if (sortCol.value !== col) return '<span style="color:#d1d5db">⇅</span>'; return sortDir.value === "asc" ? "↑" : "↓"; }
 

@@ -67,113 +67,195 @@
     <!-- Drawer -->
     <div v-if="drawerOpen" class="exp-overlay" @click.self="drawerOpen=false"></div>
     <div class="exp-drawer" :class="{open:drawerOpen}">
+
+      <!-- Header -->
       <div class="exp-dheader">
-        <div class="exp-dheader-title">{{ editingName?'Edit Expense':'New Expense' }}</div>
-        <button class="exp-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
+        <div class="exp-dheader-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div>
+          <div class="exp-dheader-title">{{ editingName ? 'Edit Expense' : 'New Expense' }}</div>
+          <div class="exp-dheader-sub">{{ editingName ? editingName : 'Fill in the details below' }}</div>
+        </div>
+        <button class="exp-dclose" @click="drawerOpen=false"><span v-html="icon('x',15)"></span></button>
       </div>
+
       <div class="exp-dbody">
-        <div class="exp-fields-grid">
-          <div class="exp-field" style="grid-column:1/-1">
-            <label class="exp-label">Vendor / Supplier <span class="req">*</span></label>
-            <SearchableSelect v-model="form.employee_name" :options="vendorOptions"
-              placeholder="Search supplier…" @search="fetchVendors" @open="fetchVendors('')"
-              @select="opt => { form.employee_name = opt?.value ?? opt; form.vendor_display = opt?.label ?? opt?.value ?? ''; }" />
-          </div>
-          <div class="exp-field">
-            <label class="exp-label">Expense Date <span class="req">*</span></label>
-            <input v-model="form.posting_date" type="date" class="exp-input" />
-          </div>
-          <div class="exp-field">
-            <label class="exp-label">Category</label>
-            <select v-model="form.expense_type" class="exp-select">
-              <option value="">— Select —</option>
-              <option v-for="c in expenseCategories" :key="c" :value="c">{{ c }}</option>
-            </select>
-          </div>
-          <div class="exp-field">
-            <label class="exp-label">Amount <span class="req">*</span></label>
-            <input v-model.number="form.total_claimed_amount" type="number" min="0" step="0.01" class="exp-input" placeholder="0.00" />
-          </div>
-          <!-- <div class="exp-field">
-            <label class="exp-label">Currency</label>
-            <input v-model="form.currency" type="text" class="exp-input" placeholder="INR" />
-          </div> -->
-          <div class="exp-field">
-            <label class="exp-label">Expense Account <span class="req">*</span></label>
-            <SearchableSelect v-model="form.expense_account" :options="expenseAccountOptions"
-              placeholder="Search expense account…"
-              @search="fetchExpenseAccounts" @open="fetchExpenseAccounts('')" />
-          </div>
-          <div class="exp-field">
-            <label class="exp-label">Paid Through <span class="req">*</span></label>
-            <SearchableSelect v-model="form.paid_through" :options="paidThroughOptions"
-              placeholder="Search bank / cash account…"
-              @search="fetchPaidThroughAccounts" @open="fetchPaidThroughAccounts('')" />
-          </div>
-          <div class="exp-field" style="grid-column:1/-1">
-            <label class="exp-label">Description</label>
-            <textarea v-model="form.remark" rows="2" class="exp-input" placeholder="What was this expense for?"></textarea>
+
+        <!-- Section: Vendor & Date -->
+        <div class="exp-section">
+          <div class="exp-section-label">Basic Details</div>
+          <div class="exp-fields-grid">
+            <div class="exp-field" style="grid-column:1/-1">
+              <label class="exp-label">Vendor / Supplier <span class="req">*</span></label>
+              <SearchableSelect v-model="form.employee_name" :options="vendorOptions"
+                placeholder="Search supplier…" @search="fetchVendors" @open="fetchVendors('')"
+                @select="opt => { form.employee_name = opt?.value ?? opt; form.vendor_display = opt?.label ?? opt?.value ?? ''; }" />
+            </div>
+            <div class="exp-field">
+              <label class="exp-label">Expense Date <span class="req">*</span></label>
+              <input v-model="form.posting_date" type="date" class="exp-input" />
+            </div>
+            <div class="exp-field">
+              <label class="exp-label">Category</label>
+              <select v-model="form.expense_type" class="exp-select">
+                <option value="">— Select —</option>
+                <option v-for="c in expenseCategories" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <!-- Receipt upload -->
-        <div class="exp-field" style="margin-top:4px">
-          <label class="exp-label">Attach Receipt</label>
-          <div v-if="receiptFile" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#EBFBEE;border:1px solid #8CE99A;border-radius:8px;font-size:12.5px">
-            <span v-html="icon('check',12)" style="color:#2F9E44"></span>
-            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{receiptFile.name}}</span>
-            <button @click="receiptFile=null" style="background:none;border:none;cursor:pointer;color:#C92A2A;padding:2px" v-html="icon('x',12)"></button>
+        <!-- Section: Amount & Accounts -->
+        <div class="exp-section">
+          <div class="exp-section-label">Payment Details</div>
+          <div class="exp-fields-grid">
+            <div class="exp-field">
+              <label class="exp-label">Amount <span class="req">*</span></label>
+              <div class="exp-amount-wrap">
+                <span class="exp-amount-prefix">₹</span>
+                <input v-model.number="form.total_claimed_amount" type="number" min="0" step="0.01" class="exp-input exp-amount-input" placeholder="0.00" />
+              </div>
+            </div>
+            <div class="exp-field">
+              <label class="exp-label">Expense Account <span class="req">*</span></label>
+              <SearchableSelect v-model="form.expense_account" :options="expenseAccountOptions"
+                placeholder="Search expense account…"
+                @search="fetchExpenseAccounts" @open="fetchExpenseAccounts('')" />
+            </div>
+            <div class="exp-field" style="grid-column:1/-1">
+              <label class="exp-label">Paid Through <span class="req">*</span></label>
+              <SearchableSelect v-model="form.paid_through" :options="paidThroughOptions"
+                placeholder="Search bank / cash account…"
+                @search="fetchPaidThroughAccounts" @open="fetchPaidThroughAccounts('')" />
+            </div>
           </div>
-          <label v-else style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px dashed #BAC8FF;border-radius:8px;cursor:pointer;background:#F8F9FF;font-size:12.5px;color:#4C6EF5">
-            <span v-html="icon('fileplus',13)"></span>
-            Click to attach receipt (image or PDF)
-            <input type="file" accept="image/*,.pdf" style="display:none" @change="onReceiptChange"/>
-          </label>
         </div>
+
+        <!-- Section: Notes & Receipt -->
+        <div class="exp-section">
+          <div class="exp-section-label">Additional Info</div>
+          <div class="exp-field" style="margin-bottom:12px">
+            <label class="exp-label">Description</label>
+            <textarea v-model="form.remark" rows="3" class="exp-input exp-textarea" placeholder="What was this expense for?"></textarea>
+          </div>
+          <div class="exp-field">
+            <label class="exp-label">Attach Receipt</label>
+            <div v-if="receiptFile" class="exp-receipt-attached">
+              <div class="exp-receipt-attached-icon"><span v-html="icon('check',13)"></span></div>
+              <span class="exp-receipt-filename">{{receiptFile.name}}</span>
+              <button @click="receiptFile=null" class="exp-receipt-remove" v-html="icon('x',12)"></button>
+            </div>
+            <label v-else class="exp-receipt-drop">
+              <div class="exp-receipt-drop-icon"><span v-html="icon('fileplus',16)"></span></div>
+              <div>
+                <div class="exp-receipt-drop-text">Click to attach receipt</div>
+                <div class="exp-receipt-drop-hint">Supports image or PDF</div>
+              </div>
+              <input type="file" accept="image/*,.pdf" style="display:none" @change="onReceiptChange"/>
+            </label>
+          </div>
+        </div>
+
       </div>
+
+      <!-- Footer -->
       <div class="exp-dfooter">
         <button class="exp-btn-ghost" @click="drawerOpen=false">Cancel</button>
-        <button class="exp-btn-save" :disabled="drawerSaving" @click="saveExpense(0)"><span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}</button>
-        <button class="exp-btn-primary" :disabled="drawerSaving" @click="saveExpense(1)"><span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}</button>
+        <div style="display:flex;gap:8px">
+          <button class="exp-btn-save" :disabled="drawerSaving" @click="saveExpense(0)">
+            <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
+          </button>
+          <button class="exp-btn-primary" :disabled="drawerSaving" @click="saveExpense(1)">
+            <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Submit' }}
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- View -->
+    <!-- View Drawer -->
     <div v-if="viewOpen" class="exp-overlay" @click.self="viewOpen=false"></div>
     <div class="exp-drawer exp-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
-        <div class="exp-view-head">
-          <div><div class="exp-view-num">{{ viewDoc.name }}</div><div class="exp-view-sub">{{ viewDoc.expense_type||'Expense' }}</div></div>
-          <div style="text-align:right"><div class="exp-view-amount">{{ fmtCur(viewDoc.total_claimed_amount||viewDoc.grand_total) }}</div><span class="exp-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span></div>
-          <button class="exp-dclose exp-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-        </div>
-        <div class="exp-dbody">
-          <div class="exp-meta-grid">
-            <div><div class="exp-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}</div></div>
-            <div><div class="exp-meta-lbl">Vendor / Supplier</div><div>{{ viewDoc.employee_name||viewDoc.vendor||'—' }}</div></div>
-            <div><div class="exp-meta-lbl">Category</div><div>{{ viewDoc.expense_type||'—' }}</div></div>
-            <!-- <div><div class="exp-meta-lbl">Currency</div><div>{{ viewDoc.currency||'INR' }}</div></div> -->
-            <div style="grid-column:1/-1"><div class="exp-meta-lbl">Expense Account</div><div class="mono-sm" style="font-size:12.5px">{{ viewDoc.expense_account||'—' }}</div></div>
-            <div style="grid-column:1/-1"><div class="exp-meta-lbl">Paid Through</div><div class="mono-sm" style="font-size:12.5px">{{ viewDoc.paid_through||'—' }}</div></div>
+
+        <!-- View Header -->
+        <div class="exp-vheader">
+          <button class="exp-vclose-btn" @click="viewOpen=false"><span v-html="icon('x',15)"></span></button>
+          <div class="exp-vheader-top">
+            <div class="exp-vheader-id">{{ viewDoc.name }}</div>
+            <div class="exp-vheader-amount">{{ fmtCur(viewDoc.total_claimed_amount||viewDoc.grand_total) }}</div>
           </div>
-          <div v-if="viewDoc.remark||viewDoc.notes||viewDoc.description" style="margin-top:4px">
-            <div class="exp-meta-lbl">Description / Notes</div>
-            <div style="font-size:13px;color:#374151;margin-top:4px;line-height:1.5">{{ viewDoc.remark||viewDoc.notes||viewDoc.description }}</div>
-          </div>
-          <!-- Attachment -->
-          <div v-if="viewDoc.attach" style="margin-top:4px">
-            <div class="exp-meta-lbl">Receipt</div>
-            <a :href="viewDoc.attach" target="_blank" class="exp-attach-link">
-              <span v-html="icon('paperclip',13)"></span>
-              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ viewDoc.attach.split('/').pop() }}</span>
-              <span v-html="icon('externallink',12)" style="flex-shrink:0;color:#9ca3af"></span>
-            </a>
+          <div class="exp-vheader-bottom">
+            <span class="exp-vheader-cat">{{ viewDoc.expense_type||'Expense' }}</span>
+            <span class="exp-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
           </div>
         </div>
+
+        <!-- View Body -->
+        <div class="exp-vbody">
+
+          <div class="exp-vsection">
+            <div class="exp-vgrid-2">
+              <div class="exp-vmeta">
+                <div class="exp-vmeta-lbl">Date</div>
+                <div class="exp-vmeta-val">{{ fmtDate(viewDoc.posting_date) }}</div>
+              </div>
+              <div class="exp-vmeta">
+                <div class="exp-vmeta-lbl">Vendor / Supplier</div>
+                <div class="exp-vmeta-val">{{ viewDoc.employee_name||viewDoc.vendor||'—' }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="exp-vsection">
+            <div class="exp-vmeta">
+              <div class="exp-vmeta-lbl">Category</div>
+              <div class="exp-vmeta-val">{{ viewDoc.expense_type||'—' }}</div>
+            </div>
+          </div>
+
+          <div class="exp-vsection">
+            <div class="exp-vmeta">
+              <div class="exp-vmeta-lbl">Expense Account</div>
+              <div class="exp-vmeta-val exp-vmeta-mono">{{ viewDoc.expense_account||'—' }}</div>
+            </div>
+          </div>
+
+          <div class="exp-vsection">
+            <div class="exp-vmeta">
+              <div class="exp-vmeta-lbl">Paid Through</div>
+              <div class="exp-vmeta-val exp-vmeta-mono">{{ viewDoc.paid_through||'—' }}</div>
+            </div>
+          </div>
+
+          <div v-if="viewDoc.remark||viewDoc.notes||viewDoc.description" class="exp-vsection">
+            <div class="exp-vmeta">
+              <div class="exp-vmeta-lbl">Description / Notes</div>
+              <div class="exp-vmeta-val exp-vmeta-desc">{{ viewDoc.remark||viewDoc.notes||viewDoc.description }}</div>
+            </div>
+          </div>
+
+          <div v-if="viewDoc.attach" class="exp-vsection">
+            <div class="exp-vmeta">
+              <div class="exp-vmeta-lbl">Receipt</div>
+              <a :href="viewDoc.attach" target="_blank" class="exp-vattach-link">
+                <div class="exp-vattach-icon"><span v-html="icon('paperclip',13)"></span></div>
+                <span class="exp-vattach-name">{{ viewDoc.attach.split('/').pop() }}</span>
+                <span v-html="icon('externallink',11)" style="flex-shrink:0;color:#93c5fd;margin-left:auto"></span>
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- View Footer -->
         <div class="exp-dfooter">
           <button class="exp-btn-ghost" @click="viewOpen=false">Close</button>
-          <button v-if="viewDoc.docstatus===0" class="exp-btn-save" @click="openEdit(viewDoc);viewOpen=false"><span v-html="icon('edit',13)"></span> Edit</button>
+          <button v-if="viewDoc.docstatus===0" class="exp-btn-save" @click="openEdit(viewDoc);viewOpen=false">
+            <span v-html="icon('edit',13)"></span> Edit
+          </button>
         </div>
+
       </template>
     </div>
   </div>
@@ -427,31 +509,285 @@ onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseA
 .exp-empty{text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important;}
 .exp-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.exp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40;}
-.exp-drawer{position:fixed;top:0;right:-520px;bottom:0;width:520px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 24px rgba(0,0,0,.08);z-index:50;display:flex;flex-direction:column;transition:right .22s ease;}
-.exp-drawer.open{right:0;}
-.exp-view-drawer{width:420px;right:-420px;}.exp-view-drawer.open{right:0;}
-.exp-dheader{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;border-bottom:1px solid #e5e7eb;flex-shrink:0;}
-.exp-dheader-title{font-size:15px;font-weight:600;color:#111827;}
-.exp-dclose{background:transparent;border:none;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;}
-.exp-dclose:hover{background:#f3f4f6;color:#111827;}
-.exp-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;}
-.exp-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.exp-field{display:flex;flex-direction:column;gap:4px;}
-.exp-label{font-size:12px;font-weight:600;color:#374151;}.req{color:#dc2626;}
-.exp-input{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
-.exp-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08);}
-textarea.exp-input{resize:vertical;}
-.exp-select{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;cursor:pointer;}
-.exp-select:focus{border-color:#2563eb;}
-.exp-view-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;padding:20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:#f0fdf4;}
-.exp-view-num{font-size:18px;font-weight:700;font-family:monospace;color:#111827;}
-.exp-view-sub{font-size:13px;color:#6b7280;margin-top:2px;}
-.exp-view-amount{font-size:22px;font-weight:800;font-family:monospace;color:#111827;}
-.exp-vclose{position:absolute;top:12px;right:12px;}
-.exp-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.exp-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
-.exp-attach-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:8px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:12.5px;font-weight:600;color:#2563eb;text-decoration:none;max-width:100%;}
-.exp-attach-link:hover{background:#dbeafe;}
-.exp-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
+/* ── Overlay & Drawer shell ── */
+.exp-overlay { position:fixed;inset:0;background:rgba(17,24,39,.35);z-index:40;backdrop-filter:blur(2px); }
+.exp-drawer { position:fixed;top:0;right:-540px;bottom:0;width:540px;background:#fff;box-shadow:-12px 0 40px rgba(0,0,0,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.4,0,.2,1); }
+.exp-drawer.open { right:0; }
+.exp-view-drawer { width:440px;right:-440px; }
+.exp-view-drawer.open { right:0; }
+
+/* ── Drawer Header ── */
+.exp-dheader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  background: linear-gradient(135deg, #1e40af, #2563eb);
+  flex-shrink: 0;
+  position: relative;
+}
+.exp-dheader-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.15);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.exp-dheader-title { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.2; }
+.exp-dheader-sub   { font-size: 12px; color: rgba(255,255,255,.7); margin-top: 2px; }
+.exp-dclose {
+  margin-left: auto;
+  background: rgba(255,255,255,.15);
+  border: none; cursor: pointer;
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.exp-dclose:hover { background: rgba(255,255,255,.28); }
+
+/* ── Drawer Body ── */
+.exp-dbody { flex:1; overflow-y:auto; padding:0; display:flex; flex-direction:column; background:#f8fafc; }
+
+/* ── Sections ── */
+.exp-section {
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 18px 22px;
+}
+.exp-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 14px;
+}
+
+/* ── Fields ── */
+.exp-fields-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.exp-field { display:flex; flex-direction:column; gap:5px; }
+.exp-label { font-size:12px; font-weight:600; color:#374151; }
+.req { color:#dc2626; }
+
+.exp-input {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 11px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+  color: #111827;
+  transition: border-color .15s, box-shadow .15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.exp-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+.exp-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+.exp-select {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 11px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+  color: #111827;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+.exp-select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+
+/* Amount field with prefix */
+.exp-amount-wrap { position: relative; display: flex; align-items: center; }
+.exp-amount-prefix {
+  position: absolute; left: 11px;
+  font-size: 13px; font-weight: 600; color: #6b7280;
+  pointer-events: none;
+}
+.exp-amount-input { padding-left: 24px !important; font-weight: 600; font-size: 14px !important; }
+
+/* ── Receipt Upload ── */
+.exp-receipt-drop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 2px dashed #bfdbfe;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #f0f7ff;
+  transition: border-color .15s, background .15s;
+}
+.exp-receipt-drop:hover { border-color: #2563eb; background: #eff6ff; }
+.exp-receipt-drop-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: #dbeafe;
+  display: flex; align-items: center; justify-content: center;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+.exp-receipt-drop-text { font-size: 13px; font-weight: 600; color: #1d4ed8; }
+.exp-receipt-drop-hint { font-size: 11.5px; color: #93c5fd; margin-top: 1px; }
+
+.exp-receipt-attached {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 10px; font-size: 12.5px;
+}
+.exp-receipt-attached-icon {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #dcfce7;
+  display: flex; align-items: center; justify-content: center;
+  color: #16a34a; flex-shrink: 0;
+}
+.exp-receipt-filename { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #15803d; font-weight: 500; }
+.exp-receipt-remove { background: none; border: none; cursor: pointer; color: #dc2626; padding: 2px; display: flex; align-items: center; border-radius: 4px; }
+.exp-receipt-remove:hover { background: #fef2f2; }
+
+/* ── View Drawer Header ── */
+.exp-vheader {
+  position: relative;
+  padding: 20px 22px 18px;
+  background: linear-gradient(135deg, #064e3b, #065f46);
+  flex-shrink: 0;
+}
+.exp-vclose-btn {
+  position: absolute;
+  top: 14px; right: 14px;
+  background: rgba(255,255,255,.15);
+  border: none; cursor: pointer;
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px;
+  transition: background .15s;
+}
+.exp-vclose-btn:hover { background: rgba(255,255,255,.28); }
+.exp-vheader-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-right: 36px;
+}
+.exp-vheader-id {
+  font-size: 17px;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #fff;
+  letter-spacing: -.01em;
+}
+.exp-vheader-amount {
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #fff;
+  letter-spacing: -.02em;
+}
+.exp-vheader-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.exp-vheader-cat {
+  font-size: 12.5px;
+  color: rgba(255,255,255,.7);
+}
+
+/* ── View Body ── */
+.exp-vbody {
+  flex: 1;
+  overflow-y: auto;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+.exp-vsection {
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 14px 22px;
+}
+.exp-vgrid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.exp-vmeta { display: flex; flex-direction: column; gap: 4px; }
+.exp-vmeta-lbl {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.exp-vmeta-val {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #111827;
+  line-height: 1.4;
+}
+.exp-vmeta-mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12.5px;
+  color: #374151;
+}
+.exp-vmeta-desc {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+/* Receipt link in view */
+.exp-vattach-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  text-decoration: none;
+  max-width: 100%;
+  transition: background .15s;
+}
+.exp-vattach-link:hover { background: #dbeafe; }
+.exp-vattach-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: #dbeafe;
+  display: flex; align-items: center; justify-content: center;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+.exp-vattach-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1d4ed8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* ── Footer ── */
+.exp-dfooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+  flex-shrink: 0;
+}
 </style>

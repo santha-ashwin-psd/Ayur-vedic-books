@@ -835,9 +835,17 @@ onMounted(() => { load(); loadTaxAccount(); });
 .po-drawer.open { right: 0; }
 .po-view-drawer { width: 540px; right: -540px; }
 .po-view-drawer.open { right: 0; }
-.po-dheader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 60px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
-.po-dheader-title { font-size: 15px; font-weight: 600; color: #111827; }
-.po-dclose { background: transparent; border: none; cursor: pointer; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; }
+.po-dheader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 60px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;background: linear-gradient(135deg,#1e3a5f,#1a6ef7); color: #fff; }
+.po-dheader-title { font-size: 15px; font-weight: 600; color: #ffffff; }
+.po-dclose { background: #ffffff26;
+    border: none;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    color: #fff;
+    display: grid;
+    place-items: center;}
 .po-dclose:hover { background: #f3f4f6; color: #111827; }
 .po-dbody { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .po-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

@@ -41,48 +41,87 @@
         </div>
       </div>
     </div>
-    <div class="b-card cust-table-card">
-      <div class="cust-table-wrap">
-        <table class="cust-table">
-          <thead><tr>
-            <th style="width:32px"><input type="checkbox" :checked="filtered.length>0 && filtered.every(v=>selectedRows.has(v.name))" @change="e=>e.target.checked ? selectedRows=new Set(filtered.map(v=>v.name)) : clearSelection()" /></th>
-            <th>Vendor</th><th>Type</th><th>Outstanding</th><th>GSTIN</th><th>Email</th>
-            <th>Mobile</th><th>City / State</th><th>Status</th>
-            <th style="text-align:center;width:100px">Actions</th>
-          </tr></thead>
+    <div class="vt-table-card">
+      <div class="vt-table-wrap">
+        <table class="vt-table">
+          <thead>
+            <tr>
+              <th class="vt-th vt-th-check">
+                <input type="checkbox" class="vt-checkbox" :checked="filtered.length>0 && filtered.every(v=>selectedRows.has(v.name))" @change="e=>e.target.checked ? selectedRows=new Set(filtered.map(v=>v.name)) : clearSelection()" />
+              </th>
+              <th class="vt-th">Vendor Name</th>
+              <th class="vt-th">Type</th>
+              <!-- <th class="vt-th vt-th-num">Outstanding</th> -->
+              <th class="vt-th">GSTIN</th>
+              <!-- <th class="vt-th">Email</th> -->
+              <th class="vt-th">Mobile</th>
+              <th class="vt-th">City / State</th>
+              <th class="vt-th">Status</th>
+              <th class="vt-th vt-th-actions">Actions</th>
+            </tr>
+          </thead>
           <tbody>
             <template v-if="loading">
-              <tr v-for="n in 6" :key="n"><td colspan="10" style="padding:12px 14px"><div class="b-shimmer" style="height:13px;border-radius:4px;width:70%"></div></td></tr>
+              <tr v-for="n in 6" :key="n" class="vt-row-shimmer">
+                <td colspan="10"><div class="b-shimmer" style="height:12px;border-radius:3px;width:65%"></div></td>
+              </tr>
             </template>
             <tr v-else-if="!filtered.length">
-              <td colspan="10" class="cust-empty">
-                <div class="cust-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-                <div class="cust-empty-title">{{search ? 'No results found' : 'No vendors yet'}}</div>
-                <div class="cust-empty-sub">{{search ? 'Try a different search term' : 'Add your first vendor to get started'}}</div>
-                <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:12px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
+              <td colspan="10" class="vt-empty">
+                <div class="vt-empty-icon">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <div class="vt-empty-title">{{search ? 'No results found' : 'No vendors yet'}}</div>
+                <div class="vt-empty-sub">{{search ? 'Try adjusting your search or filter' : 'Add your first vendor to get started'}}</div>
+                <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
               </td>
             </tr>
-            <tr v-else v-for="v in filtered" :key="v.name" class="cust-row" :class="v.disabled?'cust-row-disabled':''" @click="selectVendor(v)">
-              <td @click.stop><input type="checkbox" :checked="selectedRows.has(v.name)" @change="toggleRow(v.name)" /></td>
-              <td><div class="cust-name">{{v.supplier_name||v.name}}</div><div class="cust-id">{{v.name}}</div></td>
-              <td><span class="b-badge" :class="v.supplier_type==='Company'?'b-badge-blue':'b-badge-muted'">{{v.supplier_type||'—'}}</span></td>
-              <td class="cust-mono" :style="balancesByVendor[v.name]>0?'color:#E67700;font-weight:600':'color:#9CA3AF'">{{ balancesByVendor[v.name]>0 ? fmtCur(balancesByVendor[v.name]) : '—' }}</td>
-              <td class="cust-mono">{{v.tax_id||'—'}}</td>
-              <td class="cust-secondary">{{v.email_id||'—'}}</td>
-              <td class="cust-secondary">{{v.mobile_no||'—'}}</td>
-              <td class="cust-secondary">{{v.city ? (v.city + (v.state ? ', '+v.state : '')) : '—'}}</td>
-              <td><span class="b-badge" :class="v.disabled?'b-badge-red':'b-badge-green'">{{v.disabled?'Disabled':'Active'}}</span></td>
-              <td @click.stop style="text-align:center">
-                <div style="display:flex;gap:4px;justify-content:center">
-                  <button class="cust-act-btn cust-act-edit" @click="openEdit(v.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                  <button class="cust-act-btn cust-act-del" @click="confirmDelete(v)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+            <tr v-else v-for="v in filtered" :key="v.name"
+              class="vt-row"
+              :class="[v.disabled ? 'vt-row-disabled' : '', selectedRows.has(v.name) ? 'vt-row-selected' : '']"
+              @click="selectVendor(v)">
+              <td class="vt-td vt-td-check" @click.stop>
+                <input type="checkbox" class="vt-checkbox" :checked="selectedRows.has(v.name)" @change="toggleRow(v.name)" />
+              </td>
+              <td class="vt-td vt-td-vendor">
+                <div class="vt-vendor-cell">
+                  <div class="vt-avatar" :class="v.disabled ? 'vt-avatar-disabled' : ''">{{vendorInitials(v.supplier_name)}}</div>
+                  <div>
+                    <div class="vt-vendor-name">{{v.supplier_name||v.name}}</div>
+                    <div class="vt-vendor-id">{{v.name}}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="vt-td">
+                <span class="vt-badge" :class="v.supplier_type==='Company' ? 'vt-badge-blue' : 'vt-badge-gray'">{{v.supplier_type||'—'}}</span>
+              </td>
+              <!-- <td class="vt-td vt-td-num">
+                <span :class="balancesByVendor[v.name]>0 ? 'vt-amount-due' : 'vt-amount-nil'">
+                  {{ balancesByVendor[v.name]>0 ? fmtCur(balancesByVendor[v.name]) : '—' }}
+                </span>
+              </td> -->
+              <td class="vt-td vt-td-mono">{{v.tax_id||'—'}}</td>
+              <!-- <td class="vt-td vt-td-secondary">{{v.email_id||'—'}}</td> -->
+              <td class="vt-td vt-td-secondary">{{v.mobile_no||'—'}}</td>
+              <td class="vt-td vt-td-secondary">{{v.city ? (v.city + (v.state ? ', '+v.state : '')) : '—'}}</td>
+              <td class="vt-td">
+                <span class="vt-badge" :class="v.disabled ? 'vt-badge-red' : 'vt-badge-green'">
+                  <span class="vt-badge-dot"></span>{{v.disabled ? 'Disabled' : 'Active'}}
+                </span>
+              </td>
+              <td class="vt-td vt-td-actions" @click.stop>
+                <div class="vt-actions">
+                  <button class="vt-act-btn vt-act-edit" @click="openEdit(v.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                  <button class="vt-act-btn vt-act-del" @click="confirmDelete(v)" title="Delete"><span v-html="icon('trash',13)"></span></button>
                 </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-      <div v-if="!loading && filtered.length" class="cust-row-count">Showing {{filtered.length}} of {{list.length}} vendors</div>
+      <div v-if="!loading && filtered.length" class="vt-footer">
+        <span>Showing <strong>{{filtered.length}}</strong> of <strong>{{list.length}}</strong> vendors</span>
+      </div>
     </div>
   </div>
 
@@ -1097,6 +1136,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* ── KPI Cards (unchanged) ─────────────────────────────── */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px)  { .kpi-grid { grid-template-columns: 1fr 1fr; } }
@@ -1105,9 +1145,197 @@ onMounted(async () => {
 .kpi-icon  { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .kpi-label { font-size: 11px; color: #6b7280; letter-spacing: .06em; text-transform: uppercase; }
 .kpi-value { font-size: 19px; font-weight: 700; margin-top: 3px; letter-spacing: -.02em; color: #111827; }
-
 .kv-blue  { color: #2563eb; }
 .kv-green { color: #16a34a; }
 .kv-red   { color: #dc2626; }
 .kv-amber { color: #d97706; }
+
+/* ── Vendor Table ───────────────────────────────────────── */
+.vt-table-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.vt-table-wrap {
+  overflow-x: auto;
+}
+
+.vt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Header */
+.vt-th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  user-select: none;
+}
+.vt-th-check  { width: 36px; padding-left: 16px; }
+.vt-th-num    { text-align: right; }
+.vt-th-actions{ text-align: center; width: 88px; }
+
+/* Rows */
+.vt-row {
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.vt-row:last-child { border-bottom: none; }
+.vt-row:hover { background: #fafafa; }
+.vt-row:hover .vt-actions { opacity: 1; }
+.vt-row-selected { background: #fff7ed !important; }
+.vt-row-disabled { opacity: 0.55; }
+
+.vt-row-shimmer td {
+  padding: 13px 14px;
+}
+
+/* Cells */
+.vt-td {
+  padding: 11px 14px;
+  vertical-align: middle;
+  color: #374151;
+  white-space: nowrap;
+}
+.vt-td-check  { padding-left: 16px; width: 36px; }
+.vt-td-num    { text-align: right; }
+.vt-td-mono   { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
+.vt-td-secondary { color: #6b7280; font-size: 12.5px; }
+.vt-td-actions { text-align: center; width: 88px; }
+
+/* Checkbox */
+.vt-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #E67700;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+/* Vendor name cell */
+.vt-vendor-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vt-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #E67700, #C96200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.03em;
+}
+.vt-avatar-disabled { background: #d1d5db; }
+.vt-vendor-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.3;
+}
+.vt-vendor-id {
+  font-size: 11.5px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+/* Amounts */
+.vt-amount-due { font-weight: 600; color: #E67700; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12.5px; }
+.vt-amount-nil { color: #d1d5db; }
+
+/* Badges */
+.vt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.vt-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.vt-badge-green             { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.vt-badge-green .vt-badge-dot { background: #22c55e; }
+.vt-badge-red               { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.vt-badge-red   .vt-badge-dot { background: #ef4444; }
+.vt-badge-blue  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.vt-badge-gray  { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+
+/* Action buttons — visible only on row hover */
+.vt-actions {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.vt-act-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  color: #6b7280;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.vt-act-edit:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.vt-act-del:hover  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+/* Empty state */
+.vt-empty {
+  padding: 52px 24px;
+  text-align: center;
+}
+.vt-empty-icon {
+  margin: 0 auto 14px;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vt-empty-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+.vt-empty-sub   { font-size: 13px; color: #9ca3af; }
+
+/* Footer */
+.vt-footer {
+  padding: 9px 16px;
+  border-top: 1px solid #f3f4f6;
+  font-size: 12px;
+  color: #9ca3af;
+  background: #fafafa;
+}
+.vt-footer strong { color: #6b7280; font-weight: 600; }
 </style>

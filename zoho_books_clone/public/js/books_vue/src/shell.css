@@ -250,7 +250,7 @@
 
 .bv-topbar {
   height: var(--bv-topbar-h);
-  background: var(--bv-surface);
+  background: #f7f7fe;
   border-bottom: 1px solid var(--bv-border);
   display: flex;
   align-items: center;

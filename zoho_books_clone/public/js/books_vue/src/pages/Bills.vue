@@ -779,9 +779,17 @@ onMounted(() => { load(); loadTaxAccount(); });
 .bill-drawer.open { right: 0; }
 .bill-view-drawer { width: 540px; right: -540px; }
 .bill-view-drawer.open { right: 0; }
-.bill-dheader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 60px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
-.bill-dheader-title { font-size: 15px; font-weight: 600; color: #111827; }
-.bill-dclose { background: transparent; border: none; cursor: pointer; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; }
+.bill-dheader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 60px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;background:linear-gradient(135deg,#1e3a5f,#1a6ef7); }
+.bill-dheader-title { font-size: 15px; font-weight: 600; color: #ffffff; }
+.bill-dclose { background: #ffffff26;
+    border: none;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    color: #fff;
+    display: grid;
+    place-items: center;}
 .bill-dclose:hover { background: #f3f4f6; color: #111827; }
 .bill-dbody { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .bill-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

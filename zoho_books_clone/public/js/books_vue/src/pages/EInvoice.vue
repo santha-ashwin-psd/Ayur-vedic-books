@@ -100,14 +100,14 @@ onMounted(load);
 <style scoped>
 .ei-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
 .ei-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.ei-search-wrap{display:flex;align-items:center;gap:8px;background:#f3f4f6;border-radius:8px;padding:6px 12px;min-width:220px;}
+.ei-search-wrap{display:flex;align-items:center;gap:8px;background:#ffffff;border-radius:8px;padding:6px 12px;min-width:220px;}
 .ei-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
 .ei-tab-pills{display:flex;gap:4px;background:#f3f4f6;border-radius:8px;padding:3px;}
 .ei-pill{border:none;background:transparent;border-radius:6px;padding:5px 12px;font-size:12.5px;font-weight:600;color:#6b7280;cursor:pointer;}
 .ei-pill.active{background:#fff;color:#2563eb;box-shadow:0 1px 3px rgba(0,0,0,.08);}
 .ei-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
 .ei-btn-primary:hover{background:#1d4ed8;}
-.ei-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;}
+.ei-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;}
 .ei-btn-ghost:hover{background:#f9fafb;}
 .ei-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
 .ei-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}

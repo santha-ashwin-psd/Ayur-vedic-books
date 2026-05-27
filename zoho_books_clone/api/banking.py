@@ -436,11 +436,11 @@ def reconcile_transactions(bank_account: str, transaction_names: str, clearance_
     ok = 0; fail = 0
     for name in names:
         try:
-            doc = frappe.get_doc("Bank Transaction", name)
-            if doc.docstatus == 1 and doc.status != "Reconciled":
-                doc.status = "Reconciled"
-                doc.clearance_date = date
-                doc.save(ignore_permissions=True)
+            row = frappe.db.get_value("Bank Transaction", name, ["docstatus", "status"], as_dict=True)
+            if row and row.docstatus == 1 and row.status != "Reconciled":
+                frappe.db.set_value("Bank Transaction", name,
+                                    "status", "Reconciled",
+                                    update_modified=False)
                 ok += 1
         except Exception:
             fail += 1
@@ -457,14 +457,17 @@ def mark_transaction_reconciled(bank_transaction: str, clearance_date: str = Non
     Mark a single Bank Transaction as Reconciled.
     """
     date = clearance_date or today()
-    doc = frappe.get_doc("Bank Transaction", bank_transaction)
-    if doc.docstatus != 1:
+    row = frappe.db.get_value("Bank Transaction", bank_transaction,
+                              ["docstatus", "bank_account"], as_dict=True)
+    if not row:
+        frappe.throw(_("Transaction {0} not found.").format(bank_transaction))
+    if row.docstatus != 1:
         frappe.throw(_("Transaction {0} is not submitted.").format(bank_transaction))
-    doc.status = "Reconciled"
-    doc.clearance_date = date
-    doc.save(ignore_permissions=True)
+    frappe.db.set_value("Bank Transaction", bank_transaction,
+                        "status", "Reconciled",
+                        update_modified=False)
     frappe.db.commit()
-    live = _recalc_balance(doc.bank_account)
+    live = _recalc_balance(row.bank_account)
     return {"bank_transaction": bank_transaction, "status": "Reconciled", "current_balance": live}
 
 

@@ -3047,6 +3047,11 @@ def create_delivery_note_from_so(sales_order, line_qtys=None, lr_no="", transpor
         else:
             q = remaining
         if q <= 0: continue
+        # SO Item child rows use autoincrement names — coerce robustly.
+        try:
+            so_item_id = int(it.name)
+        except (TypeError, ValueError):
+            so_item_id = 0
         dn_items.append({
             "doctype": "Delivery Note Item",
             "item_code":   it.item_code,
@@ -3056,7 +3061,7 @@ def create_delivery_note_from_so(sales_order, line_qtys=None, lr_no="", transpor
             "uom":         getattr(it, "uom", "") or "Nos",
             "rate":        flt(it.rate),
             "amount":      flt(it.rate) * q,
-            "so_item":     int(it.name) if str(it.name).isdigit() else 0,
+            "so_item":     so_item_id,
         })
     if not dn_items:
         frappe.throw("Nothing left to deliver on this Sales Order")

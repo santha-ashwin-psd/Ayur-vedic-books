@@ -24,17 +24,53 @@ class DeliveryNote(Document):
         self.db_set("status", "Cancelled", update_modified=False)
 
     def _adjust_so_delivered(self, direction: int):
-        """Bump (direction=+1) or decrement (-1) delivered_qty on linked SO rows."""
+        """Bump (direction=+1) or decrement (-1) delivered_qty on linked SO rows.
+
+        When `so_item` is explicitly set on a DN line, we use it directly.
+        Otherwise (manual DN creation against an SO), we fall back to matching
+        SO Item rows by `item_code` in order — first row first — so quantities
+        still flow back to the parent SO.
+        """
         if not self.sales_order:
             return
-        for row in self.items:
-            if not row.so_item:
-                continue
-            cur = flt(frappe.db.get_value("Sales Order Item", row.so_item, "delivered_qty"))
-            new_qty = max(0.0, cur + direction * flt(row.qty))
-            frappe.db.set_value("Sales Order Item", row.so_item, "delivered_qty",
+
+        # Build a working pool of SO Item rows by item_code so we can match
+        # DN lines that have no explicit `so_item` linkage.
+        so_items = frappe.db.sql("""
+            SELECT name, item_code, qty, delivered_qty
+            FROM `tabSales Order Item` WHERE parent=%s ORDER BY idx
+        """, (self.sales_order,), as_dict=True)
+        by_code = {}
+        for r in so_items:
+            by_code.setdefault(r.item_code, []).append(r)
+
+        def _bump(so_item_id, dn_qty):
+            cur = flt(frappe.db.get_value("Sales Order Item", so_item_id, "delivered_qty"))
+            new_qty = max(0.0, cur + direction * flt(dn_qty))
+            frappe.db.set_value("Sales Order Item", so_item_id, "delivered_qty",
                                 new_qty, update_modified=False)
-        # Optional: refresh SO status from fulfillment
+
+        for row in self.items:
+            if row.so_item:
+                _bump(row.so_item, row.qty)
+                continue
+            # Fallback: greedy match by item_code against remaining capacity.
+            pool = by_code.get(row.item_code) or []
+            remaining = flt(row.qty)
+            for so_row in pool:
+                if remaining <= 0:
+                    break
+                available = max(0.0, flt(so_row.qty) - flt(so_row.delivered_qty))
+                if available <= 0 and direction > 0:
+                    continue
+                take = min(available, remaining) if direction > 0 else min(flt(so_row.delivered_qty), remaining)
+                if take <= 0:
+                    continue
+                _bump(so_row.name, take)
+                so_row.delivered_qty = flt(so_row.delivered_qty) + direction * take
+                remaining -= take
+
+        # Refresh SO status from fulfillment
         try:
             from zoho_books_clone.api.docs import _so_status_from_fulfillment
             new_status = _so_status_from_fulfillment(self.sales_order)

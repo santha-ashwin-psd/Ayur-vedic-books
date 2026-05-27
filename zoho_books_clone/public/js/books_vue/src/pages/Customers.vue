@@ -19,6 +19,7 @@
           <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
           <input v-model="search" placeholder="Search customers…" class="cust-search-input" autocomplete="off"/>
         </div>
+        <button class="zb-tb-btn" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
         <button class="zb-tb-btn" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
         <button class="zb-tb-btn zb-tb-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
       </div>
@@ -43,11 +44,31 @@
         </div>
       </div>
     </div>
+
+    <!-- Bulk action bar -->
+    <div v-if="selectedRows.size" class="inv-bulk-bar" style="margin: 0 24px 12px">
+      <span class="inv-bulk-count">{{ selectedRows.size }} selected</span>
+      <button class="inv-bulk-btn" @click="bulkSetDisabled(false)" :disabled="bulkBusy">Enable</button>
+      <button class="inv-bulk-btn inv-bulk-danger" @click="bulkSetDisabled(true)" :disabled="bulkBusy">Disable</button>
+      <button class="inv-bulk-btn" @click="exportCSV" :disabled="bulkBusy">
+        <span v-html="icon('download',13)"></span> Export CSV
+      </button>
+      <button class="inv-bulk-btn" @click="bulkEmail" :disabled="bulkBusy">
+        <span v-html="icon('mail',13)"></span> Send Email
+      </button>
+      <button class="inv-bulk-clear" @click="clearSelection">✕ Clear</button>
+    </div>
+
     <div class="vt-table-card">
       <div class="vt-table-wrap">
         <table class="vt-table">
           <thead>
             <tr>
+              <th class="vt-th vt-th-check">
+                <input type="checkbox" class="vt-checkbox"
+                  :checked="filtered.length>0 && filtered.every(c=>selectedRows.has(c.name))"
+                  @change="e=>e.target.checked ? selectedRows=new Set(filtered.map(c=>c.name)) : clearSelection()" />
+              </th>
               <th class="vt-th">Customer Name</th>
               <th class="vt-th">Type</th>
               <th class="vt-th">GSTIN</th>
@@ -60,11 +81,11 @@
           <tbody>
             <template v-if="loading">
               <tr v-for="n in 6" :key="n" class="vt-row-shimmer">
-                <td colspan="8"><div class="b-shimmer" style="height:12px;border-radius:3px;width:65%"></div></td>
+                <td colspan="9"><div class="b-shimmer" style="height:12px;border-radius:3px;width:65%"></div></td>
               </tr>
             </template>
             <tr v-else-if="!filtered.length">
-              <td colspan="8" class="vt-empty">
+              <td colspan="9" class="vt-empty">
                 <div class="vt-empty-icon">
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
@@ -75,8 +96,11 @@
             </tr>
             <tr v-else v-for="c in filtered" :key="c.name"
               class="vt-row"
-              :class="c.disabled ? 'vt-row-disabled' : ''"
+              :class="[c.disabled ? 'vt-row-disabled' : '', selectedRows.has(c.name) ? 'vt-row-selected' : '']"
               @click="selectCustomer(c)">
+              <td class="vt-td vt-td-check" @click.stop>
+                <input type="checkbox" class="vt-checkbox" :checked="selectedRows.has(c.name)" @change="toggleRow(c.name)" />
+              </td>
               <td class="vt-td vt-td-customer">
                 <div class="vt-vendor-cell">
                   <div class="vt-avatar" :class="c.disabled ? 'vt-avatar-disabled' : ''">{{custInitials(c.customer_name)}}</div>
@@ -968,6 +992,15 @@ const PLACE_OF_SUPPLY = [
 const list = ref([]);
 const loading = ref(true);
 const search = ref("");
+const selectedRows = ref(new Set());
+const bulkBusy = ref(false);
+
+function toggleRow(name) {
+  const s = new Set(selectedRows.value);
+  s.has(name) ? s.delete(name) : s.add(name);
+  selectedRows.value = s;
+}
+function clearSelection() { selectedRows.value = new Set(); }
 const activeFilter = ref("all");
 const showDrawer = ref(false);
 const drawerMode = ref("add");
@@ -1468,6 +1501,59 @@ async function sendStatement() {
 }
 
 watch(activeCustomerTab, (t) => { if (t === "statement" && !stmt.value) loadStatement(); });
+
+// ── Bulk actions ────────────────────────────────────────────────────────────
+async function bulkSetDisabled(disable) {
+  const names = [...selectedRows.value];
+  if (!names.length) { toast("No customers selected", "info"); return; }
+  bulkBusy.value = true;
+  try {
+    const { apiPOST } = await import("../api/client.js");
+    await apiPOST("zoho_books_clone.api.docs.bulk_set_customer_disabled", {
+      customer_names: JSON.stringify(names),
+      disabled: disable ? 1 : 0,
+    });
+    toast(`${disable ? "Disabled" : "Enabled"} ${names.length} customer(s)`, "success");
+    clearSelection();
+    await load();
+  } catch (e) { toast(e.message || "Bulk update failed", "error"); }
+  finally { bulkBusy.value = false; }
+}
+
+function exportCSV() {
+  const rows = selectedRows.value.size
+    ? filtered.value.filter(c => selectedRows.value.has(c.name))
+    : filtered.value;
+  if (!rows.length) { toast("Nothing to export", "info"); return; }
+  const headers = ["Customer","Name","Type","GSTIN","Email","Mobile","City","State","Status"];
+  const data = rows.map(c => [
+    c.name, c.customer_name || "", c.customer_type || "",
+    c.tax_id || "", c.email_id || "", c.mobile_no || "",
+    c.city || "", c.state || "",
+    c.disabled ? "Disabled" : "Active",
+  ]);
+  const esc = v => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = "﻿" + [headers, ...data].map(r => r.map(esc).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `customers-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`${rows.length} row(s) exported`, "success");
+}
+
+function bulkEmail() {
+  const rows = [...selectedRows.value]
+    .map(n => list.value.find(c => c.name === n))
+    .filter(c => c && c.email_id);
+  if (!rows.length) { toast("No selected customers have an email address", "info"); return; }
+  const emails = rows.map(c => c.email_id).join(",");
+  // Compose a mailto: with all selected recipients
+  window.location.href = `mailto:?bcc=${encodeURIComponent(emails)}`;
+  toast(`Composing email to ${rows.length} customer(s)`, "info");
+}
 
 onMounted(load);
 </script>

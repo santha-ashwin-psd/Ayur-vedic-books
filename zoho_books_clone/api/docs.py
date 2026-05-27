@@ -833,11 +833,13 @@ def create_debit_note():
         for it in items_raw if (it.get("item_code") or it.get("item_name"))
     ]
 
+    supplier_display = frappe.db.get_value("Supplier", vendor, "supplier_name") or vendor
     pi = frappe.get_doc({
         "doctype":          "Purchase Invoice",
         "is_return":        1,
         "company":          company,
         "supplier":         vendor,
+        "supplier_name":    supplier_display,
         "return_against":   against_bill,
         "posting_date":     date,
         "remarks":          reason,

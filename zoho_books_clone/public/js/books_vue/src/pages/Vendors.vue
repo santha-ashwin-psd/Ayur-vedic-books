@@ -41,6 +41,18 @@
         </div>
       </div>
     </div>
+
+    <!-- Bulk action bar -->
+    <div v-if="selectedRows.size" class="inv-bulk-bar" style="margin: 0 24px 12px">
+      <span class="inv-bulk-count">{{ selectedRows.size }} selected</span>
+      <button class="inv-bulk-btn" @click="bulkSetDisabled(false)" :disabled="bulkBusy">Enable</button>
+      <button class="inv-bulk-btn inv-bulk-danger" @click="bulkSetDisabled(true)" :disabled="bulkBusy">Disable</button>
+      <button class="inv-bulk-btn" @click="exportCSV" :disabled="bulkBusy">
+        <span v-html="icon('download',13)"></span> Export CSV
+      </button>
+      <button class="inv-bulk-clear" @click="clearSelection">✕ Clear</button>
+    </div>
+
     <div class="vt-table-card">
       <div class="vt-table-wrap">
         <table class="vt-table">
@@ -978,6 +990,7 @@ const stmtRange          = reactive({ from: "", to: "" });
 
 // Bulk selection (for the flat table)
 const selectedRows = ref(new Set());
+const bulkBusy = ref(false);
 function toggleRow(name) {
   const s = new Set(selectedRows.value);
   s.has(name) ? s.delete(name) : s.add(name);
@@ -1035,6 +1048,7 @@ async function emailVendorStatement() {
 async function bulkSetDisabled(disable) {
   const names = [...selectedRows.value];
   if (!names.length) { toast("No vendors selected", "info"); return; }
+  bulkBusy.value = true;
   try {
     const { apiPOST } = await import("../api/client.js");
     await apiPOST("zoho_books_clone.api.docs.bulk_set_vendor_disabled", {
@@ -1045,6 +1059,7 @@ async function bulkSetDisabled(disable) {
     clearSelection();
     await load();
   } catch (e) { toast(e.message || "Bulk update failed", "error"); }
+  finally { bulkBusy.value = false; }
 }
 
 function exportCSV() {

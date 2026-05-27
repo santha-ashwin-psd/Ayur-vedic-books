@@ -246,7 +246,11 @@ def bounce_cheque(payment_entry: str) -> dict:
         frappe.throw(_("Payment Entry {0} is not submitted — cannot reverse.").format(payment_entry))
 
     reverse_voucher("Payment Entry", payment_entry)
-    return {"payment_entry": payment_entry, "status": "GL Reversed"}
+    frappe.db.set_value("Payment Entry", payment_entry,
+                        {"cheque_status": "Bounced", "cheque_cleared_date": None},
+                        update_modified=True)
+    frappe.db.commit()
+    return {"payment_entry": payment_entry, "cheque_status": "Bounced", "status": "GL Reversed"}
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
@@ -579,7 +583,7 @@ def save_cheque(data):
         "reference_no": data.get("reference_no"),
         "reference_date": data.get("reference_date"),
         "remarks": data.get("remarks"),
-        "status": data.get("status", "Issued")
+        "cheque_status": data.get("cheque_status") or data.get("status") or "Issued",
     }
 
     if name and frappe.db.exists("Payment Entry", name):

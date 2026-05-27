@@ -1289,11 +1289,13 @@ def create_credit_note():
         if t.get("tax_type")
     ]
 
+    customer_display = frappe.db.get_value("Customer", customer, "customer_name") or customer
     cn = frappe.get_doc({
         "doctype":          "Sales Invoice",
         "is_return":        1,
         "company":          company,
         "customer":         customer,
+        "customer_name":    customer_display,
         "return_against":   against_inv,
         "posting_date":     date,
         "remarks":          (reason + (" — " + notes if notes else "")),

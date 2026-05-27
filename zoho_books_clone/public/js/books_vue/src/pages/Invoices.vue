@@ -883,9 +883,11 @@ const timelineSteps = computed(()=>{
 async function load() {
   loading.value=true;
   try {
+    // Exclude credit notes (is_return=1) — those live on /credit-notes.
     list.value=await apiList("Sales Invoice",{
       fields:["name","customer","customer_name","posting_date","due_date",
               "grand_total","outstanding_amount","status","docstatus","po_no"],
+      filters:[["is_return","=",0]],
       limit:500, order:"posting_date desc",
     })||[];
   } catch { list.value=[]; toast("Could not load invoices","error"); }

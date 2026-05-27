@@ -1,65 +1,48 @@
 <template>
 <div class="inv-page">
 
-  <!-- ── Toolbar ── -->
-  <div class="inv-toolbar">
-    <h2 class="inv-heading">All Invoices</h2>
-    <div class="inv-toolbar-right">
-      <div class="inv-search-wrap">
-        <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-        <input v-model="search" placeholder="Search invoices, customers, PO…" class="inv-search-input"/>
-      </div>
-      <button class="inv-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
-      <button class="inv-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-      <button class="inv-btn-primary" @click="openAdd">
+  <!-- ── Unified toolbar (matches e-Way Bills) ── -->
+  <div class="sales-toolbar">
+    <div class="sales-search">
+      <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+      <input v-model="search" placeholder="Search invoices, customers, PO…" class="sales-search-input"/>
+    </div>
+    <div class="sales-pills">
+      <button v-for="f in FILTERS" :key="f.key" class="sales-pill" :class="{ active: activeFilter===f.key }" @click="activeFilter=f.key">
+        {{ f.label }}<span v-if="f.key!=='all'" class="sales-pill-count">{{ counts[f.key] }}</span>
+      </button>
+    </div>
+    <div class="sales-actions">
+      <select v-model="filterCustomer" class="sales-select" title="Filter by customer">
+        <option value="">All Customers</option>
+        <option v-for="c in customers" :key="c.name" :value="c.name">{{ c.customer_name }}</option>
+      </select>
+      <select v-model="dateRange" class="sales-select" title="Date range">
+        <option v-for="dr in DATE_RANGES" :key="dr.key" :value="dr.key">{{ dr.label }}</option>
+      </select>
+      <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
+      <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
+      <button class="sales-btn-primary" @click="openAdd">
         <span v-html="icon('plus',13)"></span> New Invoice
       </button>
     </div>
   </div>
 
-  <!-- ── Summary strip ── -->
-  <div class="inv-sum-strip">
-    <div class="inv-sum-card">
-      <div class="inv-sum-lbl">Total Invoices</div>
-      <div class="inv-sum-val">{{ list.length }}</div>
-    </div>
-    <div class="inv-sum-card" style="border-left:3px solid #d97706">
-      <div class="inv-sum-lbl" style="color:#d97706">Unpaid</div>
-      <div class="inv-sum-val" style="color:#d97706">{{ summary.unpaidCount }}</div>
-    </div>
-    <div class="inv-sum-card" style="border-left:3px solid #dc2626">
-      <div class="inv-sum-lbl" style="color:#dc2626">Overdue</div>
-      <div class="inv-sum-val" style="color:#dc2626">{{ summary.overdueCount }}</div>
-    </div>
-    <div class="inv-sum-card" style="border-left:3px solid #059669">
-      <div class="inv-sum-lbl" style="color:#059669">Total Receivable</div>
-      <div class="inv-sum-val" style="color:#059669">{{ fmtAmt(summary.totalDue) }}</div>
-    </div>
+  <!-- Custom-date inputs surface below toolbar only when needed -->
+  <div v-if="dateRange==='custom'" class="sales-custom-date">
+    <span style="font-size:12px;color:#6b7280;font-weight:600">Date range:</span>
+    <input type="date" v-model="customFrom" class="sales-date-input"/>
+    <span style="color:#9ca3af;font-size:12px">to</span>
+    <input type="date" v-model="customTo" class="sales-date-input"/>
   </div>
 
-  <!-- ── Filter bar ── -->
-  <div class="inv-filter-bar">
-    <div class="inv-pills">
-      <button v-for="f in FILTERS" :key="f.key" class="inv-pill" :class="{ active: activeFilter===f.key }" @click="activeFilter=f.key">
-        {{ f.label }}
-        <span v-if="f.key!=='all'" class="inv-pill-count" :class="pillCls(f.key)">{{ counts[f.key] }}</span>
-      </button>
-    </div>
-    <div class="inv-filter-right">
-      <div class="inv-date-btns">
-        <button v-for="dr in DATE_RANGES" :key="dr.key" class="inv-date-btn" :class="{ active: dateRange===dr.key }" @click="dateRange=dr.key">{{ dr.label }}</button>
-      </div>
-      <template v-if="dateRange==='custom'">
-        <input type="date" v-model="customFrom" class="inv-date-input"/>
-        <span style="color:#9ca3af;font-size:12px">–</span>
-        <input type="date" v-model="customTo" class="inv-date-input"/>
-      </template>
-      <select v-model="filterCustomer" class="inv-filter-select">
-        <option value="">All Customers</option>
-        <option v-for="c in customers" :key="c.name" :value="c.name">{{ c.customer_name }}</option>
-      </select>
-    </div>
-  </div>
+  <!-- ── Summary strip ── -->
+  <SummaryStrip :cards="[
+    { label: 'Total Invoices', tone: 'accent', value: list.length },
+    { label: 'Unpaid', tone: summary.unpaidCount>0?'warn':'default', value: summary.unpaidCount, valueClass: summary.unpaidCount>0?'orange':'' },
+    { label: 'Overdue', tone: summary.overdueCount>0?'danger':'default', value: summary.overdueCount, valueClass: summary.overdueCount>0?'red':'' },
+    { label: 'Total Receivable', tone: 'success', value: fmtAmt(summary.totalDue), valueClass: 'green' },
+  ]" />
 
   <!-- ── Bulk actions bar ── -->
   <div v-if="selectedRows.size>0" class="inv-bulk-bar">
@@ -669,6 +652,7 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
 import Pagination from "../components/Pagination.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
 import { useReturnNote } from "../composables/useReturnNote.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -1492,13 +1476,13 @@ watch(() => route.query, (q) => {
 </script>
 
 <style scoped>
-.inv-page { background:#fff; min-height:100%; color:#1a1a2e; }
+.inv-page { display:flex; flex-direction:column; gap:16px; padding:24px; min-height:100%; color:#1a1a2e; background:#f5f6f8; }
 
 /* ── Toolbar ── */
 .inv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 12px; border-bottom:1px solid #e8ecf0; gap:12px; flex-wrap:wrap; }
 .inv-heading { font-size:16px; font-weight:700; color:#1a1a2e; margin:0; }
 .inv-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.inv-search-wrap { display:flex; align-items:center; gap:7px; border:1px solid #e8ecf0; border-radius:20px; padding:6px 12px; background:#f9fafb; }
+.inv-search-wrap { display:flex; align-items:center; gap:7px; border:1px solid #ffffff; border-radius:20px; padding:6px 12px; background:#f9fafb; }
 .inv-search-input { border:none; outline:none; background:transparent; font-size:13px; width:200px; color:#374151; }
 .inv-btn-primary { display:inline-flex; align-items:center; gap:6px; background:#1a6ef7; color:#fff; border:none; border-radius:6px; padding:7px 16px; font-size:13px; font-weight:600; cursor:pointer; }
 .inv-btn-primary:hover { background:#155fd4; } .inv-btn-primary:disabled { opacity:.55; cursor:not-allowed; }
@@ -1530,7 +1514,7 @@ watch(() => route.query, (q) => {
 .inv-filter-select { border:1px solid #e8ecf0; border-radius:6px; padding:5px 8px; font-size:12.5px; outline:none; background:#fff; cursor:pointer; color:#374151; }
 
 /* ── Bulk bar ── */
-.inv-bulk-bar { display:flex; align-items:center; gap:10px; padding:8px 24px; background:#eff6ff; border-bottom:1px solid #bfdbfe; flex-wrap:wrap; }
+.inv-bulk-bar { display:flex; align-items:center; gap:10px; padding:10px 16px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; flex-wrap:wrap; }
 .inv-bulk-count { font-size:13px; font-weight:700; color:#1d4ed8; }
 .inv-bulk-btn { display:inline-flex; align-items:center; gap:5px; border:1px solid #bfdbfe; background:#fff; color:#374151; border-radius:6px; padding:5px 12px; font-size:12.5px; font-weight:600; cursor:pointer; }
 .inv-bulk-btn:hover { border-color:#374151; }
@@ -1540,7 +1524,7 @@ watch(() => route.query, (q) => {
 .inv-bulk-clear:hover { color:#374151; }
 
 /* ── Table ── */
-.inv-table-wrap { overflow-x:auto; }
+.inv-table-wrap { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; overflow-x:auto; }
 .inv-table { width:100%; border-collapse:collapse; font-size:13px; }
 .inv-table th { padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:10.5px; font-weight:700; letter-spacing:.06em; color:#6b7280; text-align:left; white-space:nowrap; background:#fff; user-select:none; }
 .inv-table th.sortable { cursor:pointer; } .inv-table th.sortable:hover { color:#1a6ef7; }

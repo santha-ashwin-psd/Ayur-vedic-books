@@ -1,59 +1,37 @@
 <template>
   <div class="qt-page">
 
-    <!-- ── Toolbar ── -->
-    <div class="inv-toolbar">
-      <h2 class="inv-heading">All Quotations</h2>
-      <div class="inv-toolbar-right">
-        <div class="inv-search-wrap">
-          <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search quotes, customers…" class="inv-search-input"/>
-        </div>
-        <button class="inv-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
-        <button class="inv-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <button class="inv-btn-primary" @click="openNew">
+    <!-- ── Unified toolbar (matches e-Way Bills) ── -->
+    <div class="sales-toolbar">
+      <div class="sales-search">
+        <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+        <input v-model="search" placeholder="Search quotes, customers…" class="sales-search-input"/>
+      </div>
+      <div class="sales-pills">
+        <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key}" @click="activeTab=t.key">
+          {{ t.label }}<span v-if="t.key!=='all'" class="sales-pill-count">{{ counts[t.key] }}</span>
+        </button>
+      </div>
+      <div class="sales-actions">
+        <select v-model="filterCustomer" class="sales-select" title="Filter by customer">
+          <option value="">All Customers</option>
+          <option v-for="c in customers" :key="c.name" :value="c.name">{{ c.customer_name || c.label }}</option>
+        </select>
+        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
+        <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
+        <button class="sales-btn-primary" @click="openNew">
           <span v-html="icon('plus',13)"></span> New Quotation
         </button>
       </div>
     </div>
 
     <!-- ── Summary strip ── -->
-    <div class="inv-sum-strip">
-      <div class="inv-sum-card">
-        <div class="inv-sum-lbl">Total Quotes</div>
-        <div class="inv-sum-val">{{ list.length }}</div>
-      </div>
-      <div class="inv-sum-card" style="border-left:3px solid #1a6ef7">
-        <div class="inv-sum-lbl" style="color:#1a6ef7">Sent</div>
-        <div class="inv-sum-val" style="color:#1a6ef7">{{ counts.sent }}</div>
-      </div>
-      <div class="inv-sum-card" style="border-left:3px solid #059669">
-        <div class="inv-sum-lbl" style="color:#059669">Accepted</div>
-        <div class="inv-sum-val" style="color:#059669">{{ counts.accepted }}</div>
-      </div>
-      <div class="inv-sum-card" style="border-left:3px solid #dc2626">
-        <div class="inv-sum-lbl" style="color:#dc2626">Expired</div>
-        <div class="inv-sum-val" style="color:#dc2626">{{ counts.expired }}</div>
-      </div>
-    </div>
-
-    <!-- ── Filter bar ── -->
-    <div class="inv-filter-bar">
-      <div class="inv-pills">
-        <button v-for="t in tabs" :key="t.key"
-          class="inv-pill" :class="{active:activeTab===t.key}"
-          @click="activeTab=t.key">
-          {{ t.label }}
-          <span v-if="t.key!=='all'" class="inv-pill-count" :class="pillCls(t.key)">{{ counts[t.key] }}</span>
-        </button>
-      </div>
-      <div class="inv-filter-right">
-        <select v-model="filterCustomer" class="inv-filter-select">
-          <option value="">All Customers</option>
-          <option v-for="c in customers" :key="c.name" :value="c.name">{{ c.customer_name || c.label }}</option>
-        </select>
-      </div>
-    </div>
+    <SummaryStrip :cards="[
+      { label: 'Total Quotes', tone: 'accent', value: list.length },
+      { label: 'Sent', tone: 'info', value: counts.sent, valueClass: 'blue' },
+      { label: 'Accepted', tone: 'success', value: counts.accepted, valueClass: 'green' },
+      { label: 'Expired', tone: counts.expired>0?'danger':'default', value: counts.expired, valueClass: counts.expired>0?'red':'' },
+    ]" />
 
     <!-- ── Bulk actions bar ── -->
     <div v-if="selected.size>0" class="inv-bulk-bar">
@@ -549,6 +527,7 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
 import Pagination from "../components/Pagination.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
@@ -1568,13 +1547,13 @@ onMounted(async () => {
 </script>
 <style scoped>
 /* ══ List page — mirrors Invoices exactly ══ */
-.qt-page { display:flex; flex-direction:column; gap:0; padding:0; background:#f8fafc; min-height:100vh; }
+.qt-page { display:flex; flex-direction:column; gap:16px; padding:24px; background:#f5f6f8; min-height:100vh; }
 
 /* Toolbar */
 .inv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 12px; gap:12px; flex-wrap:wrap; background:#fff; border-bottom:1px solid #e8ecf0; }
 .inv-heading { font-size:18px; font-weight:700; color:#1a1a2e; margin:0; }
 .inv-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.inv-search-wrap { display:flex; align-items:center; gap:8px; background:#f3f4f6; border-radius:8px; padding:7px 12px; min-width:240px; }
+.inv-search-wrap { display:flex; align-items:center; gap:8px; background:#ffffff; border-radius:8px; padding:7px 12px; min-width:240px; }
 .inv-search-input { border:none; background:transparent; outline:none; font:inherit; color:#111827; width:100%; font-size:13px; }
 .inv-btn-primary { display:inline-flex; align-items:center; gap:6px; background:#1a6ef7; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
 .inv-btn-primary:hover:not(:disabled) { background:#155fd4; }
@@ -1606,7 +1585,7 @@ onMounted(async () => {
 .inv-filter-select:focus { border-color:#1a6ef7; }
 
 /* Bulk bar */
-.inv-bulk-bar { display:flex; align-items:center; gap:8px; padding:8px 24px; background:#eff6ff; border-bottom:1px solid #bfdbfe; flex-wrap:wrap; }
+.inv-bulk-bar { display:flex; align-items:center; gap:8px; padding:10px 16px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; flex-wrap:wrap; }
 .inv-bulk-count { font-size:13px; font-weight:700; color:#1a6ef7; margin-right:4px; }
 .inv-bulk-btn { display:inline-flex; align-items:center; gap:5px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:5px 12px; font-size:12.5px; font-weight:600; color:#374151; cursor:pointer; font-family:inherit; }
 .inv-bulk-btn:hover { background:#f8fafc; border-color:#1a6ef7; color:#1a6ef7; }
@@ -1616,7 +1595,7 @@ onMounted(async () => {
 .inv-bulk-clear:hover { background:#e0e7ff; color:#1a6ef7; }
 
 /* Table */
-.inv-table-wrap { background:#fff; border-top:none; overflow-x:auto; flex:1; }
+.inv-table-wrap { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; overflow-x:auto; }
 .inv-table { width:100%; border-collapse:collapse; font-size:13px; }
 .inv-table thead tr { background:#f8fafc; }
 .inv-table th { padding:10px 12px; border-bottom:2px solid #e8ecf0; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; text-align:left; white-space:nowrap; user-select:none; }

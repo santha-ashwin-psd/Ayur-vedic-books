@@ -66,8 +66,11 @@
               <td class="ta-r mono-sm">{{ fmtCur(r.grand_total) }}</td>
               <td><span class="ew-badge" :class="statusClass(r.ui_status)">{{ r.ui_status }}</span></td>
               <td @click.stop style="text-align:right">
-                <button class="ew-act-btn" @click="openView(r)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button v-if="r.ui_status==='Generated'" class="ew-act-btn" @click="quickDownload(r)" title="Download JSON"><span v-html="icon('download',13)"></span></button>
+                <div class="ew-actions-row">
+                  <button class="ew-act-btn" @click="openView(r)" title="View"><span v-html="icon('eye',13)"></span></button>
+                  <button v-if="r.ui_status==='Generated'" class="ew-act-btn" @click="quickDownload(r)" title="Download JSON"><span v-html="icon('download',13)"></span></button>
+                  <button v-if="r.ui_status==='Cancelled' || r.ui_status==='Expired'" class="ew-act-btn ew-act-del" @click.stop="deleteTarget={row:r}" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                </div>
               </td>
             </tr>
             <tr v-if="!sortedRows.length"><td colspan="10" class="ew-empty">
@@ -313,12 +316,30 @@
         </div>
       </template>
     </div>
+
+  <!-- DELETE CONFIRM DIALOG -->
+  <div v-if="deleteTarget" class="ew-overlay" style="z-index:60" @click.self="deleteTarget=null"></div>
+  <div v-if="deleteTarget" class="ew-confirm" style="z-index:61">
+    <div class="ew-confirm-icon danger">
+      <span v-html="icon('trash', 20)"></span>
+    </div>
+    <div class="ew-confirm-title">Delete E-Way Bill?</div>
+    <div class="ew-confirm-sub">
+      E-Way Bill <strong>{{ deleteTarget.row.ewb_no || deleteTarget.row.name }}</strong> will be permanently deleted. This cannot be undone.
+    </div>
+    <div class="ew-confirm-actions">
+      <button class="ew-btn-ghost" @click="deleteTarget=null" :disabled="deleting">Keep it</button>
+      <button class="ew-btn-danger" @click="confirmDelete" :disabled="deleting">
+        {{ deleting ? 'Deleting…' : 'Yes, Delete' }}
+      </button>
+    </div>
+  </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiGET, apiPOST, resolveCompany } from "../api/client.js";
+import { apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
 import { useConfirm } from "../composables/useConfirm.js";
@@ -335,7 +356,9 @@ const route = useRoute();
 const { confirm } = useConfirm();
 
 const list = ref([]);
-const loading = ref(false);
+const loading     = ref(false);
+const deleteTarget = ref(null);  // { row }
+const deleting     = ref(false);
 const search = ref("");
 const tab = ref("all");
 const stats = ref({ total_invoices: 0, total_value: 0, generated: 0, pending: 0, expired: 0, cancelled: 0, expiring_soon: 0 });
@@ -423,6 +446,23 @@ async function load() {
     loading.value = false;
   }
 }
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function confirmDelete() {
+  if (!deleteTarget.value) return;
+  const { row } = deleteTarget.value;
+  deleting.value = true;
+  try {
+    await apiDelete("E Way Bill", row.name);
+    toast.success(`E-Way Bill ${row.ewb_no || row.name} deleted`);
+    deleteTarget.value = null;
+    await load();
+  } catch (e) {
+    toast.error(e.message || "Delete failed");
+  } finally {
+    deleting.value = false;
+  }
+}
+
 onMounted(async () => {
   await load();
   useOpenFromQuery({
@@ -707,6 +747,18 @@ function exportCSV() {
 .badge-red{background:#fef2f2;color:#dc2626;}
 .ew-act-btn{background:transparent;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;margin-left:4px;}
 .ew-act-btn:hover{background:#f3f4f6;color:#2563eb;}
+.ew-actions-row{display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;}
+.ew-act-del:hover{background:#fef2f2 !important;border-color:#fecaca !important;color:#dc2626 !important;}
+.ew-confirm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
+.ew-confirm-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
+.ew-confirm-icon.danger{background:#fef2f2;color:#dc2626;}
+.ew-confirm-title{font-size:16px;font-weight:700;color:#111827;}
+.ew-confirm-sub{font-size:13px;color:#6b7280;line-height:1.5;}
+.ew-confirm-actions{display:flex;gap:8px;margin-top:6px;width:100%;}
+.ew-confirm-actions .ew-btn-ghost{flex:1;}
+.ew-btn-danger{flex:1;background:#dc2626;border:1px solid #dc2626;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.ew-btn-danger:hover{background:#b91c1c;}
+.ew-btn-danger:disabled{opacity:.5;cursor:not-allowed;}
 .ew-empty{text-align:center;padding:0!important;cursor:default!important;}
 .ew-empty-wrap{padding:48px 20px;display:flex;flex-direction:column;align-items:center;gap:6px;color:#6b7280;}
 .ew-empty-icon{color:#cbd5e1;margin-bottom:6px;}

@@ -1558,7 +1558,7 @@ onMounted(load);
   height: 32px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #318cd0, #1d4ed8);
+  background: #16a34a;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -32,7 +32,7 @@
               <td class="mono-sm text-muted">{{ fmtDate(inv.posting_date) }}</td>
               <td class="ta-r mono-sm">{{ fmtCur(inv.grand_total) }}</td>
               <td class="ta-r mono-sm">{{ fmtCur(inv.net_total) }}</td>
-              <td class="ta-r mono-sm">{{ fmtCur(inv.total_taxes_and_charges) }}</td>
+              <td class="ta-r mono-sm">{{ fmtCur(inv.total_tax) }}</td>
               <td class="ta-r mono-sm text-muted">—</td>
               <td class="ta-r mono-sm text-muted">—</td>
             </tr>
@@ -51,7 +51,7 @@
               <td class="mono-sm text-muted">{{ fmtDate(inv.posting_date) }}</td>
               <td class="ta-r mono-sm">{{ fmtCur(inv.grand_total) }}</td>
               <td class="ta-r mono-sm">{{ fmtCur(inv.net_total) }}</td>
-              <td class="ta-r mono-sm green">{{ fmtCur(inv.total_taxes_and_charges) }}</td>
+              <td class="ta-r mono-sm green">{{ fmtCur(inv.total_tax) }}</td>
             </tr>
             <tr v-if="!(data.b2c||[]).length"><td colspan="5" class="g1-empty">No B2C invoices in this period</td></tr>
           </tbody>
@@ -81,7 +81,7 @@ const now=new Date();
 function makePeriods(){const ps=[];for(let i=0;i<12;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const v=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;const l=d.toLocaleString("en-IN",{month:"long",year:"numeric"});ps.push({v,l});}return ps;}
 const periods=makePeriods();
 const period=ref(periods[0].v);
-async function load(){loading.value=true;data.value=null;try{const co=await resolveCompany();const [yr,mo]=period.value.split("-");const from=`${yr}-${mo}-01`;const last=new Date(+yr,+mo,0).getDate();const to=`${yr}-${mo}-${String(last).padStart(2,"0")}`;const all=await apiList("Sales Invoice",{fields:["name","posting_date","customer","customer_name","grand_total","net_total","total_taxes_and_charges","is_return"],filters:[["company","=",co],["posting_date",">=",from],["posting_date","<=",to],["docstatus","=",1],["is_return","=",0]],limit:500,order:"posting_date asc"});const withGstin=all.map(i=>({...i,customer_gstin:""}));const b2b=withGstin.filter(i=>i.customer_gstin);const b2c=withGstin.filter(i=>!i.customer_gstin);data.value={b2b,b2c,b2b_count:b2b.length,b2c_count:b2c.length,total_taxable:all.reduce((s,i)=>s+flt(i.net_total),0),total_tax:all.reduce((s,i)=>s+flt(i.total_taxes_and_charges),0)};}catch(e){toast.error(e.message||"Failed to load GSTR-1");}finally{loading.value=false;}}
+async function load(){loading.value=true;data.value=null;try{const co=await resolveCompany();const [yr,mo]=period.value.split("-");const from=`${yr}-${mo}-01`;const last=new Date(+yr,+mo,0).getDate();const to=`${yr}-${mo}-${String(last).padStart(2,"0")}`;const all=await apiList("Sales Invoice",{fields:["name","posting_date","customer","customer_name","grand_total","net_total","total_tax","is_return"],filters:[["company","=",co],["posting_date",">=",from],["posting_date","<=",to],["docstatus","=",1],["is_return","=",0]],limit:500,order:"posting_date asc"});const withGstin=all.map(i=>({...i,customer_gstin:""}));const b2b=withGstin.filter(i=>i.customer_gstin);const b2c=withGstin.filter(i=>!i.customer_gstin);data.value={b2b,b2c,b2b_count:b2b.length,b2c_count:b2c.length,total_taxable:all.reduce((s,i)=>s+flt(i.net_total),0),total_tax:all.reduce((s,i)=>s+flt(i.total_tax),0)};}catch(e){toast.error(e.message||"Failed to load GSTR-1");}finally{loading.value=false;}}
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 </script>
 <style scoped>

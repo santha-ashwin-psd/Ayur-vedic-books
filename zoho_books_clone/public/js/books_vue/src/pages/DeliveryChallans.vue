@@ -37,7 +37,7 @@
           <th>Sales Order</th>
           <th>Status</th>
           <th class="ta-r">Qty</th>
-          <th style="width:100px;text-align:center">Actions</th>
+          <th style="width:120px;text-align:center">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -54,9 +54,13 @@
           <td class="c-muted mono" style="font-size:12px">{{r.sales_order||r.name||'—'}}</td>
           <td><span class="b-badge" :class="statusClass(r)">{{statusLabel(r)}}</span></td>
           <td class="ta-r c-muted" style="font-size:12.5px">{{r.total_qty||'—'}}</td>
-          <td style="text-align:center;cursor:default" @click.stop>
-            <button class="dc-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
-            <button v-if="canEdit(r)" class="dc-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
+          <td @click.stop>
+            <div class="dc-actions-row">
+              <button class="dc-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
+              <button v-if="canEdit(r)" class="dc-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
+              <button v-if="r.docstatus===1 && r.status!=='Cancelled'" class="dc-act-btn dc-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel"><span v-html="icon('x',12)"></span></button>
+              <button v-if="r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled'" class="dc-act-btn dc-act-del" @click.stop="deleteTarget={row:r,mode:'delete'}" title="Delete"><span v-html="icon('trash',12)"></span></button>
+            </div>
           </td>
         </tr>
       </tbody>
@@ -264,13 +268,40 @@
       </div>
     </div>
 
+
+    <!-- DELETE / CANCEL CONFIRM DIALOG -->
+    <div v-if="deleteTarget" class="dc-overlay" style="z-index:60" @click.self="deleteTarget=null"></div>
+    <div v-if="deleteTarget" class="dc-confirm" style="z-index:61">
+      <div class="dc-confirm-icon" :class="deleteTarget.mode==='delete'?'danger':'warn'">
+        <span v-html="icon(deleteTarget.mode==='delete'?'trash':'x', 20)"></span>
+      </div>
+      <div class="dc-confirm-title">
+        {{ deleteTarget.mode === 'delete' ? 'Delete Challan?' : 'Cancel Challan?' }}
+      </div>
+      <div class="dc-confirm-sub">
+        <template v-if="deleteTarget.mode==='delete'">
+          <strong>{{ deleteTarget.row.name }}</strong> will be permanently deleted. This cannot be undone.
+        </template>
+        <template v-else>
+          <strong>{{ deleteTarget.row.name }}</strong> will be cancelled and can no longer be edited.
+        </template>
+      </div>
+      <div class="dc-confirm-actions">
+        <button class="b-btn b-btn-ghost" @click="deleteTarget=null" :disabled="deleting">Keep it</button>
+        <button class="b-btn" :class="deleteTarget.mode==='delete'?'dc-btn-danger':'dc-btn-warn'"
+          @click="confirmDeleteAction" :disabled="deleting">
+          {{ deleting ? (deleteTarget.mode==='delete'?'Deleting…':'Cancelling…') : (deleteTarget.mode==='delete'?'Yes, Delete':'Yes, Cancel') }}
+        </button>
+      </div>
+    </div>
+
   </Teleport>
 </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
 import { useRoute } from "vue-router";
 import { useToast } from "../composables/useToast.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
@@ -304,6 +335,8 @@ const sortDir     = ref("desc");
 const viewOpen    = ref(false);
 const viewDoc     = ref(null);
 const submitting  = ref(false);
+const deleteTarget = ref(null);  // { row, mode: "delete"|"cancel" }
+const deleting     = ref(false);
 
 const formOpen    = ref(false);
 const editingName = ref("");
@@ -320,6 +353,7 @@ const blankItem = () => ({ _id: _lineId++, item_code: "", item_name: "", descrip
 
 const form = reactive({
   customer: "",
+  customer_name: "",
   posting_date: new Date().toISOString().slice(0, 10),
   sales_order: "",
   lr_no: "",
@@ -511,6 +545,7 @@ async function submitChallan() {
 function resetForm() {
   Object.assign(form, {
     customer: "",
+    customer_name: "",
     posting_date: new Date().toISOString().slice(0, 10),
     sales_order: "",
     lr_no: "",
@@ -541,6 +576,7 @@ async function openEdit(r) {
   // Pre-fill from existing doc
   Object.assign(form, {
     customer:          r.customer || "",
+    customer_name:     r.customer_name || r.customer || "",
     posting_date:      r.posting_date || new Date().toISOString().slice(0, 10),
     sales_order:       r.sales_order || "",
     lr_no:             r.lr_no || "",
@@ -630,6 +666,7 @@ async function fetchSalesOrders(q = "") {
 // ── Customer select: auto-fill address + filter SO list ───────────────────────
 async function onCustomerSelect(opt) {
   const custName = opt?.value ?? opt;
+  form.customer_name = opt?.label ?? opt?.customer_name ?? custName ?? "";
   form.sales_order = "";
   salesOrders.value = [];
   if (!custName) return;
@@ -660,7 +697,8 @@ async function onSOSelect(opt) {
     const so = await apiGet("Sales Order", soName);
     if (!form.customer && so?.customer) {
       form.customer = so.customer;
-      await onCustomerSelect({ value: so.customer });
+      form.customer_name = so.customer_name || so.customer;
+      await onCustomerSelect({ value: so.customer, label: so.customer_name || so.customer });
     }
     if (so?.items?.length) {
       form.items = so.items.map(it => ({
@@ -706,6 +744,7 @@ async function saveChallan(submit) {
       doctype:          "Delivery Note",
       company,
       customer:         form.customer,
+      customer_name:    form.customer_name || form.customer,
       posting_date:     form.posting_date,
       sales_order:      form.sales_order || undefined,
       lr_no:            form.lr_no || "",
@@ -735,6 +774,28 @@ async function saveChallan(submit) {
   finally { saving.value = false; }
 }
 
+// ── Delete / Cancel ───────────────────────────────────────────────────────────
+async function confirmDeleteAction() {
+  if (!deleteTarget.value) return;
+  const { row, mode } = deleteTarget.value;
+  deleting.value = true;
+  try {
+    if (mode === "delete") {
+      await apiDelete("Delivery Note", row.name);
+      toast.success(`Challan ${row.name} deleted`);
+    } else {
+      await apiCancel("Delivery Note", row.name);
+      toast.success(`Challan ${row.name} cancelled`);
+    }
+    deleteTarget.value = null;
+    await load();
+  } catch (e) {
+    toast.error(e.message || (mode === "delete" ? "Delete failed" : "Cancel failed"));
+  } finally {
+    deleting.value = false;
+  }
+}
+
 onMounted(async () => {
   await load();
   useOpenFromQuery({
@@ -760,6 +821,40 @@ onMounted(async () => {
 .dc-row:hover td{background:#f9fafb;}
 .dc-act-btn{background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;font:inherit;font-size:14px;margin:0 2px;}
 .dc-act-btn:hover{background:#f3f4f6;color:#2563eb;}
+.dc-actions-row{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:nowrap;}
+.dc-act-del:hover{background:#fef2f2 !important;border-color:#fecaca !important;color:#dc2626 !important;}
+.dc-act-cancel:hover{background:#fffbeb !important;border-color:#fde68a !important;color:#d97706 !important;}
+.dc-confirm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
+.dc-confirm-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
+.dc-confirm-icon.danger{background:#fef2f2;color:#dc2626;}
+.dc-confirm-icon.warn{background:#fffbeb;color:#d97706;}
+.dc-confirm-title{font-size:16px;font-weight:700;color:#111827;}
+.dc-confirm-sub{font-size:13px;color:#6b7280;line-height:1.5;}
+.dc-confirm-actions{display:flex;gap:8px;margin-top:6px;width:100%;}
+.dc-confirm-actions .b-btn{flex:1;justify-content:center;}
+.dc-btn-danger{background:#dc2626;border:1px solid #dc2626;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.dc-btn-danger:hover{background:#b91c1c;}
+.dc-btn-danger:disabled,.dc-btn-warn:disabled{opacity:.5;cursor:not-allowed;}
+.dc-btn-warn{background:#d97706;border:1px solid #d97706;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.dc-btn-warn:hover{background:#b45309;}
+.dc-act-del:hover{background:#fef2f2 !important;border-color:#fecaca !important;color:#dc2626 !important;}
+.dc-act-cancel:hover{background:#fffbeb !important;border-color:#fde68a !important;color:#d97706 !important;}
+
+/* Confirm dialog */
+.dc-confirm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
+.dc-confirm-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
+.dc-confirm-icon.danger{background:#fef2f2;color:#dc2626;}
+.dc-confirm-icon.warn{background:#fffbeb;color:#d97706;}
+.dc-confirm-title{font-size:16px;font-weight:700;color:#111827;}
+.dc-confirm-sub{font-size:13px;color:#6b7280;line-height:1.5;}
+.dc-confirm-actions{display:flex;gap:8px;margin-top:6px;width:100%;}
+.dc-confirm-actions .b-btn{flex:1;justify-content:center;}
+.dc-btn-danger{background:#dc2626;border:1px solid #dc2626;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.dc-btn-danger:hover{background:#b91c1c;border-color:#b91c1c;}
+.dc-btn-danger:disabled{opacity:.5;cursor:not-allowed;}
+.dc-btn-warn{background:#d97706;border:1px solid #d97706;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.dc-btn-warn:hover{background:#b45309;border-color:#b45309;}
+.dc-btn-warn:disabled{opacity:.5;cursor:not-allowed;}
 
 /* Drawer */
 .dc-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(2px);z-index:40;}

@@ -34,33 +34,38 @@
       <table class="rec-table">
         <thead>
           <tr>
+            <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th>
             <th @click="sort('name')" class="sortable">Subscription # <span v-html="sortArrow('name')"></span></th>
             <th @click="sort('reference_document')" class="sortable">PO Reference <span v-html="sortArrow('reference_document')"></span></th>
             <th @click="sort('frequency')" class="sortable">Frequency <span v-html="sortArrow('frequency')"></span></th>
             <th @click="sort('start_date')" class="sortable">Start Date <span v-html="sortArrow('start_date')"></span></th>
             <th @click="sort('next_schedule_date')" class="sortable">Next Run <span v-html="sortArrow('next_schedule_date')"></span></th>
             <th>Status</th>
-            <th style="width:50px"></th>
+            <th style="width:120px;text-align:right">Actions</th>
           </tr>
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="7"><div class="rec-shimmer"></div></td></tr>
+            <tr v-for="n in 6" :key="n"><td colspan="8"><div class="rec-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="r in paged" :key="r.name" class="rec-row" @click="openView(r)">
+            <tr v-for="r in paged" :key="r.name" class="rec-row" :class="{selected:selected.includes(r.name)}" @click="openView(r)">
+              <td @click.stop><input type="checkbox" :checked="selected.includes(r.name)" @change="toggleOne(r.name)" /></td>
               <td><span class="rec-num">{{ r.name }}</span></td>
               <td><span class="rec-ref">{{ r.reference_document||'—' }}</span></td>
               <td>{{ r.frequency||'—' }}</td>
               <td class="text-muted mono-sm">{{ fmtDate(r.start_date) }}</td>
               <td class="mono-sm" :class="isDue(r)?'text-accent':''">{{ fmtDate(r.next_schedule_date)||'—' }}</td>
               <td><span class="rec-badge" :class="statusClass(r.status)">{{ r.status||'Active' }}</span></td>
-              <td @click.stop>
-                <button class="rec-act-btn" @click="openView(r)"><span v-html="icon('eye',13)"></span></button>
+              <td @click.stop style="text-align:right">
+                <button class="rec-act-btn" @click="openView(r)" title="View"><span v-html="icon('eye',13)"></span></button>
+                <button v-if="(r.ui_status||r.status||'Active')==='Active'" class="rec-act-btn" @click="quickAction(r,'pause')" title="Pause"><span v-html="icon('pause',13)"></span></button>
+                <button v-else-if="(r.ui_status||r.status||'Active')==='Paused'" class="rec-act-btn" @click="quickAction(r,'resume')" title="Resume"><span v-html="icon('play',13)"></span></button>
+                <button class="rec-act-btn rec-act-danger" @click="quickAction(r,'delete')" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
             <tr v-if="!sorted.length">
-              <td colspan="7" class="rec-empty">
+              <td colspan="8" class="rec-empty">
                 <div class="rec-empty-wrap">
                   <div class="rec-empty-icon" v-html="icon('repeat',32)"></div>
                   <div class="rec-empty-title">No recurring bills found</div>
@@ -84,17 +89,17 @@
     <!-- ============================================================ CREATE DRAWER -->
     <div v-if="drawerOpen" class="rec-overlay" @click.self="drawerOpen=false"></div>
     <div class="rec-drawer" :class="{open:drawerOpen}">
-      <div class="rec-dheader">
+      <div class="rec-dheader" :class="editMode?'edit':''">
         <div class="rec-dheader-left">
-          <div class="rec-dheader-ico">
-            <span v-html="icon('repeat',18)"></span>
+          <div class="rec-dheader-ico" :class="editMode?'edit':''">
+            <span v-html="icon(editMode?'edit':'repeat',18)"></span>
           </div>
           <div>
-            <div class="rec-dheader-title">New Recurring Bill</div>
-            <div class="rec-dheader-sub">Schedule a purchase order to repeat on a cadence</div>
+            <div class="rec-dheader-title">{{ editMode ? 'Edit Recurring Bill' : 'New Recurring Bill' }}</div>
+            <div class="rec-dheader-sub">{{ editMode ? form._name : 'Schedule a purchase order to repeat on a cadence' }}</div>
           </div>
         </div>
-        <button class="rec-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
+        <button class="rec-dclose" @click="onOverlayClose"><span v-html="icon('x',16)"></span></button>
       </div>
 
       <div class="rec-dbody">
@@ -142,7 +147,7 @@
             </div>
             <div class="rec-field">
               <label class="rec-label">Start Date <span class="req">*</span></label>
-              <input v-model="form.start_date" type="date" class="rec-input" />
+              <input v-model="form.start_date" type="date" class="rec-input" :disabled="editMode" />
             </div>
             <div class="rec-field">
               <label class="rec-label">End Date <span class="rec-hint">(optional)</span></label>
@@ -182,10 +187,10 @@
       </div>
 
       <div class="rec-dfooter">
-        <button class="rec-btn-ghost" @click="drawerOpen=false" :disabled="drawerSaving">Cancel</button>
+        <button class="rec-btn-ghost" @click="onOverlayClose" :disabled="drawerSaving">Cancel</button>
         <button class="rec-btn-primary" :disabled="drawerSaving" @click="saveRec">
           <span v-html="icon('check',13)"></span>
-          {{ drawerSaving ? 'Saving…' : 'Create Recurring Bill' }}
+          {{ drawerSaving ? 'Saving…' : (editMode ? 'Save Changes' : 'Create Recurring Bill') }}
         </button>
       </div>
     </div>
@@ -221,46 +226,96 @@
           </div>
         </div>
 
-        <div class="rec-dbody">
-          <div class="rec-section">
-            <div class="rec-section-hdr">
-              <span v-html="icon('folder',13)"></span>
-              <span>Details</span>
-            </div>
-            <div class="rec-meta-grid">
-              <div><div class="rec-meta-lbl">Bill Reference</div><div class="mono-sm">{{ viewDoc.reference_document||'—' }}</div></div>
-              <div><div class="rec-meta-lbl">Frequency</div><div>{{ viewDoc.frequency }}</div></div>
-              <div><div class="rec-meta-lbl">Start Date</div><div class="mono-sm">{{ fmtDate(viewDoc.start_date) }}</div></div>
-              <div><div class="rec-meta-lbl">End Date</div><div class="mono-sm">{{ fmtDate(viewDoc.end_date)||'No end' }}</div></div>
-              <div><div class="rec-meta-lbl">Next Run</div><div class="mono-sm" :class="isDue(viewDoc)?'text-accent':''">{{ fmtDate(viewDoc.next_schedule_date)||'—' }}</div></div>
-              <div><div class="rec-meta-lbl">Submit on Creation</div><div>{{ viewDoc.submit_on_creation?'Yes':'No (Draft)' }}</div></div>
-            </div>
-          </div>
+        <!-- action bar -->
+        <div class="rec-view-actbar">
+          <button class="rec-va-btn" @click="openEdit(viewDoc)" :disabled="(viewDoc.ui_status||viewDoc.status)==='Cancelled'"><span v-html="icon('edit',13)"></span> Edit</button>
+          <button class="rec-va-btn" @click="runNow(viewDoc)" :disabled="(viewDoc.ui_status||viewDoc.status||'Active')!=='Active' || actionLoading"><span v-html="icon('play',13)"></span> Run Now</button>
+          <button v-if="(viewDoc.ui_status||viewDoc.status||'Active')==='Active'" class="rec-va-btn" @click="actionOn(viewDoc,'pause')" :disabled="actionLoading"><span v-html="icon('pause',13)"></span> Pause</button>
+          <button v-else-if="(viewDoc.ui_status||viewDoc.status)==='Paused'" class="rec-va-btn" @click="actionOn(viewDoc,'resume')" :disabled="actionLoading"><span v-html="icon('play',13)"></span> Resume</button>
+          <button class="rec-va-btn rec-va-warn" @click="actionOn(viewDoc,'cancel')" :disabled="actionLoading || (viewDoc.ui_status||viewDoc.status)==='Cancelled'"><span v-html="icon('x',13)"></span> Cancel</button>
+          <button class="rec-va-btn rec-va-danger" @click="actionOn(viewDoc,'delete')" :disabled="actionLoading"><span v-html="icon('trash',13)"></span> Delete</button>
+        </div>
 
-          <div v-if="viewDoc.recipients" class="rec-section">
-            <div class="rec-section-hdr">
-              <span v-html="icon('mail',13)"></span>
-              <span>Notification</span>
-            </div>
-            <div class="rec-meta-grid">
-              <div style="grid-column:1/-1">
-                <div class="rec-meta-lbl">Recipients</div>
-                <div class="mono-sm" style="word-break:break-all">{{ viewDoc.recipients }}</div>
-              </div>
-              <div v-if="viewDoc.subject" style="grid-column:1/-1">
-                <div class="rec-meta-lbl">Email Subject</div>
-                <div>{{ viewDoc.subject }}</div>
-              </div>
-              <div v-if="viewDoc.message" style="grid-column:1/-1">
-                <div class="rec-meta-lbl">Email Message</div>
-                <div style="font-size:13px;color:#374151;white-space:pre-wrap;">{{ viewDoc.message }}</div>
-              </div>
-            </div>
+        <!-- timeline -->
+        <div class="rec-timeline">
+          <div class="rec-tl-step" :class="{done:true}">
+            <div class="rec-tl-dot"></div>
+            <div class="rec-tl-lbl">Created<br/><span class="rec-tl-sub">{{ fmtDate(viewDoc.creation) }}</span></div>
+          </div>
+          <div class="rec-tl-line" :class="{done:(viewDoc.ui_status||viewDoc.status)!=='Paused'}"></div>
+          <div class="rec-tl-step" :class="{done:(viewDoc.ui_status||viewDoc.status||'Active')==='Active' || viewDoc.runs_count>0, current:(viewDoc.ui_status||viewDoc.status||'Active')==='Active'}">
+            <div class="rec-tl-dot"></div>
+            <div class="rec-tl-lbl">{{ (viewDoc.ui_status||viewDoc.status)==='Paused'?'Paused':'Active' }}<br/><span class="rec-tl-sub">{{ fmtDate(viewDoc.start_date) }}</span></div>
+          </div>
+          <div class="rec-tl-line" :class="{done:viewDoc.runs_count>0}"></div>
+          <div class="rec-tl-step" :class="{done:viewDoc.runs_count>0}">
+            <div class="rec-tl-dot"></div>
+            <div class="rec-tl-lbl">Last Run<br/><span class="rec-tl-sub">{{ viewDoc.runs&&viewDoc.runs.length?fmtDate(viewDoc.runs[0].creation):'—' }}</span></div>
+          </div>
+          <div class="rec-tl-line" :class="{done:(viewDoc.ui_status||viewDoc.status)==='Cancelled'}"></div>
+          <div class="rec-tl-step" :class="{done:(viewDoc.ui_status||viewDoc.status)==='Cancelled' || (viewDoc.ui_status||viewDoc.status)==='Completed'}">
+            <div class="rec-tl-dot"></div>
+            <div class="rec-tl-lbl">{{ viewDoc.end_date?'Ends':'Open-ended' }}<br/><span class="rec-tl-sub">{{ fmtDate(viewDoc.end_date)||'No end' }}</span></div>
           </div>
         </div>
 
-        <div class="rec-dfooter">
-          <button class="rec-btn-ghost" @click="viewOpen=false">Close</button>
+        <!-- tabs -->
+        <div class="rec-view-tabs">
+          <button v-for="t in viewTabs" :key="t.key" class="rec-vt-btn" :class="{active:viewTab===t.key}" @click="viewTab=t.key">
+            {{ t.label }}<span v-if="t.count!=null" class="rec-vt-count">{{ t.count }}</span>
+          </button>
+        </div>
+
+        <div class="rec-dbody">
+          <!-- Details tab -->
+          <div v-if="viewTab==='details'">
+            <div class="rec-section">
+              <div class="rec-section-hdr"><span v-html="icon('folder',13)"></span><span>Details</span></div>
+              <div class="rec-meta-grid">
+                <div><div class="rec-meta-lbl">PO Reference</div><div class="mono-sm">{{ viewDoc.reference_document||'—' }}</div></div>
+                <div><div class="rec-meta-lbl">Frequency</div><div>{{ viewDoc.frequency }}</div></div>
+                <div><div class="rec-meta-lbl">Start Date</div><div class="mono-sm">{{ fmtDate(viewDoc.start_date) }}</div></div>
+                <div><div class="rec-meta-lbl">End Date</div><div class="mono-sm">{{ fmtDate(viewDoc.end_date)||'No end' }}</div></div>
+                <div><div class="rec-meta-lbl">Next Run</div><div class="mono-sm" :class="isDue(viewDoc)?'text-accent':''">{{ fmtDate(viewDoc.next_schedule_date)||'—' }}</div></div>
+                <div><div class="rec-meta-lbl">Submit on Creation</div><div>{{ viewDoc.submit_on_creation?'Yes':'No (Draft)' }}</div></div>
+              </div>
+            </div>
+            <div v-if="viewDoc.recipients" class="rec-section" style="margin-top:12px">
+              <div class="rec-section-hdr"><span v-html="icon('mail',13)"></span><span>Notification</span></div>
+              <div class="rec-meta-grid">
+                <div style="grid-column:1/-1"><div class="rec-meta-lbl">Recipients</div><div class="mono-sm" style="word-break:break-all">{{ viewDoc.recipients }}</div></div>
+                <div v-if="viewDoc.subject" style="grid-column:1/-1"><div class="rec-meta-lbl">Subject</div><div>{{ viewDoc.subject }}</div></div>
+                <div v-if="viewDoc.message" style="grid-column:1/-1"><div class="rec-meta-lbl">Message</div><div style="font-size:13px;white-space:pre-wrap">{{ viewDoc.message }}</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Generated tab -->
+          <div v-else-if="viewTab==='generated'">
+            <div v-if="!viewDoc.runs||!viewDoc.runs.length" class="rec-tab-empty">No documents generated yet.</div>
+            <table v-else class="rec-table rec-table-inner">
+              <thead><tr><th>Document</th><th>Created</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr v-for="d in viewDoc.runs" :key="d.name">
+                  <td class="rec-num">{{ d.name }}</td>
+                  <td class="text-muted mono-sm">{{ fmtDate(d.creation) }}</td>
+                  <td><span class="rec-badge" :class="d.docstatus===1?'badge-green':d.docstatus===2?'badge-red':'badge-grey'">{{ d.docstatus===1?'Submitted':d.docstatus===2?'Cancelled':'Draft' }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Upcoming tab -->
+          <div v-else-if="viewTab==='upcoming'">
+            <div v-if="!viewDoc.upcoming||!viewDoc.upcoming.length" class="rec-tab-empty">No upcoming runs scheduled.</div>
+            <ol v-else class="rec-upcoming-list">
+              <li v-for="(u,i) in viewDoc.upcoming" :key="i">
+                <span class="rec-upcoming-idx">#{{ i+1 }}</span>
+                <span class="mono-sm">{{ fmtDate(u.date) }}</span>
+                <span class="text-muted">— {{ u.frequency }}</span>
+              </li>
+            </ol>
+          </div>
         </div>
       </template>
     </div>
@@ -269,7 +324,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, apiLinkValues } from "../api/client.js";
+import { apiList, apiSave, apiLinkValues, apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
@@ -279,6 +334,9 @@ import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
 
 const { toast } = useToast();
+function confirm({ title, body, okLabel }) {
+  return Promise.resolve(window.confirm(`${title}\n\n${body || ""}`));
+}
 const activeTab = ref("all");
 const tabs = [
   { key: "all", label: "All" },
@@ -287,11 +345,14 @@ const tabs = [
   { key: "Cancelled", label: "Cancelled" },
 ];
 const list = ref([]), loading = ref(false), search = ref("");
-const drawerOpen = ref(false), drawerSaving = ref(false);
-const viewOpen = ref(false), viewDoc = ref(null);
+const selected = ref([]);
+const drawerOpen = ref(false), drawerSaving = ref(false), editMode = ref(false);
+const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
+const actionLoading = ref(false);
 const refDocs = ref([]);
 const sortCol = ref("next_schedule_date"), sortDir = ref("asc");
 const form = reactive({
+  _name: "",
   reference_document: "",
   frequency: "Monthly",
   start_date: new Date().toISOString().slice(0, 10),
@@ -349,8 +410,19 @@ const { page, pageSize, paged } = usePagination(sorted, { storageKey: "recurring
 function sort(col) { if (sortCol.value===col) sortDir.value=sortDir.value==="asc"?"desc":"asc"; else { sortCol.value=col; sortDir.value="asc"; } }
 function sortArrow(col) { if (sortCol.value!==col) return '<span style="color:#d1d5db">⇅</span>'; return sortDir.value==="asc"?"↑":"↓"; }
 
+const viewTabs = computed(() => [
+  { key: "details", label: "Details" },
+  { key: "generated", label: "Generated", count: viewDoc.value?.runs_count ?? 0 },
+  { key: "upcoming", label: "Upcoming", count: viewDoc.value?.upcoming?.length ?? 0 },
+]);
+const allSelected = computed(() => sorted.value.length > 0 && sorted.value.every(r => selected.value.includes(r.name)));
+function toggleAll() { selected.value = allSelected.value ? [] : sorted.value.map(r => r.name); }
+function toggleOne(n) { selected.value = selected.value.includes(n) ? selected.value.filter(x => x !== n) : [...selected.value, n]; }
+
 function openNew() {
+  editMode.value = false;
   Object.assign(form, {
+    _name: "",
     reference_document: "",
     frequency: "Monthly",
     start_date: new Date().toISOString().slice(0, 10),
@@ -365,7 +437,104 @@ function openNew() {
   drawerOpen.value = true;
   fetchRefDocs();
 }
-function openView(r) { viewDoc.value = r; viewOpen.value = true; }
+async function openView(r) {
+  if (!r?.name) return;
+  viewOpen.value = true;
+  viewTab.value = "details";
+  viewDoc.value = { ...r, runs: r.runs || [], upcoming: r.upcoming || [], runs_count: r.runs_count || 0 };
+  try {
+    const detail = await apiGET("zoho_books_clone.api.recurring.get_subscription", { name: r.name });
+    const d = (detail && typeof detail === "object") ? detail : {};
+    viewDoc.value = {
+      ...viewDoc.value, ...d,
+      runs: Array.isArray(d.runs) ? d.runs : (viewDoc.value.runs || []),
+      upcoming: Array.isArray(d.upcoming) ? d.upcoming : (viewDoc.value.upcoming || []),
+      runs_count: d.runs_count != null ? d.runs_count : (Array.isArray(d.runs) ? d.runs.length : (viewDoc.value.runs_count || 0)),
+    };
+  } catch (e) { toast.error(e.message || "Failed to load detail"); }
+}
+
+async function openEdit(doc) {
+  if (!doc?.name) return;
+  editMode.value = true;
+  viewOpen.value = false;
+  // Populate from what we have immediately so drawer opens fast
+  Object.assign(form, {
+    _name: doc.name,
+    reference_document: doc.reference_document || "",
+    frequency: doc.frequency || "Monthly",
+    start_date: doc.start_date || "",
+    end_date: doc.end_date || "",
+    submit_on_creation: doc.submit_on_creation ? 1 : 0,
+    _notify: !!(doc.recipients),
+    recipients: doc.recipients || "",
+    subject: doc.subject || "",
+    message: doc.message || "",
+  });
+  refDocs.value = doc.reference_document ? [{ label: doc.reference_document, value: doc.reference_document }] : [];
+  drawerOpen.value = true;
+  // Fetch full detail to fill recipients/subject/message/submit_on_creation
+  try {
+    const detail = await apiGET("zoho_books_clone.api.recurring.get_subscription", { name: doc.name });
+    const d = (detail && typeof detail === "object") ? detail : {};
+    Object.assign(form, {
+      frequency: d.frequency || form.frequency,
+      end_date: d.end_date || form.end_date,
+      submit_on_creation: d.submit_on_creation ? 1 : 0,
+      _notify: !!(d.recipients || d.notify_by_email),
+      recipients: d.recipients || "",
+      subject: d.subject || "",
+      message: d.message || "",
+    });
+  } catch { /* keep optimistic values */ }
+}
+
+function onOverlayClose() {
+  if (drawerSaving.value) return;
+  drawerOpen.value = false;
+}
+
+async function quickAction(r, action) {
+  const messages = {
+    pause:  { title: `Pause ${r.name}?`,  body: "It will stop generating documents until resumed.", okLabel: "Pause" },
+    resume: { title: `Resume ${r.name}?`, body: "It will start generating documents on schedule.", okLabel: "Resume" },
+    cancel: { title: `Cancel ${r.name}?`, body: "Subscription will be ended permanently.", okLabel: "Cancel Sub" },
+    delete: { title: `Delete ${r.name}?`, body: "This cannot be undone.", okLabel: "Delete" },
+  };
+  if (!(await confirm(messages[action]))) return;
+  await runLifecycle(r.name, action);
+}
+
+async function actionOn(doc, action) {
+  if (!doc?.name) return;
+  await quickAction(doc, action);
+  if (action === "delete") { viewOpen.value = false; }
+  else if (viewOpen.value) { await openView({ name: doc.name }); }
+}
+
+async function runLifecycle(name, action) {
+  actionLoading.value = true;
+  try {
+    const res = await apiPOST(`zoho_books_clone.api.recurring.${action}_subscription`, { name });
+    toast.success(res?.message?.message || res?.message || `${name} ${action}d`);
+    await load();
+  } catch (e) { toast.error(e.message || `Failed to ${action}`); }
+  finally { actionLoading.value = false; }
+}
+
+async function runNow(doc) {
+  if (!doc?.name) return;
+  if (!(await confirm({ title: `Run ${doc.name} now?`, body: "A new document will be generated immediately, ignoring the schedule.", okLabel: "Run Now" }))) return;
+  actionLoading.value = true;
+  try {
+    const res = await apiPOST("zoho_books_clone.api.recurring.run_subscription_now", { name: doc.name });
+    const gen = res?.message?.generated || res?.generated;
+    toast.success(gen ? `Generated ${gen}` : "Document generated");
+    await load();
+    await openView({ name: doc.name });
+  } catch (e) { toast.error(e.message || "Failed to run subscription"); }
+  finally { actionLoading.value = false; }
+}
 
 async function fetchRefDocs(q = "") {
   try {
@@ -376,25 +545,42 @@ async function fetchRefDocs(q = "") {
 
 async function saveRec() {
   if (!form.reference_document) return toast.error("Purchase order is required");
+  if (!form.start_date) return toast.error("Start date is required");
+  if (form.end_date && form.end_date < form.start_date) return toast.error("End date must be after start date");
   drawerSaving.value = true;
   try {
-    const doc = {
-      doctype: "Auto Repeat",
-      reference_doctype: "Purchase Order",
-      reference_document: form.reference_document,
-      frequency: form.frequency,
-      start_date: form.start_date,
-      end_date: form.end_date || null,
-      submit_on_creation: form.submit_on_creation,
-      recipients: form._notify ? (form.recipients || "") : "",
-      subject: form._notify ? (form.subject || "") : "",
-      message: form._notify ? (form.message || "") : "",
-    };
-    const saved = await apiSave(doc);
-    toast.success(`Recurring bill ${saved?.name||""} created`);
+    if (editMode.value) {
+      await apiPOST("zoho_books_clone.api.recurring.update_subscription", {
+        name: form._name,
+        frequency: form.frequency,
+        end_date: form.end_date || null,
+        notify_by_email: form._notify ? 1 : 0,
+        submit_on_creation: form.submit_on_creation,
+        recipients: form.recipients,
+        subject: form.subject,
+        message: form.message,
+      });
+      toast.success(`${form._name} updated`);
+    } else {
+      const doc = {
+        doctype: "Auto Repeat",
+        reference_doctype: "Purchase Order",
+        reference_document: form.reference_document,
+        frequency: form.frequency,
+        start_date: form.start_date,
+        end_date: form.end_date || null,
+        submit_on_creation: form.submit_on_creation,
+        recipients: form._notify ? (form.recipients || "") : "",
+        subject: form._notify ? (form.subject || "") : "",
+        message: form._notify ? (form.message || "") : "",
+      };
+      const saved = await apiSave(doc);
+      toast.success(`Recurring bill ${saved?.name || ""} created`);
+    }
     drawerOpen.value = false;
+    if (editMode.value && form._name) await openView({ name: form._name });
     await load();
-  } catch (e) { toast.error(e.message || "Failed to create recurring bill"); }
+  } catch (e) { toast.error(e.message || "Failed to save recurring bill"); }
   finally { drawerSaving.value = false; }
 }
 
@@ -488,6 +674,50 @@ textarea.rec-input{resize:vertical;min-height:72px;}
 
 /* ── Drawer Footer ── */
 .rec-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;background:#fff;}
+
+/* ── Selected row ── */
+.rec-row.selected td{background:#eff6ff;}
+.rec-act-danger:hover{color:#dc2626;background:#fef2f2;border-color:#fecaca;}
+
+/* ── Edit mode drawer header ── */
+.rec-dheader.edit{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);}
+.rec-dheader-ico.edit{color:#ca8a04;border-color:rgba(202,138,4,.25);}
+
+/* ── View action bar ── */
+.rec-view-actbar{display:flex;flex-wrap:wrap;gap:6px;padding:10px 20px;border-bottom:1px solid #e5e7eb;background:#fff;flex-shrink:0;}
+.rec-va-btn{display:inline-flex;align-items:center;gap:5px;border:1px solid #e5e7eb;background:#fff;color:#374151;border-radius:7px;padding:6px 11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+.rec-va-btn:hover:not(:disabled){background:#f9fafb;border-color:#cbd5e1;}
+.rec-va-btn:disabled{opacity:.45;cursor:not-allowed;}
+.rec-va-warn{color:#ea580c;border-color:#fed7aa;}.rec-va-warn:hover:not(:disabled){background:#fff7ed;}
+.rec-va-danger{color:#dc2626;border-color:#fecaca;}.rec-va-danger:hover:not(:disabled){background:#fef2f2;}
+
+/* ── Timeline ── */
+.rec-timeline{display:flex;align-items:center;padding:14px 20px;background:#fff;border-bottom:1px solid #e5e7eb;gap:0;flex-shrink:0;}
+.rec-tl-step{display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:80px;}
+.rec-tl-dot{width:12px;height:12px;border-radius:50%;background:#e5e7eb;border:2px solid #fff;box-shadow:0 0 0 2px #e5e7eb;}
+.rec-tl-step.done .rec-tl-dot{background:#16a34a;box-shadow:0 0 0 2px #16a34a;}
+.rec-tl-step.current .rec-tl-dot{background:#2563eb;box-shadow:0 0 0 3px #bfdbfe;}
+.rec-tl-lbl{font-size:11px;color:#6b7280;text-align:center;margin-top:6px;font-weight:600;line-height:1.3;}
+.rec-tl-sub{font-weight:400;color:#9ca3af;font-size:10.5px;}
+.rec-tl-line{flex:1;height:2px;background:#e5e7eb;min-width:20px;}
+.rec-tl-line.done{background:#16a34a;}
+.rec-tl-line.danger{background:#dc2626;}
+
+/* ── View tabs ── */
+.rec-view-tabs{display:flex;border-bottom:1px solid #e5e7eb;padding:0 12px;background:#fff;flex-shrink:0;}
+.rec-vt-btn{background:transparent;border:none;padding:10px 14px;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;display:inline-flex;align-items:center;gap:6px;font-family:inherit;}
+.rec-vt-btn.active{color:#2563eb;border-bottom-color:#2563eb;}
+.rec-vt-count{background:#e5e7eb;color:#374151;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700;}
+.rec-vt-btn.active .rec-vt-count{background:#dbeafe;color:#1d4ed8;}
+
+/* ── Generated / Upcoming tabs ── */
+.badge-red{background:#fef2f2;color:#dc2626;}
+.rec-table-inner{font-size:12.5px;}
+.rec-table-inner th{background:#fafafa;}
+.rec-tab-empty{padding:24px;text-align:center;color:#9ca3af;font-size:13px;}
+.rec-upcoming-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;}
+.rec-upcoming-list li{background:#f9fafb;border:1px solid #f3f4f6;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-size:13px;}
+.rec-upcoming-idx{background:#dbeafe;color:#1d4ed8;font-weight:700;padding:2px 8px;border-radius:8px;font-size:11.5px;font-family:monospace;}
 
 /* ── View Drawer Header ── */
 .rec-view-head{padding:20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}

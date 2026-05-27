@@ -734,7 +734,7 @@ def get_pl_monthly_breakdown(company: str, from_date: str, to_date: str) -> list
 
 
 # ── GST / ITC Report (P3/Issue 9) ─────────────────────────────────────────────
-
+@frappe.whitelist()
 def get_gstr_summary(company: str, from_date: str, to_date: str) -> dict:
     """
     Build a GSTR-3B style summary:

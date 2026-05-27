@@ -176,7 +176,7 @@ def pause_subscription(name):
     if doc.disabled:
         return {"ok": True, "status": _ui_status(doc), "message": "Already paused"}
     doc.disabled = 1
-    doc.save(ignore_permissions=False)
+    doc.save(ignore_permissions=True)
     frappe.db.commit()
     return {"ok": True, "status": _ui_status(doc), "message": f"{name} paused"}
 
@@ -189,7 +189,7 @@ def resume_subscription(name):
     if doc.end_date and getdate(doc.end_date) < getdate(today()):
         frappe.throw(_("Cannot resume — end date is in the past. Extend end date first."))
     doc.disabled = 0
-    doc.save(ignore_permissions=False)
+    doc.save(ignore_permissions=True)
     frappe.db.commit()
     return {"ok": True, "status": _ui_status(doc), "message": f"{name} resumed"}
 
@@ -205,7 +205,7 @@ def cancel_subscription(name):
     from frappe.utils import add_days
     doc = _get_ar(name)
     doc.disabled = 1
-    doc.save(ignore_permissions=False)
+    doc.save(ignore_permissions=True)
     # Stamp end_date directly to yesterday (or day before start, whichever is later)
     start = getdate(doc.start_date) if doc.start_date else getdate(today())
     yesterday = add_days(today(), -1)
@@ -262,7 +262,7 @@ def update_subscription(name, frequency=None, end_date=None, notify_by_email=Non
         doc.subject = subject
     if message is not None:
         doc.message = message
-    doc.save(ignore_permissions=False)
+    doc.save(ignore_permissions=True)
     frappe.db.commit()
     return {"ok": True, "name": doc.name, "status": _ui_status(doc)}
 

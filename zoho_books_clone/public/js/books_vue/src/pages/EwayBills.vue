@@ -33,11 +33,26 @@
       { label: 'Total Value', tone: 'default', value: fmtCur(stats.total_value) },
     ]" />
 
+    <!-- ============================ BULK ACTION BAR -->
+    <div v-if="selected.size" class="inv-bulk-bar">
+      <span class="inv-bulk-count">{{ selected.size }} selected</span>
+      <button class="inv-bulk-btn" @click="bulkDownloadJson" :disabled="bulkBusy">
+        <span v-html="icon('download',13)"></span> Download JSONs
+      </button>
+      <button class="inv-bulk-btn" @click="bulkExtend" :disabled="bulkBusy">Extend Validity (+1d)</button>
+      <button class="inv-bulk-btn inv-bulk-danger" @click="bulkCancelEwb" :disabled="bulkBusy">Cancel EWBs</button>
+      <button class="inv-bulk-btn" @click="exportCSV" :disabled="bulkBusy">
+        <span v-html="icon('download',13)"></span> Export CSV
+      </button>
+      <button class="inv-bulk-clear" @click="selected = new Set()">✕ Clear</button>
+    </div>
+
     <!-- ============================ TABLE -->
     <div class="ew-card">
       <table class="ew-table">
         <thead>
           <tr>
+            <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
             <th>EWB #</th>
             <th @click="sort('invoice_no')" class="sortable">Invoice # <span v-html="sortArrow('invoice_no')"></span></th>
             <th @click="sort('invoice_date')" class="sortable">Inv. Date <span v-html="sortArrow('invoice_date')"></span></th>
@@ -47,15 +62,16 @@
             <th>Valid Until</th>
             <th class="ta-r">Amount</th>
             <th>Status</th>
-            <th style="width:90px;text-align:right">Actions</th>
+            <th style="width:110px;text-align:right">Actions</th>
           </tr>
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 8" :key="n"><td colspan="10"><div class="ew-shimmer"></div></td></tr>
+            <tr v-for="n in 8" :key="n"><td colspan="11"><div class="ew-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="r in paged" :key="r.name" class="ew-row" @click="openView(r)">
+            <tr v-for="r in paged" :key="r.name" class="ew-row" :class="{selected: selected.has(r.name)}" @click="openView(r)">
+              <td @click.stop><input type="checkbox" :checked="selected.has(r.name)" @change="toggle(r.name)" /></td>
               <td><span class="ew-irn mono-sm">{{ r.ewb_no || '—' }}</span></td>
               <td @click.stop><DocLink doctype="Sales Invoice" :name="r.invoice_no" /></td>
               <td class="mono-sm text-muted">{{ fmtDate(r.invoice_date) }}</td>
@@ -69,11 +85,12 @@
                 <div class="ew-actions-row">
                   <button class="ew-act-btn" @click="openView(r)" title="View"><span v-html="icon('eye',13)"></span></button>
                   <button v-if="r.ui_status==='Generated'" class="ew-act-btn" @click="quickDownload(r)" title="Download JSON"><span v-html="icon('download',13)"></span></button>
+                  <button v-if="r.ui_status==='Generated'" class="ew-act-btn" @click="actionOn(r,'cancel')" title="Cancel EWB"><span v-html="icon('x',13)"></span></button>
                   <button v-if="r.ui_status==='Cancelled' || r.ui_status==='Expired'" class="ew-act-btn ew-act-del" @click.stop="deleteTarget={row:r}" title="Delete"><span v-html="icon('trash',13)"></span></button>
                 </div>
               </td>
             </tr>
-            <tr v-if="!sortedRows.length"><td colspan="10" class="ew-empty">
+            <tr v-if="!sortedRows.length"><td colspan="11" class="ew-empty">
               <div class="ew-empty-wrap">
                 <div class="ew-empty-icon" v-html="icon('warehouse',32)"></div>
                 <div class="ew-empty-title">No E-Way Bills here</div>
@@ -364,6 +381,8 @@ const tab = ref("all");
 const stats = ref({ total_invoices: 0, total_value: 0, generated: 0, pending: 0, expired: 0, cancelled: 0, expiring_soon: 0 });
 const sortCol = ref("invoice_date");
 const sortDir = ref("desc");
+const selected = ref(new Set());
+const bulkBusy = ref(false);
 
 const tabs = computed(() => [
   { v: "all", l: "All", count: list.value.length || null },
@@ -653,6 +672,70 @@ async function downloadJson(doc) {
 
 async function quickDownload(r) { await downloadJson(r); }
 
+// ── Selection + bulk actions ──────────────────────────────────────────────────
+const allChecked = computed(() => sortedRows.value.length > 0 && sortedRows.value.every(r => selected.value.has(r.name)));
+function toggle(name) {
+  const s = new Set(selected.value);
+  s.has(name) ? s.delete(name) : s.add(name);
+  selected.value = s;
+}
+function toggleAll(e) {
+  selected.value = e.target.checked
+    ? new Set(sortedRows.value.map(r => r.name))
+    : new Set();
+}
+function _selectedRows() {
+  return sortedRows.value.filter(r => selected.value.has(r.name));
+}
+
+async function bulkDownloadJson() {
+  const rows = _selectedRows().filter(r => r.ui_status === "Generated");
+  if (!rows.length) { toast.error("No Generated EWBs selected"); return; }
+  bulkBusy.value = true;
+  let ok = 0, fail = 0;
+  for (const r of rows) {
+    try { await downloadJson(r); ok++; } catch { fail++; }
+  }
+  bulkBusy.value = false;
+  toast.success(`${ok} JSON file(s) downloaded${fail?`, ${fail} failed`:''}`);
+}
+
+async function bulkCancelEwb() {
+  const rows = _selectedRows().filter(r => r.ui_status === "Generated");
+  if (!rows.length) { toast.error("No Generated EWBs selected"); return; }
+  if (!(await confirm({ title: `Cancel ${rows.length} E-Way Bill(s)?`, body: "Each EWB will be marked Cancelled and the linked invoice's EWB number cleared.", okLabel: "Cancel All", okStyle: "danger" }))) return;
+  bulkBusy.value = true;
+  let ok = 0, fail = 0;
+  for (const r of rows) {
+    try {
+      await apiPOST("zoho_books_clone.api.eway.cancel_eway_bill", { name: r.name });
+      ok++;
+    } catch { fail++; }
+  }
+  bulkBusy.value = false;
+  toast.success(`${ok} cancelled${fail?`, ${fail} failed`:''}`);
+  selected.value = new Set();
+  await load();
+}
+
+async function bulkExtend() {
+  const rows = _selectedRows().filter(r => r.ui_status === "Generated");
+  if (!rows.length) { toast.error("No Generated EWBs selected"); return; }
+  bulkBusy.value = true;
+  let ok = 0, fail = 0;
+  for (const r of rows) {
+    try {
+      await apiPOST("zoho_books_clone.api.eway.extend_validity", { name: r.name, extra_days: 1 });
+      ok++;
+    } catch { fail++; }
+  }
+  bulkBusy.value = false;
+  toast.success(`${ok} extended by 1 day${fail?`, ${fail} failed`:''}`);
+  selected.value = new Set();
+  await load();
+}
+
+
 function printEwb(doc) {
   const w = window.open("", "_blank", "width=720,height=900");
   if (!w) return toast.error("Pop-up blocked — allow pop-ups to print");
@@ -683,10 +766,14 @@ function printEwb(doc) {
   w.document.close();
 }
 
-// ----- export
+// ----- export (respects selection — same convention as other sales pages)
 function exportCSV() {
+  const source = selected.value.size
+    ? sortedRows.value.filter(r => selected.value.has(r.name))
+    : sortedRows.value;
+  if (!source.length) return;
   const headers = ["EWB #", "Invoice", "Inv Date", "Customer", "Transporter", "Vehicle", "Valid Until", "Amount", "Status"];
-  const rows = sortedRows.value.map((r) => [
+  const rows = source.map((r) => [
     r.ewb_no, r.invoice_no, r.invoice_date, r.customer_name || r.customer,
     r.transporter, r.vehicle_no, r.valid_upto, r.grand_total, r.ui_status,
   ]);

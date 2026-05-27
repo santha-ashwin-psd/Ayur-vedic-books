@@ -721,3 +721,35 @@
   font: inherit; font-size: 12.5px; color: #374151; outline: none;
 }
 .sales-date-input:focus { border-color: #2563eb; }
+
+/* ============================================================
+   Global bulk-action bar — used by every list page in the sales
+   module. Keeps the look identical across components even when
+   page-level scoped CSS isn't present (e.g. Delivery Challans,
+   e-Way Bills). Scoped page styles still override these.
+   ============================================================ */
+.inv-bulk-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+  flex-wrap: wrap;
+}
+.inv-bulk-count {
+  font-size: 13px; font-weight: 700; color: #1a6ef7; margin-right: 4px;
+}
+.inv-bulk-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: 5px 12px; font-size: 12.5px; font-weight: 600; color: #374151;
+  cursor: pointer; font-family: inherit;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.inv-bulk-btn:hover:not(:disabled) { background: #f8fafc; border-color: #1a6ef7; color: #1a6ef7; }
+.inv-bulk-btn:disabled { opacity: .5; cursor: not-allowed; }
+.inv-bulk-danger { border-color: rgba(220,38,38,.3); color: #dc2626; }
+.inv-bulk-danger:hover:not(:disabled) { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+.inv-bulk-clear {
+  background: none; border: none; font-size: 12.5px; color: #6b7280;
+  cursor: pointer; font-family: inherit; padding: 4px 8px; border-radius: 4px;
+}
+.inv-bulk-clear:hover { background: #e0e7ff; color: #1a6ef7; }

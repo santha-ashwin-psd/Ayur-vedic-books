@@ -13,6 +13,7 @@
       </button>
     </div>
     <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="b-btn b-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
       <button class="b-btn b-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
       <button class="b-btn b-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Challan</button>
     </div>
@@ -27,27 +28,41 @@
   ]" />
 
   <!-- Table -->
+  <!-- Bulk action bar -->
+  <div v-if="selected.size" class="inv-bulk-bar">
+    <span class="inv-bulk-count">{{ selected.size }} selected</span>
+    <button class="inv-bulk-btn" @click="bulkSubmit" :disabled="bulkBusy">Submit Drafts</button>
+    <button class="inv-bulk-btn inv-bulk-danger" @click="bulkCancel" :disabled="bulkBusy">Cancel Submitted</button>
+    <button class="inv-bulk-btn inv-bulk-danger" @click="bulkDelete" :disabled="bulkBusy">Delete Drafts</button>
+    <button class="inv-bulk-btn" @click="exportCSV" :disabled="bulkBusy">
+      <span v-html="icon('download',13)"></span> Export CSV
+    </button>
+    <button class="inv-bulk-clear" @click="selected = new Set()">✕ Clear</button>
+  </div>
+
   <div class="b-card" style="padding:0;overflow:hidden">
     <table class="b-table">
       <thead>
         <tr>
+          <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
           <th @click="sort('name')" class="sortable">Challan / SO # <span v-html="sa('name')"></span></th>
           <th @click="sort('customer_name')" class="sortable">Customer <span v-html="sa('customer_name')"></span></th>
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sa('posting_date')"></span></th>
           <th>Sales Order</th>
           <th>Status</th>
           <th class="ta-r">Qty</th>
-          <th style="width:120px;text-align:center">Actions</th>
+          <th style="width:140px;text-align:center">Actions</th>
         </tr>
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 6" :key="n"><td colspan="7" style="padding:14px"><div class="b-shimmer" style="height:12px"></div></td></tr>
+          <tr v-for="n in 6" :key="n"><td colspan="8" style="padding:14px"><div class="b-shimmer" style="height:12px"></div></td></tr>
         </template>
         <tr v-else-if="!sorted.length">
-          <td colspan="7" class="b-empty">{{search?'No challans match your search':'No delivery challans yet'}}</td>
+          <td colspan="8" class="b-empty">{{search?'No challans match your search':'No delivery challans yet'}}</td>
         </tr>
-        <tr v-else v-for="r in paged" :key="r.name" class="clickable dc-row" @click="openView(r)">
+        <tr v-else v-for="r in paged" :key="r.name" class="clickable dc-row" :class="{selected: selected.has(r.name)}" @click="openView(r)">
+          <td @click.stop><input v-if="r._source==='dn'" type="checkbox" :checked="selected.has(r.name)" @change="toggle(r.name)" /></td>
           <td><span class="mono" style="font-size:12px;color:#3B5BDB">{{r.name}}</span></td>
           <td class="fw-600">{{r.customer_name||r.customer||'—'}}</td>
           <td class="c-muted" style="font-size:12.5px">{{r.posting_date||'—'}}</td>
@@ -58,8 +73,9 @@
             <div class="dc-actions-row">
               <button class="dc-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
               <button v-if="canEdit(r)" class="dc-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
-              <button v-if="r.docstatus===1 && r.status!=='Cancelled'" class="dc-act-btn dc-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel"><span v-html="icon('x',12)"></span></button>
-              <button v-if="r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled'" class="dc-act-btn dc-act-del" @click.stop="deleteTarget={row:r,mode:'delete'}" title="Delete"><span v-html="icon('trash',12)"></span></button>
+              <button v-if="r._source==='dn' && r.docstatus===0" class="dc-act-btn" @click.stop="submitOne(r)" title="Submit"><span v-html="icon('check',12)"></span></button>
+              <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled'" class="dc-act-btn dc-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel"><span v-html="icon('x',12)"></span></button>
+              <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="dc-act-btn dc-act-del" @click.stop="deleteTarget={row:r,mode:'delete'}" title="Delete"><span v-html="icon('trash',12)"></span></button>
             </div>
           </td>
         </tr>
@@ -331,6 +347,8 @@ const search      = ref("");
 const tab         = ref("all");
 const sortCol     = ref("posting_date");
 const sortDir     = ref("desc");
+const selected    = ref(new Set());
+const bulkBusy    = ref(false);
 
 const viewOpen    = ref(false);
 const viewDoc     = ref(null);
@@ -539,6 +557,96 @@ async function submitChallan() {
     await load();
   } catch (e) { toast.error(e.message || "Submit failed"); }
   finally { submitting.value = false; }
+}
+
+// ── Selection + bulk actions ──────────────────────────────────────────────────
+const allChecked = computed(() => {
+  const dnRows = sorted.value.filter(r => r._source === "dn");
+  return dnRows.length > 0 && dnRows.every(r => selected.value.has(r.name));
+});
+function toggle(name) {
+  const s = new Set(selected.value);
+  s.has(name) ? s.delete(name) : s.add(name);
+  selected.value = s;
+}
+function toggleAll(e) {
+  selected.value = e.target.checked
+    ? new Set(sorted.value.filter(r => r._source === "dn").map(r => r.name))
+    : new Set();
+}
+function selectedRows() {
+  return sorted.value.filter(r => r._source === "dn" && selected.value.has(r.name));
+}
+async function submitOne(r) {
+  try {
+    await apiSubmit("Delivery Note", r.name);
+    toast.success(`${r.name} submitted`);
+    await load();
+  } catch (e) { toast.error(e.message || "Submit failed"); }
+}
+async function bulkSubmit() {
+  const rows = selectedRows().filter(r => r.docstatus === 0);
+  if (!rows.length) { toast.error("No draft challans selected"); return; }
+  bulkBusy.value = true;
+  let ok = 0, fail = 0;
+  for (const r of rows) {
+    try { await apiSubmit("Delivery Note", r.name); ok++; } catch { fail++; }
+  }
+  bulkBusy.value = false;
+  toast.success(`${ok} submitted${fail?`, ${fail} failed`:''}`);
+  selected.value = new Set();
+  await load();
+}
+async function bulkCancel() {
+  const rows = selectedRows().filter(r => r.docstatus === 1 && r.status !== "Cancelled");
+  if (!rows.length) { toast.error("No submitted challans selected"); return; }
+  bulkBusy.value = true;
+  let ok = 0, fail = 0;
+  for (const r of rows) {
+    try { await apiCancel("Delivery Note", r.name); ok++; } catch { fail++; }
+  }
+  bulkBusy.value = false;
+  toast.success(`${ok} cancelled${fail?`, ${fail} failed`:''}`);
+  selected.value = new Set();
+  await load();
+}
+async function bulkDelete() {
+  const rows = selectedRows().filter(r => r.docstatus === 0 || r.docstatus === 2 || r.status === "Cancelled");
+  if (!rows.length) { toast.error("Only drafts and cancelled rows can be deleted"); return; }
+  bulkBusy.value = true;
+  let ok = 0, fail = 0;
+  for (const r of rows) {
+    try { await apiDelete("Delivery Note", r.name); ok++; } catch { fail++; }
+  }
+  bulkBusy.value = false;
+  toast.success(`${ok} deleted${fail?`, ${fail} failed`:''}`);
+  selected.value = new Set();
+  await load();
+}
+function exportCSV() {
+  // Selection-aware: if rows are selected export those, else export filtered view.
+  // Only "real" DN rows (not derived SO rows) are exported — derived rows
+  // don't have transporter/LR data anyway.
+  const source = selected.value.size
+    ? sorted.value.filter(r => r._source === "dn" && selected.value.has(r.name))
+    : sorted.value.filter(r => r._source === "dn");
+  if (!source.length) { toast.error("Nothing to export"); return; }
+  const headers = ["Challan #","Customer","Date","Sales Order","Status","Qty","LR / Tracking","Transporter"];
+  const lines = source.map(r => [
+    r.name, r.customer_name || r.customer || "", r.posting_date || "",
+    r.sales_order || "", statusLabel(r), r.total_qty || "",
+    r.lr_no || "", r.transporter_name || "",
+  ]);
+  const esc = v => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = "﻿" + [headers, ...lines].map(r => r.map(esc).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `delivery-challans-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`${source.length} row(s) exported`);
 }
 
 // ── Open New / Edit ───────────────────────────────────────────────────────────

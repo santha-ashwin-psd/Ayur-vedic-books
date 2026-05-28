@@ -32,6 +32,47 @@ def _company(bank_account: str) -> str:
     return co or frappe.db.get_default("company") or ""
 
 
+def _ensure_gl_account(account_name: str, company: str, currency: str = "INR") -> str:
+    """
+    Return a leaf GL Account for a bank account, creating one if needed.
+
+    A Bank Account is useless without a linked ledger account — every transfer,
+    cheque, and bank-charge entry resolves it via _bank_gl(). When the caller
+    doesn't supply one, we auto-create a leaf Account (account_type='Bank')
+    under the company's Bank group, mirroring Zoho's behaviour where naming a
+    bank silently provisions its ledger.
+    """
+    # Find the Bank group to parent under; fall back to any Asset group.
+    parent = frappe.db.get_value(
+        "Account", {"company": company, "is_group": 1, "account_type": "Bank"}, "name"
+    ) or frappe.db.get_value(
+        "Account", {"company": company, "is_group": 1, "account_type": "Asset"}, "name"
+    )
+    if not parent:
+        frappe.throw(_(
+            "No Bank or Asset group account found for company {0}. "
+            "Create a group account in the Chart of Accounts first, "
+            "or pick a GL account manually."
+        ).format(company))
+
+    # Account name autoname is "{account_name} - {company}" — reuse if it exists.
+    candidate = f"{account_name} - {company}"
+    if frappe.db.exists("Account", candidate):
+        return candidate
+
+    acc = frappe.get_doc({
+        "doctype":        "Account",
+        "account_name":   account_name,
+        "parent_account": parent,
+        "is_group":       0,
+        "account_type":   "Bank",
+        "currency":       currency or "INR",
+        "company":        company,
+    })
+    acc.insert(ignore_permissions=True)
+    return acc.name
+
+
 def _recalc_balance(bank_account: str) -> float:
     """
     Compute the live balance for a Bank Account as:
@@ -117,6 +158,16 @@ def save_bank_account(
         company = _get_company(frappe.session.user)
     if not company:
         frappe.throw(_("No company configured. Please set a default company in Books Settings."))
+
+    # A bank account is unusable without a ledger account — auto-provision one
+    # (Zoho-style) when the caller didn't supply it. On edit, preserve any
+    # ledger already linked rather than minting a duplicate.
+    if not (gl_account or "").strip():
+        existing_gl = (
+            frappe.db.get_value("Bank Account", existing_name, "gl_account")
+            if existing_name else None
+        )
+        gl_account = existing_gl or _ensure_gl_account(account_name.strip(), company, currency)
 
     # ── UPDATE existing document ───────────────────────────────────────────────
     if existing_name and frappe.db.exists("Bank Account", existing_name):

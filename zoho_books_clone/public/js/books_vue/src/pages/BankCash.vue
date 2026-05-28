@@ -88,7 +88,10 @@
           </div>
           <div class="cash-field"><label class="cash-label">Date <span class="req">*</span></label><input v-model="form.payment_date" type="date" class="cash-input" /></div>
           <div class="cash-field"><label class="cash-label">Amount <span class="req">*</span></label><input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="cash-input" /></div>
-          <div class="cash-field" style="grid-column:1/-1"><label class="cash-label">Party <span class="req">*</span></label><input v-model="form.party" type="text" class="cash-input" :placeholder="form.payment_type==='Receive'?'Customer name':'Vendor / supplier name'" /></div>
+          <div class="cash-field" style="grid-column:1/-1">
+            <label class="cash-label">{{ form.payment_type==='Receive'?'Customer':'Vendor' }} <span class="req">*</span></label>
+            <SearchableSelect v-model="form.party" :options="partyOptions" :placeholder="form.payment_type==='Receive'?'Select customer…':'Select vendor…'" @search="fetchParties" />
+          </div>
           <div class="cash-field" style="grid-column:1/-1"><label class="cash-label">Remarks</label><textarea v-model="form.remarks" rows="2" class="cash-input" placeholder="Optional…"></textarea></div>
         </div>
       </div>
@@ -139,13 +142,14 @@
   </div>
 </template>
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { apiList, apiSave, apiSubmit, apiCancel, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SummaryStrip from "../components/SummaryStrip.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
 const { toast } = useToast();
 const { confirm } = useConfirm();
 const cashAccount=ref(""),receivableAccount=ref(""),payableAccount=ref(""),companyCurrency=ref("INR");
@@ -156,6 +160,7 @@ const list=ref([]),loading=ref(false),search=ref("");
 const drawerOpen=ref(false),drawerSaving=ref(false),actionBusy=ref(false),bulkBusy=ref(false);
 const viewOpen=ref(false),viewDoc=ref(null);
 const selected=ref(new Set());
+const partyOptions=ref([]);
 const sortCol=ref("payment_date"),sortDir=ref("desc");
 const form=reactive({payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",remarks:""});
 async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Payment Entry",{fields:["name","party","payment_type","payment_date","paid_amount","remarks","docstatus"],filters:[["company","=",co],["mode_of_payment","=","Cash"],["docstatus","=",1]],limit:200,order:"payment_date desc"});selected.value=new Set();}catch(e){toast.error(e.message||"Failed to load cash entries");}finally{loading.value=false;}}
@@ -199,7 +204,20 @@ async function bulkDelete(){
   finally{bulkBusy.value=false;}
 }
 
-function openNew(){Object.assign(form,{payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",remarks:""});drawerOpen.value=true;}
+async function fetchParties(q=""){
+  const dt=form.payment_type==="Receive"?"Customer":"Supplier";
+  const nameField=dt==="Customer"?"customer_name":"supplier_name";
+  try{
+    const filters=[["disabled","=",0]];
+    if(q)filters.push([nameField,"like","%"+q+"%"]);
+    const rows=await apiList(dt,{fields:["name",nameField],filters,limit:30,order:nameField+" asc"});
+    partyOptions.value=rows.map(r=>({label:r[nameField]||r.name,value:r.name}));
+  }catch{partyOptions.value=[];}
+}
+// Switching Cash In/Out changes the party master — reset selection + reload list.
+watch(()=>form.payment_type,()=>{form.party="";if(drawerOpen.value)fetchParties("");});
+
+function openNew(){Object.assign(form,{payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",remarks:""});partyOptions.value=[];fetchParties("");drawerOpen.value=true;}
 function openView(p){viewDoc.value=p;viewOpen.value=true;}
 
 async function saveCash(){

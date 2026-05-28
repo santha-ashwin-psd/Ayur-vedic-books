@@ -61,7 +61,7 @@ export const NAV = [
   { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },
   { path: "/inventory/price-lists",         label: "Price Lists",      icon: "rupee",      module: "inventory"  },
 
-  { section: "GST / Taxes" },
+  { section: "GST/Taxes" },
   { path: "/gst/gstr1",                     label: "GSTR-1",           icon: "gstfile",    module: "accounts"   },
   { path: "/gst/gstr3b",                    label: "GSTR-3B",          icon: "gstfile",    module: "accounts"   },
   { path: "/gst/einvoice",                  label: "e-Invoice",        icon: "qr",         module: "accounts"   },

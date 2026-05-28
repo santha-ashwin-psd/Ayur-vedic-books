@@ -2795,6 +2795,13 @@ def get_cheque_list(company=None, status=None):
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     company = company or _get_company(frappe.session.user)
+    # Guard: cheque_status column may not exist if bench migrate hasn't run yet
+    cols = {r[0] for r in frappe.db.sql(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+        "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tabPayment Entry' AND COLUMN_NAME='cheque_status'"
+    )}
+    if "cheque_status" not in cols:
+        return []
     where = ["mode_of_payment='Cheque'", "company=%(co)s"]
     params = {"co": company}
     if status:
@@ -2857,15 +2864,28 @@ def get_cheque_summary(company=None):
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     company = company or _get_company(frappe.session.user)
+    # Guard: cheque_status column may not exist if bench migrate hasn't run yet
+    cols = {r[0] for r in frappe.db.sql(
+        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+        "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='tabPayment Entry' AND COLUMN_NAME='cheque_status'"
+    )}
+    if "cheque_status" not in cols:
+        return {
+            "by_state": {}, "total_count": 0, "total_value": 0,
+            "issued":    {"count": 0, "total": 0},
+            "cleared":   {"count": 0, "total": 0},
+            "bounced":   {"count": 0, "total": 0},
+            "cancelled": {"count": 0, "total": 0},
+        }
     rows = frappe.db.sql("""
         SELECT COALESCE(cheque_status,'Issued') AS state,
-               COUNT(*) AS count,
+               COUNT(*) AS cnt,
                COALESCE(SUM(paid_amount),0) AS total
         FROM `tabPayment Entry`
         WHERE mode_of_payment='Cheque' AND company=%s
         GROUP BY COALESCE(cheque_status,'Issued')
     """, (company,), as_dict=True)
-    by_state = {r.state: {"count": r["count"], "total": flt(r["total"])} for r in rows}
+    by_state = {r.state: {"count": r["cnt"], "total": flt(r["total"])} for r in rows}
     total_count = sum(s["count"] for s in by_state.values())
     total_value = sum(s["total"] for s in by_state.values())
     return {

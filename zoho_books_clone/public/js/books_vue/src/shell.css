@@ -259,7 +259,7 @@
   flex-shrink: 0;
 }
 .bv-topbar-title {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--bv-text);
   white-space: nowrap;

@@ -15,7 +15,11 @@
           <span v-if="t.key!=='all'" class="po-pill-count">{{ counts[t.key] }}</span>
         </button>
       </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div style="    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    flex-wrap: nowrap;">
         <button class="po-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
         <button class="po-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
         <button class="po-btn-primary" @click="openNew">
@@ -778,11 +782,36 @@ onMounted(() => { load(); loadTaxAccount(); });
 
 <style scoped>
 .po-page { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
-.po-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.po-actions { display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+    padding: 12px 16px;
+    background: transparent;
+    border-bottom: none; }
 .po-search-wrap { display: flex; align-items: center; gap: 8px; background: #ffffff; border-radius: 8px; padding: 6px 12px; min-width: 220px; }
 .po-search-input { border: none; background: transparent; outline: none; font: inherit; color: #111827; width: 100%; font-size: 13px; }
-.po-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-.po-pill { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 600; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
+.po-pills {display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1 1 auto;
+    min-width: 0; }
+.po-pill {     padding: 5px 11px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    transition: border-color .15s, color .15s, background .15s;}
 .po-pill:hover { color: #2563eb; border-color: #2563eb; }
 .po-pill.active { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
 .po-pill-count { background: #f3f4f6; color: #6b7280; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }

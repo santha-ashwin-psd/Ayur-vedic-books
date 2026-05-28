@@ -75,7 +75,7 @@
           </div>
           <div class="ba-field" style="grid-column:1/-1">
             <label class="ba-label">GL Account</label>
-            <SearchableSelect v-model="form.gl_account" :options="glAccounts" placeholder="Link to chart of accounts…" @search="fetchGLAccounts" />
+            <SearchableSelect v-model="form.gl_account" :options="glAccounts" placeholder="Link to chart of accounts…" />
           </div>
           <div class="ba-field">
             <label class="ba-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -139,8 +139,8 @@ const form=reactive({account_name:"",bank_name:"",account_type:"Current",account
 async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Bank Account",{fields:["name","account_name","bank_name","account_type","account_number","ifsc_code","gl_account","is_default","company"],filters:[["company","=",co]],limit:100,order:"account_name asc"});}catch(e){toast.error(e.message||"Failed to load bank accounts");}finally{loading.value=false;}}
 const filtered=computed(()=>{if(!search.value.trim())return list.value;const q=search.value.toLowerCase();return list.value.filter(a=>(a.account_name||a.name||"").toLowerCase().includes(q)||(a.bank_name||"").toLowerCase().includes(q));});
 function maskAcct(n){if(!n||n.length<4)return n;return"•".repeat(Math.max(0,n.length-4))+n.slice(-4);}
-function openNew(){editingName.value="";Object.assign(form,{account_name:"",bank_name:"",account_type:"Current",account_number:"",ifsc_code:"",gl_account:"",is_default:false});glAccounts.value=[];drawerOpen.value=true;}
-function openEdit(a){editingName.value=a.name;Object.assign(form,{account_name:a.account_name||"",bank_name:a.bank_name||"",account_type:a.account_type||"Current",account_number:a.account_number||"",ifsc_code:a.ifsc_code||"",gl_account:a.gl_account||"",is_default:!!a.is_default});glAccounts.value=[];drawerOpen.value=true;}
+function openNew(){editingName.value="";Object.assign(form,{account_name:"",bank_name:"",account_type:"Current",account_number:"",ifsc_code:"",gl_account:"",is_default:false});glAccounts.value=[];drawerOpen.value=true;fetchGLAccounts();}
+function openEdit(a){editingName.value=a.name;Object.assign(form,{account_name:a.account_name||"",bank_name:a.bank_name||"",account_type:a.account_type||"Current",account_number:a.account_number||"",ifsc_code:a.ifsc_code||"",gl_account:a.gl_account||"",is_default:!!a.is_default});glAccounts.value=[];drawerOpen.value=true;fetchGLAccounts();}
 function openView(a){viewDoc.value=a;viewOpen.value=true;}
 async function fetchGLAccounts(q=""){try{const co=await resolveCompany();const r=await apiList("Account",{fields:["name"],filters:[["account_type","in",["Bank","Cash"]],["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});glAccounts.value=r.map(x=>({label:x.name,value:x.name}));}catch{glAccounts.value=[];}}
 async function saveAccount(){if(!form.account_name)return toast.error("Account name is required");if(!form.bank_name)return toast.error("Bank name is required");drawerSaving.value=true;try{const co=await resolveCompany();const doc={doctype:"Bank Account",company:co,account_name:form.account_name,bank_name:form.bank_name,account_type:form.account_type,account_number:form.account_number||"",ifsc_code:form.ifsc_code||"",gl_account:form.gl_account||"",is_default:form.is_default?1:0};if(editingName.value)doc.name=editingName.value;const saved=await apiSave(doc);toast.success(`Bank account ${saved?.name||""} saved`);drawerOpen.value=false;await load();}catch(e){toast.error(e.message||"Failed to save bank account");}finally{drawerSaving.value=false;}}

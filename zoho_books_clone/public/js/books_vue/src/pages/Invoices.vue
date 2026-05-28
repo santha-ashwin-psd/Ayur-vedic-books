@@ -1528,7 +1528,7 @@ watch(() => route.query, (q) => {
 /* ── Table ── */
 .inv-table-wrap { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; overflow-x:auto; }
 .inv-table { width:100%; border-collapse:collapse; font-size:13px; }
-.inv-table th { padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:10.5px; font-weight:700; letter-spacing:.06em; color:#6b7280; text-align:left; white-space:nowrap; background:#fff; user-select:none; }
+.inv-table th { padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:11px; font-weight:600; letter-spacing:.06em; color:#6b7280; text-align:left; white-space:nowrap; background:#f9f9fb; user-select:none; }
 .inv-table th.sortable { cursor:pointer; } .inv-table th.sortable:hover { color:#1a6ef7; }
 .sort-arrow { font-size:10px; margin-left:2px; color:#1a6ef7; }
 .th-check { width:40px; padding-left:20px; }

@@ -128,6 +128,8 @@
 }
 .bv-sidebar-section:hover { color: #ffffff;
     background-color: #333850;border-radius: 7px;}
+.bv-sidebar-section-active { color: #ffffff;
+    background-color: #333850; border-radius: 7px; }
 .bv-section-chev { opacity: .6; flex-shrink: 0; }
 
 /* Nav items */

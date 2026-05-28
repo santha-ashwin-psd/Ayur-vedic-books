@@ -22,6 +22,7 @@
         <div
           v-if="group.section && !collapsed"
           class="bv-sidebar-section"
+          :class="{ 'bv-sidebar-section-active': isSectionActive(group) }"
           @click="toggleSection(group.section)"
         >
           <span>{{ group.section }}</span>
@@ -108,6 +109,10 @@ function toggleSection(section) {
 
 function isSectionOpen(section) {
   return !collapsedSections.value.has(section);
+}
+
+function isSectionActive(group) {
+  return group.items.some(item => isActive(item.path));
 }
 
 // ── Initials ──────────────────────────────────────────────────────────

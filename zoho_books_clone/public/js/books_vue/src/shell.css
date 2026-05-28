@@ -74,10 +74,11 @@
   letter-spacing: -.5px;
 }
 .bv-sidebar-brand-text {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 400;
   color: #f9fafb;
   flex: 1;
+  font-family: "ZohoPuvi";
   white-space: nowrap;
   overflow: hidden;
 }

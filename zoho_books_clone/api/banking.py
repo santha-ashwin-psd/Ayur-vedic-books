@@ -32,6 +32,22 @@ def _company(bank_account: str) -> str:
     return co or frappe.db.get_default("company") or ""
 
 
+def _clear_other_defaults(company: str, keep_name: str) -> None:
+    """Enforce a single global default Bank Account per company.
+
+    The default flag picks which account is pre-selected when recording
+    payments/deposits/transfers — so exactly one account may hold it. When one
+    is marked default, un-mark every other account for the same company.
+    """
+    others = frappe.get_all(
+        "Bank Account",
+        filters={"company": company, "is_default": 1, "name": ["!=", keep_name]},
+        pluck="name",
+    )
+    for nm in others:
+        frappe.db.set_value("Bank Account", nm, "is_default", 0, update_modified=False)
+
+
 def _ensure_gl_account(account_name: str, company: str, currency: str = "INR") -> str:
     """
     Return a leaf GL Account for a bank account, creating one if needed.
@@ -196,6 +212,8 @@ def save_bank_account(
         doc.current_balance      = flt(current_balance)
 
         doc.save(ignore_permissions=True)
+        if doc.is_default:
+            _clear_other_defaults(company, doc.name)
         frappe.db.commit()
         return doc.as_dict()
 
@@ -224,6 +242,8 @@ def save_bank_account(
         "current_balance":     effective_opening,
     })
     doc.insert(ignore_permissions=True)
+    if doc.is_default:
+        _clear_other_defaults(company, doc.name)
     frappe.db.commit()
     return doc.as_dict()
 
@@ -334,6 +354,10 @@ def post_bank_transfer(
     company = _company(from_account)
     remark  = description or f"Transfer from {from_account} to {to_account}"
 
+    # Shared reference so the two legs can be grouped back into one transfer
+    # (for the Transfers list / delete). Stored on reference_number of both legs.
+    xref = "TRF-" + frappe.generate_hash(length=10)
+
     # Bank Transaction — source account (withdrawal / debit).
     # skip_gl_posting flag: this API posts a single combined GL set below,
     # so the per-transaction _post_gl must not run (would double-post).
@@ -346,6 +370,7 @@ def post_bank_transfer(
         "credit": 0,
         "transaction_type": "Transfer",
         "status": "Reconciled",
+        "reference_number": xref,
     })
     bt_from.flags.ignore_permissions = True
     bt_from.flags.skip_gl_posting = True
@@ -362,6 +387,7 @@ def post_bank_transfer(
         "credit": amount_f,
         "transaction_type": "Transfer",
         "status": "Reconciled",
+        "reference_number": xref,
     })
     bt_to.flags.ignore_permissions = True
     bt_to.flags.skip_gl_posting = True
@@ -401,12 +427,110 @@ def post_bank_transfer(
     return {
         "from_transaction": bt_from.name,
         "to_transaction":   bt_to.name,
+        "reference":        xref,
         "amount":           amount_f,
         "from_account":     from_account,
         "to_account":       to_account,
         "from_balance":     from_balance,
         "to_balance":       to_balance,
     }
+
+
+@frappe.whitelist(allow_guest=False)
+def get_bank_transfers(company: str = None) -> list:
+    """
+    List inter-account transfers (Bank Transactions of type 'Transfer'),
+    grouped back into one row per transfer via the shared reference_number.
+
+    Each row: { reference, date, from_account, to_account, amount, status,
+                from_transaction, to_transaction }.
+    Legacy transfers (no reference) are reconstructed from the outgoing leg.
+    """
+    import re
+    if not company:
+        company = _get_company(frappe.session.user)
+
+    acct_names = frappe.get_all("Bank Account", filters={"company": company} if company else {}, pluck="name")
+    if not acct_names:
+        return []
+
+    rows = frappe.get_all(
+        "Bank Transaction",
+        filters={"transaction_type": "Transfer", "docstatus": 1, "bank_account": ["in", acct_names]},
+        fields=["name", "bank_account", "date", "description", "debit", "credit", "status", "reference_number"],
+        order_by="date desc, creation desc",
+        limit=500,
+    )
+
+    groups = {}
+    for r in rows:
+        key = r.reference_number or r.name
+        g = groups.setdefault(key, {
+            "reference": r.reference_number or "", "date": r.date, "status": "Reconciled",
+            "from_account": None, "to_account": None, "amount": 0.0,
+            "from_transaction": None, "to_transaction": None, "_from_desc": "",
+        })
+        if r.date and (not g["date"] or str(r.date) < str(g["date"])):
+            g["date"] = r.date
+        if flt(r.debit) > 0:
+            g["from_account"] = r.bank_account
+            g["amount"] = flt(r.debit)
+            g["from_transaction"] = r.name
+            g["_from_desc"] = r.description or ""
+        if flt(r.credit) > 0:
+            g["to_account"] = r.bank_account
+            g["to_transaction"] = r.name
+            if not g["amount"]:
+                g["amount"] = flt(r.credit)
+        if (r.status or "") != "Reconciled":
+            g["status"] = "Unreconciled"
+
+    out = []
+    for g in groups.values():
+        # Skip credit-only legacy legs (inbound mirror already shown via its outbound leg).
+        if not g["from_account"] and not g["from_transaction"]:
+            continue
+        if not g["to_account"]:
+            m = re.search(r"Transfer to (.+?)(?: —|$)", g.pop("_from_desc", "") or "")
+            if m:
+                g["to_account"] = m.group(1).strip()
+        g.pop("_from_desc", None)
+        out.append(g)
+    out.sort(key=lambda x: str(x.get("date") or ""), reverse=True)
+    return out
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def delete_bank_transfer(reference: str = "", from_transaction: str = "") -> dict:
+    """
+    Delete a transfer: cancels + deletes both Bank Transaction legs and their
+    GL entries. Identifies the legs by shared reference_number when available,
+    otherwise just the single transaction passed in.
+    """
+    names = []
+    if reference:
+        names = frappe.get_all("Bank Transaction",
+                               filters={"reference_number": reference, "transaction_type": "Transfer"},
+                               pluck="name")
+    if from_transaction and from_transaction not in names:
+        names.append(from_transaction)
+    if not names:
+        frappe.throw(_("Transfer not found."))
+
+    for nm in names:
+        try:
+            doc = frappe.get_doc("Bank Transaction", nm)
+            if doc.docstatus == 1:
+                doc.flags.ignore_permissions = True
+                doc.cancel()
+            frappe.delete_doc("Bank Transaction", nm, ignore_permissions=True, force=True)
+        except Exception:
+            pass
+        # Remove any GL entries posted against this transaction.
+        frappe.db.delete("General Ledger Entry", {"voucher_no": nm})
+
+    frappe.db.commit()
+    return {"deleted": names}
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])

@@ -5,6 +5,7 @@
  "creation": "2026-04-10 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
+ "is_submittable": 1,
  "field_order": [
   "supplier",
   "supplier_name",
@@ -22,7 +23,9 @@
   "grand_total",
   "billed_amount",
   "terms",
-  "naming_series"
+  "naming_series",
+  "auto_repeat",
+  "amended_from"
  ],
  "fields": [
   {
@@ -125,6 +128,24 @@
    "fieldname": "naming_series",
    "fieldtype": "Data",
    "label": "Series"
+  },
+  {
+   "fieldname": "auto_repeat",
+   "fieldtype": "Link",
+   "label": "Auto Repeat",
+   "options": "Auto Repeat",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Purchase Order",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "links": [],

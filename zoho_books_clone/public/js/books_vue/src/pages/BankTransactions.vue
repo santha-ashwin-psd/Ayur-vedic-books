@@ -27,12 +27,12 @@
       <button class="bt-import-close" @click="importResult=null">×</button>
     </div>
 
-    <div class="bt-summary" v-if="!loading">
-      <div class="bt-sum-card"><div class="bt-sum-lbl">Deposits</div><div class="bt-sum-val green">{{ fmtCur(summaryDeposit) }}</div></div>
-      <div class="bt-sum-card"><div class="bt-sum-lbl">Withdrawals</div><div class="bt-sum-val red">{{ fmtCur(summaryWithdrawal) }}</div></div>
-      <div class="bt-sum-card"><div class="bt-sum-lbl">Unreconciled</div><div class="bt-sum-val orange">{{ counts.unreconciled }}</div></div>
-      <div class="bt-sum-card"><div class="bt-sum-lbl">Total</div><div class="bt-sum-val">{{ filtered.length }}</div></div>
-    </div>
+    <SummaryStrip v-if="!loading" :cards="[
+      { label: 'Deposits', tone: 'success', value: fmtCur(summaryDeposit), valueClass: 'green' },
+      { label: 'Withdrawals', tone: 'danger', value: fmtCur(summaryWithdrawal), valueClass: 'red' },
+      { label: 'Unreconciled', tone: counts.unreconciled>0?'warn':'default', value: counts.unreconciled, valueClass: counts.unreconciled>0?'orange':'' },
+      { label: 'Total', tone: 'default', value: filtered.length },
+    ]" />
 
     <div class="bt-card">
       <table class="bt-table">
@@ -72,10 +72,24 @@
     <div class="bt-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
         <div class="bt-dheader">
-          <div class="bt-dheader-title">Transaction Details</div>
           <button class="bt-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+          <div class="bt-dh-top">
+            <div class="bt-dh-ico"><span v-html="icon('ledger',20)"></span></div>
+            <div>
+              <div class="bt-dh-title">Transaction Details</div>
+              <div class="bt-dh-sub">{{ viewDoc.bank_account||'—' }} · {{ fmtDate(viewDoc.date) }}</div>
+            </div>
+            <span class="bt-badge" :class="viewDoc.status==='Reconciled'?'badge-green':'badge-orange'">{{ viewDoc.status||'Unreconciled' }}</span>
+          </div>
+          <div class="bt-dh-amount">
+            <div class="bt-dh-amt-lbl">{{ flt(viewDoc.deposit)>0 ? 'Deposit' : 'Withdrawal' }}</div>
+            <div class="bt-dh-amt-val" :class="flt(viewDoc.deposit)>0?'pos':'neg'">
+              {{ flt(viewDoc.deposit)>0 ? fmtCur(viewDoc.deposit) : '-'+fmtCur(viewDoc.withdrawal) }}
+            </div>
+          </div>
         </div>
         <div class="bt-dbody">
+          <div class="bt-section-hdr"><span v-html="icon('info',13)"></span> Details</div>
           <div class="bt-meta-grid">
             <div><div class="bt-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.date) }}</div></div>
             <div><div class="bt-meta-lbl">Bank Account</div><div>{{ viewDoc.bank_account||'—' }}</div></div>
@@ -83,8 +97,9 @@
             <div><div class="bt-meta-lbl">Withdrawal</div><div class="mono-sm red">{{ flt(viewDoc.withdrawal)>0?fmtCur(viewDoc.withdrawal):'—' }}</div></div>
             <div><div class="bt-meta-lbl">Reference</div><div class="mono-sm">{{ viewDoc.reference_number||'—' }}</div></div>
             <div><div class="bt-meta-lbl">Status</div><div><span class="bt-badge" :class="viewDoc.status==='Reconciled'?'badge-green':'badge-orange'">{{ viewDoc.status||'Unreconciled' }}</span></div></div>
-            <div style="grid-column:1/-1"><div class="bt-meta-lbl">Description</div><div style="font-size:13px;color:#374151;margin-top:4px">{{ viewDoc.description||'—' }}</div></div>
           </div>
+          <div class="bt-section-hdr"><span v-html="icon('file',13)"></span> Description</div>
+          <div class="bt-desc">{{ viewDoc.description||'—' }}</div>
         </div>
         <div class="bt-dfooter"><button class="bt-btn-ghost" @click="viewOpen=false">Close</button></div>
       </template>
@@ -127,10 +142,13 @@ function onCsvSelected(e) {
   reader.readAsText(f);
 }
 import { useToast } from "../composables/useToast.js";
+import { useRoute } from "vue-router";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import SummaryStrip from "../components/SummaryStrip.vue";
 
 const { toast } = useToast();
+const route = useRoute();
 const activeTab=ref("all");
 const tabs=[{key:"all",label:"All"},{key:"Unreconciled",label:"Unreconciled"},{key:"Reconciled",label:"Reconciled"}];
 const list=ref([]),loading=ref(false),search=ref(""),selectedAccount=ref("");
@@ -170,7 +188,7 @@ const summaryWithdrawal=computed(()=>filtered.value.reduce((s,t)=>s+flt(t.withdr
 const counts=computed(()=>({unreconciled:list.value.filter(t=>t.status!=="Reconciled").length}));
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 function openView(t){viewDoc.value=t;viewOpen.value=true;}
-onMounted(load);
+onMounted(()=>{if(route.query.account)selectedAccount.value=String(route.query.account);load();});
 </script>
 
 <style scoped>
@@ -192,10 +210,6 @@ onMounted(load);
 .bt-import-result.err{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;}
 .bt-import-close{background:transparent;border:none;color:inherit;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;}
 .bt-import-close:hover{opacity:.7;}
-.bt-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-.bt-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
-.bt-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
-.bt-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
 .green{color:#16a34a!important;}.red{color:#dc2626!important;}.orange{color:#ea580c!important;}
 .bt-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .bt-table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -210,15 +224,26 @@ onMounted(load);
 .bt-empty{text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important;}
 .bt-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.bt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40;}
-.bt-drawer{position:fixed;top:0;right:-420px;bottom:0;width:420px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 24px rgba(0,0,0,.08);z-index:50;display:flex;flex-direction:column;transition:right .22s ease;}
+.bt-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:40;}
+.bt-drawer{position:fixed;top:0;right:-440px;bottom:0;width:440px;max-width:96vw;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 28px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s ease;}
 .bt-drawer.open{right:0;}
-.bt-dheader{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;border-bottom:1px solid #e5e7eb;flex-shrink:0;}
-.bt-dheader-title{font-size:15px;font-weight:600;color:#111827;}
-.bt-dclose{background:transparent;border:none;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;}
-.bt-dclose:hover{background:#f3f4f6;color:#111827;}
-.bt-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;}
+.bt-dheader{position:relative;flex-shrink:0;padding:20px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}
+.bt-dclose{position:absolute;top:12px;right:12px;background:transparent;border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;}
+.bt-dclose:hover{background:rgba(255,255,255,.6);color:#0f172a;}
+.bt-dh-top{display:flex;align-items:center;gap:13px;padding-right:36px;}
+.bt-dh-ico{width:42px;height:42px;background:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;color:#2563eb;flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,.08);}
+.bt-dh-title{font-size:15px;font-weight:700;color:#0f172a;}
+.bt-dh-sub{font-size:12px;color:#475569;margin-top:1px;}
+.bt-dh-top .bt-badge{margin-left:auto;}
+.bt-dh-amount{margin-top:16px;}
+.bt-dh-amt-lbl{font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
+.bt-dh-amt-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.01em;margin-top:2px;}
+.bt-dh-amt-val.pos{color:#16a34a;}.bt-dh-amt-val.neg{color:#dc2626;}
+.bt-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;}
+.bt-section-hdr{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;margin-top:4px;}
+.bt-section-hdr span{color:#2563eb;display:inline-flex;}
 .bt-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.bt-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.bt-meta-lbl{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}
+.bt-desc{font-size:13px;color:#334155;line-height:1.5;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:12px 14px;}
 .bt-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
 </style>

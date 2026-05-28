@@ -41,6 +41,7 @@
             :href="`#${item.path}`"
             class="bv-sidebar-item"
             :class="{ 'bv-sidebar-item-active': isActive(item.path) }"
+            :ref="el => { if (el && isActive(item.path)) activeItemEl = el }"
             :title="collapsed ? item.label : ''"
             @click.prevent="goTo(item)"
           >
@@ -74,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import IconSvg from "../components/IconSvg.vue";
 import { NAV } from "./nav.js";
@@ -84,31 +85,59 @@ import { session } from "../api/session.js";
 defineProps({ collapsed: { type: Boolean, default: false } });
 defineEmits(["toggle"]);
 
+const activeItemEl = ref(null);
+const routeReady = ref(false);
+
 const route  = useRoute();
 const router = useRouter();
 const { can, role } = usePermissions();
 
-// ── Collapsed sections ────────────────────────────────────────────────
-const SECTION_KEY = "books_sidebar_sections";
-const collapsedSections = ref(new Set());
+// ── Open section (accordion — only one open at a time) ───────────────
+const SECTION_KEY = "books_sidebar_open_section";
+const openSection = ref(null);
+
+function getActiveSection() {
+  return navGroups.value.find(g => g.section && g.items.some(i => isActive(i.path)))?.section ?? null;
+}
 
 onMounted(() => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(SECTION_KEY) || "[]");
-    collapsedSections.value = new Set(saved);
-  } catch {}
+  router.isReady().then(() => {
+    routeReady.value = true;
+
+    // Open the section that contains the active route; fall back to saved
+    const active = getActiveSection();
+    if (active) {
+      openSection.value = active;
+    } else {
+      try {
+        const saved = localStorage.getItem(SECTION_KEY);
+        openSection.value = saved || null;
+      } catch {}
+    }
+
+    nextTick(() => {
+      if (activeItemEl.value) {
+        activeItemEl.value.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        activeItemEl.value.focus({ preventScroll: true });
+      }
+    });
+  });
 });
 
 function toggleSection(section) {
-  const s = new Set(collapsedSections.value);
-  if (s.has(section)) s.delete(section);
-  else s.add(section);
-  collapsedSections.value = s;
-  try { localStorage.setItem(SECTION_KEY, JSON.stringify([...s])); } catch {}
+  // If the section being closed is the active one, keep it open
+  if (openSection.value === section) {
+    const isActive_ = navGroups.value.find(g => g.section === section)?.items.some(i => isActive(i.path));
+    if (isActive_) return; // don't allow closing active section
+    openSection.value = null;
+  } else {
+    openSection.value = section;
+  }
+  try { localStorage.setItem(SECTION_KEY, openSection.value || ""); } catch {}
 }
 
 function isSectionOpen(section) {
-  return !collapsedSections.value.has(section);
+  return openSection.value === section;
 }
 
 function isSectionActive(group) {
@@ -160,6 +189,7 @@ const navGroups = computed(() => {
 
 // ── Routing ───────────────────────────────────────────────────────────
 function isActive(path) {
+  if (!routeReady.value) return false;
   if (path === "/") return route.path === "/";
   return route.path === path || route.path.startsWith(path + "/");
 }
@@ -167,4 +197,14 @@ function isActive(path) {
 function goTo(item) {
   router.push(item.path);
 }
+
+// When navigating to a new route, open that route's section automatically
+watch(() => route.path, () => {
+  if (!routeReady.value) return;
+  const active = getActiveSection();
+  if (active && active !== openSection.value) {
+    openSection.value = active;
+    try { localStorage.setItem(SECTION_KEY, active); } catch {}
+  }
+});
 </script>

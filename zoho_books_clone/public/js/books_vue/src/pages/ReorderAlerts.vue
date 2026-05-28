@@ -57,7 +57,32 @@ import { flt } from "../utils/format.js";
 const { toast } = useToast();
 const list=ref([]),loading=ref(false),search=ref("");
 const sortCol=ref("actual_qty"),sortDir=ref("asc");
-async function load(){loading.value=true;try{const co=await resolveCompany();const whs=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0]],limit:200});const whNames=whs.map(w=>w.name);if(!whNames.length){list.value=[];return;}const [reorders,bins]=await Promise.all([apiList("Item Reorder",{fields:["parent","warehouse","warehouse_reorder_level","warehouse_reorder_qty"],filters:[["warehouse","in",whNames]],limit:2000}),apiList("Bin",{fields:["item_code","warehouse","actual_qty"],filters:[["warehouse","in",whNames]],limit:5000})]);const binMap={};for(const b of bins)binMap[b.item_code+"|"+b.warehouse]=flt(b.actual_qty);list.value=reorders.map(r=>({item_code:r.parent,item_name:r.parent,warehouse:r.warehouse,actual_qty:binMap[r.parent+"|"+r.warehouse]??0,re_order_level:flt(r.warehouse_reorder_level),re_order_qty:flt(r.warehouse_reorder_qty)})).filter(i=>i.actual_qty<=i.re_order_level);}catch(e){toast.error(e.message||"Failed to load reorder alerts");}finally{loading.value=false;}}
+async function load(){
+  loading.value=true;
+  try{
+    const co=await resolveCompany();
+    const whs=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0]],limit:200});
+    const whNames=whs.map(w=>w.name);
+    if(!whNames.length){list.value=[];return;}
+    // Reorder thresholds + on-hand qty both live on Bin in this app.
+    const bins=await apiList("Bin",{
+      fields:["item_code","warehouse","actual_qty","reorder_level","reorder_qty"],
+      filters:[["warehouse","in",whNames],["reorder_level",">",0]],
+      limit:5000,
+    });
+    let rows=bins
+      .map(b=>({item_code:b.item_code,item_name:b.item_code,warehouse:b.warehouse,actual_qty:flt(b.actual_qty),re_order_level:flt(b.reorder_level),re_order_qty:flt(b.reorder_qty)}))
+      .filter(i=>i.actual_qty<=i.re_order_level);
+    // Resolve readable item names.
+    const codes=[...new Set(rows.map(r=>r.item_code).filter(Boolean))];
+    if(codes.length){
+      const items=await apiList("Item",{fields:["name","item_name"],filters:[["name","in",codes]],limit:codes.length});
+      const nameMap={};for(const it of items)nameMap[it.name]=it.item_name;
+      rows=rows.map(r=>({...r,item_name:nameMap[r.item_code]||r.item_code}));
+    }
+    list.value=rows;
+  }catch(e){toast.error(e.message||"Failed to load reorder alerts");}finally{loading.value=false;}
+}
 const filtered=computed(()=>{if(!search.value.trim())return list.value;const q=search.value.toLowerCase();return list.value.filter(i=>(i.item_code||"").toLowerCase().includes(q)||(i.item_name||"").toLowerCase().includes(q));});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}

@@ -283,13 +283,14 @@ async function doSubmit() {
     };
     const saved = await apiSave(doc);
     await apiSubmit("Journal Entry", saved.name);
-    toast("Opening entry posted: " + saved.name);
+    toast("Opening entry posted: " + saved.name, "success");
+    // Only mark as submitted once the opening Journal Entry actually posted.
+    submitted.value = true;
+    localStorage.setItem("books_ob_status", "submitted");
+    saveDraft();
   } catch (e) {
-    toast("Submitted locally — " + e.message, "info");
+    toast("Failed to post opening entry — " + (e.message || "please try again"), "error");
   }
-  submitted.value = true;
-  localStorage.setItem("books_ob_status", "submitted");
-  saveDraft();
 }
 
 function doReset() {

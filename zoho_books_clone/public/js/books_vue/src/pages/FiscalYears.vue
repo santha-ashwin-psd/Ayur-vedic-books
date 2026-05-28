@@ -24,6 +24,21 @@
     </div>
   </div>
 
+  <div class="b-card" style="padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap" :style="{borderLeft: lockDate ? '3px solid #C92A2A' : '3px solid #E2E8F0'}">
+    <span v-html="icon('lock',16)" :style="{color: lockDate ? '#C92A2A' : '#868E96'}"></span>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:#1A1D23">Books Lock Date</div>
+      <div style="font-size:11.5px;color:#868E96">Freezes every financial transaction dated on or before this date. Only a System Manager can post past it.</div>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span v-if="lockDate" style="font-size:12px;color:#C92A2A;font-weight:700">Locked up to {{ fmtLock(lockDate) }}</span>
+      <span v-else style="font-size:12px;color:#868E96;font-weight:600">No lock set</span>
+      <input v-model="lockDateInput" type="date" style="border:1px solid #E2E8F0;border-radius:7px;padding:6px 10px;font:inherit;font-size:13px;outline:none"/>
+      <button class="b-btn b-btn-primary" @click="saveLockDate" :disabled="lockSaving || !lockDateInput">{{ lockSaving ? 'Saving…' : (lockDate ? 'Update' : 'Lock') }}</button>
+      <button v-if="lockDate" class="b-btn b-btn-ghost" @click="clearLockDate" :disabled="lockSaving">Clear</button>
+    </div>
+  </div>
+
   <div style="display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start">
 
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -560,7 +575,10 @@ async function doCloseYear() {
       toast(je ? "Year closed — Closing JE " + je + " posted" : res?.message || "Fiscal year closed in Frappe");
       return;
     } catch (e) {
-      toast("Frappe close API unavailable — year marked closed locally", "info");
+      // A real close failure must NOT silently mark the year closed — the
+      // closing Journal Entry never posted, so leave the year open.
+      toast("Failed to close fiscal year — " + (e.message || "please try again"), "error");
+      return;
     }
   }
   y.is_closed = 1;
@@ -569,5 +587,42 @@ async function doCloseYear() {
   toast("Fiscal year \"" + name + "\" closed and all periods locked");
 }
 
-onMounted(load);
+// ── Books lock date (global posting freeze, enforced server-side) ──
+const lockDate = ref("");        // currently stored lock date
+const lockDateInput = ref("");   // date input value
+const lockSaving = ref(false);
+
+function fmtLock(d) { if (!d) return ""; try { return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); } catch { return d; } }
+
+async function loadLockDate() {
+  try {
+    const r = await apiGET("frappe.client.get_value", { doctype: "Books Settings", fieldname: "lock_date" });
+    const v = r?.lock_date || r?.message?.lock_date || "";
+    lockDate.value = v || "";
+    lockDateInput.value = v || "";
+  } catch { lockDate.value = ""; }
+}
+
+async function saveLockDate() {
+  if (!lockDateInput.value) return;
+  lockSaving.value = true;
+  try {
+    await apiPOST("frappe.client.set_value", { doctype: "Books Settings", name: "Books Settings", fieldname: "lock_date", value: lockDateInput.value });
+    lockDate.value = lockDateInput.value;
+    toast("Books locked up to " + fmtLock(lockDate.value), "success");
+  } catch (e) { toast(e.message || "Failed to set lock date", "error"); }
+  finally { lockSaving.value = false; }
+}
+
+async function clearLockDate() {
+  lockSaving.value = true;
+  try {
+    await apiPOST("frappe.client.set_value", { doctype: "Books Settings", name: "Books Settings", fieldname: "lock_date", value: "" });
+    lockDate.value = ""; lockDateInput.value = "";
+    toast("Books lock date cleared", "success");
+  } catch (e) { toast(e.message || "Failed to clear lock date", "error"); }
+  finally { lockSaving.value = false; }
+}
+
+onMounted(() => { load(); loadLockDate(); });
 </script>

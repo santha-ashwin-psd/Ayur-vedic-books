@@ -5,6 +5,7 @@
       <div class="se-pills"><button v-for="t in tabs" :key="t.key" class="se-pill" :class="{active:activeTab===t.key}" @click="activeTab=t.key">{{ t.label }}</button></div>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="se-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
+        <button class="se-btn-ghost" @click="exportCSV" :disabled="!sorted.length"><span v-html="icon('download',14)"></span> Export</button>
         <button class="se-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
       </div>
     </div>
@@ -145,6 +146,22 @@ const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sor
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
 function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
+function exportCSV(){
+  const rows=sorted.value;
+  if(!rows.length)return;
+  const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const statusOf=d=>d===0?"Draft":d===1?"Submitted":"Cancelled";
+  const lines2=[["Entry #","Type","Date","From Warehouse","To Warehouse","Status","Value"].join(",")];
+  for(const e of rows){
+    lines2.push([e.name,e.stock_entry_type||"",fmtDate(e.posting_date),e.from_warehouse||"",e.to_warehouse||"",statusOf(e.docstatus),flt(e.value_difference)].map(esc).join(","));
+  }
+  const blob=new Blob(["﻿"+lines2.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=`stock_entries_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();URL.revokeObjectURL(url);
+  toast.success(`Exported ${rows.length} row(s)`);
+}
 function openNew(){Object.assign(form,{stock_entry_type:"Material Receipt",posting_date:new Date().toISOString().slice(0,10),from_warehouse:"",to_warehouse:"",remarks:""});lines.value=[blankLine()];fetchWarehouses("");fetchItems("");drawerOpen.value=true;}
 async function openView(e){viewDoc.value=e;viewOpen.value=true;try{const full=await apiGet("Stock Entry",e.name);viewDoc.value=full;}catch{/* keep list-row data */}}
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}

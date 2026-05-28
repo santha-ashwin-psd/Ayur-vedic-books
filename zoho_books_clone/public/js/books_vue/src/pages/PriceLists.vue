@@ -10,6 +10,7 @@
     </div>
     <div style="display:flex;gap:6px">
       <button class="b-btn b-btn-ghost" @click="loadPriceLists"><span v-html="icon('refresh',13)"></span></button>
+      <button class="b-btn b-btn-ghost" @click="exportCSV" :disabled="!filteredPrices.length"><span v-html="icon('download',13)"></span> Export</button>
       <button class="b-btn b-btn-primary" @click="openAddPrice"><span v-html="icon('plus',13)"></span> Add Price</button>
     </div>
   </div>
@@ -263,6 +264,23 @@ const filteredPrices = computed(() => {
     (p.item_name || "").toLowerCase().includes(q)
   );
 });
+
+function exportCSV() {
+  const rows = filteredPrices.value;
+  if (!rows.length) return;
+  const esc = v => { const s = v==null?"":String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const listName = selectedList.value?.name || "price_list";
+  const lines = [["Item Code","Item Name","Rate","UOM","Currency","Valid From","Valid Upto"].join(",")];
+  for (const p of rows) {
+    lines.push([p.item_code||"",p.item_name||"",parseFloat(p.price_list_rate)||0,p.uom||"",p.currency||"",p.valid_from||"",p.valid_upto||""].map(esc).join(","));
+  }
+  const blob = new Blob(["﻿"+lines.join("\r\n")], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `prices_${listName}_${new Date().toISOString().slice(0,10)}.csv`.replace(/\s+/g,"_");
+  a.click(); URL.revokeObjectURL(url);
+  toast(`Exported ${rows.length} price(s)`);
+}
 
 function fmtRate(v) {
   const n = parseFloat(v) || 0;

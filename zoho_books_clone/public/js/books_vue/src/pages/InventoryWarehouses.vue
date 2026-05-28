@@ -484,6 +484,12 @@ async function doTransfer() {
   if (!transferForm.to_warehouse || !transferForm.item_code) {
     toast("Target warehouse and item are required", "error"); return;
   }
+  if (flt(transferForm.qty) <= 0) {
+    toast("Transfer quantity must be greater than 0", "error"); return;
+  }
+  if (transferForm.from_warehouse === transferForm.to_warehouse) {
+    toast("Source and target warehouse must be different", "error"); return;
+  }
   transferSaving.value = true;
   try {
     const company = await resolveCompany();

@@ -890,6 +890,28 @@ def ai_chat(messages, system=None):
     return {"reply": reply or "I'm not sure about that. Type \"help\" to see what I can do."}
 
 
+# ── COST CENTERS ──────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_cost_center_spend(company=None):
+    """
+    Actual spend per cost center, summed from posted General Ledger Entries.
+    Net = SUM(debit) - SUM(credit) (positive for expense-side activity).
+    Returns a map { cost_center_name: net_spend }.
+    """
+    if not company:
+        company = _get_company(frappe.session.user)
+    rows = frappe.db.sql("""
+        SELECT cost_center, SUM(debit) - SUM(credit) AS net
+        FROM `tabGeneral Ledger Entry`
+        WHERE company = %s
+          AND IFNULL(cost_center, '') <> ''
+          AND IFNULL(is_cancelled, 0) = 0
+        GROUP BY cost_center
+    """, (company,), as_dict=True)
+    return {r.cost_center: flt(r.net) for r in rows}
+
+
 # ── CHART OF ACCOUNTS ─────────────────────────────────────────────────────────
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])

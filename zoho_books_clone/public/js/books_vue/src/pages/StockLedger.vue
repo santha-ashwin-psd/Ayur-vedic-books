@@ -6,6 +6,7 @@
       <input v-model="filters.from_date" type="date" class="sl-input" />
       <input v-model="filters.to_date" type="date" class="sl-input" />
       <button class="sl-btn-primary" @click="load"><span v-html="icon('refresh',13)"></span> Run</button>
+      <button class="sl-btn-ghost" @click="exportCSV" :disabled="!list.length"><span v-html="icon('download',13)"></span> Export</button>
       <div style="margin-left:auto;color:#6b7280;font-size:12.5px;align-self:center">{{ list.length }} entries</div>
     </div>
 
@@ -70,6 +71,21 @@ const summaryOut=computed(()=>list.value.filter(e=>flt(e.actual_qty)<0).reduce((
 const stockValue=computed(()=>list.value.reduce((s,e)=>s+flt(e.stock_value_difference),0));
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 function fmtQty(v){return Number(flt(v)).toLocaleString("en-IN",{maximumFractionDigits:3});}
+function exportCSV(){
+  const rows=sorted.value;
+  if(!rows.length)return;
+  const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const lines=[["Date","Item","Warehouse","Voucher Type","Voucher #","Qty In/Out","Balance Qty","Value Change","Valuation Rate"].join(",")];
+  for(const e of rows){
+    lines.push([fmtDate(e.posting_date),e.item_code||"",e.warehouse||"",e.voucher_type||"",e.voucher_no||"",flt(e.actual_qty),flt(e.qty_after_transaction),flt(e.stock_value_difference),flt(e.valuation_rate)].map(esc).join(","));
+  }
+  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=`stock_ledger_${filters.from_date}_to_${filters.to_date}.csv`;
+  a.click();URL.revokeObjectURL(url);
+  toast.success(`Exported ${rows.length} row(s)`);
+}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 </script>
@@ -80,6 +96,8 @@ async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r
 .sl-input:focus{border-color:#2563eb;}
 .sl-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
 .sl-btn-primary:hover{background:#1d4ed8;}
+.sl-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;color:#334155;cursor:pointer;}
+.sl-btn-ghost:hover:not(:disabled){background:#f8fafc;border-color:#cbd5e1;}.sl-btn-ghost:disabled{opacity:.5;cursor:not-allowed;}
 .sl-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
 .sl-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
 .sl-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}

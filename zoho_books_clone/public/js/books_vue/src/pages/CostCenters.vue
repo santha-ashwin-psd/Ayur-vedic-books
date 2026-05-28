@@ -74,20 +74,20 @@
                 </div>
                 <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px">
                   <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Spent (YTD)</div>
-                  <div style="font-size:17px;font-weight:700;font-family:var(--mono)" :style="{color:pct(MOCK_EXP[selectedCC.name]||0,selectedCC.budget)>=100?'#C92A2A':pct(MOCK_EXP[selectedCC.name]||0,selectedCC.budget)>=80?'#E67700':'#1A1D23'}">{{fmtINR(MOCK_EXP[selectedCC.name]||0)}}</div>
+                  <div style="font-size:17px;font-weight:700;font-family:var(--mono)" :style="{color:pct(spend[selectedCC.name]||0,selectedCC.budget)>=100?'#C92A2A':pct(spend[selectedCC.name]||0,selectedCC.budget)>=80?'#E67700':'#1A1D23'}">{{fmtINR(spend[selectedCC.name]||0)}}</div>
                 </div>
                 <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px">
-                  <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">{{selectedCC.budget-(MOCK_EXP[selectedCC.name]||0)>=0?"Remaining":"Over Budget"}}</div>
-                  <div style="font-size:17px;font-weight:700;font-family:var(--mono)" :style="{color:selectedCC.budget-(MOCK_EXP[selectedCC.name]||0)>=0?'#2F9E44':'#C92A2A'}">{{fmtINR(Math.abs(selectedCC.budget-(MOCK_EXP[selectedCC.name]||0)))}}</div>
+                  <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">{{selectedCC.budget-(spend[selectedCC.name]||0)>=0?"Remaining":"Over Budget"}}</div>
+                  <div style="font-size:17px;font-weight:700;font-family:var(--mono)" :style="{color:selectedCC.budget-(spend[selectedCC.name]||0)>=0?'#2F9E44':'#C92A2A'}">{{fmtINR(Math.abs(selectedCC.budget-(spend[selectedCC.name]||0)))}}</div>
                 </div>
               </div>
               <div v-if="selectedCC.budget" style="margin-bottom:20px">
                 <div style="display:flex;justify-content:space-between;font-size:12px;color:#868E96;margin-bottom:6px">
                   <span>Budget utilisation</span>
-                  <span style="font-weight:700" :style="{color:pct(MOCK_EXP[selectedCC.name]||0,selectedCC.budget)>=100?'#C92A2A':pct(MOCK_EXP[selectedCC.name]||0,selectedCC.budget)>=80?'#E67700':'#1A1D23'}">{{pct(MOCK_EXP[selectedCC.name]||0,selectedCC.budget)}}%</span>
+                  <span style="font-weight:700" :style="{color:pct(spend[selectedCC.name]||0,selectedCC.budget)>=100?'#C92A2A':pct(spend[selectedCC.name]||0,selectedCC.budget)>=80?'#E67700':'#1A1D23'}">{{pct(spend[selectedCC.name]||0,selectedCC.budget)}}%</span>
                 </div>
                 <div style="background:#E8ECF0;border-radius:20px;height:8px;overflow:hidden">
-                  <div style="height:100%;border-radius:20px;transition:width .4s ease" :style="{width:pct(MOCK_EXP[selectedCC.name]||0,selectedCC.budget)+'%',background:pct(MOCK_EXP[selectedCC.name]||0,selectedCC.budget)>=100?'#C92A2A':pct(MOCK_EXP[selectedCC.name]||0,selectedCC.budget)>=80?'#E67700':'#2F9E44'}"></div>
+                  <div style="height:100%;border-radius:20px;transition:width .4s ease" :style="{width:pct(spend[selectedCC.name]||0,selectedCC.budget)+'%',background:pct(spend[selectedCC.name]||0,selectedCC.budget)>=100?'#C92A2A':pct(spend[selectedCC.name]||0,selectedCC.budget)>=80?'#E67700':'#2F9E44'}"></div>
                 </div>
               </div>
             </template>
@@ -96,16 +96,16 @@
               <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
                 <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Child Centers</div><div style="font-size:17px;font-weight:700;font-family:var(--mono)">{{ccChildren.length}}</div></div>
                 <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Total Budget</div><div style="font-size:17px;font-weight:700;font-family:var(--mono);color:#3B5BDB">{{fmtINR(ccChildren.reduce((s,c)=>s+Number(c.budget||0),0))}}</div></div>
-                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Total Spent</div><div style="font-size:17px;font-weight:700;font-family:var(--mono)">{{fmtINR(ccChildren.reduce((s,c)=>s+(MOCK_EXP[c.name]||0),0))}}</div></div>
+                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Total Spent</div><div style="font-size:17px;font-weight:700;font-family:var(--mono)">{{fmtINR(ccChildren.reduce((s,c)=>s+(spend[c.name]||0),0))}}</div></div>
               </div>
               <div v-if="ccChildren.length">
                 <div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96;margin-bottom:10px">Sub-centers expense allocation</div>
                 <div v-for="c in ccChildren" :key="c.name" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
                   <span style="font-size:12.5px;width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{c.name}}</span>
                   <div style="flex:1;background:#E8ECF0;border-radius:10px;height:6px;overflow:hidden">
-                    <div style="height:100%;border-radius:10px;transition:width .4s" :style="{width:Math.round((MOCK_EXP[c.name]||0)/Math.max(1,...ccChildren.map(x=>MOCK_EXP[x.name]||0))*100)+'%',background:c.color}"></div>
+                    <div style="height:100%;border-radius:10px;transition:width .4s" :style="{width:Math.round((spend[c.name]||0)/Math.max(1,...ccChildren.map(x=>spend[x.name]||0))*100)+'%',background:c.color}"></div>
                   </div>
-                  <span style="font-size:12px;font-family:var(--mono);color:#868E96;width:70px;text-align:right;flex-shrink:0">{{fmtINR(MOCK_EXP[c.name]||0)}}</span>
+                  <span style="font-size:12px;font-family:var(--mono);color:#868E96;width:70px;text-align:right;flex-shrink:0">{{fmtINR(spend[c.name]||0)}}</span>
                 </div>
               </div>
             </template>
@@ -260,7 +260,9 @@ const CC_DEFAULTS = [
   { name: "Marketing",   code: "MKT",  parent: "Main", type: "Department", color: "#E67700", budget: 2000000, budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "Brand and demand generation" },
   { name: "Operations",  code: "OPS",  parent: "Main", type: "Department", color: "#0C8599", budget: 1500000, budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "Infrastructure and ops" },
 ];
-const MOCK_EXP = { Engineering: 2800000, Sales: 1200000, Marketing: 1650000, Operations: 900000, Main: 0 };
+// Real actual-spend per cost center, summed from posted GL entries (keyed by
+// the cost center's document name). Loaded from the backend on mount.
+const spend = ref({});
 
 const loading      = ref(true);
 const allCC        = ref([]);
@@ -287,18 +289,23 @@ async function load() {
   try {
     const ccs = await apiGET("frappe.client.get_list", {
       doctype: "Cost Center",
-      fields: JSON.stringify(["name", "cost_center_name", "cost_center_number", "parent_cost_center", "is_group", "disabled"]),
+      fields: JSON.stringify(["name", "cost_center_name", "cost_center_number", "parent_cost_center", "is_group", "disabled", "description", "budget"]),
       order_by: "name asc", limit_page_length: 200,
     }) || [];
     if (ccs.length) {
       allCC.value = ccs.map((c) => ({
         name: c.name, code: c.cost_center_number || "", parent: c.parent_cost_center || "",
-        type: "Department", color: "#3B5BDB", budget: 0, budget_period: "Annual",
+        type: "Department", color: "#3B5BDB", budget: Number(c.budget) || 0, budget_period: "Annual",
         alert_pct: 80, budget_action: "Warn", is_group: c.is_group ? 1 : 0,
-        status: c.disabled ? "Inactive" : "Active", desc: "", source: "frappe",
+        status: c.disabled ? "Inactive" : "Active", desc: c.description || "", source: "frappe",
       }));
       fromFrappe.value = true;
-      toast("Loaded " + allCC.value.length + " cost centers", "info");
+      // Real actual spend per cost center, summed from posted GL entries.
+      try {
+        const company = await resolveCompany();
+        const map = await apiGET("zoho_books_clone.api.books_data.get_cost_center_spend", { company });
+        spend.value = map && typeof map === "object" ? map : {};
+      } catch { spend.value = {}; }
     } else throw new Error("none");
   } catch {
     const saved = loadLocal();
@@ -359,7 +366,7 @@ async function saveCC() {
   const company = await resolveCompany();
   if (!company) { toast("No company configured. Please set a default company in Books Settings.", "error"); saving.value = false; return; }
   try {
-    const doc = { doctype: "Cost Center", cost_center_name: data.name, cost_center_number: data.code, parent_cost_center: data.parent || "", is_group: data.is_group, company };
+    const doc = { doctype: "Cost Center", cost_center_name: data.name, cost_center_number: data.code, parent_cost_center: data.parent || "", is_group: data.is_group, company, budget: data.budget, description: data.desc || "" };
     if (editing.value) { doc.name = editing.value; await apiPOST("frappe.client.save", { doc: JSON.stringify(doc) }); }
     else await apiPOST("frappe.client.insert", { doc: JSON.stringify(doc) });
     fromFrappe.value = true;

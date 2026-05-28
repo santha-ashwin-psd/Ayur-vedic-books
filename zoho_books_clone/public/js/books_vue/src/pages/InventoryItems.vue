@@ -16,6 +16,7 @@
         <span v-html="icon(viewMode==='table'?'grid':'file',14)"></span>
       </button>
       <button class="b-btn b-btn-ghost" @click="load"><span v-html="icon('refresh',13)"></span></button>
+      <button class="b-btn b-btn-ghost" @click="exportCSV" :disabled="!filtered.length"><span v-html="icon('download',13)"></span> Export</button>
       <button class="b-btn b-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Item</button>
     </div>
   </div>
@@ -294,6 +295,22 @@ const filtered = computed(() => {
   return r;
 });
 
+function exportCSV() {
+  const rows = filtered.value;
+  if (!rows.length) return;
+  const esc = v => { const s = v==null?"":String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const lines = [["Item Code","Item Name","Group","Type","UOM","Sales Rate","GST %","Stock Item","Status"].join(",")];
+  for (const i of rows) {
+    lines.push([i.item_code||"",i.item_name||"",i.item_group||"",i.item_type||"",i.stock_uom||"",flt(i.standard_rate),flt(i.gst_rate),i.is_stock_item?"Yes":"No",i.disabled?"Inactive":"Active"].map(esc).join(","));
+  }
+  const blob = new Blob(["﻿"+lines.join("\r\n")], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `items_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast(`Exported ${rows.length} item(s)`);
+}
+
 function openAdd() {
   drawerMode.value = "add"; drawerTab.value = "basic";
   Object.assign(form, {
@@ -364,7 +381,9 @@ async function saveItem() {
     const saved = await apiSave(doc);
     const savedName = saved?.name || form.name || itemCode;
 
-    if (form.is_stock_item && openingQty > 0 && form.default_warehouse) {
+    // Opening stock is posted only when the item is first created — re-posting
+    // on every edit would keep adding a Material Receipt and inflate inventory.
+    if (!isEdit && form.is_stock_item && openingQty > 0 && form.default_warehouse) {
       try {
         const res = await apiPOST("zoho_books_clone.api.inventory.create_opening_stock", {
           item_code: savedName,

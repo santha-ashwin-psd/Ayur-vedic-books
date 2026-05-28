@@ -265,6 +265,52 @@ def get_payment_defaults(invoice_name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+
+def _create_bank_transaction(pe):
+    """Create a Bank Transaction row mirroring the Payment Entry bank leg.
+
+    Called after a Payment Entry is submitted so the Banking / Transactions
+    page shows the entry immediately, ready for reconciliation.
+
+    For a Receive payment:  money comes IN  → credit on the bank account
+    For a Pay payment:      money goes OUT  → debit  on the bank account
+    """
+    # Resolve which account is the bank/cash leg
+    if pe.payment_type == "Receive":
+        bank_account_name = pe.paid_to    # Bank/Cash account
+        deposit   = flt(pe.paid_amount)
+        withdrawal = 0.0
+    else:  # Pay
+        bank_account_name = pe.paid_from  # Bank/Cash account
+        deposit   = 0.0
+        withdrawal = flt(pe.paid_amount)
+
+    # Look up the Bank Account document linked to this GL account
+    bank_acc = frappe.db.get_value(
+        "Bank Account", {"gl_account": bank_account_name, "company": pe.company}, "name"
+    )
+    if not bank_acc:
+        # No Bank Account record linked — skip silently (Cash payments are fine without one)
+        return None
+
+    bt = frappe.get_doc({
+        "doctype":        "Bank Transaction",
+        "date":           pe.payment_date or pe.posting_date,
+        "bank_account":   bank_acc,
+        "deposit":        deposit,
+        "withdrawal":     withdrawal,
+        "currency":       pe.paid_to_account_currency or "INR",
+        "description":    pe.remarks or f"Payment Entry {pe.name}",
+        "reference_number": pe.reference_no or pe.name,
+        "payment_entry":  pe.name,
+        "status":         "Unreconciled",
+        "company":        pe.company,
+    })
+    bt.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return bt.name
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def record_payment(
     invoice_name=None, amount_received=None, payment_date=None,
     payment_mode="Cash", deposit_to=None, bank_charges=0,
@@ -386,6 +432,7 @@ def record_payment(
     if not save_as_draft:
         pe.flags.ignore_permissions = True
         pe.submit()
+        _create_bank_transaction(pe)
     frappe.db.commit()
 
     return {

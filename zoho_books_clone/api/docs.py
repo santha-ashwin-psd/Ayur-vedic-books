@@ -445,6 +445,41 @@ def send_bill_email(bill_name, to, subject, body, cc=None):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+
+def _create_bank_transaction(pe):
+    """Create a Bank Transaction row mirroring the Payment Entry bank leg."""
+    if pe.payment_type == "Receive":
+        bank_account_name = pe.paid_to
+        deposit    = flt(pe.paid_amount)
+        withdrawal = 0.0
+    else:
+        bank_account_name = pe.paid_from
+        deposit    = 0.0
+        withdrawal = flt(pe.paid_amount)
+
+    bank_acc = frappe.db.get_value(
+        "Bank Account", {"account": bank_account_name, "company": pe.company}, "name"
+    )
+    if not bank_acc:
+        return None
+
+    bt = frappe.get_doc({
+        "doctype":          "Bank Transaction",
+        "date":             pe.payment_date or pe.posting_date,
+        "bank_account":     bank_acc,
+        "deposit":          deposit,
+        "withdrawal":       withdrawal,
+        "currency":         pe.paid_to_account_currency or "INR",
+        "description":      pe.remarks or f"Payment Entry {pe.name}",
+        "reference_number": pe.reference_no or pe.name,
+        "payment_entry":    pe.name,
+        "status":           "Unreconciled",
+        "company":          pe.company,
+    })
+    bt.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return bt.name
+
 def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
                           payment_mode="Cash", paid_from="", bank_charges=0,
                           reference_no="", notes="", save_as_draft=0,
@@ -502,6 +537,7 @@ def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
     pe.insert()
     if not int(save_as_draft or 0):
         pe.submit()
+        _create_bank_transaction(pe)
     frappe.db.commit()
     return {"payment_entry": pe.name, "bill": bill.name}
 

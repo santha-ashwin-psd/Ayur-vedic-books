@@ -37,14 +37,14 @@
       <table class="pmt-table">
         <thead><tr>
           <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
-          <th @click="sort('name')" class="sortable">Payment # <span v-html="sortArrow('name')"></span></th>
-          <th @click="sort('party')" class="sortable">Party <span v-html="sortArrow('party')"></span></th>
-          <th @click="sort('mode_of_payment')" class="sortable">Mode <span v-html="sortArrow('mode_of_payment')"></span></th>
-          <th @click="sort('reference_no')" class="sortable">Reference <span v-html="sortArrow('reference_no')"></span></th>
-          <th @click="sort('payment_date')" class="sortable">Date <span v-html="sortArrow('payment_date')"></span></th>
-          <th>Type</th>
-          <th @click="sort('paid_amount')" class="sortable ta-r">Amount <span v-html="sortArrow('paid_amount')"></span></th>
-          <th style="width:60px"></th>
+          <th @click="sort('name')" class="sortable">PAYMENT # <span v-html="sortArrow('name')"></span></th>
+          <th @click="sort('party')" class="sortable">PARTY <span v-html="sortArrow('party')"></span></th>
+          <th @click="sort('mode_of_payment')" class="sortable">MODE <span v-html="sortArrow('mode_of_payment')"></span></th>
+          <th @click="sort('reference_no')" class="sortable">REFERENCE <span v-html="sortArrow('reference_no')"></span></th>
+          <th @click="sort('payment_date')" class="sortable">DATE <span v-html="sortArrow('payment_date')"></span></th>
+          <th>TYPE</th>
+          <th @click="sort('paid_amount')" class="sortable ta-r">AMOUNT <span v-html="sortArrow('paid_amount')"></span></th>
+          <th style="width:60px">ACTIONS</th>
         </tr></thead>
         <tbody>
           <template v-if="loading">

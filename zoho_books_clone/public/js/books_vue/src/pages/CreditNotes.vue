@@ -45,14 +45,14 @@
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
-            <th @click="sortBy('name')" class="sortable">Credit Note # <span v-html="sortArrow('name')"></span></th>
-            <th @click="sortBy('customer_name')" class="sortable">Customer <span v-html="sortArrow('customer_name')"></span></th>
-            <th @click="sortBy('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
-            <th>Against Invoice</th>
-            <th>Status</th>
-            <th @click="sortBy('grand_total')" class="sortable ta-r">Amount <span v-html="sortArrow('grand_total')"></span></th>
-            <th class="ta-r">Available</th>
-            <th style="width:120px;text-align:center">Actions</th>
+            <th @click="sortBy('name')" class="sortable">CREDIT NOTE # <span v-html="sortArrow('name')"></span></th>
+            <th @click="sortBy('customer_name')" class="sortable">CUSTOMER <span v-html="sortArrow('customer_name')"></span></th>
+            <th @click="sortBy('posting_date')" class="sortable">DATE <span v-html="sortArrow('posting_date')"></span></th>
+            <th>AGAINST INVOICE</th>
+            <th>STATUS</th>
+            <th @click="sortBy('grand_total')" class="sortable ta-r">AMOUNT <span v-html="sortArrow('grand_total')"></span></th>
+            <th class="ta-r">AVAILABLE</th>
+            <th style="width:120px;text-align:center">ACTIONS</th>
           </tr>
         </thead>
         <tbody>

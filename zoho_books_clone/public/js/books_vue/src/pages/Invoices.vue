@@ -61,10 +61,9 @@
         <th class="th-check"><input type="checkbox" @change="toggleAll" :checked="allSelected"/></th>
         <th class="sortable" @click="sort('posting_date')">DATE <span class="sort-arrow">{{ sortArrow('posting_date') }}</span></th>
         <th class="sortable" @click="sort('name')">INVOICE# <span class="sort-arrow">{{ sortArrow('name') }}</span></th>
-        <th>PO NUMBER</th>
         <th class="sortable" @click="sort('customer_name')">CUSTOMER <span class="sort-arrow">{{ sortArrow('customer_name') }}</span></th>
-        <th class="sortable" @click="sort('status')">STATUS <span class="sort-arrow">{{ sortArrow('status') }}</span></th>
         <th class="sortable" @click="sort('due_date')">DUE DATE <span class="sort-arrow">{{ sortArrow('due_date') }}</span></th>
+        <th class="sortable" @click="sort('status')">STATUS <span class="sort-arrow">{{ sortArrow('status') }}</span></th>
         <th class="ta-r sortable" @click="sort('grand_total')">AMOUNT <span class="sort-arrow">{{ sortArrow('grand_total') }}</span></th>
         <th class="ta-r sortable" @click="sort('outstanding_amount')">BALANCE DUE <span class="sort-arrow">{{ sortArrow('outstanding_amount') }}</span></th>
         <th style="width:80px;text-align:center">ACTIONS</th>
@@ -75,7 +74,6 @@
             <td><div class="shimmer" style="width:14px;height:14px;border-radius:3px"></div></td>
             <td><div class="shimmer" style="width:80px"></div></td>
             <td><div class="shimmer" style="width:110px"></div></td>
-            <td><div class="shimmer" style="width:70px"></div></td>
             <td><div class="shimmer" style="width:130px"></div></td>
             <td><div class="shimmer" style="width:90px"></div></td>
             <td><div class="shimmer" style="width:80px"></div></td>
@@ -91,12 +89,11 @@
             </td>
             <td @click="openView(inv)" class="text-muted mono-sm">{{ fmtDate(inv.posting_date) }}</td>
             <td @click="openView(inv)"><span class="inv-link">{{ inv.name }}</span></td>
-            <td @click="openView(inv)" class="text-muted mono-sm">{{ inv.po_no || '—' }}</td>
             <td @click="openView(inv)"><span class="inv-customer">{{ inv.customer_name||inv.customer }}</span></td>
+            <td @click="openView(inv)" :class="isOverdue(inv)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(inv.due_date) }}</td>
             <td @click="openView(inv)">
               <span class="inv-status-badge" :class="statusCls(inv)">{{ statusLabel(inv) }}</span>
             </td>
-            <td @click="openView(inv)" :class="isOverdue(inv)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(inv.due_date) }}</td>
             <td class="ta-r mono-sm" @click="openView(inv)">{{ fmtAmt(inv.grand_total) }}</td>
             <td class="ta-r mono-sm" @click="openView(inv)" :class="inv.outstanding_amount>0?'text-danger':'text-success'">
               {{ fmtAmt(inv.outstanding_amount) }}
@@ -1528,7 +1525,7 @@ watch(() => route.query, (q) => {
 /* ── Table ── */
 .inv-table-wrap { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; overflow-x:auto; }
 .inv-table { width:100%; border-collapse:collapse; font-size:13px; }
-.inv-table th { padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:11px; font-weight:600; letter-spacing:.06em; color:#6b7280; text-align:left; white-space:nowrap; background:#f9f9fb; user-select:none; }
+.inv-table th { padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:11px; font-weight:600; letter-spacing:normal; color:#6b7280; text-align:left; white-space:nowrap; background:#f9f9fb; user-select:none; }
 .inv-table th.sortable { cursor:pointer; } .inv-table th.sortable:hover { color:#1a6ef7; }
 .sort-arrow { font-size:10px; margin-left:2px; color:#1a6ef7; }
 .th-check { width:40px; padding-left:20px; }

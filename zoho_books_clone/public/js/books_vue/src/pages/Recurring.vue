@@ -30,7 +30,6 @@
       { label: 'Active', tone: 'success', value: stats.active, valueClass: 'green' },
       { label: 'Paused', tone: stats.paused>0?'warn':'default', value: stats.paused, valueClass: stats.paused>0?'orange':'' },
       { label: 'Due Today', tone: stats.due_today>0?'info':'default', value: stats.due_today, valueClass: stats.due_today>0?'blue':'' },
-      { label: 'Overdue', tone: stats.overdue>0?'danger':'default', value: stats.overdue, valueClass: stats.overdue>0?'red':'' },
     ]" />
 
     <!-- ============================================================ BULK BAR -->
@@ -50,15 +49,13 @@
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th>
-            <th @click="sort('name')" class="sortable">Subscription # <span v-html="sortArrow('name')"></span></th>
-            <th @click="sort('reference_doctype')" class="sortable">Type <span v-html="sortArrow('reference_doctype')"></span></th>
-            <th @click="sort('reference_document')" class="sortable">Reference <span v-html="sortArrow('reference_document')"></span></th>
-            <th>Party</th>
-            <th style="text-align:right">Amount</th>
-            <th @click="sort('frequency')" class="sortable">Frequency <span v-html="sortArrow('frequency')"></span></th>
-            <th @click="sort('next_schedule_date')" class="sortable">Next Run <span v-html="sortArrow('next_schedule_date')"></span></th>
-            <th>Status</th>
-            <th style="width:120px;text-align:right">Actions</th>
+            <th @click="sort('name')" class="sortable">SUBSCRIPTION # <span v-html="sortArrow('name')"></span></th>
+            <th @click="sort('reference_doctype')" class="sortable">TYPE <span v-html="sortArrow('reference_doctype')"></span></th>
+            <th @click="sort('reference_document')" class="sortable">REFERENCE <span v-html="sortArrow('reference_document')"></span></th>
+            <th @click="sort('frequency')" class="sortable">FREQUENCY <span v-html="sortArrow('frequency')"></span></th>
+            <th @click="sort('next_schedule_date')" class="sortable">NEXT RUN <span v-html="sortArrow('next_schedule_date')"></span></th>
+            <th>STATUS</th>
+            <th style="width:120px;text-align:right">ACTIONS</th>
           </tr>
         </thead>
         <tbody>
@@ -73,8 +70,6 @@
               <td><span class="rec-num">{{ r.name }}</span></td>
               <td class="text-muted">{{ r.reference_doctype||'—' }}</td>
               <td @click.stop><DocLink :doctype="r.reference_doctype" :name="r.reference_document" /></td>
-              <td class="text-muted">{{ r.party||'—' }}</td>
-              <td style="text-align:right" class="mono-sm">{{ fmtCurrency(r.amount) }}</td>
               <td>{{ freqLabel(r.frequency) }}</td>
               <td class="mono-sm" :class="r.is_due?'text-accent':''">
                 {{ fmtDate(r.next_schedule_date)||'—' }}
@@ -881,7 +876,7 @@ function exportCSV() {
 
 .rec-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .rec-table{width:100%;border-collapse:collapse;font-size:13px;}
-.rec-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.rec-table th{padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:11px; font-weight:600; letter-spacing:normal; color:#6b7280; text-align:left; white-space:nowrap; background:#f9f9fb; user-select:none;}
 .rec-table th.sortable{cursor:pointer;user-select:none;}.rec-table th.sortable:hover{color:#2563eb;}
 .rec-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;cursor:pointer;}
 .rec-row:last-child td{border-bottom:none;}

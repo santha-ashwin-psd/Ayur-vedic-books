@@ -9,7 +9,7 @@ from frappe.utils import flt, today
 
 
 # ── General Ledger ────────────────────────────────────────────────────────────
-
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_gl_entries(
     from_date: str,
     to_date: str,

@@ -30,7 +30,6 @@
       { label: 'Generated', tone: 'success', value: stats.generated, valueClass: 'green' },
       { label: 'Pending', tone: stats.pending>0?'warn':'default', value: stats.pending, valueClass: stats.pending>0?'orange':'' },
       { label: 'Expiring / Expired', tone: (stats.expired>0||stats.expiring_soon>0)?'danger':'default', value: `${stats.expiring_soon} / ${stats.expired}`, valueClass: (stats.expired>0||stats.expiring_soon>0)?'red':'' },
-      { label: 'Total Value', tone: 'default', value: fmtCur(stats.total_value) },
     ]" />
 
     <!-- ============================ BULK ACTION BAR -->
@@ -54,15 +53,15 @@
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
             <th>EWB #</th>
-            <th @click="sort('invoice_no')" class="sortable">Invoice # <span v-html="sortArrow('invoice_no')"></span></th>
-            <th @click="sort('invoice_date')" class="sortable">Inv. Date <span v-html="sortArrow('invoice_date')"></span></th>
-            <th>Customer</th>
-            <th>Transporter</th>
-            <th>Vehicle</th>
-            <th>Valid Until</th>
-            <th class="ta-r">Amount</th>
-            <th>Status</th>
-            <th style="width:110px;text-align:right">Actions</th>
+            <th @click="sort('invoice_no')" class="sortable">INVOICE # <span v-html="sortArrow('invoice_no')"></span></th>
+            <th @click="sort('invoice_date')" class="sortable">INV. DATE <span v-html="sortArrow('invoice_date')"></span></th>
+            <th>CUSTOMER</th>
+            <th>TRANSPORTER</th>
+            <th>VEHICLE</th>
+            <th>VALID UNTIL</th>
+            <th class="ta-r">AMOUNT</th>
+            <th>STATUS</th>
+            <th style="width:110px;text-align:right">ACTIONS</th>
           </tr>
         </thead>
         <tbody>

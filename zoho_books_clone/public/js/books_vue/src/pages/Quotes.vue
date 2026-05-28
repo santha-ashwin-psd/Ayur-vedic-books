@@ -1598,7 +1598,7 @@ onMounted(async () => {
 .inv-table-wrap { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; overflow-x:auto; }
 .inv-table { width:100%; border-collapse:collapse; font-size:13px; }
 .inv-table thead tr { background:#f8fafc; }
-.inv-table th { padding:10px 12px; border-bottom:2px solid #e8ecf0; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; text-align:left; white-space:nowrap; user-select:none; }
+.inv-table th { padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:11px; font-weight:600; letter-spacing:normal; color:#6b7280; text-align:left; white-space:nowrap; background:#f9f9fb; user-select:none; }
 .inv-table th.sortable { cursor:pointer; }
 .inv-table th.sortable:hover { color:#1a6ef7; }
 .th-check { width:36px; }

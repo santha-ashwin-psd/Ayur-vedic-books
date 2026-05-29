@@ -38,6 +38,9 @@ doc_events = {
     "Credit Note":      {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
     "Expense":          {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
     "Expense Claim":    {"validate": f"{_CV}.on_validate"},
+    # Goods documents own the physical stock movement (Delivery Note out / Purchase Receipt in)
+    "Delivery Note":    {"on_submit": f"{_SL}.on_delivery_note_submit",    "on_cancel": f"{_SL}.on_delivery_note_cancel"},
+    "Purchase Receipt": {"on_submit": f"{_SL}.on_purchase_receipt_submit", "on_cancel": f"{_SL}.on_purchase_receipt_cancel"},
     # Auto-stamp books_company on master records so they're company-isolated
     "Customer":  {"before_insert": f"{_TN}.auto_stamp_books_company"},
     "Supplier":  {"before_insert": f"{_TN}.auto_stamp_books_company"},

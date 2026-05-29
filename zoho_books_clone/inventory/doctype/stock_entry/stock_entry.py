@@ -274,9 +274,11 @@ class StockEntry(Document):
                 },
             ]
         else:
-            # Material Receipt — debit Inventory, credit Stock Adjustment
+            # Material Receipt / Stock Adjustment — debit Inventory, credit the
+            # contra. Honor a user-chosen adjustment account when provided.
             adj_account = (
-                self._get_account_by_type("Stock Adjustment")
+                getattr(self, "adjustment_account", None)
+                or self._get_account_by_type("Stock Adjustment")
                 or self._get_account_by_type("Temporary")
                 or inventory_account   # fallback: self-balancing on same account
             )

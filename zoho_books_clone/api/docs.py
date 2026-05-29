@@ -3098,6 +3098,7 @@ def create_delivery_note_from_so(sales_order, line_qtys=None, lr_no="", transpor
         line_qtys = {str(k): v for k, v in line_qtys.items()}
 
     so = frappe.get_doc("Sales Order", sales_order)
+    _default_wh = frappe.db.get_single_value("Books Settings", "default_warehouse") or None
     dn_items = []
     for it in (so.items or []):
         remaining = max(0.0, flt(it.qty) - flt(it.delivered_qty))
@@ -3112,6 +3113,7 @@ def create_delivery_note_from_so(sales_order, line_qtys=None, lr_no="", transpor
             so_item_id = int(it.name)
         except (TypeError, ValueError):
             so_item_id = 0
+        item_wh = frappe.db.get_value("Item", it.item_code, "default_warehouse") or _default_wh
         dn_items.append({
             "doctype": "Delivery Note Item",
             "item_code":   it.item_code,
@@ -3122,6 +3124,7 @@ def create_delivery_note_from_so(sales_order, line_qtys=None, lr_no="", transpor
             "rate":        flt(it.rate),
             "amount":      flt(it.rate) * q,
             "so_item":     so_item_id,
+            "warehouse":   item_wh or "",
         })
     if not dn_items:
         frappe.throw("Nothing left to deliver on this Sales Order")
@@ -3137,6 +3140,7 @@ def create_delivery_note_from_so(sales_order, line_qtys=None, lr_no="", transpor
         "lr_no":            lr_no or "",
         "transporter_name": transporter_name or "",
         "remarks":          remarks or "",
+        "set_warehouse":    _default_wh or "",
         "items":            dn_items,
     })
     dn.flags.ignore_permissions = True
@@ -3160,6 +3164,7 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
         line_qtys = {str(k): v for k, v in line_qtys.items()}
 
     po = frappe.get_doc("Purchase Order", purchase_order)
+    _default_wh = frappe.db.get_single_value("Books Settings", "default_warehouse") or None
     pr_items = []
     for it in (po.items or []):
         remaining = max(0.0, flt(it.qty) - flt(it.received_qty))
@@ -3169,6 +3174,7 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
         else:
             q = remaining
         if q <= 0: continue
+        item_wh = frappe.db.get_value("Item", it.item_code, "default_warehouse") or _default_wh
         pr_items.append({
             "doctype": "Purchase Receipt Item",
             "item_code":   it.item_code,
@@ -3179,6 +3185,7 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
             "rate":        flt(it.rate),
             "amount":      flt(it.rate) * q,
             "po_item":     int(it.name) if str(it.name).isdigit() else 0,
+            "warehouse":   item_wh or "",
         })
     if not pr_items:
         frappe.throw("Nothing left to receive on this Purchase Order")
@@ -3192,6 +3199,7 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
         "purchase_order":           po.name,
         "supplier_delivery_note":   supplier_delivery_note or "",
         "remarks":                  remarks or "",
+        "set_warehouse":            _default_wh or "",
         "items":                    pr_items,
     })
     pr.flags.ignore_permissions = True

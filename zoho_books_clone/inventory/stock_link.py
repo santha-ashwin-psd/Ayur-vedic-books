@@ -23,10 +23,14 @@ from frappe.utils import flt, today
 
 def on_sales_invoice_submit(doc, method=None):
     """
-    Audit-2: Deduct stock for every stock item on a submitted Sales Invoice.
-    Creates a 'Material Issue' Stock Entry linked back to the invoice.
+    Deduct stock for a Sales Invoice ONLY when 'Update Inventory on Submit' is
+    checked (direct/cash sale with no Delivery Note). Normally the Delivery Note
+    owns the stock movement, so a plain invoice posts no stock — preventing
+    double counting.
     """
-    rows = _stock_rows(doc, direction="issue")
+    if not flt(getattr(doc, "update_stock", 0)):
+        return
+    rows = _stock_rows(doc, direction="issue", zero_rate=True)
     if not rows:
         return
 
@@ -55,9 +59,12 @@ def on_sales_invoice_cancel(doc, method=None):
 
 def on_purchase_invoice_submit(doc, method=None):
     """
-    Audit-3: Receive stock for every stock item on a submitted Purchase Invoice.
-    Creates a 'Material Receipt' Stock Entry linked back to the invoice.
+    Receive stock for a Purchase Invoice ONLY when 'Update Inventory on Submit'
+    is checked (direct purchase with no Purchase Receipt). Normally the Purchase
+    Receipt owns the stock movement, so a plain bill posts no stock.
     """
+    if not flt(getattr(doc, "update_stock", 0)):
+        return
     rows = _stock_rows(doc, direction="receipt")
     if not rows:
         return
@@ -85,16 +92,73 @@ def on_purchase_invoice_cancel(doc, method=None):
     _cancel_linked_entries(doc.doctype, doc.name)
 
 
+def on_delivery_note_submit(doc, method=None):
+    """
+    Goods dispatched → deduct stock from the dispatch warehouse.
+    Issue is valued at FIFO cost (zero_rate) so selling price never becomes COGS.
+    """
+    rows = _stock_rows(doc, direction="issue", zero_rate=True)
+    if not rows:
+        return
+    se = _build_stock_entry(
+        entry_type="Material Issue",
+        posting_date=doc.posting_date or today(),
+        company=doc.company,
+        remarks=_("Auto stock issue — Delivery Note {0}").format(doc.name),
+        rows=rows,
+        ref_doctype=doc.doctype,
+        ref_docname=doc.name,
+    )
+    frappe.msgprint(
+        _("Stock deducted automatically via {0}.").format(frappe.bold(se.name)),
+        indicator="green", alert=True,
+    )
+
+
+def on_delivery_note_cancel(doc, method=None):
+    """Reverse the auto-issue Stock Entry when a Delivery Note is cancelled."""
+    _cancel_linked_entries(doc.doctype, doc.name)
+
+
+def on_purchase_receipt_submit(doc, method=None):
+    """Goods received → add stock into the receiving warehouse at the line cost."""
+    rows = _stock_rows(doc, direction="receipt")
+    if not rows:
+        return
+    se = _build_stock_entry(
+        entry_type="Material Receipt",
+        posting_date=doc.posting_date or today(),
+        company=doc.company,
+        remarks=_("Auto stock receipt — Purchase Receipt {0}").format(doc.name),
+        rows=rows,
+        ref_doctype=doc.doctype,
+        ref_docname=doc.name,
+    )
+    frappe.msgprint(
+        _("Stock received automatically via {0}.").format(frappe.bold(se.name)),
+        indicator="green", alert=True,
+    )
+
+
+def on_purchase_receipt_cancel(doc, method=None):
+    """Reverse the auto-receipt Stock Entry when a Purchase Receipt is cancelled."""
+    _cancel_linked_entries(doc.doctype, doc.name)
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def _stock_rows(doc, direction: str) -> list[dict]:
+def _stock_rows(doc, direction: str, zero_rate: bool = False) -> list[dict]:
     """
     Return a list of dicts (one per item row) for items that:
       - have a non-zero qty
       - are marked as stock items in the Item master
-      - have a resolved warehouse (row-level > doc-level > default)
+      - have a resolved warehouse
+        (row warehouse > doc set_warehouse > item default_warehouse > Books default)
 
     direction: "issue" = outgoing (Sales), "receipt" = incoming (Purchase)
+    zero_rate: when True (Delivery Note issue), leave basic_rate at 0 so the
+        Stock Entry controller values the issue at FIFO cost (not the selling
+        price). Receipts pass the line rate (purchase cost).
     """
     default_warehouse = _default_warehouse(doc.company)
     rows = []
@@ -106,13 +170,16 @@ def _stock_rows(doc, direction: str) -> list[dict]:
             continue
 
         # Only process stock items
-        is_stock = frappe.db.get_value("Item", item_code, "is_stock_item")
-        if not is_stock:
+        item_meta = frappe.db.get_value(
+            "Item", item_code, ["is_stock_item", "default_warehouse"], as_dict=True
+        ) or {}
+        if not item_meta.get("is_stock_item"):
             continue
 
         warehouse = (
             getattr(row, "warehouse", None)
             or getattr(doc, "set_warehouse", None)
+            or item_meta.get("default_warehouse")
             or default_warehouse
         )
         if not warehouse:
@@ -130,7 +197,7 @@ def _stock_rows(doc, direction: str) -> list[dict]:
             "item_code":  item_code,
             "item_name":  getattr(row, "item_name", None) or item_code,
             "qty":        qty,
-            "basic_rate": flt(getattr(row, "rate", 0)),
+            "basic_rate": 0 if zero_rate else flt(getattr(row, "rate", 0)),
             "warehouse":  warehouse,
         })
 

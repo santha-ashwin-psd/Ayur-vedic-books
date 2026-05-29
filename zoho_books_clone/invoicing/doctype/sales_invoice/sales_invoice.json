@@ -23,6 +23,8 @@
   "fiscal_year",
   "place_of_supply",
   "po_no",
+  "update_stock",
+  "set_warehouse",
   "section_items",
   "items",
   "section_taxes",
@@ -130,6 +132,17 @@
    "fieldtype": "Link",
    "label": "Fiscal Year",
    "options": "Fiscal Year"
+  },
+  {
+   "fieldname": "update_stock",
+   "fieldtype": "Check",
+   "label": "Update Inventory on Submit",
+   "default": "0"
+  },
+  {
+   "fieldname": "set_warehouse",
+   "fieldtype": "Data",
+   "label": "Warehouse"
   },
   {
    "fieldname": "section_items",

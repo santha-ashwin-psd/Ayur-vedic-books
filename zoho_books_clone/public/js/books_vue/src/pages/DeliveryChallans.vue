@@ -210,6 +210,10 @@
         <div class="dc-section">
           <div class="dc-section-hdr"><span v-html="icon('warehouse',13)"></span><span>Transport</span></div>
           <div class="dc-grid">
+            <div class="dc-field" style="grid-column:1/-1">
+              <label class="dc-flbl">Dispatch Warehouse</label>
+              <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Ship stock from…" @search="fetchWarehouses" />
+            </div>
             <div class="dc-field">
               <label class="dc-flbl">LR / Tracking #</label>
               <input class="dc-input" v-model="form.lr_no" placeholder="e.g. LR12345"/>
@@ -364,6 +368,7 @@ const addressLoading = ref(false);
 // Dropdown option lists
 const customers  = ref([]);
 const items      = ref([]);
+const warehouses = ref([]);
 const salesOrders = ref([]);
 
 let _lineId = 1;
@@ -374,6 +379,7 @@ const form = reactive({
   customer_name: "",
   posting_date: new Date().toISOString().slice(0, 10),
   sales_order: "",
+  set_warehouse: "",
   lr_no: "",
   transporter_name: "",
   shipping_address: "",
@@ -656,6 +662,7 @@ function resetForm() {
     customer_name: "",
     posting_date: new Date().toISOString().slice(0, 10),
     sales_order: "",
+    set_warehouse: "",
     lr_no: "",
     transporter_name: "",
     shipping_address: "",
@@ -669,6 +676,7 @@ function openNew() {
   resetForm();
   fetchCustomers("");
   fetchItems("");
+  fetchWarehouses("");
   fetchSalesOrders("");
   formOpen.value = true;
 }
@@ -678,6 +686,7 @@ async function openEdit(r) {
   resetForm();
   fetchCustomers("");
   fetchItems("");
+  fetchWarehouses("");
   fetchSalesOrders("");
   formOpen.value = true;
 
@@ -734,6 +743,18 @@ async function fetchCustomers(q = "") {
     });
     customers.value = (r || []).map(x => ({ ...x, label: x.customer_name || x.name, value: x.name }));
   } catch { customers.value = []; }
+}
+
+async function fetchWarehouses(q = "") {
+  try {
+    const co = await resolveCompany();
+    const r = await apiList("Warehouse", {
+      fields: ["name"],
+      filters: [["company", "=", co], ["is_group", "=", 0], ...(q ? [["name", "like", `%${q}%`]] : [])],
+      limit: 30,
+    });
+    warehouses.value = r.map(x => ({ label: x.name, value: x.name }));
+  } catch { warehouses.value = []; }
 }
 
 async function fetchItems(q = "") {
@@ -855,6 +876,7 @@ async function saveChallan(submit) {
       customer_name:    form.customer_name || form.customer,
       posting_date:     form.posting_date,
       sales_order:      form.sales_order || undefined,
+      set_warehouse:    form.set_warehouse || "",
       lr_no:            form.lr_no || "",
       transporter_name: form.transporter_name || "",
       shipping_address: form.shipping_address || "",
@@ -868,6 +890,7 @@ async function saveChallan(submit) {
         uom:        it.uom || "Nos",
         stock_uom:  it.uom || "Nos",
         conversion_factor: 1,
+        warehouse:  it.warehouse || form.set_warehouse || "",
       })),
     };
     if (editingName.value) doc.name = editingName.value;

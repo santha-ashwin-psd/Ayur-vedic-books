@@ -1,18 +1,32 @@
 <template>
   <div class="sv-page">
-    <div class="sv-actions">
-      <SearchableSelect v-model="filters.warehouse" :options="warehouses" placeholder="All Warehouses" @search="fetchWarehouses" style="min-width:200px" />
-      <SearchableSelect v-model="filters.item_group" :options="itemGroups" placeholder="All Item Groups" @search="fetchItemGroups" style="min-width:180px" />
+    <div class="sv-filterbar">
+      <div class="sv-fld sv-fld-wh">
+        <label class="sv-fld-lbl">Warehouse</label>
+        <SearchableSelect v-model="filters.warehouse" :options="warehouses" placeholder="All warehouses" @search="fetchWarehouses" />
+      </div>
+      <div class="sv-fld sv-fld-grp">
+        <label class="sv-fld-lbl">Item Group</label>
+        <SearchableSelect v-model="filters.item_group" :options="itemGroups" placeholder="All item groups" @search="fetchItemGroups" />
+      </div>
       <button class="sv-btn-primary" @click="load"><span v-html="icon('refresh',13)"></span> Refresh</button>
       <button class="sv-btn-ghost" @click="exportCSV" :disabled="!list.length"><span v-html="icon('download',13)"></span> Export</button>
-      <div style="margin-left:auto;color:#6b7280;font-size:12.5px;align-self:center">As of today</div>
+      <span class="sv-asof">As of today</span>
     </div>
 
-    <div class="sv-summary" v-if="!loading && list.length">
-      <div class="sv-sum-card"><div class="sv-sum-lbl">Total Items</div><div class="sv-sum-val">{{ list.length }}</div></div>
-      <div class="sv-sum-card"><div class="sv-sum-lbl">Total Stock Value</div><div class="sv-sum-val blue">{{ fmtCur(totalValue) }}</div></div>
-      <div class="sv-sum-card"><div class="sv-sum-lbl">Zero Stock Items</div><div class="sv-sum-val orange">{{ zeroStock }}</div></div>
-      <div class="sv-sum-card"><div class="sv-sum-lbl">Total Qty</div><div class="sv-sum-val">{{ fmtQty(totalQty) }}</div></div>
+    <SummaryStrip v-if="!loading && list.length" :cards="[
+      { label:'Total Items', tone:'default', value: list.length },
+      { label:'Total Stock Value', tone:'accent', value: fmtCur(totalValue), valueClass:'blue' },
+      { label:'Zero Stock Items', tone: zeroStock>0?'warn':'default', value: zeroStock, valueClass: zeroStock>0?'orange':'' },
+      { label:'Total Qty', tone:'info', value: fmtQty(totalQty) },
+    ]" />
+
+    <div v-if="!loading && list.length" class="sv-toolbar">
+      <span class="sv-result">{{ sorted.length }} item{{ sorted.length===1?'':'s' }}</span>
+      <div class="sv-search-wrap">
+        <span v-html="icon('search',13)" style="color:#94a3b8;flex-shrink:0"></span>
+        <input v-model="search" placeholder="Search item / group…" class="sv-search-input" />
+      </div>
     </div>
 
     <div class="sv-card">
@@ -25,9 +39,10 @@
           <th @click="sort('actual_qty')" class="sortable ta-r">Qty <span v-html="sortArrow('actual_qty')"></span></th>
           <th @click="sort('valuation_rate')" class="sortable ta-r">Rate <span v-html="sortArrow('valuation_rate')"></span></th>
           <th @click="sort('stock_value')" class="sortable ta-r">Stock Value <span v-html="sortArrow('stock_value')"></span></th>
+          <th style="width:80px"></th>
         </tr></thead>
         <tbody>
-          <template v-if="loading"><tr v-for="n in 10" :key="n"><td colspan="7"><div class="sv-shimmer"></div></td></tr></template>
+          <template v-if="loading"><tr v-for="n in 10" :key="n"><td colspan="8"><div class="sv-shimmer"></div></td></tr></template>
           <template v-else>
             <tr v-for="i in sorted" :key="i.item_code+i.warehouse" class="sv-row">
               <td><span class="sv-code">{{ i.item_code }}</span></td>
@@ -37,8 +52,9 @@
               <td class="ta-r mono-sm" :class="flt(i.actual_qty)<=0?'red':''">{{ fmtQty(i.actual_qty) }}</td>
               <td class="ta-r mono-sm">{{ fmtCur(i.valuation_rate) }}</td>
               <td class="ta-r mono-sm font-medium">{{ fmtCur(i.stock_value) }}</td>
+              <td class="ta-r"><button class="sv-adjust-btn" @click="goAdjust(i)">Adjust</button></td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="7" class="sv-empty">No stock data found</td></tr>
+            <tr v-if="!sorted.length"><td colspan="8" class="sv-empty">{{ list.length ? 'No items match your search' : 'No stock data found' }}</td></tr>
           </template>
         </tbody>
       </table>
@@ -47,13 +63,17 @@
 </template>
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { apiList, apiGET, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import SummaryStrip from "../components/SummaryStrip.vue";
 const { toast } = useToast();
-const list=ref([]),loading=ref(false);
+const router = useRouter();
+const list=ref([]),loading=ref(false),search=ref("");
+function goAdjust(i){ router.push({ name:"inventory-adjustments", query:{ item:i.item_code, warehouse:i.warehouse } }); }
 const warehouses=ref([]),itemGroups=ref([]);
 const sortCol=ref("stock_value"),sortDir=ref("desc");
 const filters=reactive({warehouse:"",item_group:""});
@@ -61,17 +81,22 @@ async function load(){
   loading.value=true;
   try{
     // get_stock_summary returns item_name + item_group and honours the
-    // item-group filter (raw Bin has neither field).
-    const r=await apiGET("zoho_books_clone.api.inventory.get_stock_summary",{
-      warehouse: filters.warehouse||undefined,
-      item_group: filters.item_group||undefined,
-      show_zero_stock: 1,
-    });
+    // item-group filter (raw Bin has neither field). Only include filter keys
+    // when set — passing undefined would serialize to the string "undefined".
+    const params={show_zero_stock:1};
+    if(filters.warehouse)params.warehouse=filters.warehouse;
+    if(filters.item_group)params.item_group=filters.item_group;
+    const r=await apiGET("zoho_books_clone.api.inventory.get_stock_summary",params);
     const rows=Array.isArray(r)?r:(r?.message||[]);
     list.value=rows.map(x=>({...x,stock_uom:x.uom||x.stock_uom||""}));
   }catch(e){toast.error(e.message||"Failed to load valuation");}finally{loading.value=false;}
 }
-const sorted=computed(()=>{const col=sortCol.value;return[...list.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
+const filteredRows=computed(()=>{
+  if(!search.value.trim())return list.value;
+  const q=search.value.toLowerCase();
+  return list.value.filter(i=>(i.item_code||"").toLowerCase().includes(q)||(i.item_name||"").toLowerCase().includes(q)||(i.item_group||"").toLowerCase().includes(q));
+});
+const sorted=computed(()=>{const col=sortCol.value;return[...filteredRows.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
 function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}
 const totalValue=computed(()=>list.value.reduce((s,i)=>s+flt(i.stock_value),0));
@@ -96,20 +121,28 @@ function exportCSV(){
 }
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 async function fetchItemGroups(q=""){try{const r=await apiLinkValues("Item Group",q);itemGroups.value=r.map(x=>({label:x.name,value:x.name}));}catch{itemGroups.value=[];}}
-onMounted(load);
+onMounted(()=>{load();fetchWarehouses("");fetchItemGroups("");});
 </script>
 <style scoped>
 .sv-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
-.sv-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.sv-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+/* premium filter bar */
+.sv-filterbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;}
+.sv-fld{display:flex;flex-direction:column;gap:5px;}
+.sv-fld-wh{flex:1 1 220px;max-width:300px;}
+.sv-fld-grp{flex:1 1 200px;max-width:260px;}
+.sv-fld-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;}
+.sv-asof{margin-left:auto;align-self:center;color:#94a3b8;font-size:12px;font-weight:600;}
+.sv-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}
 .sv-btn-primary:hover{background:#1d4ed8;}
-.sv-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;color:#334155;cursor:pointer;}
+.sv-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;color:#334155;cursor:pointer;}
 .sv-btn-ghost:hover:not(:disabled){background:#f8fafc;border-color:#cbd5e1;}.sv-btn-ghost:disabled{opacity:.5;cursor:not-allowed;}
-.sv-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-.sv-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
-.sv-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
-.sv-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
 .blue{color:#2563eb!important;}.orange{color:#ea580c!important;}.red{color:#dc2626!important;}
+/* toolbar */
+.sv-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.sv-result{font-size:12px;color:#94a3b8;font-weight:600;white-space:nowrap;}
+.sv-search-wrap{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:7px 12px;min-width:240px;transition:border-color .15s,box-shadow .15s;}
+.sv-search-wrap:focus-within{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+.sv-search-input{border:none;background:transparent;outline:none;font:inherit;font-size:13px;color:#0f172a;width:100%;}
 .sv-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .sv-table{width:100%;border-collapse:collapse;font-size:13px;}
 .sv-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
@@ -118,6 +151,8 @@ onMounted(load);
 .sv-row td{padding:9px 12px;border-bottom:1px solid #f3f4f6;}
 .sv-row:last-child td{border-bottom:none;}.sv-row:hover td{background:#f9fafb;}
 .sv-code{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
+.sv-adjust-btn{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:7px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;}
+.sv-adjust-btn:hover{background:#dbeafe;}
 .mono-sm{font-family:monospace;font-size:12.5px;}.font-medium{font-weight:600;}.text-muted{color:#6b7280;}
 .sv-empty{text-align:center;color:#9ca3af;padding:48px!important;}
 .sv-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}

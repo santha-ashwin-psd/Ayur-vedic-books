@@ -204,6 +204,17 @@
               <input v-model="form.po_no" class="inv-fi" placeholder="Customer's PO reference"/>
             </div>
             <div>
+              <label class="inv-lbl">Update Inventory</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151;cursor:pointer;padding:8px 0">
+                <input type="checkbox" v-model="form.update_stock" style="width:15px;height:15px;accent-color:#2563eb"/>
+                Deduct stock on submit (direct sale, no delivery note)
+              </label>
+            </div>
+            <div v-if="form.update_stock">
+              <label class="inv-lbl">Dispatch Warehouse</label>
+              <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Ship stock from…" @search="fetchWarehouses" />
+            </div>
+            <div>
               <label class="inv-lbl">Place of Supply</label>
               <div v-if="isOverseas" class="inv-fi" style="background:#eff6ff;color:#1d4ed8;font-size:12px;display:flex;align-items:center;gap:6px;padding:8px 10px;border-color:#bfdbfe">
                 <span>🌐</span> Outside India — Not applicable for export invoices
@@ -736,8 +747,11 @@ const form = reactive({
   payment_terms:"", place_of_supply:"", billing_address:"",
   terms:"", remarks:"", docstatus:0,
   currency:"INR", exchange_rate:1, gst_treatment:"",
+  update_stock:0, set_warehouse:"",
 });
 const lines   = ref([]);
+const warehouses = ref([]);
+async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 const taxRows = ref([]);
 
 // ── View drawer ────────────────────────────────────────────────────────
@@ -1053,7 +1067,8 @@ function openAdd() {
   editingName.value=null;
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
   taxRows.value=[];
-  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:""});
+  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:""});
+  fetchWarehouses("");
   drawerOpen.value=true;
 }
 async function openEdit(inv) {
@@ -1091,7 +1106,7 @@ async function saveInvoice(docstatus) {
     const company=await resolveCompany();
     const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0}));
     const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>({doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate}));
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular"};
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:form.update_stock?1:0,set_warehouse:form.set_warehouse||""};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
     if (docstatus===1) await apiSubmit("Sales Invoice",saved.name);

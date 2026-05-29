@@ -123,6 +123,17 @@
             <input v-model="form.bill_date" type="date" class="bill-input" />
           </div>
           <div class="bill-field">
+            <label class="bill-label">Update Inventory</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151;cursor:pointer;padding:8px 0">
+              <input type="checkbox" v-model="form.update_stock" style="width:15px;height:15px;accent-color:#2563eb"/>
+              Receive stock on submit (no purchase receipt)
+            </label>
+          </div>
+          <div class="bill-field" v-if="form.update_stock">
+            <label class="bill-label">Receiving Warehouse</label>
+            <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Receive stock into…" @search="fetchWarehouses" />
+          </div>
+          <div class="bill-field">
             <label class="bill-label">Currency</label>
             <select v-model="form.currency" class="bill-input" @change="form.exchange_rate=form.currency==='INR'?1:form.exchange_rate">
               <option v-for="(sym,code) in BILL_CURRENCIES" :key="code" :value="code">{{ code }} {{ sym }}</option>
@@ -353,7 +364,9 @@ const copyingLast = ref(false);
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const BILL_CURRENCIES = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
-const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1 });
+const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 0, set_warehouse: "" });
+const warehouses = ref([]);
+async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function fmtCur(v) {
@@ -450,9 +463,9 @@ const timelineSteps = computed(() => {
 // ── Create/Edit ───────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1 });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 0, set_warehouse: "" });
   lines.value = [blankLine()];
-  fetchVendors(""); fetchItems("");
+  fetchVendors(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
 }
 async function openEdit(b) {
@@ -551,6 +564,7 @@ async function saveBill(submit) {
       supplier: form.supplier, posting_date: form.posting_date,
       due_date: form.due_date || null, bill_no: form.bill_no || "",
       bill_date: form.bill_date || null, remarks: form.remarks || "",
+      update_stock: form.update_stock ? 1 : 0, set_warehouse: form.set_warehouse || "",
       currency: form.currency || "INR",
       conversion_rate: form.currency === "INR" ? 1 : (form.exchange_rate || 1),
       items: lines.value.filter(l => l.item_code).map(l => ({

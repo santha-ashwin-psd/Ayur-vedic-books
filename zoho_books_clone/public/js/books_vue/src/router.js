@@ -48,6 +48,7 @@ import BankTransfers          from "./pages/BankTransfers.vue";
 import BankCheques            from "./pages/BankCheques.vue";
 import BankCash               from "./pages/BankCash.vue";
 import StockEntries           from "./pages/StockEntries.vue";
+import InventoryAdjustments    from "./pages/InventoryAdjustments.vue";
 import StockLedger            from "./pages/StockLedger.vue";
 import StockValuation         from "./pages/StockValuation.vue";
 import ReorderAlerts          from "./pages/ReorderAlerts.vue";
@@ -189,6 +190,7 @@ const routes = [
   { path: "/banking/cheques",        name: "banking-cheques",        component: BankCheques,        meta: { module: "accounts" } },
   { path: "/banking/cash",           name: "banking-cash",           component: BankCash,           meta: { module: "accounts" } },
   { path: "/inventory/stock-entries",  name: "stock-entries",   component: StockEntries,   meta: { module: "inventory" } },
+  { path: "/inventory/adjustments",    name: "inventory-adjustments", component: InventoryAdjustments, meta: { module: "inventory" } },
   { path: "/inventory/stock-ledger",   name: "stock-ledger",    component: StockLedger,    meta: { module: "inventory" } },
   { path: "/inventory/valuation",      name: "stock-valuation", component: StockValuation, meta: { module: "inventory" } },
   { path: "/inventory/reorder-alerts", name: "reorder-alerts",  component: ReorderAlerts,  meta: { module: "inventory" } },

@@ -220,6 +220,125 @@ def get_item_stock_detail(item_code, warehouse=None):
     }
 
 
+# ── Inventory Adjustments ─────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def create_inventory_adjustment():
+    """
+    Zoho-style quantity adjustment: enter the new counted on-hand qty for an
+    item+warehouse; we post the +/- delta as a 'Stock Adjustment' Stock Entry at
+    the current valuation rate. The Stock Entry controller handles the SLE/Bin
+    update and the GL (DR Inventory / CR adjustment account).
+    """
+    from frappe.utils import today as frappe_today
+    fd = frappe.form_dict
+    item_code = (fd.get("item_code") or "").strip()
+    warehouse = (fd.get("warehouse") or "").strip()
+    reason    = (fd.get("reason") or "").strip()
+    notes     = (fd.get("notes") or "").strip()
+    adj_account = (fd.get("adjustment_account") or "").strip()
+    posting_date = fd.get("posting_date") or frappe_today()
+
+    if not item_code:
+        frappe.throw(_("Item is required"))
+    if not warehouse:
+        frappe.throw(_("Warehouse is required"))
+    if fd.get("new_qty") in (None, ""):
+        frappe.throw(_("New quantity is required"))
+
+    new_qty = flt(fd.get("new_qty"))
+    if new_qty < 0:
+        frappe.throw(_("New quantity cannot be negative"))
+
+    company = _get_company(frappe.session.user)
+
+    bin_row = frappe.db.get_value(
+        "Bin", {"item_code": item_code, "warehouse": warehouse},
+        ["actual_qty", "valuation_rate"], as_dict=True,
+    ) or {}
+    current_qty = flt(bin_row.get("actual_qty"))
+    rate = flt(bin_row.get("valuation_rate"))
+    if not rate:
+        item_rates = frappe.db.get_value(
+            "Item", item_code, ["standard_buying_rate", "standard_rate"], as_dict=True
+        ) or {}
+        rate = flt(item_rates.get("standard_buying_rate")) or flt(item_rates.get("standard_rate")) or 0
+
+    delta = new_qty - current_qty
+    if abs(delta) < 0.0000001:
+        frappe.throw(_("New quantity equals current quantity — nothing to adjust."))
+
+    item_name = frappe.db.get_value("Item", item_code, "item_name") or item_code
+    remark = reason + ((" — " + notes) if notes else "") if reason else (notes or f"Stock adjustment for {item_code}")
+
+    se = frappe.get_doc({
+        "doctype":          "Stock Entry",
+        "stock_entry_type": "Stock Adjustment",
+        "posting_date":     posting_date,
+        "company":          company,
+        "remarks":          remark,
+        "adjustment_reason": reason or None,
+        "adjustment_account": adj_account or None,
+        "items": [{
+            "item_code":  item_code,
+            "item_name":  item_name,
+            "qty":        delta,
+            "basic_rate": rate,
+            "t_warehouse": warehouse,
+        }],
+    })
+    se.name = "SEC-" + frappe.generate_hash(txt=f"{item_code}{frappe.utils.now()}", length=8).upper()
+    se.flags.ignore_permissions = True
+    se.flags.ignore_links = True
+    se.flags.ignore_mandatory = True
+    se.insert()
+    se.submit()
+    frappe.db.commit()
+    return {
+        "stock_entry": se.name,
+        "delta": delta,
+        "new_qty": new_qty,
+        "current_qty": current_qty,
+        "rate": rate,
+    }
+
+
+@frappe.whitelist(allow_guest=False)
+def get_inventory_adjustments(company=None):
+    """List Stock-Adjustment entries (one row per entry, first item line)."""
+    if not company:
+        company = _get_company(frappe.session.user)
+    rows = frappe.db.sql("""
+        SELECT se.name, se.posting_date, se.docstatus, se.value_difference,
+               se.adjustment_reason, se.remarks,
+               sed.item_code, sed.item_name, sed.t_warehouse AS warehouse,
+               sed.qty, sed.basic_rate
+        FROM `tabStock Entry` se
+        LEFT JOIN `tabStock Entry Detail` sed ON sed.parent = se.name
+        WHERE se.stock_entry_type = 'Stock Adjustment' AND se.company = %s
+        GROUP BY se.name
+        ORDER BY se.posting_date DESC, se.creation DESC
+        LIMIT 300
+    """, (company,), as_dict=True)
+    for r in rows:
+        r["qty"] = flt(r.get("qty"))
+        r["value"] = flt(r.get("qty")) * flt(r.get("basic_rate"))
+    return rows
+
+
+@frappe.whitelist(allow_guest=False)
+def get_default_adjustment_account(company=None):
+    """Return the company's Stock Adjustment leaf account (for prefilling the UI)."""
+    if not company:
+        company = _get_company(frappe.session.user)
+    name = frappe.db.get_value(
+        "Account",
+        {"account_type": "Stock Adjustment", "company": company, "is_group": 0},
+        "name",
+    )
+    return {"account": name or ""}
+
+
 # ── Stock Ledger ──────────────────────────────────────────────────────────────
 
 @frappe.whitelist(allow_guest=False)

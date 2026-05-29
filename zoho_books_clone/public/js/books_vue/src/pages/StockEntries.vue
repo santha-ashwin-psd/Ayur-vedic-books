@@ -42,7 +42,16 @@
     <!-- Create Drawer -->
     <div v-if="drawerOpen" class="se-overlay" @click.self="drawerOpen=false"></div>
     <div class="se-drawer" :class="{open:drawerOpen}">
-      <div class="se-dheader"><div class="se-dheader-title">New Stock Entry</div><button class="se-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button></div>
+      <div class="se-dheader">
+        <button class="se-dclose se-dclose-abs" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
+        <div class="se-dh-top">
+          <div class="se-dh-ico"><span v-html="icon('stack',20)"></span></div>
+          <div>
+            <div class="se-dh-title">New Stock Entry</div>
+            <div class="se-dh-sub">Record a stock movement</div>
+          </div>
+        </div>
+      </div>
       <div class="se-dbody">
         <div class="se-fields-grid">
           <div class="se-field" style="grid-column:1/-1">
@@ -72,7 +81,7 @@
         <div class="se-items-table">
           <div class="se-items-head"><div>Item</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div></div></div>
           <div v-for="line in lines" :key="line.id" class="se-items-row">
-            <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="v=>{line.item_code=v}" /></div>
+            <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="opt=>onItemSelect(line,opt)" /></div>
             <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="se-input ta-r" /></div>
             <div><input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" /></div>
             <div><button @click="removeLine(line.id)" class="se-rm-line"><span v-html="icon('x',12)"></span></button></div>
@@ -92,7 +101,17 @@
     <div v-if="viewOpen" class="se-overlay" @click.self="viewOpen=false"></div>
     <div class="se-drawer se-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
-        <div class="se-dheader"><div class="se-dheader-title">{{ viewDoc.name }}</div><button class="se-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button></div>
+        <div class="se-dheader">
+          <button class="se-dclose se-dclose-abs" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+          <div class="se-dh-top">
+            <div class="se-dh-ico"><span v-html="icon('stack',20)"></span></div>
+            <div>
+              <div class="se-dh-title">{{ viewDoc.name }}</div>
+              <div class="se-dh-sub">{{ viewDoc.stock_entry_type }} · {{ fmtDate(viewDoc.posting_date) }}</div>
+            </div>
+            <span class="se-badge" :class="viewDoc.docstatus===0?'badge-orange':viewDoc.docstatus===1?'badge-green':'badge-grey'" style="margin-left:auto">{{ viewDoc.docstatus===0?'Draft':viewDoc.docstatus===1?'Submitted':'Cancelled' }}</span>
+          </div>
+        </div>
         <div class="se-dbody">
           <div class="se-meta-grid">
             <div><div class="se-meta-lbl">Type</div><div>{{ viewDoc.stock_entry_type }}</div></div>
@@ -123,12 +142,14 @@
 </template>
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 const { toast } = useToast();
+const route = useRoute();
 const activeTab=ref("all");
 const tabs=[{key:"all",label:"All"},{key:"Material Receipt",label:"Receipt"},{key:"Material Issue",label:"Issue"},{key:"Material Transfer",label:"Transfer"}];
 const list=ref([]),loading=ref(false),search=ref("");
@@ -166,6 +187,16 @@ function openNew(){Object.assign(form,{stock_entry_type:"Material Receipt",posti
 async function openView(e){viewDoc.value=e;viewOpen.value=true;try{const full=await apiGet("Stock Entry",e.name);viewDoc.value=full;}catch{/* keep list-row data */}}
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
+async function onItemSelect(line,opt){
+  line.item_code = opt?.value ?? opt;
+  if(!line.item_code)return;
+  // Auto-fill rate from the item's buying/standard rate (if rate not set yet).
+  try{
+    const r=await apiList("Item",{fields:["name","standard_buying_rate","standard_rate"],filters:[["name","=",line.item_code]],limit:1});
+    const it=r&&r[0];
+    if(it&&!flt(line.basic_rate))line.basic_rate=flt(it.standard_buying_rate)||flt(it.standard_rate)||0;
+  }catch{}
+}
 function addLine(){lines.value.push(blankLine());}
 function removeLine(id){if(lines.value.length>1)lines.value=lines.value.filter(l=>l.id!==id);}
 async function saveEntry(submit){
@@ -174,7 +205,7 @@ async function saveEntry(submit){
   try{const company=await resolveCompany();const doc={doctype:"Stock Entry",company,stock_entry_type:form.stock_entry_type,posting_date:form.posting_date,from_warehouse:form.from_warehouse||null,to_warehouse:form.to_warehouse||null,remarks:form.remarks||"",items:lines.value.filter(l=>l.item_code).map(l=>({doctype:"Stock Entry Detail",item_code:l.item_code,qty:flt(l.qty),basic_rate:flt(l.basic_rate),s_warehouse:form.from_warehouse||null,t_warehouse:form.to_warehouse||null}))};const saved=await apiSave(doc);if(submit)await apiSubmit("Stock Entry",saved.name);toast.success(`Stock Entry ${saved?.name||""} ${submit?"submitted":"saved"}`);drawerOpen.value=false;await load();}
   catch(e){toast.error(e.message||"Failed to save stock entry");}finally{drawerSaving.value=false;}
 }
-onMounted(load);
+onMounted(async()=>{await load();if(route.query.open)openView({name:String(route.query.open)});});
 </script>
 <style scoped>
 .se-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
@@ -207,23 +238,27 @@ onMounted(load);
 .se-empty{text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important;}
 .se-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.se-overlay{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:40;}
-.se-drawer{position:fixed;top:0;right:-500px;bottom:0;width:500px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 24px rgba(0,0,0,.08);z-index:50;display:flex;flex-direction:column;transition:right .22s ease;}
+.se-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:40;}
+.se-drawer{position:fixed;top:0;right:-500px;bottom:0;width:500px;max-width:96vw;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 28px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s ease;}
 .se-drawer.open{right:0;}
-.se-view-drawer{width:400px;right:-400px;}.se-view-drawer.open{right:0;}
-.se-dheader{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;border-bottom:1px solid #e5e7eb;flex-shrink:0;}
-.se-dheader-title{font-size:15px;font-weight:600;color:#111827;}
-.se-dclose{background:transparent;border:none;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;}
-.se-dclose:hover{background:#f3f4f6;}
+.se-view-drawer{width:420px;right:-420px;}.se-view-drawer.open{right:0;}
+.se-dheader{position:relative;flex-shrink:0;padding:20px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}
+.se-dh-top{display:flex;align-items:center;gap:13px;padding-right:36px;}
+.se-dh-ico{width:42px;height:42px;background:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;color:#2563eb;flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,.08);}
+.se-dh-title{font-size:15px;font-weight:700;color:#0f172a;}
+.se-dh-sub{font-size:12px;color:#475569;margin-top:1px;}
+.se-dclose{background:transparent;border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;}
+.se-dclose:hover{background:rgba(255,255,255,.6);color:#0f172a;}
+.se-dclose-abs{position:absolute;top:12px;right:12px;}
 .se-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;}
 .se-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .se-field{display:flex;flex-direction:column;gap:4px;}
 .se-label{font-size:12px;font-weight:600;color:#374151;}.req{color:#dc2626;}
-.se-input{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
-.se-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08);}
+.se-input{border:1px solid #e2e8f0;border-radius:8px;padding:8px 11px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;transition:border-color .15s,box-shadow .15s;}
+.se-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
 textarea.se-input{resize:vertical;}
-.se-select{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;cursor:pointer;}
-.se-select:focus{border-color:#2563eb;}
+.se-select{border:1px solid #e2e8f0;border-radius:8px;padding:8px 11px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.se-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
 .se-section-title{font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px;border-bottom:1px solid #f3f4f6;}
 .se-items-table{display:flex;flex-direction:column;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;}
 .se-items-head{display:grid;grid-template-columns:3fr 80px 100px 32px;gap:8px;background:#f9fafb;padding:8px 12px;font-size:11.5px;font-weight:600;color:#374151;}

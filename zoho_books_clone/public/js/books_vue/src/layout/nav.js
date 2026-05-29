@@ -56,6 +56,7 @@ export const NAV = [
   { path: "/inventory/item-groups",         label: "Item Groups",      icon: "folder",     module: "inventory"  },
   { path: "/inventory/warehouses",          label: "Warehouses",       icon: "warehouse",  module: "inventory"  },
   { path: "/inventory/stock-entries",       label: "Stock Entries",    icon: "stack",      module: "inventory"  },
+  { path: "/inventory/adjustments",         label: "Stock Adjustments", icon: "repeat",    module: "inventory"  },
   { path: "/inventory/stock-ledger",        label: "Stock Ledger",     icon: "ledger",     module: "inventory"  },
   { path: "/inventory/valuation",           label: "Valuation",        icon: "chart",      module: "inventory"  },
   { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },

@@ -21,7 +21,7 @@ def get_gl_entries(
 ) -> list[dict]:
     """Return GL entries for a date range with optional filters."""
     conditions = [
-        "docstatus = 1",
+        "is_cancelled = 0",
         "posting_date BETWEEN %(from_date)s AND %(to_date)s",
         "company = %(company)s",
     ]
@@ -50,7 +50,7 @@ def get_gl_entries(
         ORDER BY posting_date, creation
     """, params, as_dict=True)
 
-
+@frappe.whitelist()
 def get_account_balance(account: str, as_of_date: str | None = None) -> float:
     """Net balance (debit - credit) for an account, optionally up to a date."""
     params: dict = {"account": account}
@@ -62,11 +62,11 @@ def get_account_balance(account: str, as_of_date: str | None = None) -> float:
     result = frappe.db.sql(f"""
         SELECT COALESCE(SUM(debit) - SUM(credit), 0) AS balance
         FROM `tabGeneral Ledger Entry`
-        WHERE account = %(account)s AND docstatus = 1 {date_cond}
+        WHERE account = %(account)s AND is_cancelled = 0 {date_cond}
     """, params, as_dict=True)
     return flt(result[0].balance) if result else 0.0
 
-
+@frappe.whitelist()
 def get_account_balances_bulk(
     accounts: list[str], as_of_date: str | None = None
 ) -> dict[str, float]:
@@ -78,7 +78,7 @@ def get_account_balances_bulk(
     rows = frappe.db.sql(f"""
         SELECT account, COALESCE(SUM(debit) - SUM(credit), 0) AS balance
         FROM `tabGeneral Ledger Entry`
-        WHERE account IN ({placeholders}) AND docstatus = 1 {date_cond}
+        WHERE account IN ({placeholders}) AND is_cancelled = 0 {date_cond}
         GROUP BY account
     """, accounts, as_dict=True)
     return {r.account: flt(r.balance) for r in rows}

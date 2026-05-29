@@ -16,7 +16,7 @@
 
     <SummaryStrip v-if="!loading" :cards="[
       { label: 'Total Records', tone: 'accent',                                     value: list.length },
-      { label: 'This Month',    tone: 'default',                                    value: fmtCur(monthTotal) },
+      { label: 'This Month',    tone: 'info',                                    value: fmtCur(monthTotal) },
       { label: 'Unpaid',        tone: unpaidTotal>0 ? 'danger' : 'default',         value: fmtCur(unpaidTotal), valueClass: unpaidTotal>0 ? 'red' : '' },
       { label: 'Draft',         tone: counts.draft>0 ? 'warn' : 'default',          value: counts.draft,        valueClass: counts.draft>0 ? 'orange' : '' },
     ]" />

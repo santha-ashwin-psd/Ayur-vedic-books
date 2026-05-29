@@ -8,8 +8,34 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lato:wght@400;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/zoho_books_clone/books.css">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234F46E5'/><text x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-family='Plus Jakarta Sans,system-ui,sans-serif' font-weight='800' font-size='20' fill='white'>B</text></svg>">
-<style>
+<script>
+// Generate favicon matching the sidebar brand mark (blue rounded square + "B")
+(function() {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d');
+  const r = 14;
+  // Rounded rect background — same color as .bv-sidebar-brand-mark (#2563eb)
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(64-r, 0);
+  ctx.arcTo(64,0, 64,r, r); ctx.lineTo(64, 64-r);
+  ctx.arcTo(64,64, 64-r,64, r); ctx.lineTo(r, 64);
+  ctx.arcTo(0,64, 0,64-r, r); ctx.lineTo(0, r);
+  ctx.arcTo(0,0, r,0, r); ctx.closePath();
+  ctx.fillStyle = '#2563eb';
+  ctx.fill();
+  // "B" text
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '800 40px Inter, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('B', 32, 34);
+  const link = document.createElement('link');
+  link.rel = 'icon'; link.type = 'image/png';
+  link.href = c.toDataURL('image/png');
+  document.head.appendChild(link);
+})();
+</script><style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#f0f2f5}
 #books-app{height:100vh;width:100vw}

@@ -385,6 +385,20 @@
             "reqd": 0
         },
         {
+            "fieldname": "set_warehouse",
+            "fieldtype": "Link",
+            "label": "Dispatch Warehouse",
+            "options": "Warehouse",
+            "idx": 0,
+            "creation": "2026-06-01 00:00:00.000000",
+            "modified": "2026-06-01 00:00:00.000000",
+            "modified_by": "Administrator",
+            "owner": "Administrator",
+            "docstatus": 0,
+            "permlevel": 0,
+            "reqd": 0
+        },
+        {
             "fieldname": "items",
             "fieldtype": "Table",
             "label": "Items",

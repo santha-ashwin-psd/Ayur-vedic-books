@@ -145,6 +145,18 @@
               <label class="so-lbl">Shipping Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
               <input v-model="form.shipping_address" type="text" class="so-fi" placeholder="Auto-filled from customer, or enter manually"/>
             </div>
+            <div style="grid-column:1/-1">
+              <div class="so-inv-block" :class="form.set_warehouse ? 'so-wh-on' : 'so-wh-off'">
+                <div class="so-inv-toggle-row">
+                  <div class="so-inv-icon" v-html="icon('warehouse',16)"></div>
+                  <div class="so-inv-text">
+                    <div class="so-inv-title">Dispatch Warehouse <span style="color:#dc2626">*</span></div>
+                    <div class="so-inv-sub">Stock will be deducted from this warehouse when the invoice is submitted</div>
+                  </div>
+                </div>
+                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse stock will be dispatched from…" @search="fetchWarehouses" />
+              </div>
+            </div>
           </div>
 
           <!-- Line Items -->
@@ -471,8 +483,16 @@ let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const form = reactive({
   customer: "", transaction_date: todayStr(), delivery_date: deliveryDefault(),
-  po_number: "", shipping_address: "", tax_rate: 0, terms: "",
+  po_number: "", shipping_address: "", set_warehouse: "", tax_rate: 0, terms: "",
 });
+const warehouses = ref([]);
+async function fetchWarehouses(q = "") {
+  try {
+    const co = await resolveCompany();
+    const rows = await apiList("Warehouse", { filters: [["company","=",co],["disabled","=",0]], fields: ["name"], limit: 50 });
+    warehouses.value = (rows || []).filter(r => !q || r.name.toLowerCase().includes(q.toLowerCase())).map(r => ({ label: r.name, value: r.name }));
+  } catch { warehouses.value = []; }
+}
 
 const invModal = reactive({ open: false, saving: false, soName: "", lines: [], dueDate: "" });
 
@@ -632,9 +652,9 @@ const invModalTotal = computed(() =>
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { customer: "", transaction_date: todayStr(), delivery_date: deliveryDefault(), po_number: "", shipping_address: "", tax_rate: 0, terms: "" });
+  Object.assign(form, { customer: "", transaction_date: todayStr(), delivery_date: deliveryDefault(), po_number: "", shipping_address: "", set_warehouse: "", tax_rate: 0, terms: "" });
   lines.value = [blankLine()];
-  fetchCustomers(""); fetchItems("");
+  fetchCustomers(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
 }
 async function openEdit(o) {
@@ -642,10 +662,10 @@ async function openEdit(o) {
   Object.assign(form, {
     customer: o.customer || "", transaction_date: o.transaction_date || todayStr(),
     delivery_date: o.delivery_date || deliveryDefault(), po_number: o.po_number || "",
-    shipping_address: "", tax_rate: 0, terms: o.terms || "",
+    shipping_address: "", set_warehouse: "", tax_rate: 0, terms: o.terms || "",
   });
   lines.value = [blankLine()];
-  fetchCustomers(""); fetchItems("");
+  fetchCustomers(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Sales Order", o.name);
@@ -659,6 +679,7 @@ async function openEdit(o) {
     if (doc?.taxes?.[0]?.account_head) taxAccountHead.value = doc.taxes[0].account_head;
     if (doc?.terms) form.terms = doc.terms;
     if (doc?.shipping_address) form.shipping_address = doc.shipping_address;
+    if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
   } catch {}
 }
 async function openView(o) {
@@ -753,6 +774,7 @@ function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 1
 async function saveSO(newStatus) {
   if (!form.customer) return toast.error("Customer is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
+  if (!form.set_warehouse) return toast.error("Dispatch Warehouse is required");
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
@@ -765,6 +787,7 @@ async function saveSO(newStatus) {
       delivery_date: form.delivery_date || null,
       po_number: form.po_number || "",
       shipping_address: form.shipping_address || "",
+      set_warehouse: form.set_warehouse || "",
       status: newStatus || "Draft",
       terms: form.terms || "",
       items: lines.value.filter(l => l.item_code).map(l => ({
@@ -1036,6 +1059,14 @@ onMounted(async () => {
 .so-fg2 { grid-template-columns:1fr 1fr; }
 .so-fg3 { grid-template-columns:1fr 1fr 1fr; }
 .so-lbl { display:block; font-size:11.5px; font-weight:600; color:#495057; margin-bottom:5px; }
+.so-inv-block { border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:10px; border:1.5px solid #e5e7eb; background:#f9fafb; transition:border-color .2s,background .2s; }
+.so-inv-block.so-wh-on { background:#eff6ff; border-color:#93c5fd; }
+.so-inv-toggle-row { display:flex; align-items:center; gap:12px; }
+.so-inv-icon { width:32px; height:32px; border-radius:8px; background:#dbeafe; color:#2563eb; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.so-inv-block.so-wh-off .so-inv-icon { background:#f3f4f6; color:#9ca3af; }
+.so-inv-text { flex:1; }
+.so-inv-title { font-size:13px; font-weight:700; color:#111827; }
+.so-inv-sub { font-size:11.5px; color:#6b7280; margin-top:2px; line-height:1.4; }
 .so-req { color:#dc2626; }
 .so-fi { width:100%; border:1px solid #e2e8f0; border-radius:6px; padding:7px 10px; font-size:13px; font-family:inherit; outline:none; box-sizing:border-box; }
 .so-fi:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.08); }

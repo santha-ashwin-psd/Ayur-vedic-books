@@ -203,16 +203,24 @@
               <label class="inv-lbl">PO Number</label>
               <input v-model="form.po_no" class="inv-fi" placeholder="Customer's PO reference"/>
             </div>
-            <div>
-              <label class="inv-lbl">Update Inventory</label>
-              <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151;cursor:pointer;padding:8px 0">
-                <input type="checkbox" v-model="form.update_stock" style="width:15px;height:15px;accent-color:#2563eb"/>
-                Deduct stock on submit (direct sale, no delivery note)
-              </label>
-            </div>
-            <div v-if="form.update_stock">
-              <label class="inv-lbl">Dispatch Warehouse</label>
-              <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Ship stock from…" @search="fetchWarehouses" />
+            <div style="grid-column:1/-1">
+              <div class="inv-inv-block" :class="form.update_stock ? 'inv-on' : 'inv-off'">
+                <div class="inv-inv-toggle-row">
+                  <div class="inv-inv-icon" v-html="icon('box',16)"></div>
+                  <div class="inv-inv-text">
+                    <div class="inv-inv-title">Deduct Inventory on Submit</div>
+                    <div class="inv-inv-sub">Stock reduces from the selected warehouse when this invoice is submitted</div>
+                  </div>
+                  <label class="inv-inv-switch">
+                    <input type="checkbox" v-model="form.update_stock" :true-value="1" :false-value="0" />
+                    <span class="inv-inv-slider"></span>
+                  </label>
+                </div>
+                <div v-if="form.update_stock" class="inv-inv-wh-row">
+                  <label class="inv-lbl" style="margin-bottom:6px">Dispatch Warehouse <span style="color:#dc2626">*</span></label>
+                  <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse stock will be dispatched from…" @search="fetchWarehouses" />
+                </div>
+              </div>
             </div>
             <div>
               <label class="inv-lbl">Place of Supply</label>
@@ -747,7 +755,7 @@ const form = reactive({
   payment_terms:"", place_of_supply:"", billing_address:"",
   terms:"", remarks:"", docstatus:0,
   currency:"INR", exchange_rate:1, gst_treatment:"",
-  update_stock:0, set_warehouse:"",
+  update_stock:1, set_warehouse:"",
 });
 const lines   = ref([]);
 const warehouses = ref([]);
@@ -1101,6 +1109,7 @@ async function saveInvoice(docstatus) {
   if (!form.customer) { toast("Customer is required","error"); return; }
   if (!form.posting_date) { toast("Invoice date is required","error"); return; }
   if (!lines.value.some(l=>l.item_code&&flt(l.qty)>0)) { toast("Add at least one line item","error"); return; }
+  if (form.update_stock && !form.set_warehouse) { toast("Dispatch Warehouse is required when Update Inventory is on","error"); return; }
   drawerSaving.value=true;
   try {
     const company=await resolveCompany();
@@ -1629,6 +1638,22 @@ watch(() => route.query, (q) => {
 .inv-fg2 { grid-template-columns:1fr 1fr; } .inv-fg3 { grid-template-columns:1fr 1fr 1fr; }
 .inv-lbl { display:block; font-size:11.5px; font-weight:600; color:#495057; margin-bottom:5px; }
 .inv-fi { width:100%; border:1px solid #e2e8f0; border-radius:6px; padding:7px 10px; font-size:13px; font-family:inherit; outline:none; box-sizing:border-box; }
+.inv-inv-block { border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; transition:background .2s,border-color .2s; }
+.inv-inv-block.inv-on  { background:#eff6ff; border:1.5px solid #93c5fd; }
+.inv-inv-block.inv-off { background:#f9fafb; border:1.5px solid #e5e7eb; }
+.inv-inv-toggle-row { display:flex; align-items:center; gap:12px; }
+.inv-inv-icon { width:32px; height:32px; border-radius:8px; background:#dbeafe; color:#2563eb; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.inv-inv-block.inv-off .inv-inv-icon { background:#f3f4f6; color:#9ca3af; }
+.inv-inv-text { flex:1; }
+.inv-inv-title { font-size:13px; font-weight:700; color:#111827; }
+.inv-inv-sub { font-size:11.5px; color:#6b7280; margin-top:2px; line-height:1.4; }
+.inv-inv-wh-row { display:flex; flex-direction:column; padding-top:4px; border-top:1px solid #bfdbfe; }
+.inv-inv-switch { position:relative; display:inline-block; width:42px; height:24px; flex-shrink:0; }
+.inv-inv-switch input { opacity:0; width:0; height:0; }
+.inv-inv-slider { position:absolute; cursor:pointer; inset:0; background:#d1d5db; border-radius:24px; transition:.2s; }
+.inv-inv-slider:before { content:""; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.2s; }
+.inv-inv-switch input:checked + .inv-inv-slider { background:#2563eb; }
+.inv-inv-switch input:checked + .inv-inv-slider:before { transform:translateX(18px); }
 .inv-fi:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.08); }
 .inv-add-line-btn { display:inline-flex; align-items:center; gap:5px; border:1px solid rgba(26,110,247,.3); background:#eaf1ff; color:#1a6ef7; border-radius:6px; padding:5px 12px; font-size:12.5px; font-weight:600; cursor:pointer; }
 .inv-copy-btn { background:#f0fdf4; border-color:rgba(5,150,105,.3); color:#059669; }

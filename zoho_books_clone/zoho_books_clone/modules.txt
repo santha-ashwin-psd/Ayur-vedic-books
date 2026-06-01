@@ -1,8 +1,0 @@
-Accounts
-Invoicing
-Inventory
-Payments
-Banking
-Taxes
-Reports
-Books Setup

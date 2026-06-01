@@ -92,6 +92,11 @@ def _check_period_not_closed(doc):
     This is a lighter check than validate_fiscal_year (which also handles lock_date);
     here we just guard against accidentally saving to a closed year.
     """
+    # Opening Entries are exempt — they establish historical balances and must
+    # be allowed to post to any date, including dates in closed/locked periods.
+    if getattr(doc, "voucher_type", None) == "Opening Entry":
+        return
+
     date_field = _posting_date_field(doc)
     company    = getattr(doc, "company", None)
     if not date_field or not company:
@@ -119,6 +124,10 @@ def _check_lock_date(doc):
     posting date falls on or before the Books Lock Date configured in
     Books Settings.  System Managers are exempt so they can perform corrections.
     """
+    # Opening Entries are always exempt — they set up historical balances.
+    if getattr(doc, "voucher_type", None) == "Opening Entry":
+        return
+
     try:
         lock_date = frappe.db.get_single_value("Books Settings", "lock_date")
     except Exception:

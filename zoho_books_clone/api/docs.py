@@ -1789,6 +1789,8 @@ def convert_sales_order_to_invoice(sales_order, line_qtys=None, due_date=""):
         "income_account": inc,
         "sales_order":    so.name,
         "notes":          f"From Sales Order {so.name}",
+        "update_stock":   1,
+        "set_warehouse":  getattr(so, "set_warehouse", "") or "",
         "items":          si_items,
     })
     si.flags.ignore_permissions = True

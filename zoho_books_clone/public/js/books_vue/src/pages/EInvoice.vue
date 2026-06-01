@@ -1,7 +1,7 @@
 <template>
   <div class="ei-page">
     <div class="ei-actions">
-      <div class="ei-search-wrap"><span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span><input v-model="search" placeholder="Search invoices…" class="ei-search-input" /></div>
+      <div class="ei-search-wrap"><span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span><input v-model="search" placeholder="Search by invoice or customer…" class="ei-search-input" /></div>
       <div class="ei-tab-pills">
         <button v-for="t in tabs" :key="t.v" class="ei-pill" :class="{active:tab===t.v}" @click="tab=t.v">{{ t.l }}</button>
       </div>
@@ -11,10 +11,14 @@
     </div>
 
     <div class="ei-summary" v-if="!loading">
-      <div class="ei-sum-card"><div class="ei-sum-lbl">Total Invoices</div><div class="ei-sum-val">{{ list.length }}</div></div>
+      <div class="ei-sum-card"><div class="ei-sum-lbl">Total B2B Invoices</div><div class="ei-sum-val">{{ list.length }}</div></div>
       <div class="ei-sum-card"><div class="ei-sum-lbl">IRN Generated</div><div class="ei-sum-val green">{{ irnGenerated.length }}</div></div>
       <div class="ei-sum-card"><div class="ei-sum-lbl">Pending IRN</div><div class="ei-sum-val orange">{{ irnPending.length }}</div></div>
       <div class="ei-sum-card"><div class="ei-sum-lbl">Cancelled</div><div class="ei-sum-val red">{{ irnCancelled.length }}</div></div>
+    </div>
+
+    <div v-if="!loading && noGstinWarning" class="ei-warn">
+      No B2B invoices found. e-Invoice applies only to invoices where the customer has a GSTIN. Add GSTIN / Tax ID on the Customer record — it will be auto-populated on new invoices.
     </div>
 
     <div class="ei-card">
@@ -34,13 +38,16 @@
             <tr v-for="inv in sorted" :key="inv.name" class="ei-row" @click="openView(inv)">
               <td><span class="ei-code">{{ inv.name }}</span></td>
               <td class="mono-sm text-muted">{{ fmtDate(inv.posting_date) }}</td>
-              <td>{{ inv.customer_name||inv.customer }}</td>
-              <td class="mono-sm text-muted">{{ inv.customer_gstin||'—' }}</td>
+              <td>{{ inv.customer_name || inv.customer }}</td>
+              <td class="mono-sm text-muted">{{ inv.customer_gstin || '—' }}</td>
               <td class="ta-r mono-sm">{{ fmtCur(inv.grand_total) }}</td>
-              <td><span v-if="inv.irn" class="ei-irn" :title="inv.irn">{{ inv.irn.slice(0,16)+'…' }}</span><span v-else class="text-muted" style="font-size:12px">Not Generated</span></td>
+              <td>
+                <span v-if="inv.irn" class="ei-irn" :title="inv.irn">{{ inv.irn.slice(0,16) + '…' }}</span>
+                <span v-else class="text-muted" style="font-size:12px">Not Generated</span>
+              </td>
               <td><span class="ei-badge" :class="irnStatusClass(inv)">{{ irnStatusLabel(inv) }}</span></td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="7" class="ei-empty">No e-invoices found</td></tr>
+            <tr v-if="!sorted.length"><td colspan="7" class="ei-empty">No e-invoices found for this filter</td></tr>
           </template>
         </tbody>
       </table>
@@ -49,58 +56,137 @@
     <!-- View drawer -->
     <div v-if="viewing" class="ei-overlay" @click.self="viewing=null">
       <div class="ei-drawer">
-        <div class="ei-drawer-header"><span class="ei-drawer-title">{{ viewing.name }}</span><button class="ei-close" @click="viewing=null">✕</button></div>
+        <div class="ei-drawer-header">
+          <span class="ei-drawer-title">{{ viewing.name }}</span>
+          <button class="ei-close" @click="viewing=null">✕</button>
+        </div>
         <div class="ei-drawer-body">
-          <div class="ei-detail-row"><span>Customer</span><span>{{ viewing.customer_name||viewing.customer }}</span></div>
-          <div class="ei-detail-row"><span>GSTIN</span><span class="mono-sm">{{ viewing.customer_gstin||'—' }}</span></div>
+          <div class="ei-detail-row"><span>Customer</span><span>{{ viewing.customer_name || viewing.customer }}</span></div>
+          <div class="ei-detail-row"><span>GSTIN</span><span class="mono-sm">{{ viewing.customer_gstin || '—' }}</span></div>
           <div class="ei-detail-row"><span>Date</span><span>{{ fmtDate(viewing.posting_date) }}</span></div>
           <div class="ei-detail-row"><span>Grand Total</span><span class="font-bold">{{ fmtCur(viewing.grand_total) }}</span></div>
-          <div class="ei-detail-row"><span>Status</span><span class="ei-badge" :class="irnStatusClass(viewing)">{{ irnStatusLabel(viewing) }}</span></div>
+          <div class="ei-detail-row"><span>e-Invoice Status</span><span class="ei-badge" :class="irnStatusClass(viewing)">{{ irnStatusLabel(viewing) }}</span></div>
           <div v-if="viewing.irn" class="ei-field" style="margin-top:12px">
             <label>IRN</label>
             <div class="ei-irn-block">{{ viewing.irn }}</div>
           </div>
           <div v-if="viewing.ack_no" class="ei-detail-row"><span>Ack No.</span><span class="mono-sm">{{ viewing.ack_no }}</span></div>
           <div v-if="viewing.ack_date" class="ei-detail-row"><span>Ack Date</span><span class="mono-sm">{{ fmtDate(viewing.ack_date) }}</span></div>
+          <div v-if="!viewing.customer_gstin" class="ei-warn-inline">Customer has no GSTIN — set it on the Customer record to enable IRN generation.</div>
         </div>
         <div class="ei-drawer-footer">
           <button class="ei-btn-ghost" @click="viewing=null">Close</button>
-          <button v-if="!viewing.irn" class="ei-btn-primary" @click="generateIRN(viewing)">Generate IRN</button>
+          <button v-if="!viewing.irn && viewing.customer_gstin" class="ei-btn-primary" @click="generateIRN(viewing)">Generate IRN</button>
         </div>
       </div>
     </div>
   </div>
 </template>
+
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { apiList, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+
 const { toast } = useToast();
-const list=ref([]),loading=ref(false),search=ref(""),tab=ref("all");
-const sortCol=ref("posting_date"),sortDir=ref("desc");
-const viewing=ref(null);
-const tabs=[{v:"all",l:"All"},{v:"generated",l:"IRN Generated"},{v:"pending",l:"Pending"},{v:"cancelled",l:"Cancelled"}];
-async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Sales Invoice",{fields:["name","posting_date","customer","customer_name","grand_total"],filters:[["company","=",co],["docstatus","=",1],["is_return","=",0]],limit:500,order:"posting_date desc"});}catch(e){toast.error(e.message||"Failed to load invoices");}finally{loading.value=false;}}
-function irnStatusLabel(inv){if(inv.einvoice_status==="Cancelled")return"Cancelled";if(inv.irn)return"IRN Generated";return"Pending";}
-function irnStatusClass(inv){if(inv.einvoice_status==="Cancelled")return"badge-grey";if(inv.irn)return"badge-green";return"badge-orange";}
-const irnGenerated=computed(()=>list.value.filter(i=>i.irn&&i.einvoice_status!=="Cancelled"));
-const irnPending=computed(()=>list.value.filter(i=>!i.irn));
-const irnCancelled=computed(()=>list.value.filter(i=>i.einvoice_status==="Cancelled"));
-const filtered=computed(()=>{let r=list.value;if(tab.value==="generated")r=irnGenerated.value;else if(tab.value==="pending")r=irnPending.value;else if(tab.value==="cancelled")r=irnCancelled.value;if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(i=>(i.name||"").toLowerCase().includes(q)||(i.customer_name||"").toLowerCase().includes(q));}return r;});
-const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
-function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
-function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}
-function openView(inv){viewing.value=inv;}
-async function generateIRN(inv){toast.info("IRN generation requires GST portal integration. Configure in Settings > Integrations.");}
-function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
+const list = ref([]);
+const loading = ref(false);
+const search = ref("");
+const tab = ref("all");
+const sortCol = ref("posting_date");
+const sortDir = ref("desc");
+const viewing = ref(null);
+const noGstinWarning = ref(false);
+
+const tabs = [
+  { v: "all", l: "All" },
+  { v: "generated", l: "IRN Generated" },
+  { v: "pending", l: "Pending" },
+  { v: "cancelled", l: "Cancelled" },
+];
+
+async function load() {
+  loading.value = true;
+  noGstinWarning.value = false;
+  try {
+    const co = await resolveCompany();
+    const all = await apiList("Sales Invoice", {
+      fields: ["name", "posting_date", "customer", "customer_name", "customer_gstin",
+               "grand_total", "irn", "einvoice_status", "ack_no", "ack_date"],
+      filters: [["company", "=", co], ["docstatus", "=", 1], ["is_return", "=", 0]],
+      limit: 500,
+      order: "posting_date desc",
+    });
+    list.value = all.filter(i => i.customer_gstin);
+    if (!list.value.length && all.length) noGstinWarning.value = true;
+  } catch (e) {
+    toast.error(e.message || "Failed to load invoices");
+  } finally {
+    loading.value = false;
+  }
+}
+
+function irnStatusLabel(inv) {
+  if (inv.einvoice_status === "Cancelled") return "Cancelled";
+  if (inv.irn) return "IRN Generated";
+  return "Pending";
+}
+function irnStatusClass(inv) {
+  if (inv.einvoice_status === "Cancelled") return "badge-grey";
+  if (inv.irn) return "badge-green";
+  return "badge-orange";
+}
+
+const irnGenerated = computed(() => list.value.filter(i => i.irn && i.einvoice_status !== "Cancelled"));
+const irnPending   = computed(() => list.value.filter(i => !i.irn));
+const irnCancelled = computed(() => list.value.filter(i => i.einvoice_status === "Cancelled"));
+
+const filtered = computed(() => {
+  let r = list.value;
+  if (tab.value === "generated") r = irnGenerated.value;
+  else if (tab.value === "pending") r = irnPending.value;
+  else if (tab.value === "cancelled") r = irnCancelled.value;
+  if (search.value.trim()) {
+    const q = search.value.toLowerCase();
+    r = r.filter(i => (i.name || "").toLowerCase().includes(q) || (i.customer_name || "").toLowerCase().includes(q));
+  }
+  return r;
+});
+
+const sorted = computed(() => {
+  const col = sortCol.value;
+  return [...filtered.value].sort((a, b) => {
+    const av = a[col] ?? "", bv = b[col] ?? "";
+    const c = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv));
+    return sortDir.value === "asc" ? c : -c;
+  });
+});
+
+function sort(col) {
+  if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc";
+  else { sortCol.value = col; sortDir.value = "asc"; }
+}
+function sortArrow(col) {
+  if (sortCol.value !== col) return '<span style="color:#d1d5db">⇅</span>';
+  return sortDir.value === "asc" ? "↑" : "↓";
+}
+function openView(inv) { viewing.value = inv; }
+async function generateIRN(_inv) {
+  toast.info("IRN generation requires live IRP portal credentials. Configure under Settings > Integrations.");
+}
+function fmtCur(v) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(flt(v));
+}
+
 onMounted(load);
 </script>
+
 <style scoped>
 .ei-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
 .ei-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.ei-search-wrap{display:flex;align-items:center;gap:8px;background:#ffffff;border-radius:8px;padding:6px 12px;min-width:220px;}
+.ei-search-wrap{display:flex;align-items:center;gap:8px;background:#ffffff;border-radius:8px;padding:6px 12px;border:1px solid #e5e7eb;min-width:220px;}
 .ei-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
 .ei-tab-pills{display:flex;gap:4px;background:#f3f4f6;border-radius:8px;padding:3px;}
 .ei-pill{border:none;background:transparent;border-radius:6px;padding:5px 12px;font-size:12.5px;font-weight:600;color:#6b7280;cursor:pointer;}
@@ -114,6 +200,8 @@ onMounted(load);
 .ei-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 .ei-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
 .green{color:#16a34a!important;}.orange{color:#ea580c!important;}.red{color:#dc2626!important;}
+.ei-warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12.5px;color:#92400e;line-height:1.5;}
+.ei-warn-inline{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 12px;font-size:12px;color:#92400e;margin-top:12px;line-height:1.5;}
 .ei-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .ei-table{width:100%;border-collapse:collapse;font-size:13px;}
 .ei-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}

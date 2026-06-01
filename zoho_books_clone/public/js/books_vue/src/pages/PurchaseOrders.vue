@@ -120,6 +120,10 @@
             <label class="po-label">Delivery Address</label>
             <input v-model="form.delivery_address" type="text" class="po-input" placeholder="Optional" />
           </div>
+          <div class="po-field" style="grid-column:1/-1">
+            <label class="po-label">Receiving Warehouse <span style="color:#dc2626">*</span></label>
+            <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…" @search="fetchWarehouses" />
+          </div>
         </div>
 
         <div class="po-section-title">Items</div>
@@ -384,8 +388,16 @@ let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const form = reactive({
   supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
-  billing_address: "", delivery_address: "", tax_rate: 0, terms: "",
+  billing_address: "", delivery_address: "", set_warehouse: "", tax_rate: 0, terms: "",
 });
+const warehouses = ref([]);
+async function fetchWarehouses(q = "") {
+  try {
+    const co = await resolveCompany();
+    const rows = await apiList("Warehouse", { filters: [["company","=",co],["disabled","=",0]], fields: ["name"], limit: 50 });
+    warehouses.value = (rows || []).filter(r => !q || r.name.toLowerCase().includes(q.toLowerCase())).map(r => ({ label: r.name, value: r.name }));
+  } catch { warehouses.value = []; }
+}
 
 const billModal = reactive({ open: false, saving: false, poName: "", lines: [],
   billNo: "", billDate: "", dueDate: "" });
@@ -534,7 +546,8 @@ const threeWayMismatch = computed(() =>
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", tax_rate: 0, terms: "" });
+  Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", set_warehouse: "", tax_rate: 0, terms: "" });
+  fetchWarehouses("");
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems("");
   drawerOpen.value = true;
@@ -545,10 +558,10 @@ async function openEdit(o) {
     supplier: o.supplier || "", transaction_date: o.transaction_date || todayStr(),
     expected_delivery_date: o.expected_delivery_date || expectedDefault(),
     billing_address: o.billing_address || "", delivery_address: o.delivery_address || "",
-    tax_rate: 0, terms: o.terms || "",
+    set_warehouse: "", tax_rate: 0, terms: o.terms || "",
   });
   lines.value = [blankLine()];
-  fetchVendors(""); fetchItems("");
+  fetchVendors(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Purchase Order", o.name);
@@ -558,6 +571,7 @@ async function openEdit(o) {
         qty: i.qty || 1, rate: i.rate || 0, amount: i.amount || 0,
       }));
     }
+    if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
     if (doc?.taxes?.[0]?.rate) form.tax_rate = doc.taxes[0].rate;
     if (doc?.taxes?.[0]?.account_head) taxAccountHead.value = doc.taxes[0].account_head;
     if (doc?.terms) form.terms = doc.terms;
@@ -623,6 +637,7 @@ function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 1
 async function savePO(newStatus) {
   if (!form.supplier) return toast.error("Vendor is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
+  if (!form.set_warehouse) return toast.error("Receiving Warehouse is required");
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
@@ -635,6 +650,7 @@ async function savePO(newStatus) {
       expected_delivery_date: form.expected_delivery_date || null,
       billing_address: form.billing_address || "",
       delivery_address: form.delivery_address || "",
+      set_warehouse: form.set_warehouse || "",
       status: newStatus || "Draft",
       terms: form.terms || "",
       items: lines.value.filter(l => l.item_code).map(l => ({

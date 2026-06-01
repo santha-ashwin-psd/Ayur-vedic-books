@@ -242,7 +242,7 @@
                 <td style="padding:8px 10px;font-family:monospace;color:#6b7280">{{ r.posting_date }}</td>
                 <td style="padding:8px 10px;font-family:monospace;color:#2563eb;font-weight:600">{{ r.voucher_no }}</td>
                 <td style="padding:8px 10px;color:#6b7280">{{ r.voucher_type }}</td>
-                <td style="padding:8px 10px;color:#374151">{{ r.party || '—' }}</td>
+                <td style="padding:8px 10px;color:#374151" :title="r.party || ''">{{ r.party_name || r.party || '—' }}</td>
                 <td style="padding:8px 10px;text-align:right;font-family:monospace;color:#16a34a">{{ Number(r.debit||0) > 0 ? "₹"+Number(r.debit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
                 <td style="padding:8px 10px;text-align:right;font-family:monospace;color:#dc2626">{{ Number(r.credit||0) > 0 ? "₹"+Number(r.credit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
                 <td style="padding:8px 10px;text-align:right;font-family:monospace;font-weight:700" :style="{color: r.balance > 0 ? '#16a34a' : r.balance < 0 ? '#dc2626' : '#374151'}">
@@ -607,7 +607,7 @@ function exportLedgerCSV() {
   const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const out = [head.map(esc).join(",")];
   for (const r of ledgerDrawer.rows) {
-    out.push([r.posting_date, r.voucher_no, r.voucher_type, r.party || "",
+    out.push([r.posting_date, r.voucher_no, r.voucher_type, r.party_name || r.party || "",
       Number(r.debit || 0).toFixed(2), Number(r.credit || 0).toFixed(2),
       Number(r.balance || 0).toFixed(2), r.remarks || ""].map(esc).join(","));
   }

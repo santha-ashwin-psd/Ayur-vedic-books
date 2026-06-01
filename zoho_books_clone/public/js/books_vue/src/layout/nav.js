@@ -79,13 +79,13 @@ export const NAV = [
   { path: "/settings/company",              label: "Company",          icon: "building",   module: "admin"      },
   { path: "/settings/email",                label: "Email & SMTP",     icon: "mail",       module: "admin"      },
   { path: "/settings/email-templates",      label: "Email Templates",  icon: "mail",       module: "admin"      },
-  { path: "/settings/number-series",        label: "Number Series",    icon: "hash",       module: "admin"      },
-  { path: "/settings/payment-terms",        label: "Payment Terms",    icon: "calendar",   module: "admin"      },
+  // { path: "/settings/number-series",        label: "Number Series",    icon: "hash",       module: "admin"      },
+  // { path: "/settings/payment-terms",        label: "Payment Terms",    icon: "calendar",   module: "admin"      },
   { path: "/settings/currency-exchange",    label: "Currency",         icon: "currency",   module: "admin"      },
   { path: "/settings/roles",                label: "Roles",            icon: "shield",     module: "admin"      },
-  { path: "/settings/organization",         label: "Organization",     icon: "org",        module: "admin"      },
+  // { path: "/settings/organization",         label: "Organization",     icon: "org",        module: "admin"      },
   { path: "/settings/security",             label: "Security",         icon: "lock",       module: null         },
-  { path: "/settings/audit-log",            label: "Audit Log",        icon: "audit",      module: "admin"      },
+  // { path: "/settings/audit-log",            label: "Audit Log",        icon: "audit",      module: "admin"      },
   { path: "/settings/integrations",         label: "Integrations",     icon: "webhook",    module: "admin"      },
 ];
 

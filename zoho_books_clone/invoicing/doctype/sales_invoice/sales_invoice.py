@@ -19,11 +19,18 @@ class SalesInvoice(Document):
         self.validate_accounts()
         self.set_status()
         self.set_due_date()
+        self._set_customer_gstin()
         if self.posting_date and self.company:
             try:
                 self.fiscal_year = validate_fiscal_year(self.posting_date, self.company)
             except Exception:
                 pass  # Don't block save if fiscal year not set yet
+
+    def _set_customer_gstin(self):
+        if self.customer and not self.customer_gstin:
+            gstin = frappe.db.get_value("Customer", self.customer, "tax_id")
+            if gstin:
+                self.customer_gstin = gstin
 
     def validate_items(self):
         if not self.items:

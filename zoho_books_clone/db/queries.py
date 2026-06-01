@@ -43,11 +43,14 @@ def get_gl_entries(
     where = " AND ".join(conditions)
     return frappe.db.sql(f"""
         SELECT
-            posting_date, account, voucher_type, voucher_no,
-            party_type, party, debit, credit, remarks
-        FROM `tabGeneral Ledger Entry`
+            gl.posting_date, gl.account, gl.voucher_type, gl.voucher_no,
+            gl.party_type, gl.party, gl.debit, gl.credit, gl.remarks,
+            COALESCE(c.customer_name, s.supplier_name) AS party_name
+        FROM `tabGeneral Ledger Entry` gl
+        LEFT JOIN `tabCustomer` c ON gl.party_type = 'Customer' AND c.name = gl.party
+        LEFT JOIN `tabSupplier` s ON gl.party_type = 'Supplier' AND s.name = gl.party
         WHERE {where}
-        ORDER BY posting_date, creation
+        ORDER BY gl.posting_date, gl.creation
     """, params, as_dict=True)
 
 @frappe.whitelist()
@@ -779,6 +782,15 @@ def get_gstr_summary(company: str, from_date: str, to_date: str) -> dict:
     total_output = sum(flt(r.amount) for r in output_rows)
     total_itc    = sum(flt(r.amount) for r in itc_rows)
 
+    # Taxable value = sum of net_total on outward SIs for the period
+    taxable_row = frappe.db.sql("""
+        SELECT COALESCE(SUM(net_total), 0) AS taxable_value
+        FROM `tabSales Invoice`
+        WHERE company = %(company)s AND docstatus = 1 AND is_return = 0
+          AND posting_date BETWEEN %(from_date)s AND %(to_date)s
+    """, {"company": company, "from_date": from_date, "to_date": to_date}, as_dict=True)
+    taxable_value = flt(taxable_row[0].taxable_value) if taxable_row else 0.0
+
     # ── Net payable by tax type ────────────────────────────────────────────────
     output_by_type = {r.tax_type: flt(r.amount) for r in output_rows}
     itc_by_type    = {r.tax_type: flt(r.amount) for r in itc_rows}
@@ -795,12 +807,13 @@ def get_gstr_summary(company: str, from_date: str, to_date: str) -> dict:
     ]
 
     return {
-        "output":       [dict(r) for r in output_rows],
-        "itc":          [dict(r) for r in itc_rows],
-        "net_by_type":  net_rows,
+        "output":         [dict(r) for r in output_rows],
+        "itc":            [dict(r) for r in itc_rows],
+        "net_by_type":    net_rows,
+        "taxable_value":  taxable_value,
         "totals": {
-            "total_output":     total_output,
-            "total_itc":        total_itc,
+            "total_output":      total_output,
+            "total_itc":         total_itc,
             "net_tax_liability": total_output - total_itc,
         },
     }
@@ -1043,3 +1056,132 @@ def get_itc_ledger(company: str, from_date: str, to_date: str) -> list[dict]:
         ORDER BY pi.posting_date, pi.name, tl.idx
     """, {"company": company, "from_date": from_date, "to_date": to_date},
     as_dict=True)
+
+
+@frappe.whitelist()
+def get_gstr1_data(company: str, from_date: str, to_date: str) -> dict:
+    """
+    GSTR-1 structured data:
+    - b2b: invoices with customer GSTIN (registered buyers)
+    - b2c: invoices without GSTIN (unregistered / consumer)
+    - cdnr: credit notes for B2B customers
+    - hsn_summary: HSN-wise taxable + tax amounts
+    """
+    params = {"company": company, "from_date": from_date, "to_date": to_date}
+
+    invoices = frappe.db.sql("""
+        SELECT
+            si.name, si.posting_date, si.customer, si.customer_name,
+            COALESCE(NULLIF(si.customer_gstin,''), c.tax_id, '') AS customer_gstin,
+            si.place_of_supply, si.net_total, si.total_tax, si.grand_total,
+            si.is_return, si.return_against
+        FROM `tabSales Invoice` si
+        LEFT JOIN `tabCustomer` c ON c.name = si.customer
+        WHERE si.company = %(company)s
+          AND si.docstatus = 1
+          AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+        ORDER BY si.posting_date, si.name
+    """, params, as_dict=True)
+
+    # Tax lines for each invoice
+    tax_rows = frappe.db.sql("""
+        SELECT tl.parent, tl.tax_type, tl.description, tl.rate, tl.tax_amount
+        FROM `tabTax Line` tl
+        JOIN `tabSales Invoice` si ON si.name = tl.parent AND tl.parenttype = 'Sales Invoice'
+        WHERE si.company = %(company)s AND si.docstatus = 1
+          AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+    """, params, as_dict=True)
+
+    taxes_by_inv = {}
+    for t in tax_rows:
+        taxes_by_inv.setdefault(t.parent, []).append(t)
+
+    # HSN summary from SI items
+    hsn_rows = frappe.db.sql("""
+        SELECT
+            COALESCE(NULLIF(ii.hsn_code,''), 'Not Set') AS hsn_code,
+            SUM(ii.amount) AS taxable_value,
+            COUNT(DISTINCT si.name) AS invoice_count
+        FROM `tabSales Invoice Item` ii
+        JOIN `tabSales Invoice` si ON si.name = ii.parent
+        WHERE si.company = %(company)s AND si.docstatus = 1
+          AND si.is_return = 0
+          AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+        GROUP BY hsn_code
+        ORDER BY taxable_value DESC
+    """, params, as_dict=True)
+
+    b2b, b2c, cdnr = [], [], []
+    for inv in invoices:
+        inv["taxes"] = taxes_by_inv.get(inv.name, [])
+        if inv.is_return:
+            if inv.customer_gstin:
+                cdnr.append(inv)
+            # Skip unregistered credit notes (B2CS debit note — rare, omit for now)
+        else:
+            if inv.customer_gstin:
+                b2b.append(inv)
+            else:
+                b2c.append(inv)
+
+    total_taxable = sum(flt(i.net_total) for i in b2b + b2c)
+    total_tax = sum(flt(i.total_tax) for i in b2b + b2c)
+
+    return {
+        "b2b": [dict(r) for r in b2b],
+        "b2c": [dict(r) for r in b2c],
+        "cdnr": [dict(r) for r in cdnr],
+        "hsn_summary": [dict(r) for r in hsn_rows],
+        "totals": {
+            "b2b_count": len(b2b),
+            "b2c_count": len(b2c),
+            "cdnr_count": len(cdnr),
+            "total_taxable": total_taxable,
+            "total_tax": total_tax,
+        },
+    }
+
+
+@frappe.whitelist()
+def get_tds_transactions(company: str, from_date: str = None, to_date: str = None) -> list:
+    """
+    TDS deductions: Purchase Invoice tax lines where the tax_type / description
+    indicates a TDS section (194C, 194J, 194I, TDS, etc.).
+    Falls back to ALL tax lines on PIs when no TDS-specific lines exist.
+    """
+    params = {"company": company}
+    date_clause = ""
+    if from_date and to_date:
+        date_clause = "AND pi.posting_date BETWEEN %(from_date)s AND %(to_date)s"
+        params["from_date"] = from_date
+        params["to_date"] = to_date
+
+    rows = frappe.db.sql(f"""
+        SELECT
+            pi.name, pi.posting_date,
+            pi.supplier, pi.supplier_name,
+            pi.net_total AS gross_amount,
+            pi.grand_total,
+            tl.tax_type, tl.description AS tds_section,
+            tl.rate, tl.tax_amount AS tds_amount,
+            (pi.net_total - tl.tax_amount) AS net_payment
+        FROM `tabTax Line` tl
+        JOIN `tabPurchase Invoice` pi ON pi.name = tl.parent AND tl.parenttype = 'Purchase Invoice'
+        WHERE pi.company = %(company)s
+          AND pi.docstatus = 1
+          {date_clause}
+          AND (
+            UPPER(COALESCE(tl.tax_type,'')) LIKE '%TDS%'
+            OR UPPER(COALESCE(tl.description,'')) LIKE '%TDS%'
+            OR UPPER(COALESCE(tl.description,'')) REGEXP '194[A-Z]?'
+            OR UPPER(COALESCE(tl.description,'')) REGEXP '195'
+            OR UPPER(COALESCE(tl.description,'')) LIKE '%WITHHOLD%'
+          )
+        ORDER BY pi.posting_date DESC, pi.name
+    """, params, as_dict=True)
+
+    if not rows:
+        # No TDS-specific lines — return empty (don't confuse GST tax lines with TDS)
+        return []
+
+    return [dict(r) for r in rows]

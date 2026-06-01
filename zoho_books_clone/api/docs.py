@@ -458,7 +458,7 @@ def _create_bank_transaction(pe):
         withdrawal = flt(pe.paid_amount)
 
     bank_acc = frappe.db.get_value(
-        "Bank Account", {"account": bank_account_name, "company": pe.company}, "name"
+        "Bank Account", {"account_name": bank_account_name, "company": pe.company}, "name"
     )
     if not bank_acc:
         return None
@@ -479,7 +479,7 @@ def _create_bank_transaction(pe):
     bt.insert(ignore_permissions=True)
     frappe.db.commit()
     return bt.name
-
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
                           payment_mode="Cash", paid_from="", bank_charges=0,
                           reference_no="", notes="", save_as_draft=0,
@@ -2055,6 +2055,8 @@ def convert_purchase_order_to_bill(purchase_order, line_qtys=None, bill_no="",
         "expense_account": exp,
         "purchase_order":  po.name,
         "remark":          f"From Purchase Order {po.name}",
+        "update_stock":    1,
+        "set_warehouse":   getattr(po, "set_warehouse", "") or "",
         "items":           pi_items,
     })
     pi.flags.ignore_permissions = True

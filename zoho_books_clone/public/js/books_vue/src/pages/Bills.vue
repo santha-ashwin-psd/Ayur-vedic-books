@@ -122,16 +122,24 @@
             <label class="bill-label">Vendor Bill Date</label>
             <input v-model="form.bill_date" type="date" class="bill-input" />
           </div>
-          <div class="bill-field">
-            <label class="bill-label">Update Inventory</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151;cursor:pointer;padding:8px 0">
-              <input type="checkbox" v-model="form.update_stock" style="width:15px;height:15px;accent-color:#2563eb"/>
-              Receive stock on submit (no purchase receipt)
-            </label>
-          </div>
-          <div class="bill-field" v-if="form.update_stock">
-            <label class="bill-label">Receiving Warehouse</label>
-            <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Receive stock into…" @search="fetchWarehouses" />
+          <div class="bill-field" style="grid-column:1/-1">
+            <div class="bill-inv-block" :class="form.update_stock ? 'inv-on' : 'inv-off'">
+              <div class="bill-inv-toggle-row">
+                <div class="bill-inv-icon" v-html="icon('box', 16)"></div>
+                <div class="bill-inv-text">
+                  <div class="bill-inv-title">Update Inventory on Submit</div>
+                  <div class="bill-inv-sub">Stock increases in the selected warehouse when this bill is submitted</div>
+                </div>
+                <label class="bill-inv-switch">
+                  <input type="checkbox" v-model="form.update_stock" :true-value="1" :false-value="0" />
+                  <span class="bill-inv-slider"></span>
+                </label>
+              </div>
+              <div v-if="form.update_stock" class="bill-inv-wh-row">
+                <label class="bill-label" style="margin-bottom:6px">Receiving Warehouse <span style="color:#dc2626">*</span></label>
+                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where stock will be received…" @search="fetchWarehouses" />
+              </div>
+            </div>
           </div>
           <div class="bill-field">
             <label class="bill-label">Currency</label>
@@ -364,7 +372,7 @@ const copyingLast = ref(false);
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const BILL_CURRENCIES = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
-const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 0, set_warehouse: "" });
+const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "" });
 const warehouses = ref([]);
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 
@@ -463,16 +471,16 @@ const timelineSteps = computed(() => {
 // ── Create/Edit ───────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 0, set_warehouse: "" });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "" });
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
 }
 async function openEdit(b) {
   editingName.value = b.name;
-  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1 });
+  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "" });
   lines.value = [blankLine()];
-  fetchVendors(""); fetchItems("");
+  fetchVendors(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Purchase Invoice", b.name);
@@ -486,6 +494,8 @@ async function openEdit(b) {
     if (doc?.conversion_rate) form.exchange_rate = doc.conversion_rate;
     if (doc?.taxes?.[0]?.rate) form.tax_rate = doc.taxes[0].rate;
     if (doc?.taxes?.[0]?.account_head) taxAccountHead.value = doc.taxes[0].account_head;
+    if (doc?.update_stock !== undefined) form.update_stock = doc.update_stock ? 1 : 0;
+    if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
   } catch {}
 }
 async function openView(b) {
@@ -553,6 +563,7 @@ async function copyLastItems() {
 async function saveBill(submit) {
   if (!form.supplier) return toast.error("Vendor is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
+  if (form.update_stock && !form.set_warehouse) return toast.error("Receiving Warehouse is required when Update Inventory is on");
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
@@ -810,6 +821,23 @@ onMounted(() => { load(); loadTaxAccount(); });
 .bill-field { display: flex; flex-direction: column; gap: 4px; }
 .bill-label { font-size: 12px; font-weight: 600; color: #374151; }
 .req { color: #dc2626; }
+.bill-inv-block { border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; transition: background .2s, border-color .2s; }
+.bill-inv-block.inv-on  { background: #eff6ff; border: 1.5px solid #93c5fd; }
+.bill-inv-block.inv-off { background: #f9fafb; border: 1.5px solid #e5e7eb; }
+.bill-inv-toggle-row { display: flex; align-items: center; gap: 12px; }
+.bill-inv-icon { width: 32px; height: 32px; border-radius: 8px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.bill-inv-block.inv-off .bill-inv-icon { background: #f3f4f6; color: #9ca3af; }
+.bill-inv-text { flex: 1; }
+.bill-inv-title { font-size: 13px; font-weight: 700; color: #111827; }
+.bill-inv-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; line-height: 1.4; }
+.bill-inv-wh-row { display: flex; flex-direction: column; padding-top: 4px; border-top: 1px solid #bfdbfe; }
+/* Toggle switch */
+.bill-inv-switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+.bill-inv-switch input { opacity: 0; width: 0; height: 0; }
+.bill-inv-slider { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 24px; transition: .2s; }
+.bill-inv-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+.bill-inv-switch input:checked + .bill-inv-slider { background: #2563eb; }
+.bill-inv-switch input:checked + .bill-inv-slider:before { transform: translateX(18px); }
 .bill-input { width: 100%; box-sizing: border-box; border: 1px solid #e5e7eb; border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; outline: none; background: #fff; color: #111827; }
 .bill-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
 textarea.bill-input { resize: vertical; }

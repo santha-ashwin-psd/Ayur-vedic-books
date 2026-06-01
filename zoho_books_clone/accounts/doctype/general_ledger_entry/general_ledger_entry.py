@@ -105,12 +105,18 @@ def recompute_outstanding_from_gl(doctype: str, docname: str) -> float:
     payment_credit = flt(payments[0].paid) if payments else 0.0
     je_credit      = flt(je_settlement[0].settled) if je_settlement else 0.0
 
-    # Sales Invoice posts DR AR / Purchase Invoice posts CR AP. Outstanding lives
-    # on the increasing side of the party account — DR for AR, CR for AP. For PI we
-    # invert: outstanding = max(0, (credit-debit) - settlements). For SI the original
-    # formula (debit-credit) is correct.
+    # Sales Invoice posts DR AR / Purchase Invoice posts CR AP.
+    #
+    # For SI: invoice_debit = SUM(debit-credit) on AR for this voucher → positive.
+    #         payment_credit = SUM(credit-debit) on AR from payments → positive (payments credit AR).
+    #         outstanding = invoice_debit - payment_credit
+    #
+    # For PI: invoice_debit = SUM(debit-credit) on AP for this voucher → negative (AP was credited).
+    #         payment_credit = SUM(credit-debit) on AP from payments → NEGATIVE (payments DEBIT AP).
+    #         We want: amount_owed - amount_paid = (-invoice_debit) - (-payment_credit)
+    #                                            = -invoice_debit + payment_credit
     if doctype == "Purchase Invoice":
-        outstanding = max(0.0, (-invoice_debit) - payment_credit - je_credit)
+        outstanding = max(0.0, -invoice_debit + payment_credit - je_credit)
     else:
         outstanding = max(0.0, invoice_debit - payment_credit - je_credit)
 

@@ -16,6 +16,7 @@
   "company",
   "billing_address",
   "delivery_address",
+  "set_warehouse",
   "items",
   "taxes",
   "net_total",
@@ -82,6 +83,12 @@
    "fieldname": "delivery_address",
    "fieldtype": "Text",
    "label": "Delivery Address"
+  },
+  {
+   "fieldname": "set_warehouse",
+   "fieldtype": "Link",
+   "label": "Receiving Warehouse",
+   "options": "Warehouse"
   },
   {
    "fieldname": "items",

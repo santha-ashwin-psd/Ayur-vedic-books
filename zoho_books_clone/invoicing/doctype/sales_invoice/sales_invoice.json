@@ -44,7 +44,12 @@
   "sales_order",
   "amended_from",
   "billing_address",
-  "remarks"
+  "remarks",
+  "customer_gstin",
+  "irn",
+  "einvoice_status",
+  "ack_no",
+  "ack_date"
  ],
  "fields": [
   {
@@ -281,6 +286,42 @@
    "fieldname": "billing_address",
    "fieldtype": "Small Text",
    "label": "Address"
+  },
+  {
+   "fetch_from": "customer.tax_id",
+   "fieldname": "customer_gstin",
+   "fieldtype": "Data",
+   "label": "Customer GSTIN",
+   "read_only": 0
+  },
+  {
+   "fieldname": "irn",
+   "fieldtype": "Data",
+   "label": "IRN",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "einvoice_status",
+   "fieldtype": "Select",
+   "label": "e-Invoice Status",
+   "options": "Pending\nGenerated\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ack_no",
+   "fieldtype": "Data",
+   "label": "IRN Ack No.",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "ack_date",
+   "fieldtype": "Date",
+   "label": "IRN Ack Date",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "is_submittable": 1,

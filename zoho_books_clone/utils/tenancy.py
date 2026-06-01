@@ -201,19 +201,28 @@ def _hp_books_company(doc, ptype="read", user=None):
     return doc_company == company
 
 
+def _default_books_company() -> str | None:
+    """Resolve a company to stamp when the user has no member mapping
+    (e.g. bypass-role users in a single-company setup)."""
+    return (
+        frappe.db.get_single_value("Books Settings", "default_company")
+        or frappe.db.get_value("Books Company", {}, "name")
+        or None
+    )
+
+
 def auto_stamp_books_company(doc, method=None):
     """
     doc_events before_insert handler.
     Stamps `books_company` with the current user's company so every new
     Customer / Supplier / Item / Contact is automatically isolated to the
-    right company without the UI needing to send the field explicitly.
+    right company. Bypass-role users (Books Admin / System Manager) have no
+    member mapping, so we fall back to the default/sole company — otherwise
+    the record would be left unscoped and hidden by the company-filtered list.
     """
     if getattr(doc, "books_company", None):
         return  # already set (e.g. sent by UI or re-insertion)
-    user = frappe.session.user
-    if _is_bypass(user):
-        return  # Administrator creates global records
-    company = get_user_company(user)
+    company = get_user_company(frappe.session.user) or _default_books_company()
     if company:
         doc.books_company = company
 

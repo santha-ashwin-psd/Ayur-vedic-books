@@ -1,46 +1,134 @@
 <template>
-<div class="cust-page">
-  <div class="cust-toolbar">
-    <span style="font-size:18px;font-weight:700;color:#1a1a2e">Roles &amp; Permissions</span>
-    <span style="background:#fff8f0;color:#e67700;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid #ffe8a3">Custom roles — Coming Soon (P2)</span>
-  </div>
-  <div style="display:grid;gap:14px;max-width:800px">
-    <div v-for="role in BUILTIN" :key="role.name" style="background:#fff;border:1px solid #e4e8f0;border-radius:12px;padding:20px">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <span :style="'background:'+role.bg+';color:'+role.color+';padding:4px 12px;border-radius:20px;font-size:12.5px;font-weight:700'">{{role.name}}</span>
-          <span style="font-size:12.5px;color:#4a5568">{{role.desc}}</span>
-        </div>
-        <span style="font-size:11px;color:#868e96;background:#f8f9fa;padding:2px 8px;border-radius:6px">Built-in</span>
+  <div class="r-page">
+    <div class="r-head">
+      <div>
+        <div class="r-title">Roles &amp; Permissions</div>
+        <div class="r-sub">Built-in roles ship with the app. Per-user module access is editable from Users.</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-        <div v-for="m in MODULES" :key="m.key" :style="'display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;font-size:12px;'+(role.perms[m.key]?'background:#ebfbee;color:#2f9e44':'background:#f8f9fa;color:#868e96')">
-          <span>{{role.perms[m.key]?'✅':'🔒'}}</span> {{m.lbl}}
+      <button class="r-cta" @click="goUsers"><span v-html="icon('users',13)"></span> Manage Users</button>
+    </div>
+
+    <div v-if="loading" class="r-loading">Loading roles…</div>
+    <div v-else class="r-grid">
+      <div v-for="role in ROLES" :key="role.name" class="r-card">
+        <div class="r-card-head">
+          <div class="r-card-head-left">
+            <span class="r-badge" :style="{background: role.bg, color: role.color}">{{ role.name }}</span>
+            <span class="r-card-desc">{{ role.desc }}</span>
+          </div>
+          <span class="r-count" :class="userCount(role.name)===0?'zero':''">{{ userCount(role.name) }} {{ userCount(role.name)===1?'user':'users' }}</span>
         </div>
+
+        <div class="r-modules">
+          <div v-for="m in MODULES" :key="m.key" class="r-mod" :class="role.perms[m.key]?'on':''">
+            <span v-html="icon(role.perms[m.key]?'check':'lock',11)"></span> {{ m.lbl }}
+          </div>
+        </div>
+
+        <div v-if="usersIn(role.name).length" class="r-users">
+          <div v-for="u in usersIn(role.name)" :key="u.email" class="r-user" :title="u.email + (u.enabled?'':' (disabled)')">
+            <span class="r-avatar" :style="{opacity: u.enabled?1:.45}">{{ initials(u.full_name||u.email) }}</span>
+            <div class="r-user-meta">
+              <div class="r-user-name" :style="{opacity: u.enabled?1:.55}">{{ u.full_name || u.email }}<span v-if="u.is_company_admin" class="r-tag-admin">admin</span></div>
+              <div class="r-user-sub">{{ u.email }}<span v-if="!u.enabled" class="r-tag-off">disabled</span></div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="r-empty">No users in this role.</div>
       </div>
     </div>
+
+    <div class="r-note">
+      <span v-html="icon('info',13)"></span>
+      Want a custom role with a different module mix? Use the Users page to set <strong>per-user module access</strong> on top of any built-in role — that covers most custom-role needs without needing a separate role definition.
+    </div>
   </div>
-</div>
 </template>
 
 <script setup>
-const BUILTIN = [
-  { name: "Books Admin",   desc: "Full access — can manage users, settings, all transactions", color: "#2563eb", bg: "#F3F0FF",
-    perms: { sales: true,  purchases: true,  banking: true,  reports: true, settings: true,  users: true } },
-  { name: "Accountant",    desc: "Create & edit transactions, view reports. Cannot manage users or settings", color: "#1971C2", bg: "#E7F5FF",
-    perms: { sales: true,  purchases: true,  banking: true,  reports: true, settings: false, users: false } },
-  { name: "Books Manager", desc: "Read-only access to all modules", color: "#2F9E44", bg: "#EBFBEE",
-    perms: { sales: false, purchases: false, banking: false, reports: true, settings: false, users: false } },
-  { name: "Books Viewer",  desc: "View reports and read documents only", color: "#868E96", bg: "#F8F9FA",
-    perms: { sales: false, purchases: false, banking: false, reports: true, settings: false, users: false } },
+import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { apiGET } from "../api/client.js";
+import { useToast } from "../composables/useToast.js";
+import { icon } from "../utils/icons.js";
+
+const { toast } = useToast();
+const router = useRouter();
+const members = ref([]);
+const loading = ref(true);
+
+const ROLES = [
+  { name: "Books Admin",   desc: "Full access — manages users, settings, and all transactions", color: "#2563eb", bg: "#eff6ff",
+    perms: { invoices:1, bills:1, banking:1, inventory:1, accounting:1, reports:1, settings:1, users:1 } },
+  { name: "Accountant",    desc: "Creates & edits transactions, views reports. No user/settings access", color: "#1971C2", bg: "#E7F5FF",
+    perms: { invoices:1, bills:1, banking:1, inventory:1, accounting:1, reports:1, settings:0, users:0 } },
+  { name: "Books Manager", desc: "Operational manager — read-write on transactions, no user mgmt", color: "#2F9E44", bg: "#EBFBEE",
+    perms: { invoices:1, bills:1, banking:1, inventory:1, accounting:0, reports:1, settings:0, users:0 } },
+  { name: "Books Viewer",  desc: "Read-only across documents and reports", color: "#868E96", bg: "#F1F3F5",
+    perms: { invoices:0, bills:0, banking:0, inventory:0, accounting:0, reports:1, settings:0, users:0 } },
 ];
 
 const MODULES = [
-  { key: "sales",     lbl: "Sales & Invoicing" },
-  { key: "purchases", lbl: "Purchases & Expenses" },
-  { key: "banking",   lbl: "Banking" },
-  { key: "reports",   lbl: "Reports" },
-  { key: "settings",  lbl: "Settings" },
-  { key: "users",     lbl: "User Management" },
+  { key: "invoices",   lbl: "Sales / Invoicing" },
+  { key: "bills",      lbl: "Purchases / Bills" },
+  { key: "banking",    lbl: "Banking" },
+  { key: "inventory",  lbl: "Inventory" },
+  { key: "accounting", lbl: "Accounting" },
+  { key: "reports",    lbl: "Reports" },
+  { key: "settings",   lbl: "Settings" },
+  { key: "users",      lbl: "User Mgmt" },
 ];
+
+async function load() {
+  loading.value = true;
+  try {
+    const r = await apiGET("zoho_books_clone.api.admin.get_company_members");
+    members.value = Array.isArray(r) ? r : (r?.message || []);
+  } catch (e) { toast.error(e.message || "Failed to load users"); }
+  finally { loading.value = false; }
+}
+
+function usersIn(roleName) { return members.value.filter(m => (m.books_role || "") === roleName); }
+function userCount(roleName) { return usersIn(roleName).length; }
+function initials(s) { const p = (s || "").trim().split(/\s+/); return ((p[0]?.[0] || "") + (p[1]?.[0] || "")).toUpperCase() || (s||"?")[0]?.toUpperCase(); }
+function goUsers() { router.push({ name: "settings-users" }); }
+
+onMounted(load);
 </script>
+
+<style scoped>
+.r-page{display:flex;flex-direction:column;gap:18px;padding:24px;}
+.r-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.r-title{font-size:18px;font-weight:700;color:#0f172a;}
+.r-sub{font-size:12.5px;color:#64748b;margin-top:2px;max-width:680px;line-height:1.5;}
+.r-cta{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+.r-cta:hover{background:#1d4ed8;}
+.r-loading{padding:40px;text-align:center;color:#94a3b8;}
+
+.r-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(380px, 1fr));gap:14px;}
+.r-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px;}
+.r-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.r-card-head-left{display:flex;flex-direction:column;gap:6px;}
+.r-badge{display:inline-flex;align-items:center;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700;align-self:flex-start;}
+.r-card-desc{font-size:12.5px;color:#475569;line-height:1.5;}
+.r-count{display:inline-flex;align-items:center;background:#f1f5f9;color:#334155;border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+.r-count.zero{background:#fef2f2;color:#dc2626;}
+
+.r-modules{display:grid;grid-template-columns:repeat(2, 1fr);gap:6px;}
+.r-mod{display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:7px;font-size:11.5px;font-weight:600;background:#f8fafc;color:#94a3b8;border:1px solid #eef2f7;}
+.r-mod.on{background:#ecfdf5;color:#16a34a;border-color:#bbf7d0;}
+.r-mod span{display:inline-flex;}
+
+.r-users{display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px dashed #e5e7eb;}
+.r-user{display:flex;align-items:center;gap:10px;}
+.r-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.r-user-meta{display:flex;flex-direction:column;min-width:0;}
+.r-user-name{font-size:13px;font-weight:600;color:#0f172a;display:flex;align-items:center;gap:6px;}
+.r-user-sub{font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:6px;}
+.r-tag-admin{background:#dbeafe;color:#1d4ed8;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;text-transform:uppercase;}
+.r-tag-off{background:#fee2e2;color:#dc2626;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;text-transform:uppercase;}
+.r-empty{font-size:12px;color:#94a3b8;padding:10px 12px;background:#f8fafc;border:1px dashed #e5e7eb;border-radius:8px;text-align:center;}
+
+.r-note{display:flex;gap:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;font-size:12.5px;color:#1e3a8a;line-height:1.55;}
+.r-note span{color:#2563eb;flex-shrink:0;margin-top:1px;display:inline-flex;}
+</style>

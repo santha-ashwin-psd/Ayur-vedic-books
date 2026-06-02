@@ -213,7 +213,7 @@ onMounted(()=>{if(route.query.account)selectedAccount.value=String(route.query.a
 .green{color:#16a34a!important;}.red{color:#dc2626!important;}.orange{color:#ea580c!important;}
 .bt-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .bt-table{width:100%;border-collapse:collapse;font-size:13px;}
-.bt-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.bt-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .bt-table th.sortable{cursor:pointer;user-select:none;}.bt-table th.sortable:hover{color:#2563eb;}
 .ta-r{text-align:right!important;}
 .bt-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;cursor:pointer;}

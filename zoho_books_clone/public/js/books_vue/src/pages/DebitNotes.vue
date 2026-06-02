@@ -707,7 +707,7 @@ onMounted(load);
 
 .dn-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
 .dn-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.dn-table th { background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 11.5px; font-weight: 600; color: #374151; text-align: left; white-space: nowrap; }
+.dn-table th { background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 11.5px; font-weight: 600; color: #374151; text-align: left; white-space: nowrap; text-transform:uppercase;}
 .dn-table th.sortable { cursor: pointer; user-select: none; }
 .dn-table th.sortable:hover { color: #2563eb; }
 .ta-r { text-align: right !important; }

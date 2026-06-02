@@ -323,7 +323,7 @@ onMounted(async()=>{await load();if(route.query.from){openNew();form.from_accoun
 
 .btr-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .btr-table{width:100%;border-collapse:collapse;font-size:13px;}
-.btr-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.btr-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .btr-table th.sortable{cursor:pointer;user-select:none;}.btr-table th.sortable:hover{color:#2563eb;}
 .ta-r{text-align:right!important;}
 .btr-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;cursor:pointer;}

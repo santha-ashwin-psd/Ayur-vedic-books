@@ -218,7 +218,7 @@ onMounted(load);
 .tds-sec-amount{font-size:14px;font-weight:700;color:#dc2626;font-family:monospace;margin-top:2px;}
 .tds-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .tds-table{width:100%;border-collapse:collapse;font-size:13px;}
-.tds-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.tds-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .tds-table th.sortable{cursor:pointer;user-select:none;}.tds-table th.sortable:hover{color:#2563eb;}
 .ta-r{text-align:right!important;}
 .tds-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;}

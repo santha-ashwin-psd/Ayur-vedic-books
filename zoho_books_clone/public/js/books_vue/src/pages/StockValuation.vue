@@ -145,7 +145,7 @@ onMounted(()=>{load();fetchWarehouses("");fetchItemGroups("");});
 .sv-search-input{border:none;background:transparent;outline:none;font:inherit;font-size:13px;color:#0f172a;width:100%;}
 .sv-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .sv-table{width:100%;border-collapse:collapse;font-size:13px;}
-.sv-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.sv-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .sv-table th.sortable{cursor:pointer;user-select:none;}.sv-table th.sortable:hover{color:#2563eb;}
 .ta-r{text-align:right!important;}
 .sv-row td{padding:9px 12px;border-bottom:1px solid #f3f4f6;}

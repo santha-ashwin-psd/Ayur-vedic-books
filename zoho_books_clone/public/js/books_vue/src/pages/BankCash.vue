@@ -278,7 +278,7 @@ onMounted(()=>{load();loadAccounts();});
 
 .cash-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .cash-table{width:100%;border-collapse:collapse;font-size:13px;}
-.cash-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.cash-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .cash-table th.sortable{cursor:pointer;user-select:none;}.cash-table th.sortable:hover{color:#2563eb;}
 .ta-r{text-align:right!important;}
 .cash-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer;}

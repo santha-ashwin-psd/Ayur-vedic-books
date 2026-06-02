@@ -607,7 +607,7 @@ onMounted(load);
 .green{color:#16a34a!important;}.orange{color:#ea580c!important;}.red{color:#dc2626!important;}
 .rec-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .rec-table{width:100%;border-collapse:collapse;font-size:13px;}
-.rec-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.rec-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .rec-table th.sortable{cursor:pointer;user-select:none;}.rec-table th.sortable:hover{color:#2563eb;}
 .rec-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;cursor:pointer;}
 .rec-row:last-child td{border-bottom:none;}.rec-row:hover td{background:#f9fafb;}

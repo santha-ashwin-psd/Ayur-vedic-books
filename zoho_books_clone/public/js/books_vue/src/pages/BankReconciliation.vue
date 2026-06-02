@@ -300,7 +300,7 @@ onMounted(async()=>{
 .br-btn-ghost:disabled{opacity:.5;cursor:not-allowed;}
 .br-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .br-table{width:100%;border-collapse:collapse;font-size:13px;}
-.br-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;}
+.br-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;text-transform:uppercase;}
 .ta-r{text-align:right!important;}
 .br-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;}
 .br-row:last-child td{border-bottom:none;}.br-row:hover td{background:#f9fafb;}

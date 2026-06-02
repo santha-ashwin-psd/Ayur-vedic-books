@@ -495,7 +495,7 @@ onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseA
 .orange{color:#ea580c!important;}.red{color:#dc2626!important;}
 .exp-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .exp-table{width:100%;border-collapse:collapse;font-size:13px;}
-.exp-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.exp-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .exp-table th.sortable{cursor:pointer;user-select:none;}.exp-table th.sortable:hover{color:#2563eb;}
 .ta-r{text-align:right!important;}
 .exp-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;cursor:pointer;}

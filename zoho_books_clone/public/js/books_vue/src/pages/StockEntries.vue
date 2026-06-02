@@ -223,7 +223,7 @@ onMounted(async()=>{await load();if(route.query.open)openView({name:String(route
 .se-btn-save:hover{background:#dcfce7;}.se-btn-save:disabled{opacity:.5;cursor:not-allowed;}
 .se-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .se-table{width:100%;border-collapse:collapse;font-size:13px;}
-.se-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
+.se-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .se-table th.sortable{cursor:pointer;user-select:none;}.se-table th.sortable:hover{color:#2563eb;}
 .ta-r{text-align:right!important;}
 .se-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;cursor:pointer;}

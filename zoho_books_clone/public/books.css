@@ -544,7 +544,7 @@ input[type=date].b-input { color-scheme: light; }
 .cust-toolbar-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .cust-toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .cust-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.cust-table-card{background:#fff;border:1px solid #e4e8f0;border-radius:12px;overflow:hidden;}
+.cust-table-card{background:#fff;border:1px solid #e4e8f0;border-radius:12px;overflow:hidden;text-transform:uppercase;}
 .cust-table-wrap{overflow-x:auto;}
 .cust-table{width:100%;border-collapse:collapse;font-size:13px;}
 .cust-table th{background:#f8f9fb;border-bottom:1px solid #e4e8f0;padding:10px 14px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}

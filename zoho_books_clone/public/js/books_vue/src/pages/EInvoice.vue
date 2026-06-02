@@ -5,8 +5,12 @@
       <div class="ei-tab-pills">
         <button v-for="t in tabs" :key="t.v" class="ei-pill" :class="{active:tab===t.v}" @click="tab=t.v">{{ t.l }}</button>
       </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div style="display:flex;gap:8px;margin-left:auto;align-items:center;flex-wrap:wrap">
+        <input v-model="fromDate" type="date" class="ei-date-input" :placeholder="defaultFrom" @change="load" title="From date" />
+        <span style="font-size:12px;color:#9ca3af">to</span>
+        <input v-model="toDate" type="date" class="ei-date-input" :placeholder="defaultTo" @change="load" title="To date" />
         <button class="ei-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
+        <button v-if="list.length" class="ei-btn-ghost" @click="exportCSV"><span v-html="icon('download',13)"></span> CSV</button>
       </div>
     </div>
 
@@ -99,6 +103,12 @@ const sortCol = ref("posting_date");
 const sortDir = ref("desc");
 const viewing = ref(null);
 const noGstinWarning = ref(false);
+const fromDate = ref("");
+const toDate = ref("");
+
+const now = new Date();
+const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+const defaultTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
 
 const tabs = [
   { v: "all", l: "All" },
@@ -112,10 +122,18 @@ async function load() {
   noGstinWarning.value = false;
   try {
     const co = await resolveCompany();
+    const filters = [
+      ["company", "=", co],
+      ["docstatus", "=", 1],
+      ["is_return", "=", 0],
+      ["customer_gstin", "!=", ""],  // B2B only — filter at query level
+    ];
+    if (fromDate.value) filters.push(["posting_date", ">=", fromDate.value]);
+    if (toDate.value)   filters.push(["posting_date", "<=", toDate.value]);
     const all = await apiList("Sales Invoice", {
       fields: ["name", "posting_date", "customer", "customer_name", "customer_gstin",
                "grand_total", "irn", "einvoice_status", "ack_no", "ack_date"],
-      filters: [["company", "=", co], ["docstatus", "=", 1], ["is_return", "=", 0]],
+      filters,
       limit: 500,
       order: "posting_date desc",
     });
@@ -176,6 +194,27 @@ function openView(inv) { viewing.value = inv; }
 async function generateIRN(_inv) {
   toast.info("IRN generation requires live IRP portal credentials. Configure under Settings > Integrations.");
 }
+
+function exportCSV() {
+  const rows = [
+    ["Invoice #", "Date", "Customer", "GSTIN", "Invoice Value", "IRN", "Status", "Ack No.", "Ack Date"],
+    ...sorted.value.map(i => [
+      i.name, i.posting_date,
+      i.customer_name || i.customer,
+      i.customer_gstin || "",
+      flt(i.grand_total),
+      i.irn || "",
+      irnStatusLabel(i),
+      i.ack_no || "",
+      i.ack_date || "",
+    ]),
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  a.download = `eInvoice_${fromDate.value || "all"}_to_${toDate.value || "all"}.csv`;
+  a.click();
+}
 function fmtCur(v) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(flt(v));
 }
@@ -201,6 +240,7 @@ onMounted(load);
 .ei-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
 .green{color:#16a34a!important;}.orange{color:#ea580c!important;}.red{color:#dc2626!important;}
 .ei-warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12.5px;color:#92400e;line-height:1.5;}
+.ei-date-input{border:1px solid #e5e7eb;border-radius:7px;padding:6px 10px;font:inherit;font-size:12.5px;outline:none;color:#374151;background:#fff;}
 .ei-warn-inline{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 12px;font-size:12px;color:#92400e;margin-top:12px;line-height:1.5;}
 .ei-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .ei-table{width:100%;border-collapse:collapse;font-size:13px;}

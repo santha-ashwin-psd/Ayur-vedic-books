@@ -97,8 +97,8 @@
               <input v-model="form.posting_date" type="date" class="exp-input" />
             </div>
             <div class="exp-field">
-              <label class="exp-label">Category</label>
-              <select v-model="form.expense_type" class="exp-select">
+              <label class="exp-label">Category <span class="req">*</span></label>
+              <select v-model="form.expense_type" class="exp-select" :class="!form.expense_type ? 'exp-select-empty' : ''">
                 <option value="">— Select —</option>
                 <option v-for="c in expenseCategories" :key="c" :value="c">{{ c }}</option>
               </select>
@@ -136,7 +136,7 @@
         <div class="exp-section">
           <div class="exp-section-label">Additional Info</div>
           <div class="exp-field" style="margin-bottom:12px">
-            <label class="exp-label">Description</label>
+            <label class="exp-label">Description <span class="req">*</span></label>
             <textarea v-model="form.remark" rows="3" class="exp-input exp-textarea" placeholder="What was this expense for?"></textarea>
           </div>
           <div class="exp-field">
@@ -413,9 +413,11 @@ async function openView(e) {
 }
 
 async function saveExpense(submit){
-  if(!flt(form.total_claimed_amount)){
-    return toast.error("Enter an amount");
-  }
+  if(!flt(form.total_claimed_amount)) return toast.error("Enter an amount");
+  if(!form.expense_type)              return toast.error("Category is required");
+  if(!form.expense_account)           return toast.error("Expense Account is required");
+  if(!form.paid_through)              return toast.error("Paid Through is required");
+  if(!form.remark)                    return toast.error("Description is required");
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
@@ -424,14 +426,14 @@ async function saveExpense(submit){
       doctype:"Expense",
       company,
       posting_date:form.posting_date||new Date().toISOString().slice(0,10),
-      expense_type:form.expense_type||"Miscellaneous",
-      description:form.remark||"",
+      expense_type:form.expense_type,
+      description:form.remark,
       amount:amt,
       tax_amount:0,
       total_amount:amt,
       vendor:form.employee_name||"",
-      expense_account: form.expense_account||"",
-      paid_through:    form.paid_through||"",
+      expense_account: form.expense_account,
+      paid_through:    form.paid_through,
       notes:form.remark||"",
     };
     if(editingName.value) doc.name=editingName.value;

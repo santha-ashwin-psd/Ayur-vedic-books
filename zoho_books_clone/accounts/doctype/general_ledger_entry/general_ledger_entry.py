@@ -105,12 +105,23 @@ def recompute_outstanding_from_gl(doctype: str, docname: str) -> float:
     payment_credit = flt(payments[0].paid) if payments else 0.0
     je_credit      = flt(je_settlement[0].settled) if je_settlement else 0.0
 
-    # Sales Invoice posts DR AR / Purchase Invoice posts CR AP. Outstanding lives
-    # on the increasing side of the party account — DR for AR, CR for AP. For PI we
-    # invert: outstanding = max(0, (credit-debit) - settlements). For SI the original
-    # formula (debit-credit) is correct.
+    # ── Sign logic ────────────────────────────────────────────────────────────
+    # Sales Invoice:  DR AR on submit  → invoice_debit  > 0 (net debit on AR)
+    #                 CR AR on payment → payment_credit > 0 (net credit on AR)
+    #                 outstanding = invoice_debit - payment_credit  ✓
+    #
+    # Purchase Invoice: CR AP on submit  → invoice_debit  < 0 (net credit, not debit, on AP)
+    #                   DR AP on payment → payment_credit < 0 (net debit, not credit, on AP)
+    #                   amount_owed  = -invoice_debit             (positive)
+    #                   amount_paid  = -payment_credit            (positive)
+    #                   outstanding  = amount_owed - amount_paid
+    #                                = (-invoice_debit) - (-payment_credit)
+    #                                = -invoice_debit + payment_credit      ← NOTE: + not -
+    #
+    #   BUG if you write "- payment_credit": since payment_credit is already negative,
+    #   subtracting it ADDS to outstanding instead of reducing it.
     if doctype == "Purchase Invoice":
-        outstanding = max(0.0, (-invoice_debit) - payment_credit - je_credit)
+        outstanding = max(0.0, -invoice_debit + payment_credit - je_credit)
     else:
         outstanding = max(0.0, invoice_debit - payment_credit - je_credit)
 

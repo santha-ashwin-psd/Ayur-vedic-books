@@ -1160,22 +1160,22 @@ def get_tds_transactions(company: str, from_date: str = None, to_date: str = Non
         SELECT
             pi.name, pi.posting_date,
             pi.supplier, pi.supplier_name,
-            pi.net_total AS gross_amount,
+            pi.grand_total AS gross_amount,
             pi.grand_total,
             tl.tax_type, tl.description AS tds_section,
             tl.rate, tl.tax_amount AS tds_amount,
-            (pi.net_total - tl.tax_amount) AS net_payment
+            (pi.grand_total - tl.tax_amount) AS net_payment
         FROM `tabTax Line` tl
         JOIN `tabPurchase Invoice` pi ON pi.name = tl.parent AND tl.parenttype = 'Purchase Invoice'
         WHERE pi.company = %(company)s
           AND pi.docstatus = 1
           {date_clause}
           AND (
-            UPPER(COALESCE(tl.tax_type,'')) LIKE '%TDS%'
-            OR UPPER(COALESCE(tl.description,'')) LIKE '%TDS%'
+            UPPER(COALESCE(tl.tax_type,'')) LIKE '%%TDS%%'
+            OR UPPER(COALESCE(tl.description,'')) LIKE '%%TDS%%'
             OR UPPER(COALESCE(tl.description,'')) REGEXP '194[A-Z]?'
             OR UPPER(COALESCE(tl.description,'')) REGEXP '195'
-            OR UPPER(COALESCE(tl.description,'')) LIKE '%WITHHOLD%'
+            OR UPPER(COALESCE(tl.description,'')) LIKE '%%WITHHOLD%%'
           )
         ORDER BY pi.posting_date DESC, pi.name
     """, params, as_dict=True)

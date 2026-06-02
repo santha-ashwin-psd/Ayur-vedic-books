@@ -233,9 +233,9 @@
             <button class="nim-btn" style="background:#fff;color:#374151;border:1px solid #E5E7EB;font-size:13px" @click="openEdit(selectedVendor.name)">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
-            <button class="nim-btn nim-btn-primary" style="font-size:13px;background:#E67700;border-color:#E67700" @click="openAdd">
+            <!-- <button class="nim-btn nim-btn-primary" style="font-size:13px;background:#E67700;border-color:#E67700" @click="openAdd">
               <span v-html="icon('plus',13)"></span> New Transaction
-            </button>
+            </button> -->
             <button class="nim-btn" style="background:none;color:#9CA3AF;border:1px solid #E5E7EB;width:32px;height:32px;padding:0;display:grid;place-items:center" @click="closeVendor" title="Close">
               <span v-html="icon('x',14)"></span>
             </button>

@@ -489,8 +489,10 @@ const warehouses = ref([]);
 async function fetchWarehouses(q = "") {
   try {
     const co = await resolveCompany();
-    const rows = await apiList("Warehouse", { filters: [["company","=",co],["disabled","=",0],["is_group","=",0]], fields: ["name"], limit: 50 });
-    warehouses.value = (rows || []).filter(r => !q || r.name.toLowerCase().includes(q.toLowerCase())).map(r => ({ label: r.name, value: r.name }));
+    const rows = await apiList("Warehouse", { filters: [["company","=",co],["disabled","=",0],["is_group","=",0]], fields: ["name","parent_warehouse"], limit: 50 });
+    warehouses.value = (rows || [])
+      .filter(r => !q || r.name.toLowerCase().includes(q.toLowerCase()) || (r.parent_warehouse||"").toLowerCase().includes(q.toLowerCase()))
+      .map(r => ({ label: r.parent_warehouse ? `${r.parent_warehouse} / ${r.name}` : r.name, value: r.name }));
   } catch { warehouses.value = []; }
 }
 

@@ -96,9 +96,9 @@ onMounted(load);
 <style scoped>
 .ra-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
 .ra-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.ra-search-wrap{display:flex;align-items:center;gap:8px;background:#f3f4f6;border-radius:8px;padding:6px 12px;min-width:220px;}
+.ra-search-wrap{display:flex;align-items:center;gap:8px;background:#ffffff;border-radius:8px;padding:6px 12px;min-width:220px;}
 .ra-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
-.ra-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;}
+.ra-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;}
 .ra-btn-ghost:hover{background:#f9fafb;}
 .ra-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
 .ra-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}

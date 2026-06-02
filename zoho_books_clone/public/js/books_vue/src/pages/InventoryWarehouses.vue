@@ -117,9 +117,14 @@
       <div class="cust-table-card">
         <div style="padding:14px 16px 10px;border-bottom:1px solid #f0f2f5;display:flex;justify-content:space-between;align-items:center">
           <div style="font-size:14px;font-weight:600;color:#1A1D23">Stock Items</div>
-          <button class="nim-btn nim-btn-ghost" style="font-size:12px;padding:4px 10px" @click="loadStockForWarehouse(selectedWH.name)">
-            <span v-html="icon('refresh')"></span> Refresh
-          </button>
+          <div style="display:flex;gap:8px">
+            <button v-if="!selectedWH.is_group" class="nim-btn" style="font-size:12px;padding:4px 12px;background:#2563eb;color:#fff;border-color:#2563eb" @click="openNewAdjustment">
+              <span v-html="icon('plus',12)"></span> Add Stock
+            </button>
+            <button class="nim-btn nim-btn-ghost" style="font-size:12px;padding:4px 10px" @click="loadStockForWarehouse(selectedWH.name)">
+              <span v-html="icon('refresh')"></span> Refresh
+            </button>
+          </div>
         </div>
         <div v-if="stockLoading" style="padding:20px">
           <div class="b-shimmer" style="height:32px;border-radius:6px;margin-bottom:6px"></div>
@@ -140,6 +145,7 @@
               <th style="text-align:right">Val. Rate</th>
               <th style="text-align:right">Stock Value</th>
               <th style="text-align:center">Alert</th>
+              <th v-if="!selectedWH.is_group" style="text-align:center">Action</th>
             </tr></thead>
             <tbody>
               <tr v-for="r in stockItems" :key="r.item_code" class="cust-row">
@@ -155,6 +161,11 @@
                   <span v-if="r.below_reorder" style="font-size:11px;background:#FFF3BF;color:#E67700;padding:2px 7px;border-radius:12px;font-weight:600">⚠ Low</span>
                   <span v-else style="color:#d1d5db">—</span>
                 </td>
+                <td v-if="!selectedWH.is_group" style="text-align:center">
+                  <button class="wh-adj-btn" @click="openAdjustment(r)" title="Adjust stock quantity">
+                    <span v-html="icon('edit',12)"></span> Adjust
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -165,6 +176,76 @@
   </div>
 
   <Teleport to="body">
+    <!-- Stock Adjustment drawer -->
+    <div v-if="adjDrawer.open" class="nim-overlay" @click.self="adjDrawer.open=false">
+      <div class="nim-dialog" style="width:480px">
+        <div class="nim-dialog-header">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#1A1D23">Adjust Stock</div>
+            <div style="font-size:12px;color:#868E96;margin-top:2px">{{ adjDrawer.warehouse }}</div>
+          </div>
+          <button class="nim-close" @click="adjDrawer.open=false">✕</button>
+        </div>
+        <div class="nim-dialog-body" style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- Item info -->
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:14px">
+            <div style="width:40px;height:40px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0" v-html="icon('box',18)"></div>
+            <div>
+              <div style="font-size:13.5px;font-weight:700;color:#111827">{{ adjDrawer.item_name }}</div>
+              <div style="font-size:11.5px;color:#6b7280;margin-top:2px;font-family:monospace">{{ adjDrawer.item_code }}</div>
+            </div>
+            <div style="margin-left:auto;text-align:right">
+              <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Current Qty</div>
+              <div style="font-size:18px;font-weight:700;color:#2563eb;font-family:monospace">{{ adjDrawer.current_qty }}</div>
+            </div>
+          </div>
+
+          <!-- New qty -->
+          <div>
+            <label class="nim-label">New Quantity (counted on-hand) <span style="color:#dc2626">*</span></label>
+            <input v-model.number="adjDrawer.new_qty" type="number" min="0" step="0.001" class="nim-input"
+              :placeholder="`Current: ${adjDrawer.current_qty}`" style="font-size:16px;font-weight:600;font-family:monospace" />
+            <div v-if="adjDrawer.new_qty !== '' && adjDrawer.new_qty !== null" style="margin-top:6px;font-size:12.5px;display:flex;align-items:center;gap:6px">
+              <span :style="{color: adjDrawer.new_qty > adjDrawer.current_qty ? '#16a34a' : adjDrawer.new_qty < adjDrawer.current_qty ? '#dc2626' : '#6b7280', fontWeight:600}">
+                {{ adjDrawer.new_qty > adjDrawer.current_qty ? `+${(adjDrawer.new_qty - adjDrawer.current_qty).toFixed(3)} increase` :
+                   adjDrawer.new_qty < adjDrawer.current_qty ? `${(adjDrawer.new_qty - adjDrawer.current_qty).toFixed(3)} decrease` : 'No change' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Reason -->
+          <div>
+            <label class="nim-label">Reason <span style="color:#dc2626">*</span></label>
+            <select v-model="adjDrawer.reason" class="nim-input">
+              <option value="">— Select reason —</option>
+              <option value="Opening Stock">Opening Stock</option>
+              <option value="Physical Count Correction">Physical Count Correction</option>
+              <option value="Damage / Spoilage">Damage / Spoilage</option>
+              <option value="Theft / Loss">Theft / Loss</option>
+              <option value="Return to Stock">Return to Stock</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label class="nim-label">Notes (optional)</label>
+            <textarea v-model="adjDrawer.notes" rows="2" class="nim-input" placeholder="Any additional details…" style="resize:vertical"></textarea>
+          </div>
+
+        </div>
+        <div class="nim-dialog-footer">
+          <button class="nim-btn nim-btn-ghost" @click="adjDrawer.open=false">Cancel</button>
+          <button class="nim-btn" style="background:#2563eb;color:#fff;border-color:#2563eb"
+            :disabled="adjDrawer.saving || adjDrawer.new_qty==='' || adjDrawer.new_qty===null || !adjDrawer.reason"
+            @click="submitAdjustment">
+            {{ adjDrawer.saving ? 'Saving…' : 'Save Adjustment' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Add/Edit drawer -->
     <div v-if="showDrawer" class="nim-overlay" @click.self="showDrawer=false">
       <div class="nim-dialog" style="width:560px">
@@ -292,7 +373,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGET, apiSave, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
+import { apiList, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, fmtDate, flt } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
@@ -318,6 +399,12 @@ const loading        = ref(false);
 const selectedWH     = ref(null);
 const stockItems     = ref([]);
 const stockLoading   = ref(false);
+
+const adjDrawer = reactive({
+  open: false, saving: false,
+  item_code: "", item_name: "", warehouse: "",
+  current_qty: 0, new_qty: "", reason: "", notes: "",
+});
 const expanded       = ref(new Set());
 const search         = ref("");
 const showDrawer     = ref(false);
@@ -416,6 +503,51 @@ async function loadItems() {
 function selectWarehouse(wh) {
   selectedWH.value = wh;
   loadStockForWarehouse(wh.name);
+}
+
+// ── Stock Adjustment from Warehouse page ─────────────────────────────────────
+function openAdjustment(row) {
+  Object.assign(adjDrawer, {
+    open: true, saving: false,
+    item_code:   row.item_code,
+    item_name:   row.item_name || row.item_code,
+    warehouse:   selectedWH.value.name,
+    current_qty: flt(row.actual_qty),
+    new_qty:     flt(row.actual_qty),
+    reason:      "", notes: "",
+  });
+}
+
+function openNewAdjustment() {
+  Object.assign(adjDrawer, {
+    open: true, saving: false,
+    item_code: "", item_name: "",
+    warehouse: selectedWH.value.name,
+    current_qty: 0, new_qty: "", reason: "Opening Stock", notes: "",
+  });
+}
+
+async function submitAdjustment() {
+  if (adjDrawer.new_qty === "" || adjDrawer.new_qty === null) return toast("New quantity is required", "error");
+  if (!adjDrawer.reason)  return toast("Please select a reason", "error");
+  if (!adjDrawer.item_code) return toast("Item is required", "error");
+  adjDrawer.saving = true;
+  try {
+    await apiPOST("zoho_books_clone.api.inventory.create_inventory_adjustment", {
+      item_code:  adjDrawer.item_code,
+      warehouse:  adjDrawer.warehouse,
+      new_qty:    adjDrawer.new_qty,
+      reason:     adjDrawer.reason,
+      notes:      adjDrawer.notes || "",
+    });
+    toast(`Stock adjusted — ${adjDrawer.item_code} set to ${adjDrawer.new_qty}`, "success");
+    adjDrawer.open = false;
+    await loadStockForWarehouse(selectedWH.value.name);
+  } catch (e) {
+    toast(e.message || "Adjustment failed", "error");
+  } finally {
+    adjDrawer.saving = false;
+  }
 }
 
 function openAdd() {

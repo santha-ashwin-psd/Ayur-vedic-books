@@ -172,10 +172,12 @@
                 <SearchableSelect v-model="form.default_warehouse" :options="warehouses" value-key="name" label-key="label" placeholder="Select warehouse…"/>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <div><label class="nim-label">Reorder Level</label><input type="number" class="nim-input" v-model="form.reorder_level" min="0" style="font-family:var(--mono)"/></div>
               <div><label class="nim-label">Reorder Qty</label><input type="number" class="nim-input" v-model="form.reorder_qty" min="0" style="font-family:var(--mono)"/></div>
-              <div><label class="nim-label">Opening Stock</label><input type="number" class="nim-input" v-model="form.opening_stock" min="0" style="font-family:var(--mono)"/></div>
+            </div>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:12px;color:#1e40af;margin-top:4px">
+              To set or adjust stock quantities, go to <strong>Inventory → Warehouses</strong> → select a warehouse → click <strong>Adjust</strong> next to any item.
             </div>
           </template>
 

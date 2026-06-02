@@ -174,12 +174,20 @@ function fmtINR(v) {
   if (n === 0) return "₹0";
   return "₹" + Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 }
-function guessRT(t) {
+function guessRT(t, name) {
   t = (t || "").toLowerCase();
+  name = (name || "").toLowerCase();
   if (t === "income" || t.includes("income")) return "Income";
-  if (t === "expense" || t.includes("expense") || t === "depreciation") return "Expense";
+  if (t === "expense" || t.includes("expense") || t === "cost of goods sold" || t === "depreciation") return "Expense";
   if (t === "payable" || t === "liability" || t === "credit card") return "Liability";
   if (t === "equity" || t.includes("retained")) return "Equity";
+  // Tax accounts: "Input" / "ITC" / "Credit" → Asset (receivable); "Payable" / "Output" → Liability
+  if (t === "tax") {
+    if (name.includes("payable") || name.includes("output")) return "Liability";
+    return "Asset";
+  }
+  // Receivable, Cash, Bank, Stock, Stock Adjustment → Asset
+  if (t === "receivable" || t === "cash" || t === "bank" || t === "stock" || t === "stock adjustment") return "Asset";
   return "Asset";
 }
 
@@ -198,19 +206,27 @@ async function load() {
     }
     accounts.value = raw.filter((a) => !a.is_group).map((a) => ({
       name: a.name, account_name: a.account_name || a.name,
-      root_type: a.root_type || guessRT(a.account_type),
+      root_type: a.root_type || guessRT(a.account_type, a.account_name || a.name),
       account_type: a.account_type || "",
     }));
+    // Always recompute drCrMap from root_type — don't let stale localStorage values
+    // override the correct Debit/Credit assignment (e.g. Tax Payable accounts).
+    accounts.value.forEach((a) => {
+      drCrMap[a.name] = OB_TYPE_META[a.root_type]?.balType || "Debit";
+    });
+    // Now restore any user overrides from localStorage (after the correct defaults are set)
     try {
       const s = JSON.parse(localStorage.getItem("books_ob") || "{}");
       if (s.b) Object.assign(balances, s.b);
-      if (s.d) Object.assign(drCrMap, s.d);
       if (s.date) goLiveDate.value = s.date;
       submitted.value = localStorage.getItem("books_ob_status") === "submitted";
+      // Only restore drCrMap overrides for accounts that exist
+      if (s.d) {
+        accounts.value.forEach((a) => {
+          if (s.d[a.name] !== undefined) drCrMap[a.name] = s.d[a.name];
+        });
+      }
     } catch {}
-    accounts.value.forEach((a) => {
-      if (!drCrMap[a.name]) drCrMap[a.name] = OB_TYPE_META[a.root_type]?.balType || "Debit";
-    });
     if (accounts.value.length) toast("Loaded " + accounts.value.length + " accounts", "info");
     else toast("No accounts found — set up Chart of Accounts first", "info");
   } catch (e) { toast("Could not load accounts: " + e.message, "error"); }

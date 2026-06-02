@@ -22,16 +22,37 @@ from zoho_books_clone.inventory.utils import (
 
 # ── Stock Summary ─────────────────────────────────────────────────────────────
 
+def _get_child_warehouses(warehouse_name):
+    """Recursively collect all leaf warehouse names under a group warehouse."""
+    children = frappe.get_all("Warehouse", filters={"parent_warehouse": warehouse_name}, fields=["name", "is_group"])
+    result = []
+    for c in children:
+        if c.is_group:
+            result.extend(_get_child_warehouses(c.name))
+        else:
+            result.append(c.name)
+    return result
+
+
 @frappe.whitelist(allow_guest=False)
 def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
     """
     Return current stock levels (from Bin) with item details.
-    Optionally filter by warehouse or item_group.
-    Also shows items whose default_warehouse = this warehouse even with 0 stock.
+    If warehouse is a group (is_group=1), aggregates all children recursively.
     """
     filters = {}
+    is_group_wh = False
     if warehouse:
-        filters["warehouse"] = warehouse
+        wh_doc = frappe.db.get_value("Warehouse", warehouse, ["is_group", "name"], as_dict=True)
+        if wh_doc and wh_doc.is_group:
+            is_group_wh = True
+            child_whs = _get_child_warehouses(warehouse)
+            if child_whs:
+                filters["warehouse"] = ["in", child_whs]
+            else:
+                return []  # Group with no children yet
+        else:
+            filters["warehouse"] = warehouse
     if not int(show_zero_stock):
         filters["actual_qty"] = [">", 0]
 
@@ -56,6 +77,34 @@ def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
         )
         for it in items:
             item_map[it.name] = it
+
+    # For group warehouses aggregate all child bins by item_code
+    if is_group_wh:
+        agg = {}
+        for b in bins:
+            item = item_map.get(b.item_code, {})
+            if item_group and item.get("item_group") != item_group:
+                continue
+            if b.item_code not in agg:
+                agg[b.item_code] = {
+                    "item_code":    b.item_code,
+                    "item_name":    item.get("item_name") or b.item_code,
+                    "item_group":   item.get("item_group") or "",
+                    "warehouse":    warehouse,  # show parent name
+                    "uom":          b.stock_uom or item.get("stock_uom") or "Nos",
+                    "actual_qty":   0.0, "reserved_qty": 0.0, "ordered_qty": 0.0,
+                    "projected_qty": 0.0, "stock_value": 0.0,
+                    "valuation_rate": flt(b.valuation_rate),
+                    "reorder_level": flt(b.reorder_level),
+                    "reorder_qty":   flt(b.reorder_qty),
+                }
+            agg[b.item_code]["actual_qty"]    += flt(b.actual_qty)
+            agg[b.item_code]["reserved_qty"]  += flt(b.reserved_qty)
+            agg[b.item_code]["ordered_qty"]   += flt(b.ordered_qty)
+            agg[b.item_code]["projected_qty"] += flt(b.projected_qty)
+            agg[b.item_code]["stock_value"]   += flt(b.stock_value)
+        return [dict(r, below_reorder=r["actual_qty"] < r["reorder_level"] if r["reorder_level"] else False)
+                for r in agg.values()]
 
     result = []
     seen_codes = set()

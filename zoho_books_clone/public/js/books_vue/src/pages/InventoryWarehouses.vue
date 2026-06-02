@@ -76,13 +76,17 @@
             </span>
             <span v-if="selectedWH.disabled" style="background:#FFF5F5;color:#C92A2A;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">Disabled</span>
           </div>
+          <span v-if="selectedWH.is_group" style="background:#eff6ff;color:#2563eb;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-left:4px">Group Warehouse</span>
           <div v-if="selectedWH.parent_warehouse" style="font-size:12.5px;color:#868E96;margin-top:4px">
             Parent: {{selectedWH.parent_warehouse}}
+          </div>
+          <div v-if="selectedWH.is_group" style="font-size:12px;color:#64748b;margin-top:4px">
+            Totals aggregated from all child warehouses
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
           <button class="nim-btn nim-btn-ghost" @click="openEdit(selectedWH)"><span v-html="icon('edit')"></span> Edit</button>
-          <button class="nim-btn nim-btn-ghost" style="color:#1971C2;border-color:#1971C2" @click="openTransfer">
+          <button v-if="!selectedWH.is_group" class="nim-btn nim-btn-ghost" style="color:#1971C2;border-color:#1971C2" @click="openTransfer">
             <span v-html="icon('refresh')"></span> Transfer
           </button>
           <button class="nim-btn" style="background:#FFF5F5;color:#C92A2A;border-color:#FFC9C9" @click="confirmDel(selectedWH)">
@@ -125,7 +129,7 @@
         <div v-else-if="!stockItems.length" style="padding:40px;text-align:center;color:#868E96;font-size:13px">
           <div style="font-size:32px;margin-bottom:8px">📦</div>
           <div style="font-weight:600;color:#343A40;margin-bottom:4px">No stock in this warehouse</div>
-          <div>Stock will appear here once items are received</div>
+          <div>{{ selectedWH.is_group ? 'No stock in any child warehouse yet' : 'Stock will appear here once items are received' }}</div>
         </div>
         <div v-else class="cust-table-wrap">
           <table class="cust-table">

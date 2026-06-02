@@ -258,6 +258,18 @@ def save_doc(doc):
         # frappe.get_doc(dict) with name already set does NOT mark the doc as
         # new (is_new() returns False), so save() would call db_update() and
         # raise DoesNotExistError.  insert() always creates a new row.
+
+        # Auto-supply naming_series for doctypes that use autoname="naming_series:"
+        # but where the SPA doesn't expose the series picker.
+        _NAMING_DEFAULTS = {
+            "Journal Entry":   "JV-.YYYY.-.#####",
+            "Payment Entry":   "PAY-.YYYY.-.#####",
+            "Sales Invoice":   "INV-.YYYY.-.#####",
+            "Purchase Invoice":"PINV-.YYYY.-.#####",
+        }
+        if doctype in _NAMING_DEFAULTS and not doc.get("naming_series"):
+            doc["naming_series"] = _NAMING_DEFAULTS[doctype]
+
         d = frappe.get_doc(doc)
         d.insert(ignore_permissions=True)
     frappe.db.commit()

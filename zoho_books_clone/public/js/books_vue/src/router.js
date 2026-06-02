@@ -24,6 +24,7 @@ import SettingsAuditLog      from "./pages/SettingsAuditLog.vue";
 import SettingsOrganization  from "./pages/SettingsOrganization.vue";
 import SettingsSecurity      from "./pages/SettingsSecurity.vue";
 import SettingsIntegrations  from "./pages/SettingsIntegrations.vue";
+import SettingsSSO           from "./pages/SettingsSSO.vue";
 import SettingsCurrencyExchange from "./pages/SettingsCurrencyExchange.vue";
 import ChartOfAccounts        from "./pages/ChartOfAccounts.vue";
 import JournalEntries         from "./pages/JournalEntries.vue";
@@ -163,6 +164,7 @@ const routes = [
   { path: "/settings/audit-log",         name: "settings-audit-log",    component: SettingsAuditLog,      meta: { module: "admin" } },
   { path: "/settings/organization",      name: "settings-organization", component: SettingsOrganization,  meta: { module: "admin" } },
   { path: "/settings/security",          name: "settings-security",     component: SettingsSecurity,      meta: { module: null    } },
+  { path: "/settings/sso",              name: "settings-sso",          component: SettingsSSO,            meta: { module: "admin" } },
   { path: "/settings/integrations",      name: "settings-integrations", component: SettingsIntegrations,  meta: { module: "admin" } },
   { path: "/settings/currency-exchange", name: "settings-currency",     component: SettingsCurrencyExchange, meta: { module: "admin" } },
   { path: "/accounting/chart-of-accounts", name: "chart-of-accounts", component: ChartOfAccounts,  meta: { module: "accounts" } },

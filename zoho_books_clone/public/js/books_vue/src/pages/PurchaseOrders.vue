@@ -394,7 +394,7 @@ const warehouses = ref([]);
 async function fetchWarehouses(q = "") {
   try {
     const co = await resolveCompany();
-    const rows = await apiList("Warehouse", { filters: [["company","=",co],["disabled","=",0]], fields: ["name"], limit: 50 });
+    const rows = await apiList("Warehouse", { filters: [["company","=",co],["disabled","=",0],["is_group","=",0]], fields: ["name"], limit: 50 });
     warehouses.value = (rows || []).filter(r => !q || r.name.toLowerCase().includes(q.toLowerCase())).map(r => ({ label: r.name, value: r.name }));
   } catch { warehouses.value = []; }
 }

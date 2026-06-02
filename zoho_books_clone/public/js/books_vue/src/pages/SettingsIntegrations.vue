@@ -98,20 +98,23 @@ const integrations = computed(() => [
     ico: "recurring", bg: "#f5f3ff", fg: "#7c3aed", status: "active",
     action: { label: "Open Recurring Bills", go: () => router.push({ name: "recurring-bills" }).catch(()=>{}) } },
 
-  { group: "On the Roadmap", key: "sso-google", name: "Google Sign-In (SSO)", desc: "Allow users to log in with their Google account.",
-    ico: "user", bg: "#fefce8", fg: "#a16207", status: "coming_soon" },
+  { group: "Single Sign-On", key: "sso-google", name: "Google Sign-In", desc: "Let users log in with their Google or Google Workspace account.",
+    ico: "user", bg: "#fefce8", fg: "#a16207", status: "available",
+    action: { label: "Configure", go: () => router.push({ name: "settings-sso" }) } },
+  { group: "Single Sign-On", key: "sso-ms", name: "Microsoft / Azure AD", desc: "Enterprise SSO via Microsoft 365 or Azure Active Directory.",
+    ico: "shield", bg: "#eff6ff", fg: "#2563eb", status: "available",
+    action: { label: "Configure", go: () => router.push({ name: "settings-sso" }) } },
+
   { group: "On the Roadmap", key: "slack", name: "Slack Notifications", desc: "Push invoice/payment events to Slack channels.",
     ico: "send", bg: "#f5f3ff", fg: "#7c3aed", status: "coming_soon" },
   { group: "On the Roadmap", key: "webhooks", name: "Outbound Webhooks", desc: "POST real-time events to any HTTP endpoint.",
     ico: "webhook", bg: "#ecfeff", fg: "#0891b2", status: "coming_soon" },
   { group: "On the Roadmap", key: "portal", name: "Customer Portal", desc: "Customers log in to view invoices and pay online.",
     ico: "users", bg: "#fef2f2", fg: "#dc2626", status: "coming_soon" },
-  { group: "On the Roadmap", key: "azure", name: "Microsoft / Azure SSO", desc: "Enterprise single sign-on via Azure AD.",
-    ico: "shield", bg: "#f1f5f9", fg: "#475569", status: "coming_soon" },
 ]);
 
 const groups = computed(() => {
-  const order = ["Email & Notifications", "Banking", "GST & E-Invoicing", "Inventory & Stock", "Accounting", "On the Roadmap"];
+  const order = ["Email & Notifications", "Single Sign-On", "Banking", "GST & E-Invoicing", "Inventory & Stock", "Accounting", "On the Roadmap"];
   const map = {};
   for (const x of integrations.value) (map[x.group] ||= []).push(x);
   return order.filter(l => map[l]).map(l => ({ label: l, items: map[l] }));

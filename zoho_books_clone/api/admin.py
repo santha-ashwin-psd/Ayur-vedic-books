@@ -969,3 +969,67 @@ def get_currency_rates():
         return list(seen.values())
     except Exception:
         return []
+
+
+# ── SSO / Social Login ────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False)
+def get_sso_providers():
+    """Return config status for Google and Microsoft SSO."""
+    result = {}
+    for provider in ("Google", "Office 365"):
+        key_name = frappe.scrub(provider)
+        exists = frappe.db.exists("Social Login Key", key_name)
+        if exists:
+            doc = frappe.get_doc("Social Login Key", key_name)
+            result[provider] = {
+                "enabled": bool(doc.enable_social_login),
+                "client_id": doc.client_id or "",
+                "has_secret": bool(doc.client_secret),
+            }
+        else:
+            result[provider] = {"enabled": False, "client_id": "", "has_secret": False}
+    return result
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def save_sso_provider(provider, client_id, client_secret="", enabled=1):
+    """Create or update a Social Login Key for Google or Microsoft."""
+    if provider not in ("Google", "Office 365"):
+        frappe.throw("Only Google and Office 365 are supported")
+
+    key_name = frappe.scrub(provider)
+    exists = frappe.db.exists("Social Login Key", key_name)
+
+    if exists:
+        doc = frappe.get_doc("Social Login Key", key_name)
+    else:
+        # Use Frappe's built-in preset to populate all OAuth URLs
+        doc = frappe.new_doc("Social Login Key")
+        doc.social_login_provider = provider
+        doc.get_social_login_provider(provider, initialize=True)
+
+    doc.enable_social_login = int(enabled)
+    doc.client_id = client_id
+    if client_secret:
+        doc.client_secret = client_secret
+
+    doc.flags.ignore_permissions = True
+    if exists:
+        doc.save()
+    else:
+        doc.insert()
+    frappe.db.commit()
+    return {"status": "ok", "provider": provider, "enabled": doc.enable_social_login}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def disable_sso_provider(provider):
+    """Disable a Social Login Key without deleting it."""
+    if provider not in ("Google", "Office 365"):
+        frappe.throw("Only Google and Office 365 are supported")
+    key_name = frappe.scrub(provider)
+    if frappe.db.exists("Social Login Key", key_name):
+        frappe.db.set_value("Social Login Key", key_name, "enable_social_login", 0)
+        frappe.db.commit()
+    return {"status": "ok"}

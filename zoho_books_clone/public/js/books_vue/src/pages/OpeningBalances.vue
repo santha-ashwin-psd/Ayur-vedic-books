@@ -291,6 +291,7 @@ async function doSubmit() {
     const company = await resolveCompany();
     const doc = {
       doctype: "Journal Entry",
+      naming_series: "JV-.YYYY.-",
       company,
       voucher_type: "Opening Entry",
       posting_date: date,

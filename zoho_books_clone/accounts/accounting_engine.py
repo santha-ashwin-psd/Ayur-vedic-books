@@ -294,6 +294,17 @@ def post_payment_entry(doc) -> None:
 
 def post_journal_entry(doc) -> None:
     """Post GL entries from Journal Entry accounts child table."""
+    # Resolve fiscal year from posting_date since Journal Entry has no fiscal_year field
+    fy = ""
+    try:
+        fy_doc = frappe.db.sql(
+            "SELECT name FROM `tabFiscal Year` WHERE year_start_date <= %s AND year_end_date >= %s LIMIT 1",
+            (doc.posting_date, doc.posting_date), as_dict=True
+        )
+        fy = fy_doc[0].name if fy_doc else ""
+    except Exception:
+        pass
+
     gl_map = []
     for row in (doc.accounts or []):
         if flt(row.debit) or flt(row.credit):
@@ -307,7 +318,7 @@ def post_journal_entry(doc) -> None:
                 "party_type":   row.party_type or "",
                 "party":        row.party or "",
                 "company":      doc.company,
-                "fiscal_year":  getattr(doc, "fiscal_year", "") or "",
+                "fiscal_year":  fy,
                 "remarks":      doc.remark or f"Journal Entry {doc.name}",
             })
     if not gl_map:

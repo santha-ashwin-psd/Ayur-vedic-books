@@ -345,7 +345,7 @@
         },
         {
             "fieldname": "naming_series",
-            "fieldtype": "Data",
+            "fieldtype": "Series",
             "label": "Series",
             "idx": 0,
             "creation": "2026-04-10 00:00:00.000000",
@@ -382,7 +382,9 @@
             "show_seconds": 1,
             "translatable": 0,
             "unique": 0,
-            "reqd": 0
+            "reqd": 0,
+            "options": "JV-.YYYY.-",
+            "default": "JV-.YYYY.-"
         }
     ],
     "permissions": [

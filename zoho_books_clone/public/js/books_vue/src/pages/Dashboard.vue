@@ -38,20 +38,20 @@
       <span class="qa-title">Quick Actions</span>
       <div class="qa-actions">
         <button class="qa-btn" @click="navTo('/invoices')">
-          <span v-html="iconQaInvoice"></span> New Invoice
+          <span v-html="iconQaInvoice" style="color: aqua"></span> New Invoice
         </button>
         <button class="qa-btn" @click="navTo('/payments')">
-          <span v-html="iconQaPayment"></span> Record Payment
+          <span v-html="iconQaPayment" style="color: green"></span> Record Payment
         </button>
         <button class="qa-btn" @click="navTo('/customers')">
-          <span v-html="iconQaCustomer"></span> Add Customer
+          <span v-html="iconQaCustomer" style="color: purple"></span> Add Customer
         </button>
         <button class="qa-btn" @click="navTo('/quotes')">
-          <span v-html="iconQaQuote"></span> Create Quote
+          <span v-html="iconQaQuote" style="color: orange"></span> Create Quote
         </button>
-        <button class="qa-btn qa-btn-more">
+        <!-- <button class="qa-btn qa-btn-more">
           <span v-html="iconQaMore"></span> More Actions
-        </button>
+        </button> -->
       </div>
     </div>
 
@@ -483,6 +483,7 @@ function actDotClass(dt) {
   background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
   padding: 14px 20px;
   display: flex; align-items: center; gap: 20px;
+  justify-content: space-between;
 }
 .qa-title {
   font-size: 13px; font-weight: 700; color: #374151;

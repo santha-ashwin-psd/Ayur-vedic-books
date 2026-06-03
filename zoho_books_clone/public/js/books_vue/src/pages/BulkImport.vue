@@ -2,7 +2,7 @@
 <div class="b-page">
   <!-- Toolbar -->
   <div class="b-action-bar">
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button v-for="t in TYPES" :key="t.key"
         class="b-pill" :class="{active: dtype===t.key}"
         @click="switchType(t.key)">
@@ -23,6 +23,7 @@
       <b>Import {{currentType.label}}</b> from a CSV file.
       Download the <button @click="downloadSample" style="background:none;border:none;padding:0;color:#3B5BDB;cursor:pointer;font-weight:700;text-decoration:underline;font-size:12.5px">sample CSV</button>
       for the exact column format. Rows with missing required fields are skipped.
+      <span v-if="currentType.note" style="margin-left:6px;opacity:.85">— {{currentType.note}}</span>
     </div>
   </div>
 
@@ -78,7 +79,7 @@
       </table>
     </div>
     <div style="padding:14px 18px;border-top:1px solid #F1F3F5;display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:12.5px;color:#868E96">Importing into: <b>{{dtype}}</b></div>
+      <div style="font-size:12.5px;color:#868E96">Importing into: <b>{{currentType.label}}</b></div>
       <button class="b-btn b-btn-primary" @click="runImport" :disabled="importing">
         <span v-if="importing">Importing…</span>
         <span v-else><span v-html="icon('check',13)" style="vertical-align:-1px;margin-right:4px"></span> Import {{parsedRows.length}} Records</span>
@@ -117,7 +118,7 @@
 
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="b-btn b-btn-ghost" @click="resetImport">Import Another File</button>
-      <button v-if="result.created>0" class="b-btn b-btn-primary" @click="goToList">
+      <button v-if="result.created>0 && currentType.route" class="b-btn b-btn-primary" @click="goToList">
         View {{currentType.label}} →
       </button>
     </div>
@@ -136,17 +137,23 @@ const { toast } = useToast();
 const router = useRouter();
 
 const TYPES = [
-  { key: "Customer", label: "Customers", route: "/customers" },
-  { key: "Supplier", label: "Vendors",   route: "/vendors"   },
-  { key: "Item",     label: "Items",     route: "/inventory/items" },
+  { key: "Customer",         label: "Customers",        route: "/customers" },
+  { key: "Supplier",         label: "Vendors",           route: "/vendors"   },
+  { key: "Item",             label: "Items",             route: "/inventory/items" },
+  { key: "Sales Invoice",    label: "Invoices",          route: "/invoices",       note: "One row = one invoice with a single line item" },
+  { key: "Quotation",        label: "Quotes",            route: "/quotes",         note: "One row = one quote with a single line item" },
+  { key: "Sales Order",      label: "Sales Orders",      route: "/sales-orders",   note: "One row = one order with a single line item" },
+  { key: "Purchase Invoice", label: "Bills",             route: "/bills",          note: "One row = one bill with a single line item; supplier must exist" },
+  { key: "Expense",          label: "Expenses",          route: "/expenses",       note: "expense_type is required; vendor is optional" },
+  { key: "Purchase Order",   label: "Purchase Orders",   route: "/purchase-orders", note: "One row = one PO with a single line item; supplier must exist" },
 ];
 
-const dtype     = ref("Customer");
-const step      = ref(1);
-const dragging  = ref(false);
-const fileName  = ref("");
+const dtype      = ref("Customer");
+const step       = ref(1);
+const dragging   = ref(false);
+const fileName   = ref("");
 const parsedRows = ref([]);
-const headers   = ref([]);
+const headers    = ref([]);
 const parseError = ref("");
 const importing  = ref(false);
 const result     = ref({ created: 0, skipped: 0, errors: [] });
@@ -245,7 +252,7 @@ async function downloadSample() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `sample_${dtype.value.toLowerCase()}_import.csv`;
+    a.download = `sample_${dtype.value.toLowerCase().replace(/ /g,"_")}_import.csv`;
     a.click();
     URL.revokeObjectURL(url);
   } catch (e) { toast.error("Could not download sample: " + e.message); }
@@ -266,7 +273,7 @@ async function runImport() {
 }
 
 function goToList() {
-  router.push(currentType.value.route);
+  if (currentType.value?.route) router.push(currentType.value.route);
 }
 </script>
 

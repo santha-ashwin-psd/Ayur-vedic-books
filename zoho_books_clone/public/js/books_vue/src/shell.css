@@ -653,8 +653,7 @@
   gap: 10px;
   flex-wrap: nowrap;
   padding: 10px 16px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: #f5f6f8;
   border-radius: 10px;
 }
 .sales-search {

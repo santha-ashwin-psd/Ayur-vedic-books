@@ -7,7 +7,11 @@ import "./legacy-extras.css";
 
 // Bootstrap the session before mounting so usePermissions() and the API
 // client see populated state synchronously after the await.
-bootstrapSession().then(() => {
+// bootstrapSession() returns false when it redirects to /login — in that
+// case we must NOT mount the app, otherwise the router briefly renders the
+// dashboard before the page navigation completes (the back-and-forth flash).
+bootstrapSession().then((ok) => {
+  if (ok === false) return;   // redirecting to login — do not mount
   const app = createApp(App);
   app.use(router);
   app.mount("#books-app");

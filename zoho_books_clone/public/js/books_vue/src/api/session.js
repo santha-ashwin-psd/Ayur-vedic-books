@@ -46,8 +46,10 @@ export async function bootstrapSession() {
     });
     if (r.status === 401 || r.status === 403) {
       const dest = window.location.pathname + window.location.hash;
-      window.location.href = "/login?redirect-to=" + encodeURIComponent(dest || "/books");
-      return;
+      // Use replace() so the books page isn't added to browser history,
+      // preventing a back-button loop between dashboard and login.
+      window.location.replace("/login?redirect-to=" + encodeURIComponent(dest || "/books"));
+      return false;   // signal: do NOT mount the app
     }
     const json = await r.json();
     data = json?.message;

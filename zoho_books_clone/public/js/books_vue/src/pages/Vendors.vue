@@ -665,6 +665,61 @@
             </div>
           </div>
 
+          <!-- Shipping Address -->
+          <template v-if="drawerMode==='edit' && form.name">
+            <div class="cust-sec-label" style="margin-top:4px">Shipping Addresses</div>
+            <AddressManager
+              :partyDoctype="'Supplier'"
+              :partyName="form.name"
+              @addressSaved="load"
+              @addressDeleted="load"
+            />
+          </template>
+          <template v-else>
+            <div class="cust-sec-label" style="margin-top:4px">Shipping Address
+              <span style="font-size:11px;font-weight:400;color:#9ca3af;margin-left:6px">— leave blank to use billing</span>
+            </div>
+            <div style="margin-bottom:10px">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+                <input type="checkbox" v-model="shipSameAsBilling" @change="onShipSameChange" style="accent-color:#3B5BDB"/>
+                Use same address as billing
+              </label>
+            </div>
+            <div v-if="!shipSameAsBilling" class="nim-grid-2 nim-mb">
+              <div class="nim-field" style="grid-column:span 2">
+                <label class="nim-label">Address Line 1</label>
+                <input v-model="form.ship_address_line1" class="nim-input" placeholder="Street, building no."/>
+              </div>
+              <div class="nim-field" style="grid-column:span 2">
+                <label class="nim-label">Address Line 2</label>
+                <input v-model="form.ship_address_line2" class="nim-input" placeholder="Area, landmark"/>
+              </div>
+              <div class="nim-field">
+                <label class="nim-label">City</label>
+                <input v-model="form.ship_city" class="nim-input" placeholder="City"/>
+              </div>
+              <div class="nim-field">
+                <label class="nim-label">Country</label>
+                <select v-model="form.ship_country" class="nim-select">
+                  <option value="">— Select Country —</option>
+                  <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
+                </select>
+              </div>
+              <div class="nim-field">
+                <label class="nim-label">State</label>
+                <select v-if="statesFor(form.ship_country).length" v-model="form.ship_state" class="nim-select">
+                  <option value="">— Select State —</option>
+                  <option v-for="s in statesFor(form.ship_country)" :key="s" :value="s">{{s}}</option>
+                </select>
+                <input v-else v-model="form.ship_state" class="nim-input" placeholder="State"/>
+              </div>
+              <div class="nim-field">
+                <label class="nim-label">Pincode</label>
+                <input v-model="form.ship_pincode" class="nim-input" placeholder="Pincode"/>
+              </div>
+            </div>
+          </template>
+
           <div class="cust-sec-label">Account Settings</div>
           <div class="nim-grid-1 nim-mb">
             <div class="nim-field">
@@ -733,6 +788,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiGET, apiSave, apiDelete } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import AddressManager from "../components/AddressManager.vue";
 import { fmt, fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
@@ -764,10 +820,13 @@ const form = reactive({
   email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
   address_line1: "", address_line2: "",
   city: "", state: "", pincode: "", country: "India",
+  ship_address_line1: "", ship_address_line2: "",
+  ship_city: "", ship_state: "", ship_pincode: "", ship_country: "India",
   default_payable_account: "", disabled: 0,
 });
 
 const formErrors = reactive({});
+const shipSameAsBilling = ref(false);
 
 const counts = computed(() => ({
   all:      list.value.length,
@@ -816,15 +875,36 @@ async function loadAccounts() {
 }
 
 function resetForm() {
+  shipSameAsBilling.value = false;
   Object.assign(form, {
     name: "", supplier_name: "", supplier_type: "Company",
     tax_id: "", default_currency: "INR", payment_terms: "",
     email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
     address_line1: "", address_line2: "",
     city: "", state: "", pincode: "", country: "India",
+    ship_address_line1: "", ship_address_line2: "",
+    ship_city: "", ship_state: "", ship_pincode: "", ship_country: "India",
     default_payable_account: "", disabled: 0,
   });
   Object.keys(formErrors).forEach(k => delete formErrors[k]);
+}
+
+function onShipSameChange() {
+  if (shipSameAsBilling.value) {
+    form.ship_address_line1 = form.address_line1;
+    form.ship_address_line2 = form.address_line2;
+    form.ship_city          = form.city;
+    form.ship_state         = form.state;
+    form.ship_pincode       = form.pincode;
+    form.ship_country       = form.country;
+  } else {
+    form.ship_address_line1 = "";
+    form.ship_address_line2 = "";
+    form.ship_city          = "";
+    form.ship_state         = "";
+    form.ship_pincode       = "";
+    form.ship_country       = "India";
+  }
 }
 
 function openAdd() {
@@ -859,6 +939,12 @@ async function openEdit(name) {
       state: doc.state || "",
       pincode: doc.pincode || "",
       country: doc.country || "India",
+      ship_address_line1: doc.ship_address_line1 || "",
+      ship_address_line2: doc.ship_address_line2 || "",
+      ship_city: doc.ship_city || "",
+      ship_state: doc.ship_state || "",
+      ship_pincode: doc.ship_pincode || "",
+      ship_country: doc.ship_country || "India",
       default_payable_account: doc.default_payable_account || "",
       disabled: doc.disabled || 0,
     });
@@ -941,6 +1027,12 @@ async function saveVendor() {
       state: form.state.trim(),
       pincode: form.pincode.trim(),
       country: form.country.trim() || "India",
+      ship_address_line1: form.ship_address_line1.trim(),
+      ship_address_line2: form.ship_address_line2.trim(),
+      ship_city: form.ship_city.trim(),
+      ship_state: form.ship_state.trim(),
+      ship_pincode: form.ship_pincode.trim(),
+      ship_country: form.ship_country.trim() || "India",
       default_payable_account: form.default_payable_account,
       disabled: form.disabled ? 1 : 0,
     };
@@ -949,7 +1041,42 @@ async function saveVendor() {
       const fresh = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Supplier", name: form.name });
       doc_to_save = { ...fresh, ...doc };
     }
-    await apiSave(doc_to_save);
+    const savedDoc = await apiSave(doc_to_save);
+    const savedName = savedDoc?.name || form.name;
+    // Sync billing address to Address doctype
+    if (savedName && form.address_line1.trim()) {
+      try {
+        const existing = await apiList("Address", {
+          filters:[["Dynamic Link","link_name","=",savedName],["Dynamic Link","link_doctype","=","Supplier"],["address_type","=","Billing"]],
+          fields:["name"], limit:1, order:"modified desc",
+        });
+        await apiSave({
+          doctype:"Address", ...(existing[0]?{name:existing[0].name}:{}),
+          address_title:`${savedName} - Billing`, address_type:"Billing",
+          address_line1:form.address_line1.trim(), address_line2:form.address_line2.trim(),
+          city:form.city.trim(), state:form.state.trim(),
+          pincode:form.pincode.trim(), country:form.country.trim()||"India",
+          links:[{link_doctype:"Supplier",link_name:savedName}],
+        });
+      } catch {}
+    }
+    // Sync shipping address (skip if same-as-billing or blank)
+    if (savedName && !shipSameAsBilling.value && form.ship_address_line1.trim()) {
+      try {
+        const existing = await apiList("Address", {
+          filters:[["Dynamic Link","link_name","=",savedName],["Dynamic Link","link_doctype","=","Supplier"],["address_type","=","Shipping"]],
+          fields:["name"], limit:1, order:"modified desc",
+        });
+        await apiSave({
+          doctype:"Address", ...(existing[0]?{name:existing[0].name}:{}),
+          address_title:`${savedName} - Shipping`, address_type:"Shipping",
+          address_line1:form.ship_address_line1.trim(), address_line2:form.ship_address_line2.trim(),
+          city:form.ship_city.trim(), state:form.ship_state.trim(),
+          pincode:form.ship_pincode.trim(), country:form.ship_country.trim()||"India",
+          links:[{link_doctype:"Supplier",link_name:savedName}],
+        });
+      } catch {}
+    }
     toast(drawerMode.value === "edit" ? "Vendor updated!" : "Vendor created!");
     showDrawer.value = false;
     await load();

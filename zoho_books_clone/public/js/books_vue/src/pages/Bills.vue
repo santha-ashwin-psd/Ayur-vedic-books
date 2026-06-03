@@ -153,6 +153,18 @@
           </div>
         </div>
 
+        <!-- Billing Address -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Billing Address</div>
+          <div v-if="vendorBillingAddrs.length > 1" style="margin-bottom:8px">
+            <select v-model="form.selected_billing_addr_name" class="bill-input" @change="applyVendorBillingAddr">
+              <option value="">— Select address —</option>
+              <option v-for="a in vendorBillingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
+            </select>
+          </div>
+          <textarea v-model="form.billing_address" class="bill-input" rows="2" style="resize:vertical;width:100%;box-sizing:border-box" placeholder="Auto-filled from vendor, or enter manually"></textarea>
+        </div>
+
         <div class="bill-section-row">
           <div class="bill-section-title">Items</div>
           <button v-if="form.supplier" class="bill-copy-btn" @click="copyLastItems" :disabled="copyingLast">
@@ -372,7 +384,8 @@ const copyingLast = ref(false);
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const BILL_CURRENCIES = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
-const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "" });
+const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "" });
+const vendorBillingAddrs = ref([]);
 const warehouses = ref([]);
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name","parent_warehouse"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.parent_warehouse?`${x.parent_warehouse} / ${x.name}`:x.name,value:x.name}));}catch{warehouses.value=[];}}
 
@@ -471,14 +484,16 @@ const timelineSteps = computed(() => {
 // ── Create/Edit ───────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "" });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "" });
+  vendorBillingAddrs.value = [];
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
 }
 async function openEdit(b) {
   editingName.value = b.name;
-  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "" });
+  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "" });
+  vendorBillingAddrs.value = [];
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
@@ -496,6 +511,23 @@ async function openEdit(b) {
     if (doc?.taxes?.[0]?.account_head) taxAccountHead.value = doc.taxes[0].account_head;
     if (doc?.update_stock !== undefined) form.update_stock = doc.update_stock ? 1 : 0;
     if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
+    if (doc?.billing_address) form.billing_address = doc.billing_address;
+    // Load vendor addresses
+    if (b.supplier) {
+      try {
+        const addrs = await apiList("Address", {
+          fields: ["name","address_title","address_line1","address_line2","city","state","pincode"],
+          filters:[["Dynamic Link","link_name","=",b.supplier],["Dynamic Link","link_doctype","=","Supplier"],["address_type","=","Billing"]],
+          order:"`tabAddress`.modified desc", limit:20,
+        });
+        vendorBillingAddrs.value = addrs || [];
+        if (!form.billing_address && addrs?.[0]) {
+          const a = addrs[0];
+          form.billing_address = [a.address_line1,a.address_line2,a.city,a.state,a.pincode].filter(Boolean).join(", ");
+          form.selected_billing_addr_name = a.name;
+        }
+      } catch {}
+    }
   } catch {}
 }
 async function openView(b) {
@@ -532,7 +564,28 @@ async function fetchItems(q = "") {
     items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_rate || 0 }));
   } catch { items.value = []; }
 }
-function onVendorSelect(_opt) { /* could auto-fill terms in future */ }
+async function onVendorSelect(_opt) {
+  form.billing_address = ""; form.selected_billing_addr_name = "";
+  vendorBillingAddrs.value = [];
+  if (!form.supplier) return;
+  try {
+    const addrs = await apiList("Address", {
+      fields: ["name","address_title","address_line1","address_line2","city","state","pincode"],
+      filters: [["Dynamic Link","link_name","=",form.supplier],["Dynamic Link","link_doctype","=","Supplier"],["address_type","=","Billing"]],
+      order: "`tabAddress`.modified desc", limit: 20,
+    });
+    vendorBillingAddrs.value = addrs || [];
+    if (addrs?.[0]) {
+      const a = addrs[0];
+      form.billing_address = [a.address_line1,a.address_line2,a.city,a.state,a.pincode].filter(Boolean).join(", ");
+      form.selected_billing_addr_name = a.name;
+    }
+  } catch {}
+}
+function applyVendorBillingAddr() {
+  const a = vendorBillingAddrs.value.find(x=>x.name===form.selected_billing_addr_name);
+  if (a) form.billing_address = [a.address_line1,a.address_line2,a.city,a.state,a.pincode].filter(Boolean).join(", ");
+}
 function onItemSelect(line, opt) {
   line.item_code = opt?.value ?? opt;
   if (opt?.rate) { line.rate = Number(opt.rate) || 0; calcLine(line); }
@@ -576,6 +629,7 @@ async function saveBill(submit) {
       due_date: form.due_date || null, bill_no: form.bill_no || "",
       bill_date: form.bill_date || null, remarks: form.remarks || "",
       update_stock: form.update_stock ? 1 : 0, set_warehouse: form.set_warehouse || "",
+      billing_address: form.billing_address || "",
       currency: form.currency || "INR",
       conversion_rate: form.currency === "INR" ? 1 : (form.exchange_rate || 1),
       items: lines.value.filter(l => l.item_code).map(l => ({

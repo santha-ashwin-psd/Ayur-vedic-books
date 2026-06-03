@@ -17,6 +17,8 @@ def after_install():
     seed_price_lists()
     seed_item_groups()
     seed_customer_custom_fields()
+    seed_supplier_custom_fields()
+    seed_invoice_custom_fields()
     seed_books_company_field()
     frappe.db.commit()
     print("✅  Zoho Books Clone installed successfully!")
@@ -36,6 +38,8 @@ def after_migrate():
     seed_print_formats()
     seed_item_groups()
     seed_customer_custom_fields()
+    seed_supplier_custom_fields()
+    seed_invoice_custom_fields()
     seed_books_company_field()
     _normalize_company_names()
     frappe.db.commit()
@@ -658,6 +662,99 @@ def seed_customer_custom_fields():
             except Exception as e:
                 # Column might already exist with a different approach — ignore
                 frappe.log_error(str(e), f"ALTER TABLE Customer add {fieldname}")
+
+    frappe.db.commit()
+
+
+def seed_supplier_custom_fields():
+    """
+    Add shipping address custom fields to Supplier (mirrors the Customer ship_* fields).
+    """
+    FIELDS = [
+        ("ship_address_line1", "Ship Address Line 1", "Data",     "country",            ""),
+        ("ship_address_line2", "Ship Address Line 2", "Data",     "ship_address_line1",  ""),
+        ("ship_city",          "Ship City",           "Data",     "ship_address_line2",  ""),
+        ("ship_state",         "Ship State",          "Data",     "ship_city",           ""),
+        ("ship_pincode",       "Ship Pincode",        "Data",     "ship_state",          ""),
+        ("ship_country",       "Ship Country",        "Data",     "ship_pincode",        ""),
+    ]
+
+    DB_TYPE_MAP = {"Data": "varchar(140) DEFAULT NULL"}
+    db_name = frappe.conf.db_name
+    existing_cols = set(
+        r[0] for r in frappe.db.sql(
+            "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'tabSupplier'",
+            db_name
+        )
+    )
+
+    for fieldname, label, fieldtype, insert_after, _ in FIELDS:
+        cf_name = f"Supplier-{fieldname}"
+        if not frappe.db.exists("Custom Field", cf_name):
+            try:
+                frappe.get_doc({
+                    "doctype": "Custom Field", "name": cf_name,
+                    "dt": "Supplier", "fieldname": fieldname,
+                    "label": label, "fieldtype": fieldtype,
+                    "insert_after": insert_after,
+                    "in_list_view": 0, "in_standard_filter": 0,
+                }).insert(ignore_permissions=True)
+            except Exception as e:
+                frappe.log_error(str(e), f"Custom Field seed: {cf_name}")
+
+        if fieldname not in existing_cols:
+            col_def = DB_TYPE_MAP.get(fieldtype, "varchar(140) DEFAULT NULL")
+            try:
+                frappe.db.sql(f"ALTER TABLE `tabSupplier` ADD COLUMN `{fieldname}` {col_def}")
+                existing_cols.add(fieldname)
+            except Exception as e:
+                frappe.log_error(str(e), f"ALTER TABLE Supplier add {fieldname}")
+
+    frappe.db.commit()
+
+
+def seed_invoice_custom_fields():
+    """
+    Add shipping_address (Small Text) to Sales Invoice so the Invoice form
+    can store a separate shipping address alongside the existing billing_address.
+    """
+    FIELDS = [
+        # doctype, table, fieldname, label, fieldtype, insert_after
+        ("Sales Invoice", "tabSales Invoice", "shipping_address",
+         "Shipping Address", "Small Text", "billing_address"),
+    ]
+
+    DB_TYPE_MAP = {"Small Text": "text DEFAULT NULL"}
+    db_name = frappe.conf.db_name
+
+    for doctype, table, fieldname, label, fieldtype, insert_after in FIELDS:
+        cf_name = f"{doctype}-{fieldname}"
+        if not frappe.db.exists("Custom Field", cf_name):
+            try:
+                frappe.get_doc({
+                    "doctype": "Custom Field", "name": cf_name,
+                    "dt": doctype, "fieldname": fieldname,
+                    "label": label, "fieldtype": fieldtype,
+                    "insert_after": insert_after,
+                    "in_list_view": 0, "in_standard_filter": 0,
+                }).insert(ignore_permissions=True)
+            except Exception as e:
+                frappe.log_error(str(e), f"Custom Field seed: {cf_name}")
+
+        existing_cols = set(
+            r[0] for r in frappe.db.sql(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s",
+                (db_name, table)
+            )
+        )
+        if fieldname not in existing_cols:
+            col_def = DB_TYPE_MAP.get(fieldtype, "text DEFAULT NULL")
+            try:
+                frappe.db.sql(f"ALTER TABLE `{table}` ADD COLUMN `{fieldname}` {col_def}")
+            except Exception as e:
+                frappe.log_error(str(e), f"ALTER TABLE {table} add {fieldname}")
 
     frappe.db.commit()
 

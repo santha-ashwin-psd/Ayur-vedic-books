@@ -247,10 +247,41 @@
           <!-- Billing Address -->
           <div class="inv-sec-lbl">Billing Address</div>
           <div class="inv-fg" style="margin-bottom:14px">
+            <div v-if="customerBillingAddrs.length > 1" style="margin-bottom:8px">
+              <label class="inv-lbl">Select Billing Address</label>
+              <select v-model="form.selected_billing_addr_name" class="inv-fi" @change="applySelectedBillingAddr">
+                <option v-for="a in customerBillingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
+              </select>
+            </div>
             <div>
               <label class="inv-lbl">Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
               <textarea v-model="form.billing_address" class="inv-fi" rows="2" style="resize:vertical" placeholder="Auto-filled from customer, or enter manually"></textarea>
             </div>
+          </div>
+
+          <!-- Shipping Address -->
+          <div class="inv-sec-lbl">Shipping Address</div>
+          <div class="inv-fg" style="margin-bottom:14px">
+            <div style="margin-bottom:10px">
+              <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer">
+                <input type="checkbox" v-model="sameAsBillingAddr" @change="onSameAsBillingChange" style="accent-color:#3B5BDB"/>
+                Use same address as billing
+              </label>
+            </div>
+            <template v-if="!sameAsBillingAddr">
+              <div v-if="customerShippingAddrs.length" style="margin-bottom:8px">
+                <label class="inv-lbl">Select Shipping Address</label>
+                <select v-model="form.selected_shipping_addr_name" class="inv-fi" @change="applySelectedShippingAddr">
+                  <option value="">— Select —</option>
+                  <option v-for="a in customerShippingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="inv-lbl">Shipping Address</label>
+                <textarea v-model="form.shipping_address" class="inv-fi" rows="2" style="resize:vertical" placeholder="Shipping address (optional)"></textarea>
+              </div>
+            </template>
+            <div v-else style="font-size:12.5px;color:#9ca3af;font-style:italic">Using billing address for shipping</div>
           </div>
 
           <!-- Line Items -->
@@ -753,10 +784,14 @@ const addressLoading = ref(false);
 const form = reactive({
   customer:"", posting_date:"", due_date:"", po_no:"",
   payment_terms:"", place_of_supply:"", billing_address:"",
+  shipping_address:"", selected_billing_addr_name:"", selected_shipping_addr_name:"",
   terms:"", remarks:"", docstatus:0,
   currency:"INR", exchange_rate:1, gst_treatment:"",
   update_stock:1, set_warehouse:"",
 });
+const customerBillingAddrs  = ref([]);
+const customerShippingAddrs = ref([]);
+const sameAsBillingAddr     = ref(false);
 const lines   = ref([]);
 const warehouses = ref([]);
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name","parent_warehouse"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.parent_warehouse?`${x.parent_warehouse} / ${x.name}`:x.name,value:x.name}));}catch{warehouses.value=[];}}
@@ -1003,19 +1038,29 @@ async function fetchExchangeRate(currency) {
 
 // ── Customer change: auto-fill address, currency, GST treatment ───────
 async function onCustomerChange() {
-  form.billing_address="";
+  form.billing_address=""; form.shipping_address="";
+  form.selected_billing_addr_name=""; form.selected_shipping_addr_name="";
+  sameAsBillingAddr.value=false;
+  customerBillingAddrs.value=[]; customerShippingAddrs.value=[];
   if (!form.customer) return;
   addressLoading.value=true;
   try {
-    const [custDoc, addrs] = await Promise.all([
+    const [custDoc, billingAddrs, shippingAddrs] = await Promise.all([
       apiGet("Customer", form.customer),
       apiList("Address",{
-        fields:["address_line1","address_line2","city","state","pincode"],
-        filters:[["Dynamic Link","link_name","=",form.customer],["Dynamic Link","link_doctype","=","Customer"]],
-        order:"`tabAddress`.modified desc",
-        limit:1,
+        fields:["name","address_title","address_line1","address_line2","city","state","pincode"],
+        filters:[["Dynamic Link","link_name","=",form.customer],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Billing"]],
+        order:"`tabAddress`.modified desc", limit:20,
+      }),
+      apiList("Address",{
+        fields:["name","address_title","address_line1","address_line2","city","state","pincode"],
+        filters:[["Dynamic Link","link_name","=",form.customer],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Shipping"]],
+        order:"`tabAddress`.modified desc", limit:20,
       }),
     ]);
+
+    customerBillingAddrs.value  = billingAddrs  || [];
+    customerShippingAddrs.value = shippingAddrs || [];
 
     // Apply currency from customer, and fetch exchange rate if foreign
     if (custDoc?.default_currency) {
@@ -1046,16 +1091,37 @@ async function onCustomerChange() {
       taxRows.value = [];
     }
 
-    // Auto-fill billing address
-    // Prefer linked Address record; fall back to address fields on the Customer doc itself
-    const addrSrc = addrs?.[0] || null;
+    // Auto-fill billing address from first linked record, fallback to Customer fields
+    const addrSrc = billingAddrs?.[0] || null;
     const addrFields = addrSrc
       ? [addrSrc.address_line1, addrSrc.address_line2, addrSrc.city, addrSrc.state, addrSrc.pincode]
       : [custDoc?.address_line1, custDoc?.address_line2, custDoc?.city, custDoc?.state, custDoc?.pincode];
     const builtAddr = addrFields.filter(Boolean).join(", ");
-    if (builtAddr) form.billing_address = builtAddr;
+    if (builtAddr) {
+      form.billing_address = builtAddr;
+      if (addrSrc) form.selected_billing_addr_name = addrSrc.name;
+    }
+    // Auto-fill shipping from first shipping address if present
+    if (shippingAddrs?.[0]) {
+      const s = shippingAddrs[0];
+      form.shipping_address = [s.address_line1,s.address_line2,s.city,s.state,s.pincode].filter(Boolean).join(", ");
+      form.selected_shipping_addr_name = s.name;
+    }
   } catch {}
   addressLoading.value=false;
+}
+
+function applySelectedBillingAddr() {
+  const addr = customerBillingAddrs.value.find(a=>a.name===form.selected_billing_addr_name);
+  if (addr) form.billing_address=[addr.address_line1,addr.address_line2,addr.city,addr.state,addr.pincode].filter(Boolean).join(", ");
+}
+function applySelectedShippingAddr() {
+  const addr = customerShippingAddrs.value.find(a=>a.name===form.selected_shipping_addr_name);
+  if (addr) form.shipping_address=[addr.address_line1,addr.address_line2,addr.city,addr.state,addr.pincode].filter(Boolean).join(", ");
+}
+function onSameAsBillingChange() {
+  if (sameAsBillingAddr.value) form.shipping_address = form.billing_address;
+  else form.shipping_address = "";
 }
 
 // ── Copy last items ────────────────────────────────────────────────────
@@ -1075,30 +1141,42 @@ function openAdd() {
   editingName.value=null;
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
   taxRows.value=[];
-  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:""});
+  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:""});
+  customerBillingAddrs.value=[]; customerShippingAddrs.value=[]; sameAsBillingAddr.value=false;
   fetchWarehouses("");
   drawerOpen.value=true;
 }
 async function openEdit(inv) {
   editingName.value=inv.name;
-  Object.assign(form,{customer:inv.customer||"",currency:inv.currency||"INR",exchange_rate:inv.exchange_rate||1,posting_date:inv.posting_date||todayStr(),due_date:inv.due_date||dueDateDefault(),po_no:"",payment_terms:"",place_of_supply:"",billing_address:"",terms:"",remarks:"",docstatus:inv.docstatus||0,update_stock:0,set_warehouse:""});
+  Object.assign(form,{customer:inv.customer||"",currency:inv.currency||"INR",exchange_rate:inv.exchange_rate||1,posting_date:inv.posting_date||todayStr(),due_date:inv.due_date||dueDateDefault(),po_no:"",payment_terms:"",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:inv.docstatus||0,update_stock:0,set_warehouse:""});
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
   taxRows.value=[];
+  customerBillingAddrs.value=[]; customerShippingAddrs.value=[]; sameAsBillingAddr.value=false;
   fetchWarehouses("");
   drawerOpen.value=true;
-  try {
-    const doc=await apiGet("Sales Invoice",inv.name);
+  // Load addresses in parallel with doc fetch
+  const [doc, billingAddrs, shippingAddrs] = await Promise.all([
+    apiGet("Sales Invoice",inv.name).catch(()=>({})),
+    apiList("Address",{fields:["name","address_title","address_line1","address_line2","city","state","pincode"],filters:[["Dynamic Link","link_name","=",inv.customer||""],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Billing"]],order:"`tabAddress`.modified desc",limit:20}).catch(()=>[]),
+    apiList("Address",{fields:["name","address_title","address_line1","address_line2","city","state","pincode"],filters:[["Dynamic Link","link_name","=",inv.customer||""],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Shipping"]],order:"`tabAddress`.modified desc",limit:20}).catch(()=>[]),
+  ]);
+  customerBillingAddrs.value  = billingAddrs  || [];
+  customerShippingAddrs.value = shippingAddrs || [];
+  if (doc && doc.name) {
     Object.assign(form,{
       customer:doc.customer||"",posting_date:doc.posting_date||todayStr(),due_date:doc.due_date||dueDateDefault(),
       po_no:doc.po_no||"",payment_terms:doc.payment_terms||"",place_of_supply:doc.place_of_supply||"",
-      billing_address:doc.billing_address||"",terms:doc.terms||"",remarks:doc.remarks||"",docstatus:doc.docstatus||0,
+      billing_address:doc.billing_address||"",shipping_address:doc.shipping_address||"",
+      terms:doc.terms||"",remarks:doc.remarks||"",docstatus:doc.docstatus||0,
       currency:doc.currency||"INR",exchange_rate:doc.exchange_rate||1,gst_treatment:doc.gst_category||"",
       update_stock:doc.update_stock||0,set_warehouse:doc.set_warehouse||"",
     });
     lines.value=(doc.items||[]).map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:it.hsn_code||"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:it.uom||"Nos",discount_percentage:flt(it.discount_percentage)||0,discount_amount:flt(it.discount_amount)||0,amount:flt(it.amount)||0}));
     taxRows.value=(doc.taxes||[]).map((tx,i)=>({id:Date.now()+100+i,description:tx.description||"",rate:flt(tx.rate)||0,account_head:tx.account_head||taxAccountHead.value,amount:flt(tx.tax_amount)||0}));
     if (!lines.value.length) addLine();
-  } catch {}
+    // Auto-detect "same as billing"
+    if (doc.shipping_address && doc.shipping_address===doc.billing_address) sameAsBillingAddr.value=true;
+  }
 }
 async function openView(inv) {
   viewInv.value=inv; viewOpen.value=true; viewTab.value="details"; viewPayments.value=[]; viewLoading.value=true;
@@ -1117,7 +1195,8 @@ async function saveInvoice(docstatus) {
     const company=await resolveCompany();
     const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0}));
     const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>({doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate}));
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:form.update_stock?1:0,set_warehouse:form.set_warehouse||""};
+    const shipAddr=sameAsBillingAddr.value?form.billing_address:form.shipping_address||"";
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",shipping_address:shipAddr,place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:form.update_stock?1:0,set_warehouse:form.set_warehouse||""};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
     if (docstatus===1) await apiSubmit("Sales Invoice",saved.name);

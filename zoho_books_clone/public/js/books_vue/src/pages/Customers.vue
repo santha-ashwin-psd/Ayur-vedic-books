@@ -732,6 +732,17 @@
 
           <!-- Address Tab -->
           <template v-else-if="drawerTab==='address'">
+            <!-- Edit mode: use AddressManager for full multi-address management -->
+            <template v-if="drawerMode==='edit' && form.name">
+              <AddressManager
+                :partyDoctype="'Customer'"
+                :partyName="form.name"
+                @addressSaved="load"
+                @addressDeleted="load"
+              />
+            </template>
+            <!-- Add mode: use inline fields (AddressManager needs a saved partyName) -->
+            <template v-else>
             <div class="cust-sec-label" style="margin-top:0">Billing Address</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
               <div style="grid-column:span 2">
@@ -775,7 +786,13 @@
             </div>
 
             <div class="cust-sec-label">Shipping Address <span style="font-size:11px;font-weight:400;color:#9ca3af;margin-left:6px">— leave blank to use billing address</span></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div style="margin-bottom:10px">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+                <input type="checkbox" v-model="shipSameAsBilling" @change="onShipSameChange" style="accent-color:#3B5BDB"/>
+                Use same address as billing
+              </label>
+            </div>
+            <div v-if="!shipSameAsBilling" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
               <div style="grid-column:span 2">
                 <label class="nim-label">Address Line 1</label>
                 <input v-model="form.ship_address_line1" class="nim-input" placeholder="Street, building no., floor"/>
@@ -815,6 +832,7 @@
                 <div v-else-if="form.ship_pincode&&!formErrors.ship_pincode" style="margin-top:4px;font-size:11px;color:#9ca3af">{{pincodeHint(form.ship_country)}}</div>
               </div>
             </div>
+            </template><!-- end add-mode address fields -->
           </template>
 
           <!-- Other Details Tab -->
@@ -966,6 +984,7 @@
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiGET, apiSave, apiDelete, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import AddressManager from "../components/AddressManager.vue";
 import { fmt, fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
@@ -1011,6 +1030,7 @@ const deleteTarget = ref(null);
 const deleting = ref(false);
 const drawerTab = ref("overview");
 const formErrors = reactive({});
+const shipSameAsBilling = ref(false);
 
 // ── GST Treatment rules ──
 const GST_RULES = {
@@ -1284,6 +1304,7 @@ async function load() {
 
 function resetForm() {
   drawerTab.value = "overview";
+  shipSameAsBilling.value = false;
   Object.keys(formErrors).forEach((k) => delete formErrors[k]);
   Object.assign(form, {
     name: "", customer_name: "", customer_type: "Company", salutation: "",
@@ -1358,6 +1379,24 @@ async function openEdit(name) {
   } finally { drawerLoading.value = false; }
 }
 
+function onShipSameChange() {
+  if (shipSameAsBilling.value) {
+    form.ship_address_line1 = form.address_line1;
+    form.ship_address_line2 = form.address_line2;
+    form.ship_city          = form.city;
+    form.ship_state         = form.state;
+    form.ship_pincode       = form.pincode;
+    form.ship_country       = form.country;
+  } else {
+    form.ship_address_line1 = "";
+    form.ship_address_line2 = "";
+    form.ship_city          = "";
+    form.ship_state         = "";
+    form.ship_pincode       = "";
+    form.ship_country       = "India";
+  }
+}
+
 async function saveCustomer() {
   if (!validateCustomerForm()) {
     const firstErrField = Object.keys(formErrors)[0];
@@ -1412,7 +1451,48 @@ async function saveCustomer() {
       const fresh = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Customer", name: form.name });
       doc_to_save = { ...fresh, ...doc };
     }
-    await apiSave(doc_to_save);
+    const savedDoc = await apiSave(doc_to_save);
+    const savedName = savedDoc?.name || form.name || doc.naming_series;
+    // Sync billing address to Address doctype (enables multi-address later)
+    if (savedName && form.address_line1.trim()) {
+      try {
+        const existing = await apiList("Address", {
+          filters: [["Dynamic Link","link_name","=",savedName],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Billing"]],
+          fields: ["name"], limit: 1, order: "modified desc",
+        });
+        await apiSave({
+          doctype: "Address",
+          ...(existing[0] ? { name: existing[0].name } : {}),
+          address_title: `${savedName} - Billing`,
+          address_type: "Billing",
+          address_line1: form.address_line1.trim(),
+          address_line2: form.address_line2.trim(),
+          city: form.city.trim(), state: form.state.trim(),
+          pincode: form.pincode.trim(), country: form.country.trim() || "India",
+          links: [{ link_doctype: "Customer", link_name: savedName }],
+        });
+      } catch {}
+    }
+    // Sync shipping address (skip if same-as-billing or blank)
+    if (savedName && !shipSameAsBilling.value && form.ship_address_line1.trim()) {
+      try {
+        const existing = await apiList("Address", {
+          filters: [["Dynamic Link","link_name","=",savedName],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Shipping"]],
+          fields: ["name"], limit: 1, order: "modified desc",
+        });
+        await apiSave({
+          doctype: "Address",
+          ...(existing[0] ? { name: existing[0].name } : {}),
+          address_title: `${savedName} - Shipping`,
+          address_type: "Shipping",
+          address_line1: form.ship_address_line1.trim(),
+          address_line2: form.ship_address_line2.trim(),
+          city: form.ship_city.trim(), state: form.ship_state.trim(),
+          pincode: form.ship_pincode.trim(), country: form.ship_country.trim() || "India",
+          links: [{ link_doctype: "Customer", link_name: savedName }],
+        });
+      } catch {}
+    }
     toast(drawerMode.value === "edit" ? "Customer updated!" : "Customer created!");
     showDrawer.value = false;
     await load();

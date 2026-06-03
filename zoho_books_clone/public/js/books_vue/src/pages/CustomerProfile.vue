@@ -82,13 +82,14 @@
         </div>
       </div>
       <div class="cp-contact-section">
-        <div class="cp-section-title">Billing Address</div>
-        <div class="cp-address" v-if="customer.address_line1 || customer.city">
-          <div v-if="customer.address_line1">{{ customer.address_line1 }}</div>
-          <div v-if="customer.address_line2">{{ customer.address_line2 }}</div>
-          <div>{{ [customer.city, customer.state, customer.pincode].filter(Boolean).join(', ') }}</div>
-          <div v-if="customer.country">{{ customer.country }}</div>
-        </div>
+        <div class="cp-section-title">Addresses</div>
+        <AddressManager
+          v-if="customer.name"
+          :partyDoctype="'Customer'"
+          :partyName="customer.name"
+          @addressSaved="onAddressChange"
+          @addressDeleted="onAddressChange"
+        />
         <div v-else style="color:#9ca3af;font-style:italic;font-size:12.5px">No address on file</div>
       </div>
       <div class="cp-contact-section">
@@ -158,11 +159,12 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { apiGet, apiGET } from "../api/client.js";
+import { apiGet, apiGET, apiList } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
 import DocLink from "../components/DocLink.vue";
+import AddressManager from "../components/AddressManager.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -243,6 +245,10 @@ async function load() {
   } finally {
     tabLoading.value = false;
   }
+}
+
+function onAddressChange() {
+  // Re-fetch customer to get latest; addresses managed by AddressManager itself
 }
 
 onMounted(load);

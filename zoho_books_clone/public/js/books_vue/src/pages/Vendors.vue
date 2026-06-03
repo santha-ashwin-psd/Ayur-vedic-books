@@ -22,21 +22,18 @@
       </div>
     </div>
 
-    <!-- ── Summary Cards ── -->
-    <div class="kpi-grid" style="margin-bottom:18px">
-      <div v-for="kpi in vendorKpiCards" :key="kpi.key" class="books-card kpi-card">
-        <div class="kpi-icon" :style="{ background: kpi.iconBg }">
-          <span v-html="kpi.icon"></span>
-        </div>
-        <div class="kpi-body">
-          <div class="kpi-label">{{ kpi.label }}</div>
-          <div class="kpi-value" :class="kpi.valueClass">
-            <template v-if="loading">
-              <div class="b-shimmer" style="width:64px;height:20px;margin-top:4px;border-radius:4px"></div>
-            </template>
-            <template v-else>
-              {{ kpi.format === 'currency' ? fmtCur(kpi.value) : kpi.value }}
-            </template>
+    <!-- ── KPI Cards ── -->
+    <div class="bk-kpi-grid bk-kpi-grid-4" style="margin-bottom:18px">
+      <div v-for="kpi in vendorKpiCards" :key="kpi.key" class="bk-kpi-card">
+        <div class="bk-kpi-inner">
+          <div class="bk-kpi-icon" :style="{ background: kpi.iconBg }"><span v-html="kpi.icon"></span></div>
+          <div class="bk-kpi-body">
+            <div class="bk-kpi-label">{{ kpi.label }}</div>
+            <div class="bk-kpi-value" :class="kpi.valueClass">
+              <template v-if="loading"><div class="b-shimmer" style="width:64px;height:22px;margin-top:2px;border-radius:4px"></div></template>
+              <template v-else>{{ kpi.format === 'currency' ? fmtCur(kpi.value) : kpi.value }}</template>
+            </div>
+            <div class="bk-kpi-trend bk-trend-neutral">{{ kpi.sub || '—' }}</div>
           </div>
         </div>
       </div>
@@ -1223,27 +1220,27 @@ const vendorsWithBalance = computed(() =>
 const vendorKpiCards = computed(() => [
   {
     key: "total", label: "Total Vendors", format: "number",
-    value: list.value.length,
+    value: list.value.length, sub: "all vendors",
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-    iconBg: "rgba(37,99,235,.1)", valueClass: "kv-blue",
+    iconBg: "#eff6ff", valueClass: "bk-kpi-blue",
   },
   {
     key: "active", label: "Active", format: "number",
-    value: list.value.filter(v => !v.disabled).length,
+    value: list.value.filter(v => !v.disabled).length, sub: "enabled",
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>`,
-    iconBg: "rgba(22,163,74,.1)", valueClass: "kv-green",
+    iconBg: "#f0fdf4", valueClass: "bk-kpi-green",
   },
   {
     key: "with_balance", label: "With Open Balance", format: "number",
-    value: vendorsWithBalance.value,
+    value: vendorsWithBalance.value, sub: "outstanding payables",
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-    iconBg: "rgba(217,119,6,.1)", valueClass: "kv-amber",
+    iconBg: "#fff7ed", valueClass: "bk-kpi-amber",
   },
   {
     key: "total_payable", label: "Total Payable", format: "currency",
-    value: totalPayable.value,
+    value: totalPayable.value, sub: "accounts payable",
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
-    iconBg: "rgba(220,38,38,.1)", valueClass: "kv-red",
+    iconBg: "#fef2f2", valueClass: "bk-kpi-red",
   },
 ]);
 

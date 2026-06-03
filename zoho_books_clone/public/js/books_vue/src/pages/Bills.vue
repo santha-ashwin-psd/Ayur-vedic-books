@@ -9,7 +9,7 @@
       </div>
       <div class="bill-pills">
         <button v-for="t in tabs" :key="t.key"
-          class="bill-pill" :class="{active:activeTab===t.key}"
+          class="bill-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}"
           @click="activeTab=t.key">
           {{ t.label }}
           <span v-if="t.key!=='all'" class="bill-pill-count">{{ counts[t.key] }}</span>
@@ -24,14 +24,20 @@
       </div>
     </div>
 
-    <!-- ── Summary strip ── -->
-    <SummaryStrip v-if="!loading" :cards="[
-      { label: 'Total Bills',   tone: 'accent',                                          value: list.length },
-      { label: 'Draft',         tone: counts.draft>0 ? 'warn' : 'default',               value: counts.draft,              valueClass: counts.draft>0 ? 'orange' : '' },
-      { label: 'Unpaid',        tone: summary.totalUnpaid>0 ? 'warn' : 'default',        value: fmtCur(summary.totalUnpaid), valueClass: summary.totalUnpaid>0 ? 'orange' : '' },
-      { label: 'Overdue',       tone: summary.overdueCount>0 ? 'danger' : 'default',     value: summary.overdueCount,      valueClass: summary.overdueCount>0 ? 'red' : '' },
-      { label: 'Total Payable', tone: 'success',                                         value: fmtCur(summary.totalDue),  valueClass: 'green' },
-    ]" />
+    <!-- ── KPI Cards ── -->
+    <div class="bk-kpi-grid">
+      <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Bills</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="billTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ billTrends.total.up?'↑':'↓' }} {{ billTrends.total.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card clickable" @click="activeTab='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#f1f5f9"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.draft }}</div><div class="bk-kpi-trend bk-trend-neutral">— drafts</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='unpaid'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Unpaid</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.unpaid }}</div><div class="bk-kpi-trend" :class="billTrends.unpaid.up?'bk-trend-up':'bk-trend-down'">{{ billTrends.unpaid.up?'↑':'↓' }} {{ billTrends.unpaid.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-danger clickable" @click="activeTab='overdue'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fee2e2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Overdue</div><div class="bk-kpi-value bk-kpi-red">{{ counts.overdue }}</div><div class="bk-kpi-trend" :class="billTrends.overdue.up?'bk-trend-down':'bk-trend-up'">{{ billTrends.overdue.up?'↑':'↓' }} {{ billTrends.overdue.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='paid'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Paid</div><div class="bk-kpi-value bk-kpi-green">{{ counts.paid }}</div><div class="bk-kpi-trend" :class="billTrends.paid.up?'bk-trend-up':'bk-trend-down'">{{ billTrends.paid.up?'↑':'↓' }} {{ billTrends.paid.pct }}% vs last month</div></div></div></div>
+    </div>
+    <div class="bk-stat-grid">
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Bills</div><div class="bk-stat-value">{{ billThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Spend</div><div class="bk-stat-value" style="font-size:16px">{{ fmtCur(billThisMonth.spend) }}</div></div><div class="bk-stat-icon" style="background:#fee2e2;color:#dc2626"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Total Payable</div><div class="bk-stat-value bk-kpi-amber" style="font-size:16px">{{ fmtCur(summary.totalDue) }}</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg Bill Value</div><div class="bk-stat-value" style="font-size:16px">{{ fmtCur(billAvg) }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
+    </div>
 
     <!-- ── Bulk action bar ── -->
     <BulkActionBar :count="selected.size" @clear="selected=new Set()">
@@ -80,7 +86,7 @@
                 <button v-if="b.docstatus===0 || b.docstatus===2" class="bill-act-btn bill-act-del" @click="deleteBill(b)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="10" class="bill-empty">No bills match</td></tr>
+            <tr v-if="!sorted.length"><td colspan="10" class="bk-empty-state"><div class="bk-empty-inner"><template v-if="search||filterVendor"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No bills match your filters</p></template><template v-else><div class="bk-empty-illus"><svg width="80" height="96" viewBox="0 0 80 96" fill="none"><rect x="10" y="8" width="60" height="80" rx="6" fill="#e2e8f0"/><rect x="14" y="12" width="52" height="72" rx="4" fill="#fff"/><rect x="22" y="26" width="36" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="34" width="28" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="42" width="32" height="3" rx="2" fill="#e2e8f0"/><rect x="50" y="64" width="18" height="20" rx="3" fill="#f59e0b" opacity=".7"/><rect x="36" y="70" width="12" height="14" rx="3" fill="#2563eb" opacity=".6"/></svg></div><p class="bk-empty-title">No bills created yet</p><p class="bk-empty-sub">Add your first vendor bill to start tracking payables.</p><button class="bk-empty-btn" @click="openNew"><span v-html="icon('plus',13)"></span> New Bill</button></template></div></td></tr>
           </template>
         </tbody>
       </table>
@@ -423,6 +429,17 @@ const summary = computed(() => ({
   totalUnpaid:   list.value.filter(b => b.docstatus === 1 && flt(b.outstanding_amount) > 0 && !isOverdue(b)).reduce((s, b) => s + flt(b.outstanding_amount), 0),
   overdueCount:  counts.value.overdue,
   totalDue:      list.value.filter(b => b.docstatus === 1).reduce((s, b) => s + flt(b.outstanding_amount), 0),
+}));
+const _bYM  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _bLYM = () => { const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _bTrend = (a,b) => { if(!b&&!a) return {pct:0,up:true}; if(!b) return {pct:100,up:true}; const p=Math.round((a-b)/b*100); return {pct:Math.abs(p),up:p>=0}; };
+const billThisMonth = computed(()=>{ const ym=_bYM(); const r=list.value.filter(b=>(b.posting_date||'').startsWith(ym)); return {count:r.length,spend:r.reduce((s,b)=>s+flt(b.grand_total),0)}; });
+const billAvg = computed(()=>{ const p=list.value.filter(b=>b.grand_total>0); return p.length?p.reduce((s,b)=>s+flt(b.grand_total),0)/p.length:0; });
+const billTrends = computed(()=>({
+  total:  _bTrend(billThisMonth.value.count, list.value.filter(b=>(b.posting_date||'').startsWith(_bLYM())).length),
+  unpaid: _bTrend(counts.value.unpaid, list.value.filter(b=>(b.posting_date||'').startsWith(_bLYM())&&b.docstatus===1&&flt(b.outstanding_amount)>0&&!isOverdue(b)).length),
+  overdue:_bTrend(counts.value.overdue, list.value.filter(b=>(b.posting_date||'').startsWith(_bLYM())&&isOverdue(b)).length),
+  paid:   _bTrend(counts.value.paid, list.value.filter(b=>(b.posting_date||'').startsWith(_bLYM())&&b.docstatus===1&&flt(b.outstanding_amount)<=0).length),
 }));
 
 const filtered = computed(() => {

@@ -1,85 +1,105 @@
 <template>
-  <div class="dashboard">
+  <div class="db-wrap">
 
-    <!-- KPI row -->
+    <!-- ── KPI Row ──────────────────────────────────────────────────── -->
     <div class="kpi-grid">
-      <div v-for="kpi in kpiCards" :key="kpi.key" class="books-card kpi-card" :class="{ 'kpi-card--link': kpi.route }" @click="kpi.route && navTo(kpi.route)">
-        <div class="kpi-icon" :style="{ background: kpi.iconBg }">
-          <span v-html="kpi.icon"></span>
-        </div>
-        <div class="kpi-body">
-          <div class="kpi-label">{{ kpi.label }}</div>
-          <div class="kpi-value" :class="kpi.valueClass">
-            <template v-if="kpiLoading">
-              <div class="loading-shimmer" style="width:80px;height:22px;margin-top:4px"></div>
-            </template>
-            <template v-else>
-              {{ kpi.format === "currency" ? fmt(kpis?.[kpi.key]) : (kpis?.[kpi.key] ?? "—") }}
-            </template>
+      <div
+        v-for="kpi in kpiCards" :key="kpi.key"
+        class="kpi-card"
+        :class="{ 'kpi-card--link': kpi.route }"
+        @click="kpi.route && navTo(kpi.route)"
+      >
+        <div class="kpi-top">
+          <div class="kpi-icon" :style="{ background: kpi.iconBg, color: kpi.iconColor }">
+            <span v-html="kpi.icon"></span>
           </div>
+          <span class="kpi-label">{{ kpi.label }}</span>
+        </div>
+        <div class="kpi-value" :class="kpi.valueClass">
+          <template v-if="kpiLoading">
+            <div class="shimmer" style="width:72px;height:26px;border-radius:5px"></div>
+          </template>
+          <template v-else>
+            {{ kpi.format === "currency" ? fmt(kpis?.[kpi.key]) : (kpis?.[kpi.key] ?? "0") }}
+          </template>
+        </div>
+        <!-- sparkline -->
+        <svg class="kpi-spark" viewBox="0 0 80 28" preserveAspectRatio="none">
+          <polyline :points="kpi.spark" fill="none" :stroke="kpi.sparkColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="kpi-trend" :class="kpi.trendClass">
+          <span v-html="kpi.trendIcon"></span> 0% vs last month
         </div>
       </div>
     </div>
 
-    <!-- Middle row -->
+    <!-- ── Quick Actions ────────────────────────────────────────────── -->
+    <div class="qa-card">
+      <span class="qa-title">Quick Actions</span>
+      <div class="qa-actions">
+        <button class="qa-btn" @click="navTo('/invoices')">
+          <span v-html="iconQaInvoice"></span> New Invoice
+        </button>
+        <button class="qa-btn" @click="navTo('/payments')">
+          <span v-html="iconQaPayment"></span> Record Payment
+        </button>
+        <button class="qa-btn" @click="navTo('/customers')">
+          <span v-html="iconQaCustomer"></span> Add Customer
+        </button>
+        <button class="qa-btn" @click="navTo('/quotes')">
+          <span v-html="iconQaQuote"></span> Create Quote
+        </button>
+        <button class="qa-btn qa-btn-more">
+          <span v-html="iconQaMore"></span> More Actions
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Middle Row ────────────────────────────────────────────────── -->
     <div class="mid-grid">
-      <!-- Revenue trend chart -->
-      <div class="books-card chart-card">
-        <div class="card-header">
-          <span class="books-card-title">Revenue Trend</span>
-          <span class="badge badge-blue">Last 6 months</span>
-          <button class="books-btn books-btn-ghost" style="font-size:11px;padding:4px 10px;margin-left:auto" @click="navTo('/reports')">Full Report</button>
+
+      <!-- Revenue Trend -->
+      <div class="db-card chart-card">
+        <div class="db-card-header">
+          <span class="db-card-title">Revenue Trend</span>
+          <div class="db-header-right">
+            <span class="db-badge db-badge-ghost">
+              <span v-html="iconCal"></span> Last 6 months
+              <span class="badge-caret">▾</span>
+            </span>
+            <button class="db-link-btn" @click="navTo('/reports')">Full Report</button>
+          </div>
         </div>
-        <div v-if="trendLoading" class="chart-placeholder">
-          <div class="loading-shimmer" style="height:180px;border-radius:8px"></div>
-        </div>
-        <div v-else-if="!points.length" class="chart-empty">
-          No revenue data yet
+        <div v-if="trendLoading" class="shimmer" style="height:200px;border-radius:8px"></div>
+        <div v-else-if="!points.length" class="chart-empty-state">
+          <div class="ces-icon">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.4"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="5 10 9 6 13 10 17 7"/></svg>
+          </div>
+          <div class="ces-title">No revenue data yet</div>
+          <div class="ces-sub">Create your first invoice to see your revenue trend here.</div>
+          <button class="ces-btn" @click="navTo('/invoices')">
+            <span v-html="iconPlus"></span> New Invoice
+          </button>
         </div>
         <div v-else class="chart-wrap">
           <svg class="revenue-svg" :viewBox="`0 0 ${svgW} ${svgH}`" preserveAspectRatio="none">
-            <!-- Grid lines + Y-axis labels (pinned to same y) -->
             <template v-for="(gl, i) in gridLines" :key="i">
               <line :x1="padL" :x2="svgW - padR" :y1="gl.y" :y2="gl.y"
-                stroke="#e5e7eb" stroke-width="1" stroke-dasharray="4 3"
-              />
-              <text :x="padL - 6" :y="gl.y + 4"
-                text-anchor="end" class="chart-label"
-              >{{ gl.label }}</text>
+                stroke="#f1f5f9" stroke-width="1"/>
+              <text :x="padL - 6" :y="gl.y + 4" text-anchor="end" class="chart-label">{{ gl.label }}</text>
             </template>
-            <!-- Area fill (2+ points) -->
-            <path v-if="areaPath" :d="areaPath" fill="url(#rev-grad)" opacity=".22" />
-            <!-- Line (2+ points) -->
-            <path v-if="linePath" :d="linePath"
-              fill="none" stroke="#2563eb" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round"
-            />
-            <!-- Single-point vertical guide -->
-            <line v-if="points.length === 1"
-              :x1="points[0].x" :x2="points[0].x"
-              :y1="svgH - padB" :y2="points[0].y + 6"
-              stroke="#2563eb" stroke-width="1.5" stroke-dasharray="4 3"
-            />
-            <!-- Dots -->
-            <circle v-for="(pt, i) in points" :key="i"
-              :cx="pt.x" :cy="pt.y" r="5"
-              fill="#2563eb" stroke="#ffffff" stroke-width="2.5"
-            >
+            <path v-if="areaPath" :d="areaPath" fill="url(#rev-grad)" opacity=".18"/>
+            <path v-if="linePath" :d="linePath" fill="none" stroke="#2563eb" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
+            <circle v-for="(pt, i) in points" :key="i" :cx="pt.x" :cy="pt.y" r="4.5"
+              fill="#2563eb" stroke="#fff" stroke-width="2.5">
               <title>{{ pt.label }}: {{ fmt(pt.revenue) }}</title>
             </circle>
-            <!-- Value label above single dot -->
-            <text v-if="points.length === 1"
-              :x="points[0].x" :y="points[0].y - 10"
-              text-anchor="middle" class="chart-val-label"
-            >{{ fmtShort(points[0].revenue) }}</text>
-            <!-- X-axis month labels -->
-            <text v-for="(pt, i) in points" :key="'l'+i"
-              :x="pt.x" :y="svgH - 4"
-              text-anchor="middle" class="chart-label"
-            >{{ pt.label }}</text>
+            <text v-for="(pt, i) in points" :key="'l'+i" :x="pt.x" :y="svgH - 4"
+              text-anchor="middle" class="chart-label">{{ pt.label }}</text>
             <defs>
               <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stop-color="#2563eb" stop-opacity=".8"/>
+                <stop offset="0%"   stop-color="#2563eb" stop-opacity=".7"/>
                 <stop offset="100%" stop-color="#2563eb" stop-opacity="0"/>
               </linearGradient>
             </defs>
@@ -87,155 +107,185 @@
         </div>
       </div>
 
-      <!-- AR / AP Aging side by side -->
+      <!-- AR + AP Aging -->
       <div class="aging-pair">
-        <div class="books-card aging-card">
-          <div class="card-header">
-            <span class="books-card-title">AR Aging</span>
-            <span class="badge badge-blue">Receivables</span>
+
+        <!-- AR Aging -->
+        <div class="db-card aging-card">
+          <div class="db-card-header">
+            <span class="db-card-title">AR Aging</span>
+            <span class="db-badge db-badge-blue">Receivables</span>
           </div>
-          <div v-if="agingLoading" class="aging-bars">
+          <div v-if="agingLoading" class="aging-rows">
             <div v-for="n in 5" :key="n" class="aging-row">
-              <div class="loading-shimmer" style="height:12px;width:60px"></div>
-              <div class="loading-shimmer" style="height:12px;width:100px"></div>
+              <div class="shimmer" style="height:11px;width:56px;border-radius:4px"></div>
+              <div class="shimmer" style="height:6px;flex:1;border-radius:20px"></div>
+              <div class="shimmer" style="height:11px;width:40px;border-radius:4px"></div>
             </div>
           </div>
-          <div v-else class="aging-bars">
+          <div v-else class="aging-rows">
             <div v-for="bucket in agingRows(aging)" :key="bucket.key" class="aging-row">
               <span class="aging-label">{{ bucket.label }}</span>
               <div class="aging-bar-wrap">
                 <div class="aging-bar" :style="{ width: bucket.pct + '%', background: bucket.color }"></div>
               </div>
-              <span class="aging-amount" :style="{ color: bucket.color }">{{ fmt(aging?.[bucket.key]) }}</span>
+              <span class="aging-amt" :style="{ color: bucket.color }">{{ fmt(aging?.[bucket.key]) }}</span>
+            </div>
+            <div class="aging-total-row">
+              <span class="aging-total-label">Total</span>
+              <div class="aging-total-spacer"></div>
+              <span class="aging-total-amt">{{ fmt(agingTotal(aging)) }}</span>
             </div>
           </div>
         </div>
-        <div class="books-card aging-card">
-          <div class="card-header">
-            <span class="books-card-title">AP Aging</span>
-            <span class="badge badge-amber">Payables</span>
+
+        <!-- AP Aging -->
+        <div class="db-card aging-card">
+          <div class="db-card-header">
+            <span class="db-card-title">AP Aging</span>
+            <span class="db-badge db-badge-amber">Payables</span>
           </div>
-          <div v-if="apAgingLoading" class="aging-bars">
+          <div v-if="apAgingLoading" class="aging-rows">
             <div v-for="n in 5" :key="n" class="aging-row">
-              <div class="loading-shimmer" style="height:12px;width:60px"></div>
-              <div class="loading-shimmer" style="height:12px;width:100px"></div>
+              <div class="shimmer" style="height:11px;width:56px;border-radius:4px"></div>
+              <div class="shimmer" style="height:6px;flex:1;border-radius:20px"></div>
+              <div class="shimmer" style="height:11px;width:40px;border-radius:4px"></div>
             </div>
           </div>
-          <div v-else class="aging-bars">
+          <div v-else class="aging-rows">
             <div v-for="bucket in agingRows(apAging)" :key="bucket.key" class="aging-row">
               <span class="aging-label">{{ bucket.label }}</span>
               <div class="aging-bar-wrap">
                 <div class="aging-bar" :style="{ width: bucket.pct + '%', background: bucket.color }"></div>
               </div>
-              <span class="aging-amount" :style="{ color: bucket.color }">{{ fmt(apAging?.[bucket.key]) }}</span>
+              <span class="aging-amt" :style="{ color: bucket.color }">{{ fmt(apAging?.[bucket.key]) }}</span>
+            </div>
+            <div class="aging-total-row">
+              <span class="aging-total-label">Total</span>
+              <div class="aging-total-spacer"></div>
+              <span class="aging-total-amt">{{ fmt(agingTotal(apAging)) }}</span>
             </div>
           </div>
         </div>
+
       </div>
     </div>
 
-    <!-- Bottom row -->
+    <!-- ── Bottom Row ────────────────────────────────────────────────── -->
     <div class="bot-grid">
-      <!-- Top customers -->
-      <div class="books-card">
-        <div class="card-header">
-          <span class="books-card-title">Top Customers</span>
-          <button class="books-btn books-btn-ghost" style="font-size:11px;padding:4px 10px" @click="navTo('/invoices')">View all</button>
+
+      <!-- Top Customers -->
+      <div class="db-card">
+        <div class="db-card-header">
+          <span class="db-card-title">Top Customers</span>
+          <button class="db-link-btn" @click="navTo('/customers')">View all</button>
         </div>
-        <table class="books-table" v-if="!dashLoading">
-          <thead>
-            <tr>
+        <div v-if="dashLoading" class="shimmer" style="height:150px;border-radius:8px"></div>
+        <template v-else-if="dash?.top_customers?.length">
+          <table class="db-table">
+            <thead><tr>
               <th>Customer</th>
               <th class="ta-r">Invoices</th>
               <th class="ta-r">Revenue</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="c in (dash?.top_customers || [])" :key="c.customer">
-              <td>
-                <div class="cust-name">{{ c.customer_name || c.customer }}</div>
-                <div class="cust-sub">{{ c.customer }}</div>
-              </td>
-              <td class="ta-r mono">{{ c.invoice_count }}</td>
-              <td class="ta-r mono kv-green">{{ fmt(c.total_revenue) }}</td>
-            </tr>
-            <tr v-if="!dash?.top_customers?.length">
-              <td colspan="3" style="text-align:center;color:#9ca3af;padding:24px">No data</td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-else class="loading-shimmer" style="height:140px;border-radius:8px"></div>
+            </tr></thead>
+            <tbody>
+              <tr v-for="c in dash.top_customers" :key="c.customer">
+                <td>
+                  <div class="tc-name">{{ c.customer_name || c.customer }}</div>
+                  <div class="tc-sub">{{ c.customer }}</div>
+                </td>
+                <td class="ta-r mono">{{ c.invoice_count }}</td>
+                <td class="ta-r mono tc-green">{{ fmt(c.total_revenue) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+        <div v-else class="bot-empty">
+          <div class="bot-empty-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.4"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="bot-empty-title">No customers found</div>
+          <div class="bot-empty-sub">Add customers to see your top customers here.</div>
+          <button class="ces-btn" @click="navTo('/customers')">
+            <span v-html="iconPlus"></span> Add Customer
+          </button>
+        </div>
       </div>
 
-      <!-- Overdue invoices -->
-      <div class="books-card">
-        <div class="card-header">
-          <span class="books-card-title">Overdue Invoices</span>
-          <span class="badge badge-red">{{ dash?.overdue_invoices?.length || 0 }} overdue</span>
+      <!-- Overdue Invoices -->
+      <div class="db-card">
+        <div class="db-card-header">
+          <span class="db-card-title">Overdue Invoices</span>
+          <div class="db-header-right">
+            <button class="db-link-btn" @click="navTo('/invoices')">View all</button>
+            <span class="db-badge" :class="dash?.overdue_invoices?.length ? 'db-badge-red' : 'db-badge-green'">
+              {{ dash?.overdue_invoices?.length || 0 }} overdue
+            </span>
+          </div>
         </div>
-        <table class="books-table" v-if="!dashLoading">
-          <thead>
-            <tr>
+        <div v-if="dashLoading" class="shimmer" style="height:150px;border-radius:8px"></div>
+        <template v-else-if="dash?.overdue_invoices?.length">
+          <table class="db-table">
+            <thead><tr>
               <th>Invoice</th>
               <th>Customer</th>
               <th class="ta-r">Due</th>
               <th class="ta-r">Outstanding</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="inv in (dash?.overdue_invoices?.slice(0,5) || [])" :key="inv.name">
-              <td><span class="link-accent">{{ inv.name }}</span></td>
-              <td class="text-muted">{{ inv.customer_name || inv.customer }}</td>
-              <td class="ta-r mono kv-red">{{ fmtDate(inv.due_date) }}</td>
-              <td class="ta-r mono kv-red">{{ fmt(inv.outstanding_amount) }}</td>
-            </tr>
-            <tr v-if="!dash?.overdue_invoices?.length">
-              <td colspan="4" style="text-align:center;color:#16a34a;padding:24px">✓ All caught up!</td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-else class="loading-shimmer" style="height:140px;border-radius:8px"></div>
+            </tr></thead>
+            <tbody>
+              <tr v-for="inv in dash.overdue_invoices.slice(0,5)" :key="inv.name">
+                <td><span class="db-link">{{ inv.name }}</span></td>
+                <td class="tc-sub">{{ inv.customer_name || inv.customer }}</td>
+                <td class="ta-r mono tc-red">{{ fmtDate(inv.due_date) }}</td>
+                <td class="ta-r mono tc-red">{{ fmt(inv.outstanding_amount) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+        <div v-else class="bot-empty">
+          <div class="ov-ok-icon">
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#dcfce7"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="ov-ok-title">All caught up!</div>
+          <div class="bot-empty-sub">No overdue invoices. Great job!</div>
+        </div>
       </div>
 
       <!-- Recent Activity -->
-      <div class="books-card" style="grid-column:1/-1">
-        <div class="card-header">
-          <span class="books-card-title">Recent Activity</span>
-          <span class="badge badge-blue">Last 10 transactions</span>
+      <div class="db-card" style="grid-column:1/-1">
+        <div class="db-card-header">
+          <span class="db-card-title">Recent Activity</span>
+          <span class="db-badge db-badge-ghost">Last 10 transactions</span>
         </div>
-        <div v-if="activityLoading" class="loading-shimmer" style="height:120px;border-radius:8px"></div>
-        <table v-else class="books-table">
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Reference</th>
-              <th>Party</th>
-              <th class="ta-r">Amount</th>
-              <th class="ta-r">Date</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in (activity || [])" :key="row.name">
-              <td>
-                <span class="activity-tag" :class="activityTagClass(row.doctype)">{{ activityTypeLabel(row.doctype) }}</span>
-              </td>
-              <td><span class="link-accent">{{ row.name }}</span></td>
-              <td class="text-muted" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.party || '—' }}</td>
-              <td class="ta-r mono">{{ fmt(row.amount) }}</td>
-              <td class="ta-r mono text-muted">{{ fmtDate(row.date) }}</td>
-              <td>
-                <span class="activity-status" :class="statusTagClass(row.status)">{{ row.status }}</span>
-              </td>
-            </tr>
-            <tr v-if="!activity?.length">
-              <td colspan="6" style="text-align:center;color:#9ca3af;padding:24px">No recent activity</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-if="activityLoading" class="shimmer" style="height:130px;border-radius:8px"></div>
+        <template v-else-if="activity?.length">
+          <table class="db-table">
+            <tbody>
+              <tr v-for="row in activity" :key="row.name">
+                <td style="width:38px;padding-right:0">
+                  <div class="act-dot" :class="actDotClass(row.doctype)"></div>
+                </td>
+                <td>
+                  <span class="act-desc">{{ activityDesc(row) }}</span>
+                </td>
+                <td><span class="db-link">{{ row.name }}</span></td>
+                <td class="tc-sub ta-r">{{ fmtDate(row.date) }}</td>
+                <td class="ta-r mono act-amt" :class="row.doctype === 'Payment Entry' ? 'tc-green' : ''">
+                  {{ fmt(row.amount) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="act-footer">
+            <button class="db-link-btn" @click="navTo('/reports')">View all activity →</button>
+          </div>
+        </template>
+        <div v-else class="bot-empty" style="padding:28px 0">
+          <div class="bot-empty-sub">No recent activity</div>
+        </div>
       </div>
-    </div>
 
+    </div>
   </div>
 </template>
 
@@ -273,179 +323,333 @@ const { data: activity, loading: activityLoading,  execute: loadActivity } = use
 
 onMounted(() => { loadDash(); loadKpis(); loadTrend(); loadAging(); loadApAging(); loadActivity(); });
 
-// ── Icons ──
-const iconRevenue  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
-const iconCollect  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
-const iconOutstand = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-const iconProfit   = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
-const iconAssets   = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>`;
-const iconAlert    = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+// ── Quick-action icons ──
+const iconQaInvoice  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+const iconQaPayment  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
+const iconQaCustomer = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+const iconQaQuote    = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+const iconQaMore     = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>`;
+const iconCal        = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const iconPlus       = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const iconUp         = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>`;
 
-// ── KPI cards config ──
+// ── KPI spark paths (static placeholder curves) ──
+const SPARKS = {
+  blue:  "4,22 16,16 28,18 42,10 56,14 68,8 80,6",
+  green: "4,20 16,14 28,16 42,8  56,12 68,6  80,4",
+  red:   "4,8  16,14 28,10 42,18 56,12 68,16 80,20",
+  amber: "4,18 16,12 28,15 42,9  56,13 68,10 80,8",
+};
+
+// ── KPI icons ──
+const iconRevenue  = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
+const iconCollect  = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+const iconOutstand = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+const iconProfit   = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
+const iconAssets   = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>`;
+const iconAlert    = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
 const kpiCards = [
-  { key: "month_revenue",     label: "Month Revenue",  format: "currency", icon: iconRevenue,  iconBg: "rgba(37,99,235,.1)",   valueClass: "kv-blue",  route: "/invoices" },
-  { key: "month_collected",   label: "Collected",      format: "currency", icon: iconCollect,  iconBg: "rgba(22,163,74,.1)",   valueClass: "kv-green", route: "/payments" },
-  { key: "month_outstanding", label: "Outstanding",    format: "currency", icon: iconOutstand, iconBg: "rgba(220,38,38,.1)",   valueClass: "kv-red",   route: "/invoices" },
-  { key: "net_profit_mtd",    label: "Net Profit MTD", format: "currency", icon: iconProfit,   iconBg: "rgba(245,158,11,.1)",  valueClass: "kv-amber", route: "/reports"  },
-  { key: "total_assets",      label: "Total Assets",   format: "currency", icon: iconAssets,   iconBg: "rgba(37,99,235,.1)",   valueClass: "",         route: null        },
-  { key: "overdue_count",     label: "Overdue",        format: "number",   icon: iconAlert,    iconBg: "rgba(220,38,38,.1)",   valueClass: "kv-red",   route: "/invoices" },
+  { key: "month_revenue",     label: "Month Revenue",  format: "currency", icon: iconRevenue,  iconBg: "#eff6ff", iconColor: "#2563eb", valueClass: "kv-blue",  route: "/invoices", spark: SPARKS.blue,  sparkColor: "#2563eb", trendClass: "trend-up",   trendIcon: iconUp },
+  { key: "month_collected",   label: "Collected",      format: "currency", icon: iconCollect,  iconBg: "#f0fdf4", iconColor: "#16a34a", valueClass: "kv-green", route: "/payments", spark: SPARKS.green, sparkColor: "#16a34a", trendClass: "trend-up",   trendIcon: iconUp },
+  { key: "month_outstanding", label: "Outstanding",    format: "currency", icon: iconOutstand, iconBg: "#fff7ed", iconColor: "#ea580c", valueClass: "kv-amber", route: "/invoices", spark: SPARKS.red,   sparkColor: "#ea580c", trendClass: "trend-down", trendIcon: iconUp },
+  { key: "net_profit_mtd",    label: "Net Profit MTD", format: "currency", icon: iconProfit,   iconBg: "#f0fdfa", iconColor: "#0d9488", valueClass: "kv-teal",  route: "/reports",  spark: SPARKS.green, sparkColor: "#0d9488", trendClass: "trend-up",   trendIcon: iconUp },
+  { key: "total_assets",      label: "Total Assets",   format: "currency", icon: iconAssets,   iconBg: "#eff6ff", iconColor: "#2563eb", valueClass: "",         route: null,        spark: SPARKS.blue,  sparkColor: "#2563eb", trendClass: "trend-up",   trendIcon: iconUp },
+  { key: "overdue_count",     label: "Overdue",        format: "number",   icon: iconAlert,    iconBg: "#fff1f2", iconColor: "#e11d48", valueClass: "kv-red",   route: "/invoices", spark: SPARKS.red,   sparkColor: "#e11d48", trendClass: "trend-down", trendIcon: iconUp },
 ];
 
 // ── Revenue chart ──
-const svgW = 580, svgH = 170, padL = 52, padR = 10, padT = 16, padB = 22;
-
-const maxRevenue = computed(() => {
-  const rows = trend.value || [];
-  return Math.max(...rows.map(r => r.revenue || 0), 1);
-});
-
+const svgW = 580, svgH = 200, padL = 52, padR = 10, padT = 16, padB = 24;
+const maxRevenue = computed(() => Math.max(...(trend.value || []).map(r => r.revenue || 0), 1));
 const gridLines = computed(() => {
-  const max = maxRevenue.value;
-  const chartH = svgH - padT - padB;
+  const max = maxRevenue.value, chartH = svgH - padT - padB;
   return [
     { y: padT,              label: fmtShort(max) },
     { y: padT + chartH / 2, label: fmtShort(max / 2) },
     { y: svgH - padB,       label: "0" },
   ];
 });
-
 const points = computed(() => {
   const rows = trend.value || [];
   if (!rows.length) return [];
-  const max  = maxRevenue.value;
-  const n    = rows.length;
+  const max = maxRevenue.value, n = rows.length;
   const step = n > 1 ? (svgW - padL - padR) / (n - 1) : 0;
   return rows.map((r, i) => ({
-    x:       n > 1 ? padL + i * step : svgW / 2,
-    y:       padT + (1 - (r.revenue || 0) / max) * (svgH - padT - padB),
-    label:   monthLabel(r.month),
-    revenue: r.revenue || 0,
+    x: n > 1 ? padL + i * step : svgW / 2,
+    y: padT + (1 - (r.revenue || 0) / max) * (svgH - padT - padB),
+    label: monthLabel(r.month), revenue: r.revenue || 0,
   }));
 });
-
 const linePath = computed(() => {
   const pts = points.value;
   if (pts.length < 2) return "";
   return pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
 });
-
 const areaPath = computed(() => {
   const pts = points.value;
   if (pts.length < 2) return "";
   const base = svgH - padB;
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-  return `${line} L${pts.at(-1).x.toFixed(1)},${base} L${pts[0].x.toFixed(1)},${base} Z`;
+  return pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
+    + ` L${pts.at(-1).x.toFixed(1)},${base} L${pts[0].x.toFixed(1)},${base} Z`;
 });
 
-// ── Aging config ──
+// ── Aging ──
 const AGING_BUCKETS = [
   { key: "current", label: "Current",    color: "#16a34a" },
-  { key: "1_30",    label: "1–30 days",  color: "#2563eb" },
-  { key: "31_60",   label: "31–60 days", color: "#f59e0b" },
-  { key: "61_90",   label: "61–90 days", color: "#fb923c" },
+  { key: "1_30",    label: "1-30 days",  color: "#2563eb" },
+  { key: "31_60",   label: "31-60 days", color: "#f59e0b" },
+  { key: "61_90",   label: "61-90 days", color: "#fb923c" },
   { key: "over_90", label: ">90 days",   color: "#dc2626" },
 ];
 function agingRows(data) {
-  const d     = data?.value || data || {};
+  const d = data?.value || data || {};
   const total = Object.values(d).reduce((a, v) => a + (v || 0), 0) || 1;
   return AGING_BUCKETS.map(b => ({ ...b, pct: Math.min(100, ((d[b.key] || 0) / total) * 100) }));
 }
+function agingTotal(data) {
+  const d = data?.value || data || {};
+  return Object.values(d).reduce((a, v) => a + (v || 0), 0);
+}
 
-// ── Recent activity helpers ──
-function activityTypeLabel(dt) {
-  if (dt === "Sales Invoice")    return "Invoice";
-  if (dt === "Purchase Invoice") return "Bill";
-  if (dt === "Payment Entry")    return "Payment";
-  return dt;
+// ── Activity helpers ──
+function activityDesc(row) {
+  if (row.doctype === "Payment Entry") return `Payment received from ${row.party || ""}`;
+  if (row.doctype === "Sales Invoice") return `Invoice created for ${row.party || ""}`;
+  if (row.doctype === "Purchase Invoice") return `Bill created from ${row.party || ""}`;
+  return row.party || row.name;
 }
-function activityTagClass(dt) {
-  if (dt === "Sales Invoice")    return "tag-invoice";
-  if (dt === "Purchase Invoice") return "tag-bill";
-  return "tag-payment";
-}
-function statusTagClass(status) {
-  const s = (status || "").toLowerCase();
-  if (s === "paid" || s === "receive") return "status-paid";
-  if (s === "unpaid" || s === "overdue") return "status-unpaid";
-  if (s === "draft") return "status-draft";
-  return "status-other";
+function actDotClass(dt) {
+  if (dt === "Sales Invoice") return "dot-invoice";
+  if (dt === "Purchase Invoice") return "dot-bill";
+  return "dot-payment";
 }
 </script>
 
 <style scoped>
-.dashboard { display: flex; flex-direction: column; gap: 20px; padding: 24px; }
+/* ── Base ──────────────────────────────────────────────────────────── */
+.db-wrap {
+  display: flex; flex-direction: column; gap: 18px;
+  padding: 24px 28px;
+  font-family: Plus Jakarta Sans, Lato, system-ui, sans-serif;
+  background: #f8fafc; min-height: 100%;
+}
 
-/* KPI grid */
-.kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+/* ── KPI grid ──────────────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+}
 @media (max-width: 1400px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 900px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 
-.kpi-card { display: flex; align-items: center; gap: 14px; padding: 16px 18px; cursor: default; }
-.kpi-card--link { cursor: pointer; transition: box-shadow .15s, transform .15s; }
-.kpi-card--link:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); transform: translateY(-1px); }
-.kpi-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #374151; }
-.kpi-label { font-size: 11px; color: #6b7280; letter-spacing: .06em; text-transform: uppercase; }
-.kpi-value { font-size: 19px; font-weight: 700; margin-top: 3px; letter-spacing: -.02em; color: #111827; }
+.kpi-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+  cursor: default;
+  transition: box-shadow .15s, transform .15s;
+}
+.kpi-card--link { cursor: pointer; }
+.kpi-card--link:hover { box-shadow: 0 4px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
+
+.kpi-top { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+.kpi-icon {
+  width: 36px; height: 36px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.kpi-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
+.kpi-value { font-size: 22px; font-weight: 700; color: #111827; letter-spacing: -.03em; line-height: 1.1; padding: 2px 0; }
+.kv-blue  { color: #1d4ed8; }
 .kv-green { color: #16a34a; }
 .kv-red   { color: #dc2626; }
-.kv-amber { color: #f59e0b; }
-.kv-blue  { color: #2563eb; }
+.kv-amber { color: #d97706; }
+.kv-teal  { color: #0d9488; }
 
-/* Mid grid */
-.mid-grid { display: grid; grid-template-columns: 1fr 620px; gap: 14px; }
-@media (max-width: 1300px) { .mid-grid { grid-template-columns: 1fr 480px; } }
+.kpi-spark { width: 100%; height: 28px; margin: 2px 0; }
+
+.kpi-trend {
+  font-size: 11px; font-weight: 500; color: #6b7280;
+  display: flex; align-items: center; gap: 3px;
+}
+.trend-up   { color: #16a34a; }
+.trend-down { color: #dc2626; }
+
+/* ── Quick Actions ─────────────────────────────────────────────────── */
+.qa-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+  padding: 14px 20px;
+  display: flex; align-items: center; gap: 20px;
+}
+.qa-title {
+  font-size: 13px; font-weight: 700; color: #374151;
+  white-space: nowrap; flex-shrink: 0;
+}
+.qa-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qa-btn {
+  display: flex; align-items: center; gap: 7px;
+  background: #fff; border: 1px solid #e5e7eb;
+  border-radius: 8px; padding: 8px 14px;
+  font-size: 12.5px; font-weight: 600; color: #374151;
+  cursor: pointer; font-family: inherit;
+  transition: all .12s;
+}
+.qa-btn:hover { background: #f9fafb; border-color: #d1d5db; color: #111827; }
+.qa-btn-more { color: #6b7280; }
+
+/* ── Cards ─────────────────────────────────────────────────────────── */
+.db-card {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+  padding: 20px 22px;
+}
+.db-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+.db-card-title {
+  font-size: 14px; font-weight: 700; color: #111827;
+}
+.db-header-right { display: flex; align-items: center; gap: 10px; }
+
+.db-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: 11.5px; font-weight: 600;
+}
+.db-badge-ghost  { background: #f1f5f9; color: #475569; }
+.db-badge-blue   { background: #eff6ff; color: #1d4ed8; }
+.db-badge-amber  { background: #fff7ed; color: #c2410c; }
+.db-badge-red    { background: #fef2f2; color: #b91c1c; }
+.db-badge-green  { background: #f0fdf4; color: #15803d; }
+.badge-caret     { font-size: 9px; }
+
+.db-link-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; color: #2563eb;
+  font-family: inherit; padding: 0;
+}
+.db-link-btn:hover { text-decoration: underline; }
+.db-link { color: #2563eb; font-weight: 600; font-size: 13px; cursor: pointer; }
+.db-link:hover { text-decoration: underline; }
+
+/* ── Middle grid ───────────────────────────────────────────────────── */
+.mid-grid {
+  display: grid;
+  grid-template-columns: 1fr 460px;
+  gap: 14px;
+}
+@media (max-width: 1300px) { .mid-grid { grid-template-columns: 1fr 380px; } }
 @media (max-width: 1100px) { .mid-grid { grid-template-columns: 1fr; } }
 
-/* Aging pair */
-.aging-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media (max-width: 900px)  { .aging-pair { grid-template-columns: 1fr; } }
-
-.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-
-/* Chart */
+.chart-card { min-height: 280px; }
 .chart-wrap { width: 100%; }
-.revenue-svg { width: 100%; height: 170px; display: block; overflow: visible; }
+.revenue-svg { width: 100%; height: 200px; display: block; overflow: visible; }
 .chart-label { font-size: 10.5px; fill: #9ca3af; font-family: inherit; }
-.chart-val-label { font-size: 11px; fill: #2563eb; font-weight: 600; font-family: inherit; }
-.chart-placeholder { padding: 10px 0; }
-.chart-empty { height: 170px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 13px; }
 
-/* Aging */
-.aging-bars  { display: flex; flex-direction: column; gap: 14px; }
-.aging-row   { display: grid; grid-template-columns: 72px 1fr 72px; align-items: center; gap: 10px; }
-.aging-label { font-size: 11.5px; color: #6b7280; }
-.aging-bar-wrap { background: #f3f4f6; border-radius: 20px; height: 6px; overflow: hidden; }
-.aging-bar   { height: 100%; border-radius: 20px; transition: width .6s ease; }
-.aging-amount{ font-size: 12px; font-weight: 600; text-align: right; }
+.chart-empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; min-height: 200px; padding: 20px;
+}
+.ces-icon { opacity: .6; }
+.ces-title { font-size: 14px; font-weight: 700; color: #374151; }
+.ces-sub   { font-size: 12.5px; color: #9ca3af; text-align: center; max-width: 260px; line-height: 1.5; }
+.ces-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: #2563eb; color: #fff; border: none; border-radius: 8px;
+  padding: 8px 18px; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background .12s;
+  margin-top: 4px;
+}
+.ces-btn:hover { background: #1d4ed8; }
 
-/* Bottom grid */
-.bot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* ── Aging pair ────────────────────────────────────────────────────── */
+.aging-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .aging-pair { grid-template-columns: 1fr; } }
+
+.aging-card { display: flex; flex-direction: column; }
+.aging-rows { display: flex; flex-direction: column; gap: 13px; }
+.aging-row  {
+  display: grid; grid-template-columns: 68px 1fr 60px;
+  align-items: center; gap: 10px;
+}
+.aging-label  { font-size: 12px; color: #6b7280; }
+.aging-bar-wrap { background: #f1f5f9; border-radius: 20px; height: 6px; overflow: hidden; }
+.aging-bar    { height: 100%; border-radius: 20px; transition: width .6s ease; }
+.aging-amt    { font-size: 12px; font-weight: 600; text-align: right; }
+
+.aging-total-row {
+  display: grid; grid-template-columns: 68px 1fr 60px;
+  align-items: center; gap: 10px;
+  border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 2px;
+}
+.aging-total-label { font-size: 12px; font-weight: 700; color: #374151; }
+.aging-total-spacer {}
+.aging-total-amt   { font-size: 12.5px; font-weight: 700; color: #111827; text-align: right; }
+
+/* ── Bottom grid ───────────────────────────────────────────────────── */
+.bot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
 @media (max-width: 1000px) { .bot-grid { grid-template-columns: 1fr; } }
-.bot-grid > *:last-child { grid-column: 1 / -1; }
 
-/* Table helpers */
-.ta-r      { text-align: right; }
-.mono      { font-family: monospace; font-size: 12.5px; }
-.kv-green  { color: #16a34a; }
-.kv-red    { color: #dc2626; }
-.cust-name { font-weight: 600; font-size: 13px; color: #111827; }
-.cust-sub  { font-size: 11px; color: #9ca3af; }
-.text-muted{ color: #6b7280; font-size: 12.5px; }
-.link-accent { color: #2563eb; font-weight: 600; cursor: pointer; }
-.link-accent:hover { text-decoration: underline; }
+/* ── Tables ────────────────────────────────────────────────────────── */
+.db-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.db-table th {
+  background: #f9fafb; border-bottom: 1px solid #e5e7eb;
+  padding: 9px 12px; font-size: 11px; font-weight: 700;
+  color: #6b7280; text-align: left; text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.db-table td {
+  padding: 10px 12px; border-bottom: 1px solid #f3f4f6;
+  color: #374151; vertical-align: middle;
+}
+.db-table tbody tr:last-child td { border-bottom: none; }
+.db-table tbody tr:hover { background: #fafafa; }
 
-/* Activity tags */
-.activity-tag  { display:inline-block;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:600;letter-spacing:.04em; }
-.tag-invoice   { background:#eff6ff;color:#1d4ed8; }
-.tag-bill      { background:#fff7ed;color:#c2410c; }
-.tag-payment   { background:#f0fdf4;color:#15803d; }
+.ta-r    { text-align: right; }
+.mono    { font-family: monospace; font-size: 12.5px; }
+.tc-name { font-weight: 600; font-size: 13px; color: #111827; }
+.tc-sub  { font-size: 11.5px; color: #9ca3af; }
+.tc-green{ color: #16a34a; font-weight: 600; }
+.tc-red  { color: #dc2626; }
 
-.activity-status { display:inline-block;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:500; }
-.status-paid    { background:#f0fdf4;color:#15803d; }
-.status-unpaid  { background:#fef2f2;color:#b91c1c; }
-.status-draft   { background:#f9fafb;color:#6b7280; }
-.status-other   { background:#f3f4f6;color:#374151; }
+/* ── Empty states ──────────────────────────────────────────────────── */
+.bot-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px; padding: 36px 20px;
+  text-align: center;
+}
+.bot-empty-icon { opacity: .7; }
+.bot-empty-title { font-size: 14px; font-weight: 700; color: #374151; }
+.bot-empty-sub   { font-size: 12.5px; color: #9ca3af; line-height: 1.5; max-width: 240px; }
+.ov-ok-icon  { margin-bottom: 2px; }
+.ov-ok-title { font-size: 15px; font-weight: 700; color: #16a34a; }
 
-/* Badge variants */
-.badge-amber { background:#fff7ed;color:#c2410c; }
+/* ── Recent Activity ───────────────────────────────────────────────── */
+.act-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0; margin: 0 auto;
+}
+.dot-invoice { background: #2563eb; }
+.dot-bill    { background: #f59e0b; }
+.dot-payment { background: #16a34a; }
+.act-desc    { font-size: 13px; color: #374151; font-weight: 500; }
+.act-amt     { font-weight: 600; }
+.act-footer  { padding: 12px 0 0; text-align: center; }
+
+/* ── Shimmer ───────────────────────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
 </style>

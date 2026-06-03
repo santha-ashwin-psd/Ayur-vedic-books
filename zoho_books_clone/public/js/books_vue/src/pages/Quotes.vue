@@ -8,7 +8,7 @@
         <input v-model="search" placeholder="Search quotes, customers…" class="sales-search-input"/>
       </div>
       <div class="sales-pills">
-        <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key}" @click="activeTab=t.key">
+        <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">
           {{ t.label }}<span v-if="t.key!=='all'" class="sales-pill-count">{{ counts[t.key] }}</span>
         </button>
       </div>
@@ -25,13 +25,130 @@
       </div>
     </div>
 
-    <!-- ── Summary strip ── -->
-    <SummaryStrip :cards="[
-      { label: 'Total Quotes', tone: 'accent', value: list.length },
-      { label: 'Sent', tone: 'info', value: counts.sent, valueClass: 'blue' },
-      { label: 'Accepted', tone: 'success', value: counts.accepted, valueClass: 'green' },
-      { label: 'Expired', tone: counts.expired>0?'danger':'default', value: counts.expired, valueClass: counts.expired>0?'red':'' },
-    ]" />
+    <!-- ── KPI Cards Row 1 ── -->
+    <div class="qt-kpi-grid">
+      <!-- Total Quotes -->
+      <div class="qt-kpi-card bk-kpi-accent" @click="activeTab='all'" style="cursor:pointer">
+        <div class="qt-kpi-inner">
+          <div class="qt-kpi-icon" style="background:#dbeafe">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div class="qt-kpi-body">
+            <div class="qt-kpi-label">Total Quotes</div>
+            <div class="qt-kpi-value">{{ list.length }}</div>
+            <div class="qt-kpi-trend" :class="qtTrends.total.up?'qt-trend-up':'qt-trend-down'">{{ qtTrends.total.up?'↑':'↓' }} {{ qtTrends.total.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
+      <!-- Draft -->
+      <div class="qt-kpi-card" @click="activeTab='draft'" style="cursor:pointer">
+        <div class="qt-kpi-inner">
+          <div class="qt-kpi-icon" style="background:#e2e8f0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.7"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+          <div class="qt-kpi-body">
+            <div class="qt-kpi-label">Draft</div>
+            <div class="qt-kpi-value">{{ counts.draft }}</div>
+            <div class="qt-kpi-trend" :class="qtTrends.draft.up?'qt-trend-up':'qt-trend-down'">{{ qtTrends.draft.up?'↑':'↓' }} {{ qtTrends.draft.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
+      <!-- Sent -->
+      <div class="qt-kpi-card bk-kpi-info" @click="activeTab='sent'" style="cursor:pointer">
+        <div class="qt-kpi-inner">
+          <div class="qt-kpi-icon" style="background:#cffafe">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="1.7"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </div>
+          <div class="qt-kpi-body">
+            <div class="qt-kpi-label">Sent</div>
+            <div class="qt-kpi-value qt-kpi-blue">{{ counts.sent }}</div>
+            <div class="qt-kpi-trend" :class="qtTrends.sent.up?'qt-trend-up':'qt-trend-down'">{{ qtTrends.sent.up?'↑':'↓' }} {{ qtTrends.sent.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
+      <!-- Converted -->
+      <div class="qt-kpi-card bk-kpi-success" @click="activeTab='converted'" style="cursor:pointer">
+        <div class="qt-kpi-inner">
+          <div class="qt-kpi-icon" style="background:#dcfce7">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.7"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </div>
+          <div class="qt-kpi-body">
+            <div class="qt-kpi-label">Converted</div>
+            <div class="qt-kpi-value qt-kpi-green">{{ counts.converted }}</div>
+            <div class="qt-kpi-trend" :class="qtTrends.converted.up?'qt-trend-up':'qt-trend-down'">{{ qtTrends.converted.up?'↑':'↓' }} {{ qtTrends.converted.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
+      <!-- Expired -->
+      <div class="qt-kpi-card bk-kpi-warn" @click="activeTab='expired'" style="cursor:pointer">
+        <div class="qt-kpi-inner">
+          <div class="qt-kpi-icon" style="background:#fef3c7">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="qt-kpi-body">
+            <div class="qt-kpi-label">Expired</div>
+            <div class="qt-kpi-value qt-kpi-amber">{{ counts.expired }}</div>
+            <div class="qt-kpi-trend" :class="qtTrends.expired.up?'qt-trend-down':'qt-trend-up'">{{ qtTrends.expired.up?'↑':'↓' }} {{ qtTrends.expired.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Secondary Stat Cards ── -->
+    <div class="qt-stat-grid">
+      <!-- This Month -->
+      <div class="qt-stat-card">
+        <div class="qt-stat-content">
+          <div>
+            <div class="qt-stat-label">This Month</div>
+            <div class="qt-stat-value">{{ thisMonthQuotes }}</div>
+            <div class="bk-stat-sub">quotes created</div>
+          </div>
+          <div class="qt-stat-icon" style="background:#dbeafe;color:#2563eb">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+        </div>
+      </div>
+      <!-- Conversion Rate — Converted / Total -->
+      <div class="qt-stat-card">
+        <div class="qt-stat-content">
+          <div>
+            <div class="qt-stat-label">Conversion Rate</div>
+            <div class="qt-stat-value qt-kpi-green">{{ conversionRate }}</div>
+            <div class="bk-stat-sub">Converted / Total</div>
+          </div>
+          <div class="qt-stat-icon" style="background:#dcfce7;color:#16a34a">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </div>
+        </div>
+      </div>
+      <!-- Avg Quote Value -->
+      <div class="qt-stat-card">
+        <div class="qt-stat-content">
+          <div>
+            <div class="qt-stat-label">Avg Quote Value</div>
+            <div class="qt-stat-value">{{ fmtCur(avgQuoteValue) }}</div>
+            <div class="bk-stat-sub">per quotation</div>
+          </div>
+          <div class="qt-stat-icon" style="background:#e2e8f0;color:#475569">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+        </div>
+      </div>
+      <!-- Awaiting Reply — Sent quotes not yet converted/expired -->
+      <div class="qt-stat-card">
+        <div class="qt-stat-content">
+          <div>
+            <div class="qt-stat-label">Awaiting Reply</div>
+            <div class="qt-stat-value qt-kpi-blue">{{ counts.sent }}</div>
+            <div class="bk-stat-sub">sent, not yet converted</div>
+          </div>
+          <div class="qt-stat-icon" style="background:#cffafe;color:#0891b2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ── Bulk actions bar ── -->
     <div v-if="selected.size>0" class="inv-bulk-bar">
@@ -93,14 +210,41 @@
               </td>
             </tr>
             <tr v-if="!sorted.length">
-              <td colspan="8" class="empty-state">
-                <div class="empty-inner">
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <p>{{ search || filterCustomer ? 'No quotations match' : 'No quotations yet' }}</p>
-                  <button v-if="!search && !filterCustomer" class="inv-btn-primary" style="margin-top:4px" @click="openNew">
-                    <span v-html="icon('plus',13)"></span> New Quotation
-                  </button>
-                </div>
+              <td colspan="8" class="qt-empty-state">
+                <template v-if="search || filterCustomer">
+                  <div class="qt-empty-inner">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <p class="qt-empty-title">No quotations match your filters</p>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="qt-empty-inner">
+                    <!-- Clipboard illustration -->
+                    <div class="qt-empty-illus">
+                      <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
+                        <ellipse cx="45" cy="98" rx="32" ry="8" fill="#f1f5f9"/>
+                        <rect x="18" y="20" width="54" height="72" rx="6" fill="#e2e8f0"/>
+                        <rect x="22" y="24" width="46" height="64" rx="4" fill="#fff"/>
+                        <rect x="35" y="14" width="20" height="12" rx="3" fill="#94a3b8"/>
+                        <rect x="33" y="12" width="24" height="10" rx="3" fill="#cbd5e1"/>
+                        <rect x="30" y="38" width="30" height="3" rx="2" fill="#e2e8f0"/>
+                        <rect x="30" y="46" width="24" height="3" rx="2" fill="#e2e8f0"/>
+                        <rect x="30" y="54" width="26" height="3" rx="2" fill="#e2e8f0"/>
+                        <rect x="30" y="62" width="20" height="3" rx="2" fill="#e2e8f0"/>
+                        <rect x="14" y="36" width="18" height="18" rx="4" fill="#3b82f6" opacity=".85"/>
+                        <line x1="19" y1="45" x2="27" y2="45" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="23" y1="41" x2="23" y2="49" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+                        <rect x="62" y="62" width="18" height="22" rx="4" fill="#a5b4c8" opacity=".6"/>
+                        <ellipse cx="71" cy="62" rx="5" ry="3" fill="#94a3b8"/>
+                      </svg>
+                    </div>
+                    <p class="qt-empty-title">No quotations created yet</p>
+                    <p class="qt-empty-sub">Create your first quotation to start managing<br>customer proposals and track approvals.</p>
+                    <button class="qt-empty-btn-primary" @click="openNew">
+                      <span v-html="icon('plus',13)"></span> New Quotation
+                    </button>
+                  </div>
+                </template>
               </td>
             </tr>
           </template>
@@ -806,6 +950,38 @@ const sorted = computed(() => {
 });
 
 const { page, pageSize, paged } = usePagination(sorted, { storageKey: "quotes" });
+
+// ── Month helpers ─────────────────────────────────────────────────────
+const _qtYM  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _qtLYM = () => { const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _qtTr  = (a,b) => { if(!b&&!a) return {pct:0,up:true}; if(!b) return {pct:100,up:true}; const p=Math.round((a-b)/b*100); return {pct:Math.abs(p),up:p>=0}; };
+
+// ── KPI card trends (dynamic vs last month) ───────────────────────────
+const qtTrends = computed(() => {
+  const thisYM = _qtYM(), lastYM = _qtLYM();
+  const thisAll = list.value.filter(q => (q.transaction_date||'').startsWith(thisYM));
+  const lastAll = list.value.filter(q => (q.transaction_date||'').startsWith(lastYM));
+  const es = (q) => effectiveStatus(q).toLowerCase();
+  return {
+    total:     _qtTr(thisAll.length,                                                          lastAll.length),
+    draft:     _qtTr(thisAll.filter(q=>es(q)==='draft').length,                               lastAll.filter(q=>es(q)==='draft').length),
+    sent:      _qtTr(thisAll.filter(q=>es(q)==='sent').length,                                lastAll.filter(q=>es(q)==='sent').length),
+    converted: _qtTr(thisAll.filter(q=>es(q)==='converted').length,                           lastAll.filter(q=>es(q)==='converted').length),
+    expired:   _qtTr(thisAll.filter(q=>es(q)==='expired').length,                             lastAll.filter(q=>es(q)==='expired').length),
+  };
+});
+
+// ── Secondary stat cards ──────────────────────────────────────────────
+const thisMonthQuotes = computed(() => list.value.filter(q=>(q.transaction_date||'').startsWith(_qtYM())).length);
+const conversionRate = computed(() => {
+  if (!list.value.length) return "0%";
+  return ((counts.value.converted / list.value.length) * 100).toFixed(0) + "%";
+});
+const avgQuoteValue = computed(() => {
+  const items = list.value.filter(q => q.grand_total > 0);
+  if (!items.length) return 0;
+  return items.reduce((s, q) => s + flt(q.grand_total), 0) / items.length;
+});
 
 function sortBy(col) {
   if (sortCol.value === col)
@@ -1547,7 +1723,7 @@ onMounted(async () => {
 </script>
 <style scoped>
 /* ══ List page — mirrors Invoices exactly ══ */
-.qt-page { display:flex; flex-direction:column; gap:16px; padding:24px; background:#f5f6f8; min-height:100vh; }
+.qt-page { display:flex; flex-direction:column; gap:12px; padding:20px 24px; background:#f5f6f8; min-height:100vh; }
 
 /* Toolbar */
 .inv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 12px; gap:12px; flex-wrap:wrap; background:#fff; border-bottom:1px solid #e8ecf0; }
@@ -1814,5 +1990,122 @@ select.qt-fi { cursor:pointer; }
 
 /* Footer — matches Invoice dfooter */
 .qt-dfooter-new { padding:14px 24px; border-top:1px solid #e8ecf0; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; flex-shrink:0; }
+
+/* ══ KPI Cards Row 1 ══ */
+.qt-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1200px) { .qt-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 800px)  { .qt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.qt-kpi-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: box-shadow .15s, transform .12s;
+}
+.qt-kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
+/* .qt-kpi-accepted border removed — gradient handles visual tone */
+
+.qt-kpi-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.qt-kpi-icon {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,.10);
+}
+.qt-kpi-body { flex: 1; min-width: 0; }
+.qt-kpi-label {
+  font-size: 10.5px; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px;
+}
+.qt-kpi-value {
+  font-size: 28px; font-weight: 800; color: #111827;
+  letter-spacing: -.03em; line-height: 1; margin-bottom: 6px;
+}
+.qt-kpi-green { color: #16a34a; }
+.qt-kpi-red   { color: #dc2626; }
+.qt-kpi-amber { color: #d97706; }
+.qt-kpi-trend {
+  font-size: 11.5px; font-weight: 500;
+  display: flex; align-items: center; gap: 2px;
+}
+.qt-trend-up   { color: #16a34a; }
+.qt-trend-down { color: #dc2626; }
+
+/* ══ Secondary Stat Cards ══ */
+.qt-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1100px) { .qt-stat-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .qt-stat-grid { grid-template-columns: 1fr; } }
+
+.qt-stat-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.qt-stat-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.qt-stat-label {
+  font-size: 10.5px; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px;
+}
+.qt-stat-value {
+  font-size: 22px; font-weight: 800; color: #111827;
+  letter-spacing: -.02em;
+}
+.qt-stat-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.qt-stat-spark {
+  width: 70px; height: 32px;
+  flex-shrink: 0;
+}
+
+/* ══ Updated empty state ══ */
+.qt-empty-state {
+  text-align: center;
+  padding: 60px 20px !important;
+  cursor: default !important;
+}
+.qt-empty-inner {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 10px;
+}
+.qt-empty-illus { margin-bottom: 8px; }
+.qt-empty-title {
+  font-size: 17px; font-weight: 700; color: #1e293b; margin: 0;
+}
+.qt-empty-sub {
+  font-size: 13px; color: #94a3b8; line-height: 1.6;
+  max-width: 320px; margin: 0; text-align: center;
+}
+.qt-empty-btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #2563eb; color: #fff; border: none;
+  border-radius: 8px; padding: 10px 22px;
+  font-size: 13.5px; font-weight: 700; cursor: pointer;
+  font-family: inherit; margin-top: 6px;
+  transition: background .12s;
+}
+.qt-empty-btn-primary:hover { background: #1d4ed8; }
 
 </style>

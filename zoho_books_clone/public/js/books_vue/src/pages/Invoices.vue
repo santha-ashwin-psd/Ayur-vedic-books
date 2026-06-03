@@ -8,7 +8,7 @@
       <input v-model="search" placeholder="Search invoices, customers, PO…" class="sales-search-input"/>
     </div>
     <div class="sales-pills">
-      <button v-for="f in FILTERS" :key="f.key" class="sales-pill" :class="{ active: activeFilter===f.key }" @click="activeFilter=f.key">
+      <button v-for="f in FILTERS" :key="f.key" class="sales-pill" :class="{ active: activeFilter===f.key, ['pill-'+f.key]: f.key!=='all' }" @click="activeFilter=f.key">
         {{ f.label }}<span v-if="f.key!=='all'" class="sales-pill-count">{{ counts[f.key] }}</span>
       </button>
     </div>
@@ -36,13 +36,66 @@
     <input type="date" v-model="customTo" class="sales-date-input"/>
   </div>
 
-  <!-- ── Summary strip ── -->
-  <SummaryStrip :cards="[
-    { label: 'Total Invoices', tone: 'accent', value: list.length },
-    { label: 'Unpaid', tone: summary.unpaidCount>0?'warn':'default', value: summary.unpaidCount, valueClass: summary.unpaidCount>0?'orange':'' },
-    { label: 'Overdue', tone: summary.overdueCount>0?'danger':'default', value: summary.overdueCount, valueClass: summary.overdueCount>0?'red':'' },
-    { label: 'Total Receivable', tone: 'success', value: fmtAmt(summary.totalDue), valueClass: 'green' },
-  ]" />
+  <!-- ── KPI Cards ── -->
+  <div class="bk-kpi-grid">
+    <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeFilter='all'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg></div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Total Invoices</div>
+          <div class="bk-kpi-value">{{ list.length }}</div>
+          <div class="bk-kpi-trend" :class="invTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ invTrends.total.up?'↑':'↓' }} {{ invTrends.total.pct }}% vs last month</div>
+        </div>
+      </div>
+    </div>
+    <div class="bk-kpi-card clickable" @click="activeFilter='Draft'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#e2e8f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Draft</div>
+          <div class="bk-kpi-value">{{ counts.Draft }}</div>
+          <div class="bk-kpi-trend" :class="invTrends.draft.up?'bk-trend-up':'bk-trend-down'">{{ invTrends.draft.up?'↑':'↓' }} {{ invTrends.draft.pct }}% vs last month</div>
+        </div>
+      </div>
+    </div>
+    <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeFilter='Unpaid'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Unpaid</div>
+          <div class="bk-kpi-value bk-kpi-amber">{{ counts.Unpaid }}</div>
+          <div class="bk-kpi-trend" :class="invTrends.unpaid.up?'bk-trend-up':'bk-trend-down'">{{ invTrends.unpaid.up?'↑':'↓' }} {{ invTrends.unpaid.pct }}% vs last month</div>
+        </div>
+      </div>
+    </div>
+    <div class="bk-kpi-card bk-kpi-danger clickable" @click="activeFilter='Overdue'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#fee2e2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Overdue</div>
+          <div class="bk-kpi-value bk-kpi-red">{{ counts.Overdue }}</div>
+          <div class="bk-kpi-trend" :class="invTrends.overdue.up?'bk-trend-down':'bk-trend-up'">{{ invTrends.overdue.up?'↑':'↓' }} {{ invTrends.overdue.pct }}% vs last month</div>
+        </div>
+      </div>
+    </div>
+    <div class="bk-kpi-card bk-kpi-success clickable" @click="activeFilter='Paid'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Paid</div>
+          <div class="bk-kpi-value bk-kpi-green">{{ counts.Paid }}</div>
+          <div class="bk-kpi-trend" :class="invTrends.paid.up?'bk-trend-up':'bk-trend-down'">{{ invTrends.paid.up?'↑':'↓' }} {{ invTrends.paid.pct }}% vs last month</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Secondary stats -->
+  <div class="bk-stat-grid">
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ invThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Revenue</div><div class="bk-stat-value" style="font-size:16px">{{ fmtAmt(invThisMonth.revenue) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Total Receivable</div><div class="bk-stat-value bk-kpi-amber" style="font-size:16px">{{ fmtAmt(summary.totalDue) }}</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg Invoice Value</div><div class="bk-stat-value" style="font-size:16px">{{ fmtAmt(invAvg) }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
+  </div>
 
   <!-- ── Bulk actions bar ── -->
   <div v-if="selectedRows.size>0" class="inv-bulk-bar">
@@ -108,13 +161,18 @@
             </td>
           </tr>
           <tr v-if="!sorted.length">
-            <td colspan="10" class="empty-state">
-              <div class="empty-inner">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                <p>{{ search||filterCustomer ? 'No invoices match' : 'No invoices yet' }}</p>
-                <button v-if="!search&&!filterCustomer" class="inv-btn-primary" style="margin-top:4px" @click="openAdd">
-                  <span v-html="icon('plus',13)"></span> New Invoice
-                </button>
+            <td colspan="10" class="bk-empty-state">
+              <div class="bk-empty-inner">
+                <template v-if="search||filterCustomer">
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <p class="bk-empty-title">No invoices match your filters</p>
+                </template>
+                <template v-else>
+                  <div class="bk-empty-illus"><svg width="80" height="96" viewBox="0 0 80 96" fill="none"><rect x="10" y="8" width="60" height="80" rx="6" fill="#e2e8f0"/><rect x="14" y="12" width="52" height="72" rx="4" fill="#fff"/><rect x="22" y="26" width="36" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="34" width="28" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="42" width="32" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="58" width="20" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="66" width="24" height="3" rx="2" fill="#e2e8f0"/><rect x="8" y="22" width="20" height="20" rx="4" fill="#2563eb" opacity=".85"/><line x1="13" y1="32" x2="23" y2="32" stroke="#fff" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="27" x2="18" y2="37" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+                  <p class="bk-empty-title">No invoices created yet</p>
+                  <p class="bk-empty-sub">Create your first invoice to start tracking payments and revenue.</p>
+                  <button class="bk-empty-btn" @click="openAdd"><span v-html="icon('plus',13)"></span> New Invoice</button>
+                </template>
               </div>
             </td>
           </tr>
@@ -224,7 +282,7 @@
             </div>
             <div>
               <label class="inv-lbl">Place of Supply</label>
-              <div v-if="isOverseas" class="inv-fi" style="background:#eff6ff;color:#1d4ed8;font-size:12px;display:flex;align-items:center;gap:6px;padding:8px 10px;border-color:#bfdbfe">
+              <div v-if="isOverseas" class="inv-fi" style="background:#dbeafe;color:#1d4ed8;font-size:12px;display:flex;align-items:center;gap:6px;padding:8px 10px;border-color:#bfdbfe">
                 <span>🌐</span> Outside India — Not applicable for export invoices
               </div>
               <select v-else v-model="form.place_of_supply" class="inv-fi">
@@ -348,7 +406,7 @@
               <!-- Tax section -->
               <div class="inv-tax-section">
                 <!-- Overseas notice -->
-                <div v-if="isOverseas" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#1e40af;display:flex;align-items:flex-start;gap:8px">
+                <div v-if="isOverseas" style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#1e40af;display:flex;align-items:flex-start;gap:8px">
                   <span style="font-size:15px;flex-shrink:0">🌐</span>
                   <div>
                     <strong>Export Invoice — Zero Rated Supply</strong><br/>
@@ -662,7 +720,7 @@
         <div class="rp-body">
           <p style="font-size:13px;color:#374151;margin:0 0 12px">{{ confirmModal.message }}</p>
           <div v-if="confirmModal.payments.length" style="border:1px solid #fca5a5;border-radius:8px;overflow:hidden;margin-bottom:8px">
-            <div style="background:#fef2f2;padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#b91c1c;display:grid;grid-template-columns:1fr 1fr 1fr 1fr">
+            <div style="background:#fee2e2;padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#b91c1c;display:grid;grid-template-columns:1fr 1fr 1fr 1fr">
               <span>Payment</span><span>Mode</span><span>Date</span><span style="text-align:right">Amount</span>
             </div>
             <div v-for="p in confirmModal.payments" :key="p.name" style="padding:8px 12px;font-size:12.5px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-top:1px solid #fee2e2">
@@ -861,6 +919,19 @@ const summary = computed(()=>({
   unpaidCount:  list.value.filter(i=>i.outstanding_amount>0&&!isOverdue(i)).length,
   overdueCount: list.value.filter(isOverdue).length,
   totalDue:     list.value.reduce((s,i)=>s+flt(i.outstanding_amount),0),
+}));
+const _thisYM = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _lastYM = () => { const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _trend = (a, b) => { if(!b&&!a) return {pct:0,up:true}; if(!b) return {pct:100,up:true}; const p=Math.round((a-b)/b*100); return {pct:Math.abs(p),up:p>=0}; };
+const invThisMonth = computed(() => { const ym=_thisYM(); const r=list.value.filter(i=>(i.posting_date||'').startsWith(ym)); return {count:r.length,revenue:r.reduce((s,i)=>s+flt(i.grand_total),0)}; });
+const _invLastCount = computed(() => { const ym=_lastYM(); return list.value.filter(i=>(i.posting_date||'').startsWith(ym)).length; });
+const invAvg = computed(() => { const p=list.value.filter(i=>i.grand_total>0); return p.length?p.reduce((s,i)=>s+flt(i.grand_total),0)/p.length:0; });
+const invTrends = computed(() => ({
+  total:  _trend(invThisMonth.value.count, _invLastCount.value),
+  draft:  _trend(counts.value.Draft, list.value.filter(i=>(i.posting_date||'').startsWith(_lastYM())&&i.docstatus===0).length),
+  unpaid: _trend(counts.value.Unpaid, list.value.filter(i=>(i.posting_date||'').startsWith(_lastYM())&&i.outstanding_amount>0&&i.docstatus===1).length),
+  overdue:_trend(counts.value.Overdue, list.value.filter(i=>(i.posting_date||'').startsWith(_lastYM())&&isOverdue(i)).length),
+  paid:   _trend(counts.value.Paid, list.value.filter(i=>(i.posting_date||'').startsWith(_lastYM())&&i.outstanding_amount<=0&&i.docstatus===1).length),
 }));
 const allSelected = computed(()=>sorted.value.length>0&&sorted.value.every(i=>selectedRows.value.has(i.name)));
 

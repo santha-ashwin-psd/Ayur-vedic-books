@@ -7,7 +7,7 @@
         <input v-model="search" placeholder="Search recurring bills…" class="rec-search-input" />
       </div>
       <div class="rec-pills">
-        <button v-for="t in tabs" :key="t.key" class="rec-pill" :class="{active:activeTab===t.key}" @click="activeTab=t.key">
+        <button v-for="t in tabs" :key="t.key" class="rec-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">
           {{ t.label }}
         </button>
       </div>
@@ -21,13 +21,19 @@
       </div>
     </div>
 
-    <!-- ============================================================ SUMMARY -->
-    <SummaryStrip v-if="!loading" :cards="[
-      { label: 'Total',     tone: 'accent',                                      value: list.length },
-      { label: 'Active',    tone: 'success',                                     value: counts.active,    valueClass: 'green' },
-      { label: 'Paused',    tone: counts.paused>0 ? 'warn' : 'default',          value: counts.paused,    valueClass: counts.paused>0 ? 'orange' : '' },
-      { label: 'Cancelled', tone: counts.cancelled>0 ? 'danger' : 'default',     value: counts.cancelled, valueClass: counts.cancelled>0 ? 'red' : '' },
-    ]" />
+    <!-- ── KPI Cards ── -->
+    <div class="bk-kpi-grid bk-kpi-grid-4">
+      <div class="bk-kpi-card"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Schedules</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend bk-trend-neutral">all recurring bills</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='Active'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Active</div><div class="bk-kpi-value bk-kpi-green">{{ counts.active }}</div><div class="bk-kpi-trend bk-trend-neutral">running</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='Paused'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Paused</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.paused }}</div><div class="bk-kpi-trend bk-trend-neutral">on hold</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-danger clickable" @click="activeTab='Cancelled'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fee2e2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Cancelled</div><div class="bk-kpi-value bk-kpi-red">{{ counts.cancelled }}</div><div class="bk-kpi-trend bk-trend-neutral">stopped</div></div></div></div>
+    </div>
+    <div class="bk-stat-grid">
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Active Rate</div><div class="bk-stat-value bk-kpi-green">{{ list.length ? Math.round(counts.active/list.length*100) : 0 }}%</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Weekly Bills</div><div class="bk-stat-value">{{ list.filter(r=>r.frequency==='Weekly').length }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Monthly Bills</div><div class="bk-stat-value">{{ list.filter(r=>r.frequency==='Monthly').length }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Annual Bills</div><div class="bk-stat-value">{{ list.filter(r=>r.frequency==='Yearly').length }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div></div></div>
+    </div>
 
     <!-- ============================================================ TABLE -->
     <div class="rec-card">
@@ -616,9 +622,9 @@ onMounted(load);
 .mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}.text-accent{color:#2563eb;font-weight:600;}
 .rec-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .rec-badge-lg{padding:4px 10px;font-size:12.5px;}
-.badge-green{background:#dcfce7;color:#16a34a;}.badge-orange{background:#fff7ed;color:#ea580c;}.badge-grey{background:#f3f4f6;color:#6b7280;}
+.badge-green{background:#dcfce7;color:#16a34a;}.badge-orange{background:#fef3c7;color:#ea580c;}.badge-grey{background:#e5e7eb;color:#6b7280;}
 .rec-act-btn{background:transparent;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;}
-.rec-act-btn:hover{background:#f3f4f6;color:#2563eb;}
+.rec-act-btn:hover{background:#e5e7eb;color:#2563eb;}
 .rec-empty{text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important;}
 .rec-empty-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;color:#9ca3af;}
 .rec-empty-icon{color:#cbd5e1;margin-bottom:6px;}
@@ -711,7 +717,7 @@ textarea.rec-input{resize:vertical;min-height:72px;}
 .rec-vt-btn.active .rec-vt-count{background:#dbeafe;color:#1d4ed8;}
 
 /* ── Generated / Upcoming tabs ── */
-.badge-red{background:#fef2f2;color:#dc2626;}
+.badge-red{background:#fee2e2;color:#dc2626;}
 .rec-table-inner{font-size:12.5px;}
 .rec-table-inner th{background:#fafafa;}
 .rec-tab-empty{padding:24px;text-align:center;color:#9ca3af;font-size:13px;}

@@ -19,13 +19,19 @@
     </div>
   </div>
 
-  <!-- Summary strip -->
-  <SummaryStrip v-if="!loading" :cards="[
-    { label: 'Total', tone: 'accent', value: list.length },
-    { label: 'Draft', tone: counts.draft>0?'warn':'default', value: counts.draft, valueClass: counts.draft>0?'orange':'' },
-    { label: 'To Deliver', tone: 'info', value: counts.toDeliver, valueClass: 'blue' },
-    { label: 'Delivered', tone: 'success', value: counts.delivered, valueClass: 'green' },
-  ]" />
+  <!-- ── KPI Cards ── -->
+  <div class="bk-kpi-grid bk-kpi-grid-4">
+    <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Challans</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="dcTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ dcTrends.total.up?'↑':'↓' }} {{ dcTrends.total.pct }}% vs last month</div></div></div></div>
+    <div class="bk-kpi-card clickable" @click="activeTab='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#f1f5f9"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.draft }}</div><div class="bk-kpi-trend bk-trend-neutral">pending</div></div></div></div>
+    <div class="bk-kpi-card bk-kpi-info clickable" @click="activeTab='toDeliver'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">To Deliver</div><div class="bk-kpi-value bk-kpi-blue">{{ counts.toDeliver }}</div><div class="bk-kpi-trend" :class="dcTrends.deliver.up?'bk-trend-up':'bk-trend-down'">{{ dcTrends.deliver.up?'↑':'↓' }} {{ dcTrends.deliver.pct }}% vs last month</div></div></div></div>
+    <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='delivered'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Delivered</div><div class="bk-kpi-value bk-kpi-green">{{ counts.delivered }}</div><div class="bk-kpi-trend" :class="dcTrends.delivered.up?'bk-trend-up':'bk-trend-down'">{{ dcTrends.delivered.up?'↑':'↓' }} {{ dcTrends.delivered.pct }}% vs last month</div></div></div></div>
+  </div>
+  <div class="bk-stat-grid">
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ dcThisMonth }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Delivery Rate</div><div class="bk-stat-value bk-kpi-green">{{ list.length ? Math.round(counts.delivered/list.length*100) : 0 }}%</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Cancelled</div><div class="bk-stat-value bk-kpi-red">{{ counts.cancelled }}</div></div><div class="bk-stat-icon" style="background:#fee2e2;color:#dc2626"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Pending Dispatch</div><div class="bk-stat-value bk-kpi-amber">{{ counts.draft + counts.toDeliver }}</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div></div>
+  </div>
 
   <!-- Table -->
   <!-- Bulk action bar -->
@@ -393,6 +399,15 @@ const counts = computed(() => ({
   toDeliver: list.value.filter(r => r.docstatus === 1 && r.status !== "Delivered" && r.status !== "Fully Delivered").length,
   delivered: list.value.filter(r => r.status === "Delivered" || r.status === "Fully Delivered").length,
   cancelled: list.value.filter(r => r.docstatus === 2 || r.status === "Cancelled").length,
+}));
+const _dcYM  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _dcLYM = () => { const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _dcTr  = (a,b) => { if(!b&&!a) return {pct:0,up:true}; if(!b) return {pct:100,up:true}; const p=Math.round((a-b)/b*100); return {pct:Math.abs(p),up:p>=0}; };
+const dcThisMonth = computed(()=>list.value.filter(r=>(r.posting_date||'').startsWith(_dcYM())).length);
+const dcTrends = computed(()=>({
+  total:     _dcTr(dcThisMonth.value, list.value.filter(r=>(r.posting_date||'').startsWith(_dcLYM())).length),
+  deliver:   _dcTr(counts.value.toDeliver, list.value.filter(r=>(r.posting_date||'').startsWith(_dcLYM())&&r.docstatus===1&&r.status!=="Delivered"&&r.status!=="Fully Delivered").length),
+  delivered: _dcTr(counts.value.delivered, list.value.filter(r=>(r.posting_date||'').startsWith(_dcLYM())&&(r.status==="Delivered"||r.status==="Fully Delivered")).length),
 }));
 
 const tabCounts = computed(() => ({
@@ -945,19 +960,19 @@ onMounted(async () => {
 
 /* Badges */
 .b-badge-yellow{background:#fff9db;color:#e67700;border:1px solid #ffe066;}
-.b-pill-count{background:#f3f4f6;color:#6b7280;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;}
+.b-pill-count{background:#e5e7eb;color:#6b7280;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;}
 .b-pill.active .b-pill-count{background:#2563eb;color:#fff;}
 
 /* Row */
 .dc-row:hover td{background:#f9fafb;}
 .dc-act-btn{background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;font:inherit;font-size:14px;margin:0 2px;}
-.dc-act-btn:hover{background:#f3f4f6;color:#2563eb;}
+.dc-act-btn:hover{background:#e5e7eb;color:#2563eb;}
 .dc-actions-row{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:nowrap;}
 .dc-act-del:hover{background:#fef2f2 !important;border-color:#fecaca !important;color:#dc2626 !important;}
 .dc-act-cancel:hover{background:#fffbeb !important;border-color:#fde68a !important;color:#d97706 !important;}
 .dc-confirm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
 .dc-confirm-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
-.dc-confirm-icon.danger{background:#fef2f2;color:#dc2626;}
+.dc-confirm-icon.danger{background:#fee2e2;color:#dc2626;}
 .dc-confirm-icon.warn{background:#fffbeb;color:#d97706;}
 .dc-confirm-title{font-size:16px;font-weight:700;color:#111827;}
 .dc-confirm-sub{font-size:13px;color:#6b7280;line-height:1.5;}
@@ -974,7 +989,7 @@ onMounted(async () => {
 /* Confirm dialog */
 .dc-confirm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
 .dc-confirm-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
-.dc-confirm-icon.danger{background:#fef2f2;color:#dc2626;}
+.dc-confirm-icon.danger{background:#fee2e2;color:#dc2626;}
 .dc-confirm-icon.warn{background:#fffbeb;color:#d97706;}
 .dc-confirm-title{font-size:16px;font-weight:700;color:#111827;}
 .dc-confirm-sub{font-size:13px;color:#6b7280;line-height:1.5;}

@@ -6,7 +6,7 @@
         <input v-model="search" placeholder="Search expenses…" class="exp-search-input" />
       </div>
       <div class="exp-pills">
-        <button v-for="t in tabs" :key="t.key" class="exp-pill" :class="{active:activeTab===t.key}" @click="activeTab=t.key">{{ t.label }}</button>
+        <button v-for="t in tabs" :key="t.key" class="exp-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">{{ t.label }}</button>
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="exp-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
@@ -14,12 +14,19 @@
       </div>
     </div>
 
-    <SummaryStrip v-if="!loading" :cards="[
-      { label: 'Total Records', tone: 'accent',                                     value: list.length },
-      { label: 'This Month',    tone: 'info',                                    value: fmtCur(monthTotal) },
-      { label: 'Unpaid',        tone: unpaidTotal>0 ? 'danger' : 'default',         value: fmtCur(unpaidTotal), valueClass: unpaidTotal>0 ? 'red' : '' },
-      { label: 'Draft',         tone: counts.draft>0 ? 'warn' : 'default',          value: counts.draft,        valueClass: counts.draft>0 ? 'orange' : '' },
-    ]" />
+    <!-- ── KPI Cards ── -->
+    <div class="bk-kpi-grid bk-kpi-grid-4">
+      <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Records</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="expTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ expTrends.total.up?'↑':'↓' }} {{ expTrends.total.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">This Month</div><div class="bk-kpi-value bk-kpi-green" style="font-size:18px">{{ fmtCur(monthTotal) }}</div><div class="bk-kpi-trend" :class="expTrends.month.up?'bk-trend-up':'bk-trend-down'">{{ expTrends.month.up?'↑':'↓' }} {{ expTrends.month.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-info clickable" @click="activeTab='submitted'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#cffafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#0891b2" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#0891b2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Submitted</div><div class="bk-kpi-value bk-kpi-blue">{{ list.filter(e=>e.docstatus===1&&statusLabel(e)!=='Paid').length }}</div><div class="bk-kpi-trend" :class="expTrends.submitted.up?'bk-trend-up':'bk-trend-down'">{{ expTrends.submitted.up?'↑':'↓' }} {{ expTrends.submitted.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#f1f5f9"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.draft }}</div><div class="bk-kpi-trend" :class="expTrends.draft.up?'bk-trend-up':'bk-trend-down'">{{ expTrends.draft.up?'↑':'↓' }} {{ expTrends.draft.pct }}% vs last month</div></div></div></div>
+    </div>
+    <div class="bk-stat-grid">
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Count</div><div class="bk-stat-value">{{ expThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Submitted</div><div class="bk-stat-value bk-kpi-green">{{ list.filter(e=>e.docstatus===1).length }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg Expense</div><div class="bk-stat-value" style="font-size:16px">{{ fmtCur(expAvg) }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Paid</div><div class="bk-stat-value bk-kpi-green">{{ list.filter(e=>statusLabel(e)==='Paid').length }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div></div></div>
+    </div>
 
     <div class="exp-card">
       <table class="exp-table">
@@ -365,6 +372,17 @@ const monthStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slic
 const monthTotal=computed(()=>list.value.filter(e=>e.posting_date>=monthStart).reduce((s,e)=>s+flt(e.total_claimed_amount||e.grand_total),0));
 const unpaidTotal=computed(()=>list.value.filter(e=>e.docstatus===1&&statusLabel(e)!=="Paid").reduce((s,e)=>s+flt(e.total_claimed_amount||e.grand_total),0));
 const counts=computed(()=>({draft:list.value.filter(e=>e.docstatus===0).length}));
+const _exYM  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _exLYM = () => { const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _exTr  = (a,b) => { if(!b&&!a) return {pct:0,up:true}; if(!b) return {pct:100,up:true}; const p=Math.round((a-b)/b*100); return {pct:Math.abs(p),up:p>=0}; };
+const expThisMonth = computed(()=>{ const ym=_exYM(); const r=list.value.filter(e=>(e.posting_date||'').startsWith(ym)); return {count:r.length,total:r.reduce((s,e)=>s+flt(e.total_claimed_amount||e.grand_total),0)}; });
+const expAvg = computed(()=>{ const p=list.value.filter(e=>(e.total_claimed_amount||e.grand_total)>0); return p.length?p.reduce((s,e)=>s+flt(e.total_claimed_amount||e.grand_total),0)/p.length:0; });
+const expTrends = computed(()=>({
+  total:     _exTr(expThisMonth.value.count, list.value.filter(e=>(e.posting_date||'').startsWith(_exLYM())).length),
+  month:     _exTr(expThisMonth.value.total, list.value.filter(e=>(e.posting_date||'').startsWith(_exLYM())).reduce((s,e)=>s+flt(e.total_claimed_amount||e.grand_total),0)),
+  submitted: _exTr(list.value.filter(e=>e.docstatus===1&&statusLabel(e)!=='Paid').length, list.value.filter(e=>(e.posting_date||'').startsWith(_exLYM())&&e.docstatus===1&&statusLabel(e)!=='Paid').length),
+  draft:     _exTr(list.value.filter(e=>e.docstatus===0).length, list.value.filter(e=>(e.posting_date||'').startsWith(_exLYM())&&e.docstatus===0).length),
+}));
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 const filtered=computed(()=>{let r=list.value;if(activeTab.value==="draft")r=r.filter(e=>e.docstatus===0);if(activeTab.value==="submitted")r=r.filter(e=>e.docstatus===1&&statusLabel(e)!=="Paid");if(activeTab.value==="paid")r=r.filter(e=>statusLabel(e)==="Paid");if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(x=>(x.name||"").toLowerCase().includes(q)||(x.employee_name||"").toLowerCase().includes(q)||(x.expense_type||"").toLowerCase().includes(q));}return r;});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
@@ -503,11 +521,11 @@ onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseA
 .exp-num{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
 .mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
 .exp-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
-.badge-blue{background:#dbeafe;color:#2563eb;}.badge-orange{background:#fff7ed;color:#ea580c;}
-.badge-green{background:#dcfce7;color:#16a34a;}.badge-grey{background:#f3f4f6;color:#6b7280;}
+.badge-blue{background:#dbeafe;color:#2563eb;}.badge-orange{background:#fef3c7;color:#ea580c;}
+.badge-green{background:#dcfce7;color:#16a34a;}.badge-grey{background:#e5e7eb;color:#6b7280;}
 .exp-act-cell{display:flex;gap:4px;justify-content:flex-end;cursor:default!important;}
 .exp-act-btn{background:transparent;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;}
-.exp-act-btn:hover{background:#f3f4f6;color:#2563eb;}
+.exp-act-btn:hover{background:#e5e7eb;color:#2563eb;}
 .exp-empty{text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important;}
 .exp-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}

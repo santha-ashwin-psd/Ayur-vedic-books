@@ -336,3 +336,93 @@
 }
 
 .ss-cell-wrap .ss-trigger { padding: 4px 8px; font-size: 12.5px; min-height: 28px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Shared KPI card system — used by all list pages
+   ════════════════════════════════════════════════════════════════════ */
+
+/* KPI grid row 1 */
+.bk-kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+@media(max-width:1300px){.bk-kpi-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:800px){.bk-kpi-grid{grid-template-columns:repeat(2,1fr);}}
+.bk-kpi-grid-4{grid-template-columns:repeat(4,1fr);}
+.bk-kpi-grid-3{grid-template-columns:repeat(3,1fr);}
+
+.bk-kpi-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;cursor:default;transition:box-shadow .15s,transform .12s;}
+.bk-kpi-card.clickable{cursor:pointer;}
+.bk-kpi-card.clickable:hover{box-shadow:0 4px 14px rgba(0,0,0,.07);transform:translateY(-1px);}
+.bk-kpi-inner{display:flex;align-items:flex-start;gap:12px;}
+.bk-kpi-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.10);}
+.bk-kpi-body{flex:1;min-width:0;}
+.bk-kpi-label{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.bk-kpi-value{font-size:26px;font-weight:800;color:#111827;letter-spacing:-.03em;line-height:1;margin-bottom:5px;}
+.bk-kpi-trend{font-size:11px;font-weight:500;display:flex;align-items:center;gap:2px;}
+.bk-trend-up{color:#16a34a;}.bk-trend-down{color:#dc2626;}.bk-trend-neutral{color:#9ca3af;}
+.bk-kpi-blue{color:#1d4ed8;}.bk-kpi-green{color:#16a34a;}.bk-kpi-red{color:#dc2626;}
+.bk-kpi-amber{color:#d97706;}.bk-kpi-purple{color:#7c3aed;}.bk-kpi-teal{color:#0d9488;}
+
+/* Secondary stats row */
+.bk-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+@media(max-width:1100px){.bk-stat-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.bk-stat-grid{grid-template-columns:1fr;}}
+.bk-stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;}
+.bk-stat-content{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.bk-stat-label{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.bk-stat-value{font-size:19px;font-weight:800;color:#111827;letter-spacing:-.02em;}
+.bk-stat-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.bk-stat-spark{width:68px;height:28px;flex-shrink:0;}
+.bk-stat-sub{font-size:11px;color:#9ca3af;margin-top:2px;}
+
+/* Shared empty state */
+.bk-empty-state{text-align:center;padding:64px 20px !important;cursor:default !important;}
+.bk-empty-inner{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.bk-empty-illus{margin-bottom:6px;opacity:.85;}
+.bk-empty-title{font-size:17px;font-weight:700;color:#1e293b;margin:0;}
+.bk-empty-sub{font-size:13px;color:#94a3b8;line-height:1.6;max-width:320px;margin:0;text-align:center;}
+.bk-empty-btn{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px;transition:background .12s;}
+.bk-empty-btn:hover{background:#1d4ed8;}
+
+/* ── KPI card gradient tone variants (mirrors SummaryStrip tones) ── */
+.bk-kpi-accent  { background: linear-gradient(135deg, #eff6ff 0%, #fff 100%) !important; border-color: #bfdbfe !important; }
+.bk-kpi-success { background: linear-gradient(135deg, #f0fdf4 0%, #fff 100%) !important; border-color: #bbf7d0 !important; }
+.bk-kpi-warn    { background: linear-gradient(135deg, #fffbeb 0%, #fff 100%) !important; border-color: #fde68a !important; }
+.bk-kpi-danger  { background: linear-gradient(135deg, #fef2f2 0%, #fff 100%) !important; border-color: #fecaca !important; }
+.bk-kpi-info    { background: linear-gradient(135deg, #ecfeff 0%, #fff 100%) !important; border-color: #a5f3fc !important; }
+.bk-kpi-purple  { background: linear-gradient(135deg, #f5f3ff 0%, #fff 100%) !important; border-color: #ddd6fe !important; }
+
+/* ── Universal pill gradient overrides (targets bill-pill, pmt-pill, etc.) ── */
+/* Active state: solid blue gradient fill */
+[class*="-pill"].active,
+[class*="-pill"].active:hover {
+  background: linear-gradient(135deg,#2563eb,#1d4ed8) !important;
+  border-color: #2563eb !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(37,99,235,.22);
+}
+[class*="-pill"].active [class*="-pill-count"],
+[class*="-pill"].active .sales-pill-count {
+  background: rgba(255,255,255,.25) !important;
+  color: #fff !important;
+}
+
+/* Status-tinted inactive pills */
+[class*="-pill"].pill-draft     { background: linear-gradient(135deg,#f9fafb,#fff) !important; border-color:#e5e7eb !important; color:#6b7280 !important; }
+[class*="-pill"].pill-sent      { background: linear-gradient(135deg,#ecfeff,#fff) !important; border-color:#a5f3fc !important; color:#0891b2 !important; }
+[class*="-pill"].pill-accepted  { background: linear-gradient(135deg,#f0fdf4,#fff) !important; border-color:#bbf7d0 !important; color:#16a34a !important; }
+[class*="-pill"].pill-declined  { background: linear-gradient(135deg,#fef2f2,#fff) !important; border-color:#fecaca !important; color:#dc2626 !important; }
+[class*="-pill"].pill-expired   { background: linear-gradient(135deg,#fffbeb,#fff) !important; border-color:#fde68a !important; color:#d97706 !important; }
+[class*="-pill"].pill-converted { background: linear-gradient(135deg,#f5f3ff,#fff) !important; border-color:#ddd6fe !important; color:#7c3aed !important; }
+[class*="-pill"].pill-unpaid    { background: linear-gradient(135deg,#fffbeb,#fff) !important; border-color:#fde68a !important; color:#d97706 !important; }
+[class*="-pill"].pill-overdue   { background: linear-gradient(135deg,#fef2f2,#fff) !important; border-color:#fecaca !important; color:#dc2626 !important; }
+[class*="-pill"].pill-paid      { background: linear-gradient(135deg,#f0fdf4,#fff) !important; border-color:#bbf7d0 !important; color:#16a34a !important; }
+[class*="-pill"].pill-active    { background: linear-gradient(135deg,#f0fdf4,#fff) !important; border-color:#bbf7d0 !important; color:#16a34a !important; }
+[class*="-pill"].pill-paused    { background: linear-gradient(135deg,#fffbeb,#fff) !important; border-color:#fde68a !important; color:#d97706 !important; }
+[class*="-pill"].pill-cancelled { background: linear-gradient(135deg,#fef2f2,#fff) !important; border-color:#fecaca !important; color:#dc2626 !important; }
+[class*="-pill"].pill-submitted { background: linear-gradient(135deg,#eff6ff,#fff) !important; border-color:#bfdbfe !important; color:#2563eb !important; }
+[class*="-pill"].pill-toDeliver { background: linear-gradient(135deg,#fffbeb,#fff) !important; border-color:#fde68a !important; color:#d97706 !important; }
+[class*="-pill"].pill-toBill    { background: linear-gradient(135deg,#ecfeff,#fff) !important; border-color:#a5f3fc !important; color:#0891b2 !important; }
+[class*="-pill"].pill-toReceive { background: linear-gradient(135deg,#fffbeb,#fff) !important; border-color:#fde68a !important; color:#d97706 !important; }
+[class*="-pill"].pill-issued    { background: linear-gradient(135deg,#f0fdf4,#fff) !important; border-color:#bbf7d0 !important; color:#16a34a !important; }
+[class*="-pill"].pill-generated { background: linear-gradient(135deg,#f0fdf4,#fff) !important; border-color:#bbf7d0 !important; color:#16a34a !important; }
+[class*="-pill"].pill-Receive   { background: linear-gradient(135deg,#f0fdf4,#fff) !important; border-color:#bbf7d0 !important; color:#16a34a !important; }
+[class*="-pill"].pill-Pay       { background: linear-gradient(135deg,#fef2f2,#fff) !important; border-color:#fecaca !important; color:#dc2626 !important; }

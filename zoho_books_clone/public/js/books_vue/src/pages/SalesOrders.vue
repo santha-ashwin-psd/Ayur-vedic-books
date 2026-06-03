@@ -8,7 +8,7 @@
         <input v-model="search" placeholder="Search orders, customers…" class="sales-search-input"/>
       </div>
       <div class="sales-pills">
-        <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key}" @click="activeTab=t.key">
+        <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">
           {{ t.label }}<span v-if="t.key!=='all'" class="sales-pill-count">{{ counts[t.key] }}</span>
         </button>
       </div>
@@ -21,13 +21,20 @@
       </div>
     </div>
 
-    <!-- ── Summary strip ── -->
-    <SummaryStrip :cards="[
-      { label: 'Total Orders', tone: 'accent', value: list.length },
-      { label: 'To Deliver', tone: counts.toDeliver>0?'warn':'default', value: counts.toDeliver, valueClass: counts.toDeliver>0?'orange':'' },
-      { label: 'To Invoice', tone: 'info', value: counts.toInvoice, valueClass: 'blue' },
-      { label: 'Pipeline Value', tone: 'success', value: fmtCur(summary.totalValue), valueClass: 'green' },
-    ]" />
+    <!-- ── KPI Cards ── -->
+    <div class="bk-kpi-grid">
+      <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Orders</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="soTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.total.up?'↑':'↓' }} {{ soTrends.total.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card clickable" @click="activeTab='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#e2e8f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value">{{ counts.draft }}</div><div class="bk-kpi-trend" :class="soTrends.draft.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.draft.up?'↑':'↓' }} {{ soTrends.draft.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='toDeliver'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">To Deliver</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.toDeliver }}</div><div class="bk-kpi-trend" :class="soTrends.deliver.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.deliver.up?'↑':'↓' }} {{ soTrends.deliver.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='closed'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Closed</div><div class="bk-kpi-value bk-kpi-green">{{ counts.closed }}</div><div class="bk-kpi-trend" :class="soTrends.closed.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.closed.up?'↑':'↓' }} {{ soTrends.closed.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-danger clickable" @click="activeTab='cancelled'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fee2e2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Cancelled</div><div class="bk-kpi-value bk-kpi-red">{{ counts.cancelled }}</div><div class="bk-kpi-trend" :class="soTrends.cancelled.up?'bk-trend-down':'bk-trend-up'">{{ soTrends.cancelled.up?'↑':'↓' }} {{ soTrends.cancelled.pct }}% vs last month</div></div></div></div>
+    </div>
+    <div class="bk-stat-grid">
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ soThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Value</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">{{ fmtCur(soThisMonth.value) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Pipeline Value</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">{{ fmtCur(summary.totalValue) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">To Invoice</div><div class="bk-stat-value bk-kpi-blue">{{ counts.toInvoice }}</div></div><div class="bk-stat-icon" style="background:#cffafe;color:#0891b2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div></div>
+    </div>
 
     <!-- ── Bulk actions bar ── -->
     <div v-if="selected.size>0" class="inv-bulk-bar">
@@ -87,13 +94,10 @@
               </td>
             </tr>
             <tr v-if="!sorted.length">
-              <td colspan="8" class="empty-state">
-                <div class="empty-inner">
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".3"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
-                  <p>{{ search ? 'No sales orders match' : 'No sales orders yet' }}</p>
-                  <button v-if="!search" class="inv-btn-primary" style="margin-top:4px" @click="openNew">
-                    <span v-html="icon('plus',13)"></span> New Sales Order
-                  </button>
+              <td colspan="8" class="bk-empty-state">
+                <div class="bk-empty-inner">
+                  <template v-if="search"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No sales orders match</p></template>
+                  <template v-else><div class="bk-empty-illus"><svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="8" y="18" width="64" height="48" rx="6" fill="#e2e8f0"/><rect x="12" y="22" width="56" height="40" rx="4" fill="#fff"/><rect x="20" y="32" width="40" height="3" rx="2" fill="#e2e8f0"/><rect x="20" y="40" width="30" height="3" rx="2" fill="#e2e8f0"/><rect x="20" y="48" width="35" height="3" rx="2" fill="#e2e8f0"/><rect x="56" y="56" width="14" height="14" rx="3" fill="#2563eb" opacity=".8"/><line x1="60" y1="63" x2="66" y2="63" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><line x1="63" y1="60" x2="63" y2="66" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></div><p class="bk-empty-title">No sales orders yet</p><p class="bk-empty-sub">Create a sales order to track customer fulfilment.</p><button class="bk-empty-btn" @click="openNew"><span v-html="icon('plus',13)"></span> New Sales Order</button></template>
                 </div>
               </td>
             </tr>
@@ -570,6 +574,17 @@ const counts = computed(() => {
 const summary = computed(() => ({
   totalValue: list.value.filter(o => (o.status||"").toLowerCase() !== "cancelled")
     .reduce((s, o) => s + flt(o.grand_total), 0),
+}));
+const _soYM  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _soLYM = () => { const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _soTr  = (a,b) => { if(!b&&!a) return {pct:0,up:true}; if(!b) return {pct:100,up:true}; const p=Math.round((a-b)/b*100); return {pct:Math.abs(p),up:p>=0}; };
+const soThisMonth = computed(()=>{ const ym=_soYM(); const r=list.value.filter(o=>(o.transaction_date||'').startsWith(ym)); return {count:r.length,value:r.reduce((s,o)=>s+flt(o.grand_total),0)}; });
+const soTrends = computed(()=>({
+  total:     _soTr(soThisMonth.value.count, list.value.filter(o=>(o.transaction_date||'').startsWith(_soLYM())).length),
+  draft:     _soTr(counts.value.draft, list.value.filter(o=>(o.transaction_date||'').startsWith(_soLYM())&&o.docstatus===0).length),
+  deliver:   _soTr(counts.value.toDeliver, list.value.filter(o=>(o.transaction_date||'').startsWith(_soLYM())&&(o.status||'').toLowerCase()!=='cancelled'&&(o.status||'').toLowerCase()!=='closed'&&o.docstatus===1).length),
+  closed:    _soTr(counts.value.closed, list.value.filter(o=>(o.transaction_date||'').startsWith(_soLYM())&&((o.status||'').toLowerCase()==='closed'||(o.status||'').toLowerCase()==='invoiced')).length),
+  cancelled: _soTr(counts.value.cancelled, list.value.filter(o=>(o.transaction_date||'').startsWith(_soLYM())&&(o.status||'').toLowerCase()==='cancelled').length),
 }));
 
 const filtered = computed(() => {

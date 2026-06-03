@@ -7,7 +7,7 @@
         <input v-model="search" placeholder="Search payments…" class="pmt-search-input" />
       </div>
       <div class="pmt-pills">
-        <button v-for="t in tabs" :key="t.key" class="pmt-pill" :class="{active:activeTab===t.key}" @click="activeTab=t.key">{{ t.label }}</button>
+        <button v-for="t in tabs" :key="t.key" class="pmt-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">{{ t.label }}</button>
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="pmt-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
@@ -15,12 +15,19 @@
       </div>
     </div>
 
-    <SummaryStrip v-if="!loading" :cards="[
-      { label: 'Total Received', tone: 'success', value: fmtCur(summaryReceived), valueClass: 'green' },
-      { label: 'Total Paid Out', tone: summaryPaid>0?'danger':'default', value: fmtCur(summaryPaid), valueClass: summaryPaid>0?'red':'' },
-      { label: 'Net', tone: 'accent', value: fmtCur(summaryReceived - summaryPaid), valueClass: (summaryReceived-summaryPaid)>=0?'green':'red' },
-      { label: 'Count', tone: 'default', value: filtered.length },
-    ]" />
+    <!-- ── KPI Cards ── -->
+    <div class="bk-kpi-grid bk-kpi-grid-4">
+      <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Payments</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="pmtTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ pmtTrends.total.up?'↑':'↓' }} {{ pmtTrends.total.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='Receive'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Received</div><div class="bk-kpi-value bk-kpi-green" style="font-size:20px">{{ fmtCur(summaryReceived) }}</div><div class="bk-kpi-trend" :class="pmtTrends.received.up?'bk-trend-up':'bk-trend-down'">{{ pmtTrends.received.up?'↑':'↓' }} {{ pmtTrends.received.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-danger clickable" @click="activeTab='Pay'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fee2e2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8"><polyline points="1 6 10.5 15.5 15.5 10.5 23 18"/><polyline points="17 18 23 18 23 12"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Paid Out</div><div class="bk-kpi-value bk-kpi-red" style="font-size:20px">{{ fmtCur(summaryPaid) }}</div><div class="bk-kpi-trend" :class="pmtTrends.paid.up?'bk-trend-down':'bk-trend-up'">{{ pmtTrends.paid.up?'↑':'↓' }} {{ pmtTrends.paid.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#f3f4f6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Net Flow</div><div class="bk-kpi-value" :class="(summaryReceived-summaryPaid)>=0?'bk-kpi-green':'bk-kpi-red'" style="font-size:20px">{{ fmtCur(summaryReceived - summaryPaid) }}</div><div class="bk-kpi-trend bk-trend-neutral">this period</div></div></div></div>
+    </div>
+    <div class="bk-stat-grid">
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ pmtThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Received This Month</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">{{ fmtCur(pmtThisMonth.received) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Paid Out This Month</div><div class="bk-stat-value bk-kpi-red" style="font-size:16px">{{ fmtCur(pmtThisMonth.paid) }}</div></div><div class="bk-stat-icon" style="background:#fee2e2;color:#dc2626"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg Payment</div><div class="bk-stat-value" style="font-size:16px">{{ fmtCur(pmtAvg) }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
+    </div>
 
     <!-- Bulk action bar (light style, matching Sales Orders/Quotes/Invoices) -->
     <div v-if="selected.size" class="inv-bulk-bar">
@@ -71,7 +78,7 @@
                 <button v-if="p.docstatus===0 || p.docstatus===2" class="pmt-act-btn" style="border-color:#fee2e2;color:#dc2626" @click="deletePmt(p)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="9" class="pmt-empty">No payments found</td></tr>
+            <tr v-if="!sorted.length"><td colspan="9" class="bk-empty-state"><div class="bk-empty-inner"><template v-if="search"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No payments match</p></template><template v-else><div class="bk-empty-illus"><svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="8" y="22" width="64" height="40" rx="8" fill="#e2e8f0"/><rect x="12" y="26" width="56" height="32" rx="6" fill="#fff"/><rect x="12" y="38" width="56" height="6" fill="#cbd5e1"/><circle cx="22" cy="50" r="5" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/><polyline points="19.5 50 21.5 52 24.5 48" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p class="bk-empty-title">No payments recorded yet</p><p class="bk-empty-sub">Record your first payment to track cash flow.</p><button class="bk-empty-btn" @click="openAdd(activeTab==='Pay'?'Pay':'Receive')"><span v-html="icon('plus',13)"></span> Record Payment</button></template></div></td></tr>
           </template>
         </tbody>
       </table>
@@ -469,6 +476,16 @@ const { page, pageSize, paged } = usePagination(sorted, { storageKey: "payments"
 
 const summaryReceived = computed(() => list.value.filter(p=>p.payment_type==="Receive").reduce((s,p)=>s+flt(p.paid_amount),0));
 const summaryPaid = computed(() => list.value.filter(p=>p.payment_type==="Pay").reduce((s,p)=>s+flt(p.paid_amount),0));
+const _pYM  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _pLYM = () => { const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _pTrend=(a,b)=>{ if(!b&&!a) return {pct:0,up:true}; if(!b) return {pct:100,up:true}; const p=Math.round((a-b)/b*100); return {pct:Math.abs(p),up:p>=0}; };
+const pmtThisMonth = computed(()=>{ const ym=_pYM(); const r=list.value.filter(p=>(p.payment_date||'').startsWith(ym)); return {count:r.length,received:r.filter(p=>p.payment_type==="Receive").reduce((s,p)=>s+flt(p.paid_amount),0),paid:r.filter(p=>p.payment_type==="Pay").reduce((s,p)=>s+flt(p.paid_amount),0)}; });
+const pmtAvg = computed(()=>{ const p=list.value.filter(x=>x.paid_amount>0); return p.length?p.reduce((s,x)=>s+flt(x.paid_amount),0)/p.length:0; });
+const pmtTrends = computed(()=>({
+  total:    _pTrend(pmtThisMonth.value.count, list.value.filter(p=>(p.payment_date||'').startsWith(_pLYM())).length),
+  received: _pTrend(pmtThisMonth.value.received, list.value.filter(p=>(p.payment_date||'').startsWith(_pLYM())&&p.payment_type==="Receive").reduce((s,p)=>s+flt(p.paid_amount),0)),
+  paid:     _pTrend(pmtThisMonth.value.paid, list.value.filter(p=>(p.payment_date||'').startsWith(_pLYM())&&p.payment_type==="Pay").reduce((s,p)=>s+flt(p.paid_amount),0)),
+}));
 function fmtCur(v) { return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v)); }
 
 const allChecked = computed(() => sorted.value.length > 0 && sorted.value.every(p => selected.value.has(p.name)));
@@ -689,7 +706,7 @@ onMounted(async () => {
 .pmt-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .badge-green{background:#dcfce7;color:#16a34a;}.badge-red{background:#fee2e2;color:#dc2626;}
 .pmt-act-btn{background:transparent;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;}
-.pmt-act-btn:hover{background:#f3f4f6;color:#2563eb;}
+.pmt-act-btn:hover{background:#e5e7eb;color:#2563eb;}
 .pmt-empty{text-align:center;color:#9ca3af;padding:48px 20px!important;font-size:13px;cursor:default!important;}
 .pmt-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}

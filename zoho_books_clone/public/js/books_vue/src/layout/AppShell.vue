@@ -1,8 +1,12 @@
 <template>
-  <div class="bv-app" :class="{ 'bv-app-sidebar-collapsed': collapsed }">
-    <Sidebar :collapsed="collapsed" @toggle="collapsed = !collapsed" />
+  <div class="bv-app" :class="{ 'bv-app-sidebar-collapsed': collapsed, 'bv-mobile-open': mobileOpen }">
+
+    <!-- Mobile overlay — tap to close sidebar -->
+    <div v-if="mobileOpen" class="bv-mob-overlay" @click="mobileOpen = false"></div>
+
+    <Sidebar :collapsed="collapsed" :mobile-open="mobileOpen" @toggle="collapsed = !collapsed" @close-mobile="mobileOpen = false" />
     <div class="bv-app-main">
-      <Topbar @toggle-ai="aiOpen = !aiOpen" :alert-count="alertCount" />
+      <Topbar @toggle-ai="aiOpen = !aiOpen" :alert-count="alertCount" @toggle-mobile="mobileOpen = !mobileOpen" />
       <main class="bv-app-content">
         <router-view />
       </main>
@@ -42,6 +46,7 @@ import { apiGET }       from "../api/client.js";
 const COLLAPSE_KEY = "books_sidebar_collapsed";
 
 const collapsed  = ref(false);
+const mobileOpen = ref(false);
 const aiOpen     = ref(false);
 const alertCount = ref(0);
 const aiAlerts   = ref([]);

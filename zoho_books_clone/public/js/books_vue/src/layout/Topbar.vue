@@ -1,5 +1,10 @@
 <template>
   <header class="bv-topbar">
+    <!-- Hamburger: visible on mobile only -->
+    <button class="bv-hamburger" @click="$emit('toggle-mobile')" aria-label="Open menu">
+      <span class="bv-ham-icon"></span>
+    </button>
+
     <div class="bv-topbar-title">{{ title }}</div>
     <!-- <div class="bv-topbar-divider"></div>
 
@@ -56,7 +61,7 @@ import { titleFor } from "./nav.js";
 import { session } from "../api/session.js";
 import { usePermissions } from "../composables/usePermissions.js";
 
-defineEmits(["toggle-ai"])
+defineEmits(["toggle-ai", "toggle-mobile"])
 defineProps({ alertCount: { type: Number, default: 0 } });
 
 const route   = useRoute();

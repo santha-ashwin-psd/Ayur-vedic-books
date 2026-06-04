@@ -538,64 +538,93 @@
     </div>
 
     <!-- ── View Drawer ── -->
+    <!-- ══ INVOICE VIEW — right-side drawer ══ -->
     <div v-if="viewOpen&&viewInv" class="inv-drawer-bg" @click.self="viewOpen=false">
-      <div class="inv-drawer-panel inv-drawer-wide">
+    <div class="inv-drawer-panel inv-drawer-wide inv-view-page">
 
-        <!-- Header -->
-        <div class="inv-dh" :style="'background:'+statusBg(viewInv)">
-          <div>
-            <div class="inv-dh-title" style="color:#fff">{{ viewInv.name }}</div>
-            <div class="inv-dh-sub" style="color:rgba(255,255,255,.75)">
-              <DocLink doctype="Customer" :name="viewInv.customer" :mono-style="false">{{ viewInv.customer_name||viewInv.customer }}</DocLink> · {{ fmtDate(viewInv.posting_date) }}
-            </div>
+      <!-- Top header: number + badge | Receive Payment CTA -->
+      <div class="inv-view-header">
+        <div class="inv-view-header-left">
+          <div class="inv-view-title-row">
+            <span class="inv-view-number">{{ viewInv.name }}</span>
+            <span class="inv-hdr-badge" :class="statusCls(viewInv)">{{ statusLabel(viewInv) }}</span>
           </div>
-          <button class="inv-dclose" style="color:#fff;background:rgba(255,255,255,.15)" @click="viewOpen=false">
-            <span v-html="icon('x',16)"></span>
+          <div class="inv-view-subtitle">
+            <span class="inv-cust-link" @click="viewOpen=false">
+              <DocLink doctype="Customer" :name="viewInv.customer" :mono-style="false">{{ viewInv.customer_name||viewInv.customer }}</DocLink>
+            </span>
+            <span v-if="viewInv.due_date"> · Due on {{ fmtDate(viewInv.due_date) }}
+              <span v-if="isOverdue(viewInv)"> ({{ overdueDays(viewInv) }}d overdue)</span>
+            </span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button v-if="viewInv.outstanding_amount>0&&viewInv.docstatus===1"
+                  class="inv-view-cta"
+                  @click="openPayment(viewInv)">
+            <span v-html="icon('indianrupee',15)"></span> Receive Payment
+          </button>
+          <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
+            <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
           </button>
         </div>
+      </div>
+
+      <!-- Main white card -->
+      <div class="inv-view-body">
 
         <!-- Status timeline -->
-        <div class="inv-timeline">
-          <template v-for="(step, i) in timelineSteps" :key="i">
-            <div class="inv-tl-step" :class="{ done: step.done, danger: step.danger }">
-              <div class="inv-tl-dot">
-                <span v-if="step.done&&!step.danger" v-html="icon('check',9)"></span>
-                <span v-else-if="step.danger" style="font-size:9px;font-weight:700">!</span>
+        <div class="inv-tl-wrap">
+          <div class="inv-tl">
+            <!-- solid progress line behind completed steps -->
+            <div class="inv-tl-progress"
+                 :style="{ width: tlProgressWidth }"></div>
+            <template v-for="(step, i) in timelineSteps" :key="i">
+              <div class="inv-tl-step"
+                   :class="{ 'tl-done': step.done && !step.danger, 'tl-danger': step.danger, 'tl-success': step.success, 'tl-pending': !step.done && !step.danger }">
+                <div class="inv-tl-dot">
+                  <span v-if="step.done && !step.danger" v-html="icon('check',14)"></span>
+                  <span v-else-if="step.danger" style="font-size:11px;font-weight:800">!</span>
+                  <span v-else v-html="icon(step.icon||'circle',14)"></span>
+                </div>
+                <div class="inv-tl-label">{{ step.label }}</div>
+                <div class="inv-tl-date">{{ step.date ? fmtDate(step.date) : '—' }}</div>
               </div>
-              <div class="inv-tl-label">{{ step.label }}</div>
-            </div>
-            <div v-if="i<timelineSteps.length-1" class="inv-tl-line" :class="{ done: timelineSteps[i+1]?.done, danger: timelineSteps[i+1]?.danger }"></div>
-          </template>
+            </template>
+          </div>
         </div>
 
-        <!-- Quick actions -->
-        <div class="inv-view-actions">
-          <button v-if="viewInv.docstatus===0" class="inv-va-btn" @click="viewOpen=false;openEdit(viewInv)">
-            <span v-html="icon('edit',13)"></span> Edit
+        <!-- Action buttons bar -->
+        <div class="inv-action-bar">
+          <button v-if="viewInv.docstatus===0" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewInv)">
+            <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
           </button>
-          <button class="inv-va-btn" @click="printViewInvoice">
-            <span v-html="icon('download',13)"></span> Print PDF
+          <button class="inv-ab-btn" @click="printViewInvoice">
+            <span v-html="icon('printer',13)"></span> <span class="ab-label">Print PDF</span>
           </button>
-          <button class="inv-va-btn" @click="duplicateInvoice(viewInv)">
-            <span v-html="icon('copy',13)"></span> Duplicate
+          <button class="inv-ab-btn" @click="duplicateInvoice(viewInv)">
+            <span v-html="icon('copy',13)"></span> <span class="ab-label">Duplicate</span>
           </button>
-          <button class="inv-va-btn" @click="openEmail(viewInv)">
-            <span v-html="icon('mail',13)"></span> Send Email
+          <div style="position:relative;display:inline-flex">
+            <button class="inv-ab-btn inv-ab-dropdown" @click="showDownloadMenu=!showDownloadMenu">
+              <span v-html="icon('download',13)"></span> <span class="ab-label">Download</span>
+              <span class="inv-ab-caret">▾</span>
+            </button>
+          </div>
+          <button class="inv-ab-btn" @click="openEmail(viewInv)">
+            <span v-html="icon('mail',13)"></span> <span class="ab-label">Send Email</span>
           </button>
-          <button v-if="viewInv.outstanding_amount>0&&viewInv.docstatus===1" class="inv-va-btn inv-va-pay" @click="viewOpen=false;openPayment(viewInv)">
-            ₹ Record Payment
+          <button v-if="viewInv.docstatus===1" class="inv-ab-btn" @click="openCreditNote(viewInv)">
+            <span v-html="icon('creditnote',13)"></span> <span class="ab-label">Credit Note</span>
           </button>
-          <button v-if="viewInv.docstatus===1" class="inv-va-btn" @click="openCreditNote(viewInv)">
-            <span v-html="icon('creditnote',13)"></span> Credit Note
+          <button v-if="viewInv.docstatus===1" class="inv-ab-btn" @click="makeRecurring(viewInv)">
+            <span v-html="icon('repeat',13)"></span> <span class="ab-label">Make Recurring</span>
           </button>
-          <button v-if="viewInv.docstatus===1" class="inv-va-btn" @click="makeRecurring(viewInv)">
-            <span v-html="icon('repeat',13)"></span> Make Recurring
-          </button>
-          <button v-if="viewInv.docstatus===1" class="inv-va-btn inv-va-danger" @click="confirmAction('cancel', viewInv)">
+          <button v-if="viewInv.docstatus===1" class="inv-ab-btn inv-ab-danger" @click="confirmAction('cancel', viewInv)">
             Cancel
           </button>
-          <button v-if="viewInv.docstatus===0" class="inv-va-btn inv-va-danger" @click="confirmAction('delete', viewInv)">
-            <span v-html="icon('delete',13)"></span> Delete
+          <button v-if="viewInv.docstatus===0" class="inv-ab-btn inv-ab-danger" @click="confirmAction('delete', viewInv)">
+            <span v-html="icon('delete',13)"></span> <span class="ab-label">Delete</span>
           </button>
         </div>
 
@@ -607,106 +636,256 @@
           </button>
         </div>
 
-        <div class="inv-dbody">
+        <!-- ── Details tab ── -->
+        <template v-if="viewTab==='details'">
+          <div class="inv-tab-body">
 
-          <!-- Details tab -->
-          <template v-if="viewTab==='details'">
-            <div class="inv-view-meta">
-              <div><div class="inv-meta-lbl">Status</div><span class="inv-status-badge" :class="statusCls(viewInv)">{{ statusLabel(viewInv) }}</span></div>
-              <div><div class="inv-meta-lbl">Customer</div><div><DocLink doctype="Customer" :name="viewInv.customer" :mono-style="false">{{ viewInv.customer_name||viewInv.customer }}</DocLink></div></div>
-              <div v-if="viewInv.po_no"><div class="inv-meta-lbl">PO Number</div><div class="mono-sm">{{ viewInv.po_no }}</div></div>
-              <div><div class="inv-meta-lbl">Invoice Date</div><div>{{ fmtDate(viewInv.posting_date) }}</div></div>
-              <div><div class="inv-meta-lbl">Due Date</div><div :class="isOverdue(viewInv)?'text-danger':''">{{ fmtDate(viewInv.due_date)||'—' }}</div></div>
-              <div><div class="inv-meta-lbl">Place of Supply</div><div>{{ viewInv.place_of_supply||'—' }}</div></div>
-              <div><div class="inv-meta-lbl">Grand Total</div><div style="font-weight:700;font-family:monospace;font-size:15px">{{ fmtAmt(viewInv.grand_total, viewInv.currency) }}</div></div>
-              <div><div class="inv-meta-lbl">Balance Due</div><div :class="viewInv.outstanding_amount>0?'text-danger':'text-success'" style="font-weight:700;font-family:monospace">{{ fmtAmt(viewInv.outstanding_amount, viewInv.currency) }}</div></div>
+            <!-- Details meta row: Customer | Invoice Date | Due Date | Place of Supply | Balance Due -->
+            <div class="inv-details-meta">
+              <!-- Customer -->
+              <div class="inv-details-meta-col col-customer">
+                <div class="inv-dmeta-icon-row">
+                  <span class="inv-dmeta-icon" v-html="icon('user',13)"></span>
+                  <span class="inv-dmeta-lbl">Customer</span>
+                </div>
+                <div class="inv-dmeta-primary">
+                  <DocLink doctype="Customer" :name="viewInv.customer" :mono-style="false">{{ viewInv.customer_name||viewInv.customer }}</DocLink>
+                </div>
+                <div v-if="viewInv.contact_email" class="inv-dmeta-secondary">{{ viewInv.contact_email }}</div>
+                <div v-if="viewInv.contact_mobile" class="inv-dmeta-tertiary">{{ viewInv.contact_mobile }}</div>
+                
+              </div>
+
+              <!-- Invoice Date -->
+              <div class="inv-details-meta-col">
+                <div class="inv-dmeta-icon-row">
+                  <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
+                  <span class="inv-dmeta-lbl">Invoice Date</span>
+                </div>
+                <div class="inv-dmeta-date-val">{{ fmtDateLong(viewInv.posting_date) }}</div>
+                <div class="inv-dmeta-date-sub">{{ fmtDateDay(viewInv.posting_date) }}</div>
+              </div>
+
+              <!-- Due Date -->
+              <div class="inv-details-meta-col">
+                <div class="inv-dmeta-icon-row">
+                  <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
+                  <span class="inv-dmeta-lbl">Due Date</span>
+                </div>
+                <div class="inv-dmeta-date-val" :class="{ 'is-overdue': isOverdue(viewInv) }">
+                  {{ fmtDateLong(viewInv.due_date) || '—' }}
+                </div>
+                <div class="inv-dmeta-date-sub" v-if="viewInv.due_date">{{ fmtDateDay(viewInv.due_date) }}</div>
+              </div>
+
+              <!-- Place of Supply -->
+              <div class="inv-details-meta-col">
+                <div class="inv-dmeta-icon-row">
+                  <span class="inv-dmeta-icon" v-html="icon('map-pin',13)"></span>
+                  <span class="inv-dmeta-lbl">Place of Supply</span>
+                </div>
+                <div class="inv-dmeta-date-val" style="font-size:14px">{{ viewInv.place_of_supply || '—' }}</div>
+              </div>
+
+              <!-- Balance Due -->
+              <div class="inv-details-meta-col col-balance">
+                <div class="inv-dmeta-icon-row">
+                  <span class="inv-dmeta-icon" v-html="icon('indianrupee',13)"></span>
+                  <span class="inv-dmeta-lbl">Balance Due</span>
+                </div>
+                <div class="inv-balance-val"
+                     :class="{ 'is-paid': viewInv.outstanding_amount===0, 'is-zero': viewInv.outstanding_amount===0 }">
+                  {{ fmtAmt(viewInv.outstanding_amount, viewInv.currency) }}
+                </div>
+                <button v-if="viewInv.outstanding_amount>0&&viewInv.docstatus===1"
+                        class="inv-rec-pay-btn"
+                        @click="openPayment(viewInv)">
+                  Record Payment
+                </button>
+              </div>
             </div>
 
             <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading details…</div>
 
             <template v-else>
-              <!-- Line items -->
-              <div v-if="viewInv.items&&viewInv.items.length" style="border:1px solid #e8ecf0;border-radius:8px;overflow:hidden;margin-bottom:16px">
-                <div class="inv-view-items-header">
-                  <div>Item</div><div>HSN</div><div style="text-align:right">Qty</div><div style="text-align:right">Rate</div><div style="text-align:right">Disc</div><div style="text-align:right">Amount</div>
-                </div>
-                <div v-for="(it,i) in viewInv.items" :key="i" class="inv-view-item-row">
-                  <div><div style="font-weight:500">{{ it.item_name||it.item_code }}</div><div v-if="it.description" style="font-size:11.5px;color:#9ca3af">{{ it.description }}</div></div>
-                  <div class="mono-sm text-muted">{{ it.hsn_code||'—' }}</div>
-                  <div style="text-align:right;font-family:monospace">{{ flt(it.qty) }}</div>
-                  <div style="text-align:right;font-family:monospace">{{ fmtAmt(it.rate, viewInv.currency) }}</div>
-                  <div style="text-align:right;font-family:monospace">{{ it.discount_percentage ? it.discount_percentage+'%' : '—' }}</div>
-                  <div style="text-align:right;font-family:monospace;font-weight:600">{{ fmtAmt(it.amount, viewInv.currency) }}</div>
-                </div>
-              </div>
-              <div v-else style="color:#9ca3af;font-size:13px;margin-bottom:16px">No item details available.</div>
+              <!-- Line items table -->
+              <div v-if="viewInv.items&&viewInv.items.length" class="inv-items-wrap">
+                <table class="inv-items-table">
+                  <thead>
+                    <tr>
+                      <th style="width:36px">#</th>
+                      <th>Item &amp; Description</th>
+                      <th>HSN/SAC</th>
+                      <th class="th-r">Qty</th>
+                      <th class="th-r">Rate (₹)</th>
+                      <th class="th-r">Discount (₹)</th>
+                      <th class="th-r">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(it,i) in viewInv.items" :key="i">
+                      <td class="inv-item-num">{{ i+1 }}</td>
+                      <td>
+                        <div class="inv-item-name">{{ it.item_name||it.item_code }}</div>
+                        <div v-if="it.description" class="inv-item-desc">{{ it.description }}</div>
+                      </td>
+                      <td class="inv-dash">{{ it.hsn_code || '—' }}</td>
+                      <td class="td-r" style="font-family:monospace">{{ flt(it.qty) }}</td>
+                      <td class="td-r" style="font-family:monospace">{{ fmtN(it.rate) }}</td>
+                      <td class="td-r inv-dash">{{ it.discount_amount ? fmtN(it.discount_amount) : '—' }}</td>
+                      <td class="td-r" style="font-family:monospace;font-weight:600">{{ fmtN(it.amount) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-              <!-- Tax summary -->
-              <div v-if="viewInv.taxes&&viewInv.taxes.length" style="margin-bottom:16px">
-                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;margin-bottom:8px">Taxes</div>
-                <div v-for="(tx,i) in viewInv.taxes" :key="i" style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#374151">
-                  <span>{{ tx.description||tx.account_head }}</span>
-                  <span class="mono-sm">{{ fmtAmt(tx.tax_amount||tx.amount, viewInv.currency) }}</span>
+                <!-- Totals section inside table wrap -->
+                <div class="inv-totals-section">
+                  <div class="inv-totals-inner">
+                    <div class="inv-total-line">
+                      <span class="t-lbl">Subtotal</span>
+                      <span class="t-amt">{{ fmtAmt((viewInv.grand_total||0)-(viewInv.total_taxes_and_charges||0), viewInv.currency) }}</span>
+                    </div>
+                    <div class="inv-total-line">
+                      <span class="t-lbl">Discount</span>
+                      <span class="t-amt">{{ fmtAmt(viewInv.discount_amount||0, viewInv.currency) }}</span>
+                    </div>
+                    <template v-if="viewInv.taxes&&viewInv.taxes.length">
+                      <div v-for="(tx,i) in viewInv.taxes" :key="i" class="inv-total-line">
+                        <span class="t-lbl">{{ tx.description||tx.account_head }}</span>
+                        <span class="t-amt">{{ fmtAmt(tx.tax_amount||tx.amount||0, viewInv.currency) }}</span>
+                      </div>
+                    </template>
+                    <div v-else class="inv-total-line">
+                      <span class="t-lbl">Tax (0%)</span>
+                      <span class="t-amt">{{ fmtAmt(0, viewInv.currency) }}</span>
+                    </div>
+                    <div class="inv-grand-total-line">
+                      <span class="inv-grand-lbl">Grand Total</span>
+                      <span class="inv-grand-amt">{{ fmtAmt(viewInv.grand_total, viewInv.currency) }}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <!-- Totals -->
-              <div style="background:#f8fafc;border-radius:8px;padding:12px 16px;margin-bottom:16px">
-                <div style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;margin-bottom:4px">
-                  <span>Subtotal</span><span class="mono-sm">{{ fmtAmt((viewInv.grand_total||0)-(viewInv.total_taxes_and_charges||0), viewInv.currency) }}</span>
-                </div>
-                <div v-if="viewInv.total_taxes_and_charges" style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;margin-bottom:6px">
-                  <span>Total Tax</span><span class="mono-sm">{{ fmtAmt(viewInv.total_taxes_and_charges, viewInv.currency) }}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;border-top:1px solid #e8ecf0;padding-top:8px">
-                  <span>Grand Total</span><span style="font-family:monospace;color:#1a6ef7">{{ fmtAmt(viewInv.grand_total, viewInv.currency) }}</span>
+                <!-- Amount in words -->
+                <div v-if="viewInv.in_words" class="inv-amount-words">
+                  Amount in words: {{ viewInv.in_words }}
                 </div>
               </div>
-
-              <!-- Notes -->
-              <div v-if="viewInv.terms" style="background:#f0f9ff;border-radius:8px;padding:12px 14px;font-size:13px;color:#374151;margin-bottom:12px">
-                <div class="inv-meta-lbl" style="margin-bottom:4px">Customer Note</div>
-                {{ viewInv.terms }}
-              </div>
-              <div v-if="viewInv.remarks" style="background:#f8fafc;border-radius:8px;padding:12px 14px;font-size:13px;color:#374151">
-                <div class="inv-meta-lbl" style="margin-bottom:4px">Internal Remarks</div>
-                {{ viewInv.remarks }}
-              </div>
+              <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No item details available.</div>
             </template>
-          </template>
+          </div>
 
-          <!-- Payments tab -->
-          <template v-else-if="viewTab==='payments'">
+          <!-- Activity + Notes bottom grid -->
+          <div class="inv-bottom-grid">
+            <!-- Activity Timeline -->
+            <div class="inv-bottom-card">
+              <div class="inv-bottom-card-header">
+                <div class="inv-bottom-card-title">
+                  <span v-html="icon('activity',14)"></span> Activity Timeline
+                </div>
+              </div>
+              <div class="inv-bottom-card-body">
+                <div class="inv-log-list">
+                  <template v-if="viewInv.comments&&viewInv.comments.length">
+                    <div v-for="(c,i) in viewInv.comments" :key="i" class="inv-log-item">
+                      <div class="inv-log-icon" v-html="icon('message-circle',13)"></div>
+                      <div class="inv-log-content">
+                        <div class="inv-log-text">{{ c.comment_by || c.subject }}</div>
+                        <div class="inv-log-by">{{ c.comment_by }}</div>
+                      </div>
+                      <div class="inv-log-time">{{ fmtDateTime(c.creation) }}</div>
+                    </div>
+                  </template>
+                  <template v-else-if="viewInv._activity&&viewInv._activity.length">
+                    <div v-for="(a,i) in viewInv._activity" :key="i" class="inv-log-item">
+                      <div class="inv-log-icon" v-html="icon(a.icon||'file-text',13)"></div>
+                      <div class="inv-log-content">
+                        <div class="inv-log-text">{{ a.text }}</div>
+                        <div class="inv-log-by">{{ a.by }}</div>
+                      </div>
+                      <div class="inv-log-time">{{ a.time }}</div>
+                    </div>
+                  </template>
+                  <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No activity yet.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="inv-bottom-card">
+              <div class="inv-bottom-card-header">
+                <div class="inv-bottom-card-title">
+                  <span class="inv-bottom-card-title-icon" v-html="icon('sticky-note',14)"></span> Notes
+                </div>
+              </div>
+              <div class="inv-bottom-card-body">
+                <div v-if="viewInv.terms||viewInv.remarks">
+                  <div v-if="viewInv.terms" style="font-size:13px;color:#374151;margin-bottom:10px">
+                    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Customer Note</div>
+                    {{ viewInv.terms }}
+                  </div>
+                  <div v-if="viewInv.remarks" style="font-size:13px;color:#374151">
+                    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Internal Remarks</div>
+                    {{ viewInv.remarks }}
+                  </div>
+                </div>
+                <div v-else class="inv-notes-empty">
+                  <div class="inv-notes-empty-icon" v-html="icon('file-text',36)"></div>
+                  <div class="inv-notes-empty-text">No notes added yet</div>
+                  <div class="inv-notes-empty-sub">Add internal notes for this invoice.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="inv-view-footer" v-if="viewInv.owner">
+            Created by {{ viewInv.owner }} on {{ fmtDateTime(viewInv.creation) }}
+          </div>
+        </template>
+
+        <!-- ── Payments tab ── -->
+        <template v-else-if="viewTab==='payments'">
+          <div class="inv-tab-body">
             <div v-if="viewPaymentsLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading payments…</div>
             <template v-else>
-              <div v-if="viewPayments.length" style="border:1px solid #e8ecf0;border-radius:8px;overflow:hidden">
-                <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;gap:8px;padding:8px 14px;background:#f8fafc;border-bottom:1px solid #e8ecf0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af">
-                  <div>Payment #</div><div>Date</div><div>Mode</div><div>Reference</div><div style="text-align:right">Amount</div>
-                </div>
-                <div v-for="(p,i) in viewPayments" :key="i" style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;gap:8px;padding:9px 14px;border-bottom:1px solid #f0f2f5;font-size:13px">
-                  <div><DocLink doctype="Payment Entry" :name="p.payment_entry || p.name" /></div>
-                  <div class="mono-sm">{{ fmtDate(p.payment_date) }}</div>
-                  <div>{{ p.mode_of_payment||'—' }}</div>
-                  <div class="text-muted mono-sm">{{ p.reference_no||'—' }}</div>
-                  <div style="text-align:right;font-family:monospace;font-weight:600;color:#059669">{{ fmtAmt(p.paid_amount) }}</div>
-                </div>
+              <div v-if="viewPayments.length" class="inv-items-wrap">
+                <table class="inv-items-table">
+                  <thead>
+                    <tr>
+                      <th>Payment #</th>
+                      <th>Date</th>
+                      <th>Mode</th>
+                      <th>Reference</th>
+                      <th class="th-r">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(p,i) in viewPayments" :key="i">
+                      <td><DocLink doctype="Payment Entry" :name="p.payment_entry || p.name" /></td>
+                      <td class="mono-sm">{{ fmtDate(p.payment_date) }}</td>
+                      <td>{{ p.mode_of_payment||'—' }}</td>
+                      <td class="text-muted mono-sm">{{ p.reference_no||'—' }}</td>
+                      <td class="td-r" style="font-family:monospace;font-weight:600;color:#059669">{{ fmtAmt(p.paid_amount) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div v-else style="text-align:center;padding:40px;color:#9ca3af;font-size:13px">
+              <div v-else style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
                 No payments recorded against this invoice.
                 <div v-if="viewInv.outstanding_amount>0&&viewInv.docstatus===1" style="margin-top:12px">
-                  <button class="inv-btn-primary" @click="viewOpen=false;openPayment(viewInv)">₹ Record Payment</button>
+                  <button class="inv-view-cta" @click="openPayment(viewInv)">
+                    <span v-html="icon('indianrupee',14)"></span> Record Payment
+                  </button>
                 </div>
               </div>
             </template>
-          </template>
+          </div>
+        </template>
 
-        </div>
-
-        <div class="inv-dfooter" style="justify-content:flex-end">
-          <button class="inv-btn-ghost" @click="viewOpen=false">Close</button>
-        </div>
-      </div>
-    </div>
+        </div><!-- /inv-view-body -->
+    </div><!-- /inv-drawer-panel inv-view-page -->
+    </div><!-- /inv-drawer-bg -->
 
     <!-- Phase 0.9 purge: Payment / Email / Credit Note inline modals removed. Handled by globally mounted PaymentDialog / EmailDialog / ReturnNoteDialog. -->
 
@@ -996,13 +1175,57 @@ const timelineSteps = computed(()=>{
   const isPaid=inv.outstanding_amount<=0&&inv.docstatus===1;
   const isSubmitted=inv.docstatus>=1;
   const isCancelled=inv.docstatus===2;
-  if (isCancelled) return [{label:"Draft",done:true},{label:"Submitted",done:true},{label:"Cancelled",done:true,danger:true}];
+  if (isCancelled) return [
+    {label:"Draft",   done:true, icon:"file-text",  date:inv.creation},
+    {label:"Submitted",done:true,icon:"send",        date:inv.modified},
+    {label:"Cancelled",done:true,danger:true,icon:"x-circle", date:inv.modified},
+  ];
   return [
-    {label:"Draft",done:true},
-    {label:"Submitted",done:isSubmitted},
-    {label:isOverdue(inv)?"Overdue":"Paid",done:isPaid,danger:isOverdue(inv)&&!isPaid},
+    {label:"Draft",   done:true,       icon:"file-text", date:inv.creation},
+    {label:"Sent",    done:isSubmitted, icon:"send",      date:isSubmitted?inv.modified:null},
+    {label:"Paid",    done:isPaid,      icon:"indian-rupee", date:isPaid?inv.modified:null},
+    ...(!isPaid ? [{label:"Overdue", done:isOverdue(inv), danger:isOverdue(inv), icon:"alert-circle", date:isOverdue(inv)?inv.due_date:null}] : []),
   ];
 });
+
+// Progress line width for timeline (% across the step dots)
+const tlProgressWidth = computed(()=>{
+  const steps = timelineSteps.value;
+  if (!steps.length) return '0%';
+  const doneCount = steps.filter(s=>s.done).length;
+  if (doneCount === 0) return '0%';
+  // width between first and last done dot as % of total line
+  const pct = ((doneCount - 1) / (steps.length - 1)) * 100;
+  return pct + '%';
+});
+
+const showDownloadMenu = ref(false);
+
+// ── New date / format helpers ───────────────────────────────────────────
+function fmtDateLong(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+function fmtDateDay(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+}
+function fmtDateTime(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })
+    + ', ' + dt.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+}
+function fmtN(n) {
+  if (n==null) return '—';
+  return Number(n).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function overdueDays(inv) {
+  if (!inv?.due_date) return 0;
+  return Math.max(0, Math.floor((Date.now() - new Date(inv.due_date)) / 86400000));
+}
 
 // ── Load ───────────────────────────────────────────────────────────────
 async function load() {
@@ -1650,10 +1873,16 @@ watch(() => route.query, (q) => {
 });
 </script>
 
-<style scoped>
+<style>
+@import '../styles/list.css';
+@import '../styles/view.css';
+@import '../styles/edit.css';
+@import '../styles/add.css';
+
+/* ─── Invoice-specific overrides ─── */
 .inv-page { display:flex; flex-direction:column; gap:16px; padding:24px; min-height:100%; color:#1a1a2e; background:#f5f6f8; }
 
-/* ── Toolbar ── */
+/* Legacy toolbar */
 .inv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 12px; border-bottom:1px solid #e8ecf0; gap:12px; flex-wrap:wrap; }
 .inv-heading { font-size:16px; font-weight:700; color:#1a1a2e; margin:0; }
 .inv-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
@@ -1745,40 +1974,6 @@ watch(() => route.query, (q) => {
 .inv-dfooter { padding:14px 24px; border-top:1px solid #e8ecf0; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; flex-shrink:0; }
 
 /* ── Status timeline ── */
-.inv-timeline { display:flex; align-items:center; padding:12px 24px; border-bottom:1px solid #e8ecf0; background:#fafbfc; flex-shrink:0; }
-.inv-tl-step { display:flex; flex-direction:column; align-items:center; gap:4px; }
-.inv-tl-dot { width:22px; height:22px; border-radius:50%; border:2px solid #e2e8f0; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; color:#9ca3af; }
-.inv-tl-step.done .inv-tl-dot { background:#059669; border-color:#059669; color:#fff; }
-.inv-tl-step.danger .inv-tl-dot { background:#dc2626; border-color:#dc2626; color:#fff; }
-.inv-tl-label { font-size:11px; font-weight:600; color:#9ca3af; white-space:nowrap; }
-.inv-tl-step.done .inv-tl-label { color:#374151; }
-.inv-tl-step.danger .inv-tl-label { color:#dc2626; }
-.inv-tl-line { flex:1; height:2px; background:#e2e8f0; margin:0 6px; margin-bottom:16px; min-width:40px; }
-.inv-tl-line.done { background:#059669; }
-.inv-tl-line.danger { background:#dc2626; }
-
-/* ── View actions ── */
-.inv-view-actions { display:flex; align-items:center; gap:8px; padding:10px 24px; border-bottom:1px solid #e8ecf0; flex-wrap:wrap; flex-shrink:0; background:#fff; }
-.inv-va-btn { display:inline-flex; align-items:center; gap:5px; border:1px solid #e8ecf0; background:#fff; color:#374151; border-radius:6px; padding:6px 12px; font-size:12.5px; font-weight:600; cursor:pointer; }
-.inv-va-btn:hover { border-color:#374151; background:#f9fafb; }
-.inv-va-pay { background:#1a6ef7; border-color:#1a6ef7; color:#fff; }
-.inv-va-pay:hover { background:#155fd4; }
-.inv-va-danger { color:#dc2626; border-color:rgba(220,38,38,.3); }
-.inv-va-danger:hover { background:#fee2e2; }
-
-/* ── View tabs ── */
-.inv-view-tabs { display:flex; gap:0; border-bottom:2px solid #e8ecf0; padding:0 24px; flex-shrink:0; }
-.inv-vtab { background:none; border:none; border-bottom:2px solid transparent; padding:10px 16px; margin-bottom:-2px; font-size:13px; font-weight:600; color:#9ca3af; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
-.inv-vtab:hover { color:#374151; }
-.inv-vtab.active { color:#1a6ef7; border-bottom-color:#1a6ef7; }
-.inv-vtab-count { background:#e0e7ff; color:#1a6ef7; border-radius:10px; padding:1px 6px; font-size:10.5px; font-weight:700; }
-
-/* ── View meta ── */
-.inv-view-meta { display:flex; gap:20px; flex-wrap:wrap; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #f0f2f5; }
-.inv-meta-lbl { font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; margin-bottom:4px; }
-
-/* ── View item rows ── */
-.inv-view-items-header { display:grid; grid-template-columns:2fr .7fr .7fr 1fr .7fr 1fr; gap:8px; padding:8px 14px; background:#f8fafc; border-bottom:1px solid #e8ecf0; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; }
 .inv-view-item-row { display:grid; grid-template-columns:2fr .7fr .7fr 1fr .7fr 1fr; gap:8px; padding:9px 14px; border-bottom:1px solid #f0f2f5; font-size:13px; }
 .inv-view-item-row:last-child { border-bottom:none; }
 
@@ -1840,40 +2035,6 @@ watch(() => route.query, (q) => {
 .inv-grand-total { border-top:1px solid #e8ecf0; padding-top:7px; margin-top:2px; font-weight:700; }
 
 /* ══ Record Payment ══ */
-.rp-backdrop { position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; z-index:9999; backdrop-filter:blur(2px); }
-.rp-dialog { background:#fff; border-radius:10px; box-shadow:0 20px 60px rgba(0,0,0,.2); width:min(640px,95vw); max-height:90vh; overflow-y:auto; display:flex; flex-direction:column; animation:rp-in .2s cubic-bezier(.34,1.56,.64,1); }
-@keyframes rp-in { from{opacity:0;transform:scale(.95) translateY(10px)} }
-.rp-dialog-header { display:flex; align-items:center; justify-content:space-between; padding:16px 22px 14px; border-bottom:1px solid #e8ecf0; }
-.rp-dialog-title { font-size:15px; font-weight:700; color:#1a1a2e; }
-.rp-close-btn { background:none; border:none; font-size:16px; color:#9ca3af; cursor:pointer; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; }
-.rp-loading { padding:40px; display:flex; align-items:center; justify-content:center; gap:12px; color:#6b7280; }
-.rp-spinner { width:20px; height:20px; border-radius:50%; border:2px solid #e8ecf0; border-top-color:#1a6ef7; animation:spin .7s linear infinite; }
-@keyframes spin { to{transform:rotate(360deg)} }
-.rp-customer-strip { display:flex; align-items:center; gap:12px; padding:12px 22px; background:#f8faff; border-bottom:1px solid #e8ecf0; }
-.rp-avatar { width:38px; height:38px; border-radius:50%; background:#1a6ef7; color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; flex-shrink:0; }
-.rp-cust-name { font-size:14px; font-weight:700; color:#1a1a2e; }
-.rp-cust-bal { font-size:12.5px; color:#6b7280; margin-top:2px; }
-.rp-body { padding:16px 22px; display:flex; flex-direction:column; gap:12px; }
-.rp-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.rp-field { display:flex; flex-direction:column; gap:4px; }
-.rp-field-full { display:flex; flex-direction:column; gap:4px; }
-.rp-label { font-size:12px; font-weight:600; color:#374151; }
-.rp-req::after { content:" *"; color:#dc2626; }
-.rp-input { border:1px solid #e2e8f0; border-radius:6px; padding:7px 10px; font-size:13px; font-family:inherit; outline:none; }
-.rp-input:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.08); }
-.rp-amount-input { font-family:monospace; font-size:16px; font-weight:700; }
-.rp-select { cursor:pointer; } .rp-textarea { resize:vertical; }
-.rp-rich-body { min-height:160px; max-height:280px; overflow-y:auto; line-height:1.6; font-size:13px; cursor:text; }
-.rp-rich-body:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.08); outline:none; }
-.rp-rich-body table { border-collapse:collapse; font-size:13px; margin:8px 0; }
-.rp-rich-body td { padding:3px 10px 3px 0; color:#4b5563; }
-.rp-summary { background:#f8fafc; border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; font-size:12.5px; color:#374151; flex-wrap:wrap; gap:8px; }
-.rp-footer { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:14px 22px; border-top:1px solid #e8ecf0; background:#f8fafc; }
-.rp-btn { display:inline-flex; align-items:center; gap:6px; border-radius:6px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid transparent; }
-.rp-btn:disabled { opacity:.55; cursor:not-allowed; }
-.rp-btn-outline { background:#fff; border-color:#e2e8f0; color:#374151; }
-.rp-btn-primary { background:#1a6ef7; border-color:#1a6ef7; color:#fff; }
-.rp-btn-primary:hover:not(:disabled) { background:#155fd4; }
 
 /* ── Template / branding bar ── */
 .inv-tmpl-bar { display:flex; align-items:flex-start; gap:24px; padding:9px 22px; border-bottom:1px solid #e8ecf0; background:#f8fafc; flex-shrink:0; flex-wrap:wrap; }
@@ -1897,4 +2058,24 @@ watch(() => route.query, (q) => {
 .inv-preview-pane { width:480px; flex-shrink:0; border-left:1px solid #e8ecf0; display:flex; flex-direction:column; background:#e8ecf0; overflow:hidden; }
 .inv-preview-toolbar { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#fff; border-bottom:1px solid #e8ecf0; flex-shrink:0; }
 .inv-preview-iframe { flex:1; border:none; width:100%; min-height:0; background:#fff; }
+/* ── Invoice view drawer overrides ── */
+.inv-view-page {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: #f5f6f8;
+}
+.inv-view-page .inv-view-header {
+  padding: 16px 20px 10px;
+  flex-shrink: 0;
+}
+.inv-view-page .inv-view-body {
+  margin: 0 16px 16px;
+}
+.inv-view-page .inv-bottom-grid {
+  padding: 0 0 4px;
+}
+.inv-view-page .inv-tab-body {
+  padding: 16px;
+}
 </style>

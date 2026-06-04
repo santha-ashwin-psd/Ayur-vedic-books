@@ -618,6 +618,178 @@
   margin-top: 8px; font-size: 12px; color: #6b7280; text-align: center;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE  — hamburger + off-canvas sidebar
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Hamburger button (hidden on desktop) ───────────────────── */
+.bv-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--bv-border);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--bv-text-2);
+  flex-shrink: 0;
+  transition: background .15s, border-color .15s;
+}
+.bv-hamburger:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+/* Three-line icon built purely in CSS */
+.bv-ham-icon,
+.bv-ham-icon::before,
+.bv-ham-icon::after {
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+}
+.bv-ham-icon {
+  position: relative;
+}
+.bv-ham-icon::before,
+.bv-ham-icon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+}
+.bv-ham-icon::before { top: -5px; }
+.bv-ham-icon::after  { top:  5px; }
+
+/* ── Mobile overlay backdrop ────────────────────────────────── */
+.bv-mob-overlay {
+  display: none;          /* shown only via v-if on mobile */
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 99;
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+}
+
+/* ── Mobile close button inside sidebar (hidden on desktop) ─── */
+.bv-sidebar-close-mob {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.75);
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: background .15s, color .15s;
+}
+.bv-sidebar-close-mob:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* ── Mobile breakpoint  ≤ 768px ─────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Grid: sidebar takes NO column — content fills everything */
+  .bv-app,
+  .bv-app.bv-app-sidebar-collapsed {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Sidebar: off-canvas, slides in from left */
+  .bv-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--bv-sidebar-w) !important;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform .25s ease, box-shadow .25s ease;
+    box-shadow: none;
+  }
+
+  /* Sidebar visible when mobile menu is open */
+  .bv-mobile-open .bv-sidebar {
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Overlay visible (v-if renders it into the DOM on mobile) */
+  .bv-mob-overlay {
+    display: block;
+  }
+
+  /* Hamburger: show on mobile */
+  .bv-hamburger {
+    display: inline-flex;
+  }
+
+  /* Desktop collapse button: hide on mobile (replaced by close button) */
+  .bv-sidebar-collapse {
+    display: none !important;
+  }
+
+  /* Mobile close button: show on mobile */
+  .bv-sidebar-close-mob {
+    display: inline-flex;
+  }
+
+  /* Brand row: keep collapse toggle space balanced */
+  .bv-sidebar-brand {
+    padding-right: 10px;
+  }
+
+  /* Main area fills full viewport */
+  .bv-app-main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Topbar: tighter padding on mobile */
+  .bv-topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  /* Topbar title: smaller on mobile */
+  .bv-topbar-title {
+    font-size: 15px;
+  }
+
+  /* Username: hide on very small screens to save space */
+  .bv-topbar-username {
+    display: none;
+  }
+
+  /* AI panel: full screen on mobile */
+  .bv-ai-panel {
+    width: 100vw;
+  }
+}
+
+/* ── Very small  ≤ 400px ─────────────────────────────────────── */
+@media (max-width: 400px) {
+  .bv-topbar {
+    padding: 0 10px;
+    gap: 6px;
+  }
+  .bv-topbar-icon-btn,
+  .bv-notif-trigger {
+    width: 30px;
+    height: 30px;
+  }
+}
+
 /* ── AI email enhancer button (Tier 5-D) ────────────────────────────── */
 .bv-ai-enhance-btn {
   display: inline-flex; align-items: center; gap: 4px;
@@ -651,10 +823,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: nowrap;
-  padding: 10px 16px;
+  flex-wrap: wrap;
   background: #f5f6f8;
   border-radius: 10px;
+  padding: 10px 14px;
 }
 .sales-search {
   display: flex; align-items: center; gap: 8px;
@@ -675,61 +847,19 @@
 .sales-pills::-webkit-scrollbar { display: none; }
 .sales-pills > .sales-pill { flex-shrink: 0; }
 .sales-pill {
-  padding: 6px 13px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  padding: 5px 11px; border-radius: 20px; font-size: 12px; font-weight: 600;
   border: 1px solid #e5e7eb; background: #fff; color: #6b7280;
   cursor: pointer; font-family: inherit;
   display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
-  transition: all .15s;
+  transition: border-color .15s, color .15s, background .15s;
 }
-.sales-pill:hover { border-color: #d1d5db; color: #374151; background: #f9fafb; }
-
-/* Active pill — solid fill, white text */
-.sales-pill.active {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  border-color: #2563eb;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(37,99,235,.25);
-}
-.sales-pill.active:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
-
-/* Status-specific gradient tints on inactive pills */
-.sales-pill.pill-draft     { background: linear-gradient(135deg,#f9fafb,#fff); border-color:#e5e7eb; color:#6b7280; }
-.sales-pill.pill-sent      { background: linear-gradient(135deg,#ecfeff,#fff); border-color:#a5f3fc; color:#0891b2; }
-.sales-pill.pill-accepted  { background: linear-gradient(135deg,#f0fdf4,#fff); border-color:#bbf7d0; color:#16a34a; }
-.sales-pill.pill-declined  { background: linear-gradient(135deg,#fef2f2,#fff); border-color:#fecaca; color:#dc2626; }
-.sales-pill.pill-expired   { background: linear-gradient(135deg,#fffbeb,#fff); border-color:#fde68a; color:#d97706; }
-.sales-pill.pill-converted { background: linear-gradient(135deg,#f5f3ff,#fff); border-color:#ddd6fe; color:#7c3aed; }
-.sales-pill.pill-unpaid    { background: linear-gradient(135deg,#fffbeb,#fff); border-color:#fde68a; color:#d97706; }
-.sales-pill.pill-overdue   { background: linear-gradient(135deg,#fef2f2,#fff); border-color:#fecaca; color:#dc2626; }
-.sales-pill.pill-paid      { background: linear-gradient(135deg,#f0fdf4,#fff); border-color:#bbf7d0; color:#16a34a; }
-.sales-pill.pill-active    { background: linear-gradient(135deg,#f0fdf4,#fff); border-color:#bbf7d0; color:#16a34a; }
-.sales-pill.pill-paused    { background: linear-gradient(135deg,#fffbeb,#fff); border-color:#fde68a; color:#d97706; }
-.sales-pill.pill-cancelled { background: linear-gradient(135deg,#fef2f2,#fff); border-color:#fecaca; color:#dc2626; }
-
-/* Active always overrides status tint */
-.sales-pill.active.pill-draft,
-.sales-pill.active.pill-sent,
-.sales-pill.active.pill-accepted,
-.sales-pill.active.pill-declined,
-.sales-pill.active.pill-expired,
-.sales-pill.active.pill-converted,
-.sales-pill.active.pill-unpaid,
-.sales-pill.active.pill-overdue,
-.sales-pill.active.pill-paid,
-.sales-pill.active.pill-active,
-.sales-pill.active.pill-paused,
-.sales-pill.active.pill-cancelled {
-  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-  border-color: #2563eb !important;
-  color: #fff !important;
-}
-
+.sales-pill:hover { border-color: #cbd5e1; color: #374151; }
+.sales-pill.active { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
 .sales-pill-count {
-  background: rgba(0,0,0,.08); color: inherit;
-  padding: 1px 7px; border-radius: 10px;
-  font-size: 11px; font-weight: 700; min-width: 18px; text-align: center;
+  background: #e5e7eb; color: #374151; padding: 1px 7px; border-radius: 10px;
+  font-size: 11px; font-weight: 700;
 }
-.sales-pill.active .sales-pill-count { background: rgba(255,255,255,.25); color: #fff; }
+.sales-pill.active .sales-pill-count { background: #dbeafe; color: #1d4ed8; }
 
 .sales-actions {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: nowrap;

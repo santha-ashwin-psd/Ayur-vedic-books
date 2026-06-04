@@ -134,7 +134,10 @@
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Unit of Measure</label>
-                <input v-model="form.stock_uom" class="qcd-input" placeholder="Nos" />
+                <select v-model="form.stock_uom" class="qcd-input">
+                  <option value="">— Select UOM —</option>
+                  <option v-for="u in uomList" :key="u" :value="u">{{u}}</option>
+                </select>
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">HSN / SAC Code</label>
@@ -178,18 +181,26 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch } from "vue";
-import { apiSave, resolveCompany } from "../api/client.js";
+import { reactive, ref, watch, onMounted } from "vue";
+import { apiSave, apiList, resolveCompany } from "../api/client.js";
 import { useQuickCreate } from "../composables/useQuickCreate.js";
 import { useToast } from "../composables/useToast.js";
 
 const { state, complete, cancel } = useQuickCreate();
 const { toast } = useToast();
 
-const saving = ref(false);
-const form   = reactive({});
+const saving  = ref(false);
+const form    = reactive({});
+const uomList = ref([]);
 const PAYMENT_TERMS = ["Due on Receipt","Net 7","Net 15","Net 30","Net 45","Net 60","Net 90"];
 const LABELS = { Customer: "Customer", Supplier: "Vendor / Supplier", Item: "Item" };
+
+onMounted(async () => {
+  try {
+    const r = await apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 });
+    uomList.value = (r || []).map(x => x.name);
+  } catch { uomList.value = ["Nos","Kg","Ltr","Mtr","Box","Pcs","Set","Dozen"]; }
+});
 
 watch(() => state.open, (open) => {
   if (!open) return;

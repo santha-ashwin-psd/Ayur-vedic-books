@@ -370,7 +370,7 @@
             <div><input v-model="line.description" class="qt-ci" placeholder="Description"/></div>
             <div><input v-model="line.hsn_code" class="qt-ci" placeholder="HSN/SAC"/></div>
             <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="qt-ci qt-ci-r" @input="calcLine(line)"/></div>
-            <div><input v-model="line.uom" class="qt-ci" placeholder="Nos"/></div>
+            <div><select v-model="line.uom" class="qt-ci"><option value="">UOM</option><option v-for="u in uomList" :key="u" :value="u">{{u}}</option></select></div>
             <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="qt-ci qt-ci-r" @input="calcLine(line)"/></div>
             <div><input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.5" class="qt-ci qt-ci-r" @input="calcLine(line)"/></div>
             <div class="ta-r mono-sm" style="display:flex;align-items:center;justify-content:flex-end;font-weight:600;font-size:13px">{{ fmtCur(line.amount) }}</div>
@@ -749,6 +749,7 @@ const customers   = ref([]);
 const items       = ref([]);
 const lines       = ref([]);
 const taxRows     = ref([]);          // ← replaces single tax_rate
+const uomList     = ref([]);
 const taxAccountHead = ref("");
 const sortCol     = ref("transaction_date");
 const sortDir     = ref("desc");
@@ -1715,6 +1716,7 @@ onMounted(async () => {
   loadTaxAccount();
   fetchCustomers("");
   fetchItems("");
+  (async () => { try { const r = await apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 }); uomList.value = (r||[]).map(x=>x.name); } catch { uomList.value = ["Nos","Kg","Ltr","Mtr","Box","Pcs","Set","Dozen"]; } })();
   useOpenFromQuery({
     route,
     openByName: (n) => openView(list.value.find(r => r.name === n) || { name: n }),

@@ -122,7 +122,12 @@
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-              <div><label class="nim-label">Default UOM</label><input class="nim-input" v-model="form.stock_uom" placeholder="Nos"/></div>
+              <div><label class="nim-label">Default UOM</label>
+                <select class="nim-input" v-model="form.stock_uom">
+                  <option value="">— Select UOM —</option>
+                  <option v-for="u in uomList" :key="u" :value="u">{{u}}</option>
+                </select>
+              </div>
               <div><label class="nim-label">HSN / SAC Code</label><input class="nim-input" v-model="form.hsn_code" placeholder="e.g. 847130"/></div>
             </div>
             <div style="margin-bottom:12px"><label class="nim-label">Description</label><textarea class="nim-input" v-model="form.description" rows="3" placeholder="Item description..." style="resize:vertical"></textarea></div>
@@ -226,6 +231,7 @@ const drawerTab  = ref("basic");
 const itemGroups    = ref([]);
 const warehouses    = ref([]);
 const taxTemplates  = ref([]);
+const uomList       = ref([]);
 const defaultAccounts = ref({ income: "", expense: "" });
 
 const form = reactive({
@@ -237,7 +243,7 @@ const form = reactive({
   reorder_level: 0, reorder_qty: 0, opening_stock: 0,
 });
 
-const ITEM_TYPES  = ["Product", "Service", "Raw Material", "Finished Good", "Sub Assembly", "Consumable"];
+const ITEM_TYPES  = ["Product", "Service", "Raw Material", "Finished Good"];
 const VAL_METHODS = ["FIFO", "Moving Average", "LIFO"];
 
 async function load() {
@@ -271,6 +277,10 @@ async function load() {
     });
     taxTemplates.value = (tt || []).map((r) => ({ name: r.name, label: r.template_name || r.name }));
   } catch { taxTemplates.value = []; }
+  try {
+    const uoms = await apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 });
+    uomList.value = (uoms || []).map((r) => r.name);
+  } catch { uomList.value = ["Nos", "Kg", "Ltr", "Mtr", "Box", "Pcs", "Set", "Dozen"]; }
   try {
     const company = await resolveCompany();
     const accts = await apiGET("zoho_books_clone.api.docs.get_accounts", { company });

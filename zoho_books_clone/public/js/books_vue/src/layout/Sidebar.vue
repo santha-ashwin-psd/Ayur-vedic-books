@@ -9,8 +9,13 @@
         :style="collapsed ? 'cursor:pointer' : ''"
       >B</span>
       <span v-if="!collapsed" class="bv-sidebar-brand-text">Books</span>
+      <!-- Desktop: collapse toggle -->
       <button class="bv-sidebar-collapse" @click.stop="$emit('toggle')" :title="collapsed ? 'Expand' : 'Collapse'">
         <IconSvg :name="collapsed ? 'chevR' : 'chevL'" :size="13" />
+      </button>
+      <!-- Mobile: close button -->
+      <button class="bv-sidebar-close-mob" @click.stop="$emit('close-mobile')" aria-label="Close menu">
+        <IconSvg name="x" :size="15" />
       </button>
     </div>
 
@@ -82,8 +87,11 @@ import { NAV } from "./nav.js";
 import { usePermissions } from "../composables/usePermissions.js";
 import { session } from "../api/session.js";
 
-defineProps({ collapsed: { type: Boolean, default: false } });
-defineEmits(["toggle"]);
+defineProps({
+  collapsed:  { type: Boolean, default: false },
+  mobileOpen: { type: Boolean, default: false },
+});
+const emit = defineEmits(["toggle", "close-mobile"]);
 
 const activeItemEl = ref(null);
 const routeReady = ref(false);
@@ -196,6 +204,7 @@ function isActive(path) {
 
 function goTo(item) {
   router.push(item.path);
+  emit("close-mobile");   // close mobile sidebar on any navigation
 }
 
 // When navigating to a new route, open that route's section automatically

@@ -36,7 +36,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Expense Type",
-   "options": "Travel\nOffice Supplies\nUtilities\nMeals & Entertainment\nSoftware & Subscriptions\nEquipment & Fixtures\nProfessional Fees\nCommunication\nOther",
+   "options": "Travel\nFood & Meals\nAccommodation\nOffice Supplies\nUtilities\nMarketing\nSoftware\nHardware\nTraining\nMiscellaneous",
    "reqd": 1
   },
   {
@@ -141,7 +141,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-26 11:40:24.643521",
+ "modified": "2026-06-04 15:16:19.129511",
  "modified_by": "Administrator",
  "module": "Invoicing",
  "name": "Expense",

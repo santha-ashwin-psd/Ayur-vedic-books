@@ -201,7 +201,7 @@
             <div class="inv-dh-title">{{ editingName ? 'Edit Invoice' : 'New Invoice' }}</div>
             <span v-if="!editingName" class="add-status-badge">Draft</span>
             <span v-if="!editingName" class="add-autosave-notice">
-              <span class="add-autosave-dot"></span> Draft saved 2 mins ago
+              <span class="add-autosave-dot"></span>
             </span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -388,13 +388,7 @@
               </div>
               <template v-if="!sameAsBillingAddr">
                 <div class="inv-sec-lbl" style="margin-top:14px">Shipping Address</div>
-                <div v-if="customerShippingAddrs.length" style="margin-bottom:10px">
-                  <label class="inv-lbl">Select Shipping Address</label>
-                  <select v-model="form.selected_shipping_addr_name" class="inv-fi" @change="applySelectedShippingAddr">
-                    <option value="">— Select —</option>
-                    <option v-for="a in customerShippingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
-                  </select>
-                </div>
+                
                 <div>
                   <label class="inv-lbl">Shipping Address</label>
                   <textarea v-model="form.shipping_address" class="inv-fi" rows="3" placeholder="Shipping address (optional)"></textarea>

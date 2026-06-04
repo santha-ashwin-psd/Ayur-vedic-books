@@ -13,14 +13,10 @@
    like the Zoho Books "New Quotation" full-form layout.
    ══════════════════════════════════════════════════════ */
 
-/* Stretch drawer to fill viewport */
+/* Keep the same 720px drawer width as the edit drawer */
 .inv-drawer-panel.is-add {
-  width: 100% !important;
-  max-width: 100% !important;
-  border-radius: 0;
   display: flex;
   flex-direction: column;
-  height: 100vh;
   overflow: hidden;
 }
 
@@ -98,7 +94,6 @@
   background: #fff;
   border: 1px solid #e3e8ef;
   border-radius: 10px;
-  overflow: hidden;
 }
 
 /* Card header row (title + collapse toggle) */

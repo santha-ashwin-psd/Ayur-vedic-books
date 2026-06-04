@@ -49,7 +49,8 @@
   "irn",
   "einvoice_status",
   "ack_no",
-  "ack_date"
+  "ack_date",
+  "shipping_address"
  ],
  "fields": [
   {
@@ -139,10 +140,10 @@
    "options": "Fiscal Year"
   },
   {
+   "default": "0",
    "fieldname": "update_stock",
    "fieldtype": "Check",
-   "label": "Update Inventory on Submit",
-   "default": "0"
+   "label": "Update Inventory on Submit"
   },
   {
    "fieldname": "set_warehouse",
@@ -291,8 +292,7 @@
    "fetch_from": "customer.tax_id",
    "fieldname": "customer_gstin",
    "fieldtype": "Data",
-   "label": "Customer GSTIN",
-   "read_only": 0
+   "label": "Customer GSTIN"
   },
   {
    "fieldname": "irn",
@@ -322,11 +322,16 @@
    "label": "IRN Ack Date",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "shipping_address",
+   "fieldtype": "Small Text",
+   "label": "Shipping Address"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-25 10:32:15.027977",
+ "modified": "2026-06-04 18:09:32.141172",
  "modified_by": "Administrator",
  "module": "Invoicing",
  "name": "Sales Invoice",

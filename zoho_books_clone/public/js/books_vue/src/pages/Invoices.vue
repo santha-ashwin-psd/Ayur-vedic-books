@@ -180,7 +180,7 @@
       </tbody>
     </table>
   </div>
-  <div v-if="!loading && sorted.length" style="padding:12px 20px 4px">
+  <div v-if="!loading && sorted.length" style="padding:12px 0px 4px">
     <Pagination
       v-model:page="page"
       v-model:page-size="pageSize"
@@ -192,12 +192,17 @@
   <Teleport to="body">
 
     <!-- ── Create / Edit Drawer ── -->
-    <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false">
-      <div class="inv-drawer-panel" :class="{'inv-split':showPreview}">
+    <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="!editingName ? null : drawerOpen=false">
+      <div class="inv-drawer-panel" :class="{'inv-split':showPreview, 'is-add':!editingName}">
+
+        <!-- ── Header ── -->
         <div class="inv-dh">
-          <div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div class="inv-dh-title">{{ editingName ? 'Edit Invoice' : 'New Invoice' }}</div>
-            <div class="inv-dh-sub">{{ editingName || 'Fill in the details below' }}</div>
+            <span v-if="!editingName" class="add-status-badge">Draft</span>
+            <span v-if="!editingName" class="add-autosave-notice">
+              <span class="add-autosave-dot"></span> Draft saved 2 mins ago
+            </span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <button class="inv-preview-toggle" @click="showPreview=!showPreview" :title="showPreview?'Hide preview':'Live preview'">
@@ -207,302 +212,385 @@
           </div>
         </div>
 
-        <!-- Template / branding toolbar -->
-        <div class="inv-tmpl-bar">
-          <div class="inv-tmpl-group">
-            <span class="inv-tmpl-lbl">Template</span>
-            <div class="inv-tmpl-btns">
-              <button v-for="t in TEMPLATES" :key="t.key" class="inv-tmpl-btn" :class="{active:selectedTemplate===t.key}" @click="selectedTemplate=t.key;saveBranding()">{{ t.label }}</button>
-            </div>
-          </div>
-          <label class="inv-tmpl-group">
-            <span class="inv-tmpl-lbl">Brand Color</span>
-            <div style="display:flex;align-items:center;gap:6px">
-              <input type="color" v-model="brandColor" @change="saveBranding()" class="inv-color-pick"/>
-              <span class="inv-color-val">{{ brandColor }}</span>
-            </div>
-          </label>
-          <div class="inv-tmpl-group" style="flex:1">
-            <span class="inv-tmpl-lbl">Logo URL</span>
-            <input v-model="logoUrl" @change="saveBranding()" class="inv-logo-input" placeholder="https://yoursite.com/logo.png"/>
-          </div>
-        </div>
-
-        <!-- Content row: form + optional preview -->
+        <!-- ── Content row: form + optional preview ── -->
         <div class="inv-content-row">
         <div class="inv-dbody">
 
-          <!-- Invoice Details -->
-          <div class="inv-sec-lbl">Invoice Details</div>
-          <div class="inv-fg inv-fg3">
-            <div style="grid-column:1/3">
-              <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
-              <SearchableSelect v-model="form.customer" :options="customers"
-                placeholder="Select customer"
-                :createable="true" createDoctype="Customer"
-                @update:modelValue="onCustomerChange"/>
+          <!-- ══ CARD 1: Branding & Template ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.branding=!collapsed.branding">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
+                Branding &amp; Template
+              </div>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.branding}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
             </div>
-            <div>
-              <label class="inv-lbl">Invoice Date <span class="inv-req">*</span></label>
-              <input v-model="form.posting_date" type="date" class="inv-fi"/>
-            </div>
-            <div>
-              <label class="inv-lbl">Payment Terms</label>
-              <select v-model="form.payment_terms" class="inv-fi" @change="applyPaymentTerms">
-                <option value="">— Select Payment Terms —</option>
-                <option v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ t }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="inv-lbl">Due Date</label>
-              <input v-model="form.due_date" type="date" class="inv-fi"/>
-            </div>
-            <div>
-              <label class="inv-lbl">PO Number</label>
-              <input v-model="form.po_no" class="inv-fi" placeholder="Customer's PO reference"/>
-            </div>
-            <div style="grid-column:1/-1">
-              <div class="inv-inv-block" :class="form.update_stock ? 'inv-on' : 'inv-off'">
-                <div class="inv-inv-toggle-row">
-                  <div class="inv-inv-icon" v-html="icon('box',16)"></div>
-                  <div class="inv-inv-text">
-                    <div class="inv-inv-title">Deduct Inventory on Submit</div>
-                    <div class="inv-inv-sub">Stock reduces from the selected warehouse when this invoice is submitted</div>
+            <div class="add-card-body" :class="{collapsed:collapsed.branding}">
+              <div class="add-tmpl-bar">
+                <!-- Template selector -->
+                <div class="add-tmpl-group">
+                  <span class="add-tmpl-lbl">Template</span>
+                  <div class="add-tmpl-btns">
+                    <button v-for="t in TEMPLATES" :key="t.key"
+                      class="add-tmpl-btn" :class="{active:selectedTemplate===t.key}"
+                      @click="selectedTemplate=t.key;saveBranding()">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                      {{ t.label }}
+                    </button>
                   </div>
-                  <label class="inv-inv-switch">
-                    <input type="checkbox" v-model="form.update_stock" :true-value="1" :false-value="0" />
-                    <span class="inv-inv-slider"></span>
+                </div>
+                <!-- Brand color -->
+                <div class="add-tmpl-group">
+                  <span class="add-tmpl-lbl">Brand Color</span>
+                  <label class="add-color-wrap" style="cursor:pointer">
+                    <span class="add-color-swatch" :style="{background:brandColor}"></span>
+                    <span class="add-color-hex">{{ brandColor }}</span>
+                    <input type="color" v-model="brandColor" @change="saveBranding()" class="add-color-input"/>
                   </label>
                 </div>
-                <div v-if="form.update_stock" class="inv-inv-wh-row">
-                  <label class="inv-lbl" style="margin-bottom:6px">Dispatch Warehouse <span style="color:#dc2626">*</span></label>
-                  <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse stock will be dispatched from…" @search="fetchWarehouses" />
+                <!-- Logo upload -->
+                <div class="add-tmpl-group">
+                  <span class="add-tmpl-lbl">Logo</span>
+                  <label class="add-logo-upload">
+                    <span class="add-logo-upload-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></span>
+                    <div>
+                      <div>Upload logo</div>
+                      <div class="add-logo-sub">PNG, JPG or SVG (max. 2MB)</div>
+                    </div>
+                    <input type="file" accept="image/*" style="display:none" @change="onLogoUpload"/>
+                  </label>
                 </div>
               </div>
             </div>
-            <div>
-              <label class="inv-lbl">Place of Supply</label>
-              <div v-if="isOverseas" class="inv-fi" style="background:#dbeafe;color:#1d4ed8;font-size:12px;display:flex;align-items:center;gap:6px;padding:8px 10px;border-color:#bfdbfe">
-                <span>🌐</span> Outside India — Not applicable for export invoices
+          </div>
+
+          <!-- ══ CARD 2: Invoice Details ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.details=!collapsed.details">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+                Invoice Details
               </div>
-              <select v-else v-model="form.place_of_supply" class="inv-fi">
-                <option value="">— Select State —</option>
-                <option v-for="s in INDIAN_STATES" :key="s" :value="s">{{ s }}</option>
-              </select>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.details}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
             </div>
-            <div>
-              <label class="inv-lbl">Currency</label>
-              <select v-model="form.currency" class="inv-fi" @change="onCurrencyChange">
-                <option v-for="(sym,code) in CURRENCY_SYMBOLS" :key="code" :value="code">{{ code }} {{ sym }}</option>
-              </select>
-            </div>
-            <div v-if="form.currency !== 'INR'">
-              <label class="inv-lbl">Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span></label>
-              <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi" placeholder="e.g. 83.5"/>
+            <div class="add-card-body" :class="{collapsed:collapsed.details}">
+              <!-- Row 1: Customer (wide) | Invoice Date | Valid Till -->
+              <div class="add-details-grid">
+                <div>
+                  <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
+                  <SearchableSelect v-model="form.customer" :options="customers"
+                    placeholder="Select customer"
+                    :createable="true" createDoctype="Customer"
+                    @update:modelValue="onCustomerChange"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Invoice Date <span class="inv-req">*</span></label>
+                  <input v-model="form.posting_date" type="date" class="inv-fi"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Due Date</label>
+                  <input v-model="form.due_date" type="date" class="inv-fi"/>
+                </div>
+              </div>
+              <!-- Row 2: Currency | Title / Project (PO number) -->
+              <div class="add-details-row2">
+                <div>
+                  <label class="inv-lbl">Currency</label>
+                  <select v-model="form.currency" class="inv-fi" @change="onCurrencyChange">
+                    <option v-for="(sym,code) in CURRENCY_SYMBOLS" :key="code" :value="code">{{ code }} {{ sym }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="inv-lbl">Title / Project</label>
+                  <input v-model="form.po_no" class="inv-fi" placeholder="Project name or short description"/>
+                </div>
+              </div>
+              <!-- Exchange rate (only for non-INR) -->
+              <div v-if="form.currency !== 'INR'" class="add-details-row2" style="margin-top:14px">
+                <div>
+                  <label class="inv-lbl">Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span></label>
+                  <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi" placeholder="e.g. 83.5"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Payment Terms</label>
+                  <select v-model="form.payment_terms" class="inv-fi" @change="applyPaymentTerms">
+                    <option value="">— Select Payment Terms —</option>
+                    <option v-for="t in PAYMENT_TERMS" :key="t" :value="t">{{ t }}</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Place of supply -->
+              <div style="margin-top:14px">
+                <label class="inv-lbl">Place of Supply</label>
+                <div v-if="isOverseas" class="inv-fi" style="background:#dbeafe;color:#1d4ed8;font-size:12px;display:flex;align-items:center;gap:6px;padding:8px 10px;border-color:#bfdbfe">
+                  <span>🌐</span> Outside India — Not applicable for export invoices
+                </div>
+                <select v-else v-model="form.place_of_supply" class="inv-fi">
+                  <option value="">— Select State —</option>
+                  <option v-for="s in INDIAN_STATES" :key="s" :value="s">{{ s }}</option>
+                </select>
+              </div>
+              <!-- Inventory toggle -->
+              <div style="margin-top:14px">
+                <div class="inv-inv-block" :class="form.update_stock ? 'inv-on' : 'inv-off'">
+                  <div class="inv-inv-toggle-row">
+                    <div class="inv-inv-icon" v-html="icon('box',16)"></div>
+                    <div class="inv-inv-text">
+                      <div class="inv-inv-title">Deduct Inventory on Submit</div>
+                      <div class="inv-inv-sub">Stock reduces from the selected warehouse when this invoice is submitted</div>
+                    </div>
+                    <label class="inv-inv-switch">
+                      <input type="checkbox" v-model="form.update_stock" :true-value="1" :false-value="0" />
+                      <span class="inv-inv-slider"></span>
+                    </label>
+                  </div>
+                  <div v-if="form.update_stock" class="inv-inv-wh-row">
+                    <label class="inv-lbl" style="margin-bottom:6px">Dispatch Warehouse <span style="color:#dc2626">*</span></label>
+                    <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse stock will be dispatched from…" @search="fetchWarehouses" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Billing Address -->
-          <div class="inv-sec-lbl">Billing Address</div>
-          <div class="inv-fg" style="margin-bottom:14px">
-            <div v-if="customerBillingAddrs.length > 1" style="margin-bottom:8px">
-              <label class="inv-lbl">Select Billing Address</label>
-              <select v-model="form.selected_billing_addr_name" class="inv-fi" @change="applySelectedBillingAddr">
-                <option v-for="a in customerBillingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
-              </select>
+          <!-- ══ CARD 3: Billing Address ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.billing=!collapsed.billing">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+                Billing Address
+              </div>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.billing}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
             </div>
-            <div>
-              <label class="inv-lbl">Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
-              <textarea v-model="form.billing_address" class="inv-fi" rows="2" style="resize:vertical" placeholder="Auto-filled from customer, or enter manually"></textarea>
-            </div>
-          </div>
-
-          <!-- Shipping Address -->
-          <div class="inv-sec-lbl">Shipping Address</div>
-          <div class="inv-fg" style="margin-bottom:14px">
-            <div style="margin-bottom:10px">
-              <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer">
-                <input type="checkbox" v-model="sameAsBillingAddr" @change="onSameAsBillingChange" style="accent-color:#3B5BDB"/>
-                Use same address as billing
-              </label>
-            </div>
-            <template v-if="!sameAsBillingAddr">
-              <div v-if="customerShippingAddrs.length" style="margin-bottom:8px">
-                <label class="inv-lbl">Select Shipping Address</label>
-                <select v-model="form.selected_shipping_addr_name" class="inv-fi" @change="applySelectedShippingAddr">
-                  <option value="">— Select —</option>
-                  <option v-for="a in customerShippingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
+            <div class="add-card-body" :class="{collapsed:collapsed.billing}">
+              <div v-if="customerBillingAddrs.length > 1" style="margin-bottom:12px">
+                <label class="inv-lbl">Select Billing Address</label>
+                <select v-model="form.selected_billing_addr_name" class="inv-fi" @change="applySelectedBillingAddr">
+                  <option v-for="a in customerBillingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
                 </select>
               </div>
               <div>
-                <label class="inv-lbl">Shipping Address</label>
-                <textarea v-model="form.shipping_address" class="inv-fi" rows="2" style="resize:vertical" placeholder="Shipping address (optional)"></textarea>
+                <label class="inv-lbl">Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
+                <textarea v-model="form.billing_address" class="inv-fi" rows="3" placeholder="Auto-filled from customer, or enter manually"></textarea>
               </div>
-            </template>
-            <div v-else style="font-size:12.5px;color:#9ca3af;font-style:italic">Using billing address for shipping</div>
-          </div>
-
-          <!-- Line Items -->
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;margin-top:4px">
-            <span class="inv-sec-lbl" style="margin:0;border:none;padding:0">Line Items</span>
-            <div style="display:flex;gap:8px">
-              <button v-if="form.customer" class="inv-add-line-btn inv-copy-btn" @click="copyLastItems" title="Copy items from last invoice">
-                <span v-html="icon('copy',12)"></span> Copy Last
-              </button>
-              <button class="inv-add-line-btn" @click="addLine">
-                <span v-html="icon('plus',12)"></span> Add Item
-              </button>
+              <!-- Shipping address toggle -->
+              <div style="margin-top:14px">
+                <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer">
+                  <input type="checkbox" v-model="sameAsBillingAddr" @change="onSameAsBillingChange" style="accent-color:#1565c0"/>
+                  Use same address as billing (shipping)
+                </label>
+              </div>
+              <template v-if="!sameAsBillingAddr">
+                <div class="inv-sec-lbl" style="margin-top:14px">Shipping Address</div>
+                <div v-if="customerShippingAddrs.length" style="margin-bottom:10px">
+                  <label class="inv-lbl">Select Shipping Address</label>
+                  <select v-model="form.selected_shipping_addr_name" class="inv-fi" @change="applySelectedShippingAddr">
+                    <option value="">— Select —</option>
+                    <option v-for="a in customerShippingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="inv-lbl">Shipping Address</label>
+                  <textarea v-model="form.shipping_address" class="inv-fi" rows="3" placeholder="Shipping address (optional)"></textarea>
+                </div>
+              </template>
             </div>
           </div>
 
-          <div style="border:1px solid #e8ecf0;border-radius:8px;overflow:hidden;margin-bottom:16px">
-            <div style="overflow-x:auto">
-              <table class="inv-lines-tbl">
-                <thead>
-                  <tr>
-                    <th style="min-width:160px">Item <span class="inv-req">*</span></th>
-                    <th style="min-width:100px">Description</th>
-                    <th style="min-width:70px">HSN/SAC</th>
-                    <th style="min-width:60px">Qty</th>
-                    <th style="min-width:60px">UOM</th>
-                    <th style="min-width:90px;text-align:right">Rate ({{ currencySymbol }})</th>
-                    <th style="min-width:60px;text-align:right">Disc %</th>
-                    <th style="min-width:90px;text-align:right">Amount ({{ currencySymbol }})</th>
-                    <th style="width:28px"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="line in lines" :key="line.id">
-                    <td>
-                      <SearchableSelect v-model="line.item_code" :options="items"
-                        placeholder="— Select —"
-                        :compact="true" :createable="true" createDoctype="Item"
-                        @update:modelValue="onItemChange(line)"/>
-                    </td>
-                    <td><input v-model="line.description" class="inv-ci" placeholder="Optional"/></td>
-                    <td><input v-model="line.hsn_code" class="inv-ci" placeholder="HSN/SAC"/></td>
-                    <td><input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-ci" @input="calcLine(line)"/></td>
-                    <td><input v-model="line.uom" class="inv-ci" placeholder="Nos"/></td>
-                    <td><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-ci inv-ci-r" @input="calcLine(line)"/></td>
-                    <td><input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="calcLine(line)" placeholder="0"/></td>
-                    <td style="text-align:right;padding:4px 10px;font-family:monospace;font-size:13px;font-weight:600;color:#1a1a2e">
-                      {{ fmtAmt(line.amount) }}
-                    </td>
-                    <td style="padding:4px 6px">
-                      <button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button>
-                    </td>
-                  </tr>
-                  <tr v-if="!lines.length">
-                    <td colspan="9" style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">
-                      No line items — click "Add Item"
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <!-- ══ CARD 4: Line Items ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.lines=!collapsed.lines">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+                Line Items
+              </div>
+              <div style="display:flex;align-items:center;gap:8px" @click.stop>
+                <button v-if="form.customer" class="inv-add-line-btn inv-copy-btn" @click="copyLastItems" title="Copy items from last invoice">
+                  <span v-html="icon('copy',12)"></span> Copy Last
+                </button>
+                <button class="add-lines-add-btn" @click="addLine">
+                  <span v-html="icon('plus',13)"></span> Add Item
+                </button>
+                <span class="add-card-chevron" :class="{collapsed:collapsed.lines}" @click="collapsed.lines=!collapsed.lines">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
             </div>
-
-            <!-- Totals + Taxes -->
-            <div class="inv-totals-wrap">
-              <!-- Tax section -->
-              <div class="inv-tax-section">
-                <!-- Overseas notice -->
-                <div v-if="isOverseas" style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#1e40af;display:flex;align-items:flex-start;gap:8px">
-                  <span style="font-size:15px;flex-shrink:0">🌐</span>
-                  <div>
-                    <strong>Export Invoice — Zero Rated Supply</strong><br/>
-                    GST is not applicable on exports. Ensure you have a valid LUT (Letter of Undertaking) or pay IGST and claim refund. No tax rows needed.
-                  </div>
-                </div>
-                <!-- SEZ notice -->
-                <div v-else-if="isSEZ" style="background:#f3f0ff;border:1px solid #c4b5fd;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#4c1d95;display:flex;align-items:flex-start;gap:8px">
-                  <span style="font-size:15px;flex-shrink:0">🏭</span>
-                  <div>
-                    <strong>SEZ Supply — Zero Rated</strong><br/>
-                    Supplies to SEZ units/developers are zero-rated. Apply IGST @ 0% or supply under LUT/Bond without payment of tax.
-                  </div>
-                </div>
-                <div class="inv-tax-header">
-                  <span class="inv-tax-title">Taxes</span>
-                  <div class="inv-tax-presets">
-                    <template v-if="form.currency !== 'INR'">
-                      <!-- Non-INR currency: GST not applicable, only allow custom tax -->
-                      <span style="font-size:11.5px;color:#6b7280;font-style:italic">GST presets not applicable for foreign currency invoices</span>
-                    </template>
-                    <template v-else-if="!isOverseas">
-                      <button v-for="p in TAX_PRESETS" :key="p.label" class="inv-preset-btn" @click="applyTaxPreset(p)">{{ p.label }}</button>
-                    </template>
-                    <template v-else>
-                      <span style="font-size:11.5px;color:#6b7280;font-style:italic">Tax presets disabled for overseas customer</span>
-                    </template>
-                    <button class="inv-preset-btn inv-preset-custom" @click="addTaxRow">+ Custom</button>
-                    <button v-if="taxRows.length" class="inv-preset-btn inv-preset-clear" @click="taxRows=[]">Clear</button>
-                  </div>
-                </div>
-                <table v-if="taxRows.length" class="inv-tax-tbl">
+            <div class="add-card-body" :class="{collapsed:collapsed.lines}" style="padding:0">
+              <div style="overflow-x:auto">
+                <table class="inv-lines-tbl">
                   <thead>
                     <tr>
+                      <th style="width:28px">#</th>
+                      <th style="min-width:160px">Item <span class="inv-req">*</span></th>
+                      <th style="min-width:110px">Description</th>
+                      <th style="min-width:80px">HSN/SAC</th>
+                      <th style="min-width:60px">Qty</th>
+                      <th style="min-width:70px">UOM</th>
+                      <th style="min-width:90px;text-align:right">Rate ({{ currencySymbol }})</th>
+                      <th style="min-width:60px;text-align:right">Disc %</th>
+                      <th style="min-width:90px;text-align:right">Amount ({{ currencySymbol }})</th>
+                      <th style="width:32px"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(line, idx) in lines" :key="line.id">
+                      <td><span class="add-line-num">{{ idx+1 }}</span></td>
+                      <td>
+                        <SearchableSelect v-model="line.item_code" :options="items"
+                          placeholder="Search item or service"
+                          :compact="true" :createable="true" createDoctype="Item"
+                          @update:modelValue="onItemChange(line)"/>
+                      </td>
+                      <td><input v-model="line.description" class="inv-ci" placeholder="Item description"/></td>
+                      <td><input v-model="line.hsn_code" class="inv-ci" placeholder="Enter HSN"/></td>
+                      <td><input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-ci" @input="calcLine(line)"/></td>
+                      <td>
+                        <select v-model="line.uom" class="inv-ci">
+                          <option value="Nos">Nos</option>
+                          <option value="Kg">Kg</option>
+                          <option value="Ltr">Ltr</option>
+                          <option value="Hrs">Hrs</option>
+                          <option value="Pcs">Pcs</option>
+                          <option value="Box">Box</option>
+                        </select>
+                      </td>
+                      <td><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-ci inv-ci-r" @input="calcLine(line)"/></td>
+                      <td><input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="calcLine(line)" placeholder="0"/></td>
+                      <td class="add-line-amount">{{ fmtAmt(line.amount) }}</td>
+                      <td style="padding:4px 6px">
+                        <button @click="removeLine(line.id)" class="add-line-del"><span v-html="icon('trash',12)"></span></button>
+                      </td>
+                    </tr>
+                    <!-- Add new line row -->
+                    <tr class="add-new-line-row">
+                      <td colspan="10" style="padding:6px 14px;border-bottom:none">
+                        <button class="add-new-line-btn" @click="addLine">
+                          <span v-html="icon('plus',12)"></span> Add new line
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="!lines.length">
+                      <td colspan="10" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
+                        No line items — click "+ Add Item" to get started
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Taxes + Totals -->
+              <div class="inv-totals-wrap">
+                <!-- Tax section -->
+                <div class="inv-tax-section">
+                  <div v-if="isOverseas" style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#1e40af;display:flex;align-items:flex-start;gap:8px">
+                    <span style="font-size:15px;flex-shrink:0">🌐</span>
+                    <div><strong>Export Invoice — Zero Rated Supply</strong><br/>GST is not applicable on exports. Ensure you have a valid LUT or pay IGST and claim refund.</div>
+                  </div>
+                  <div v-else-if="isSEZ" style="background:#f3f0ff;border:1px solid #c4b5fd;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#4c1d95;display:flex;align-items:flex-start;gap:8px">
+                    <span style="font-size:15px;flex-shrink:0">🏭</span>
+                    <div><strong>SEZ Supply — Zero Rated</strong><br/>Apply IGST @ 0% or supply under LUT/Bond without payment of tax.</div>
+                  </div>
+                  <div class="inv-tax-header">
+                    <span class="inv-tax-title">Taxes</span>
+                    <div class="inv-tax-presets">
+                      <template v-if="form.currency !== 'INR'">
+                        <span style="font-size:11.5px;color:#6b7280;font-style:italic">GST presets not applicable for foreign currency invoices</span>
+                      </template>
+                      <template v-else-if="!isOverseas">
+                        <button v-for="p in TAX_PRESETS" :key="p.label" class="inv-preset-btn" @click="applyTaxPreset(p)">{{ p.label }}</button>
+                      </template>
+                      <template v-else>
+                        <span style="font-size:11.5px;color:#6b7280;font-style:italic">Tax presets disabled for overseas customer</span>
+                      </template>
+                      <button class="inv-preset-btn inv-preset-custom" @click="addTaxRow">+ Custom</button>
+                      <button v-if="taxRows.length" class="inv-preset-btn inv-preset-clear" @click="taxRows=[]">Clear</button>
+                    </div>
+                  </div>
+                  <table v-if="taxRows.length" class="inv-tax-tbl">
+                    <thead><tr>
                       <th>Description</th>
                       <th style="width:80px;text-align:right">Rate %</th>
                       <th style="width:100px;text-align:right">Amount</th>
                       <th style="width:28px"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="tx in taxRows" :key="tx.id">
-                      <td><input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/></td>
-                      <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="recalcTax(tx)"/></td>
-                      <td style="text-align:right;padding:4px 10px;font-family:monospace;font-size:12.5px">{{ fmtAmt(tx.amount) }}</td>
-                      <td><button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div v-else style="font-size:12px;color:#9ca3af;padding:6px 0">
-                  <span v-if="isOverseas">Zero-rated export — no taxes applicable.</span>
-                  <span v-else>No taxes — use preset buttons above or add custom row.</span>
+                    </tr></thead>
+                    <tbody>
+                      <tr v-for="tx in taxRows" :key="tx.id">
+                        <td><input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/></td>
+                        <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="recalcTax(tx)"/></td>
+                        <td style="text-align:right;padding:4px 10px;font-family:monospace;font-size:12.5px">{{ fmtAmt(tx.amount) }}</td>
+                        <td><button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div v-else style="font-size:12px;color:#9ca3af;padding:6px 0">
+                    <span v-if="isOverseas">Zero-rated export — no taxes applicable.</span>
+                    <span v-else>No taxes — use preset buttons above or add a custom row.</span>
+                  </div>
+                </div>
+                <!-- Totals -->
+                <div class="inv-totals">
+                  <div class="inv-total-row">
+                    <span>Sub Total</span>
+                    <span class="inv-total-amt">{{ fmtAmt(subtotal) }}</span>
+                  </div>
+                  <div v-for="tx in taxRows" :key="tx.id" class="inv-total-row" style="color:#6b7280;font-size:12px">
+                    <span>{{ tx.description || 'Tax' }}</span>
+                    <span class="inv-total-amt">{{ fmtAmt(tx.amount) }}</span>
+                  </div>
+                  <div class="inv-total-row inv-grand-total">
+                    <span>Grand Total</span>
+                    <span class="inv-total-amt" style="font-size:16px;color:#1565c0">{{ fmtAmt(grandTotal) }}</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- Totals -->
-              <div class="inv-totals">
-                <div class="inv-total-row">
-                  <span>Subtotal</span>
-                  <span class="inv-total-amt">{{ fmtAmt(subtotal) }}</span>
-                </div>
-                <div v-for="tx in taxRows" :key="tx.id" class="inv-total-row" style="color:#6b7280;font-size:12px">
-                  <span>{{ tx.description || 'Tax' }}</span>
-                  <span class="inv-total-amt">{{ fmtAmt(tx.amount) }}</span>
-                </div>
-                <div class="inv-total-row inv-grand-total">
-                  <span>Grand Total</span>
-                  <span class="inv-total-amt" style="font-size:16px;color:#1a6ef7">{{ fmtAmt(grandTotal) }}</span>
-                </div>
+              <!-- Add notes link -->
+              <div style="padding:6px 16px 14px">
+                <button class="add-notes-link" @click="collapsed.notes=false">
+                  <span v-html="icon('plus',12)"></span> Add notes
+                </button>
               </div>
             </div>
           </div>
 
-          <!-- Notes & Terms -->
-          <div class="inv-sec-lbl">Notes & Terms</div>
-          <div class="inv-fg inv-fg2" style="margin-bottom:14px">
-            <div>
-              <label class="inv-lbl">Customer Note <span style="color:#9ca3af;font-weight:400">(printed on invoice)</span></label>
-              <textarea v-model="form.terms" class="inv-fi" rows="3" style="resize:vertical" placeholder="Visible to customer on the invoice…"></textarea>
+          <!-- ══ CARD 5: Notes & Terms ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.notes=!collapsed.notes">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+                Notes &amp; Terms
+              </div>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.notes}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
             </div>
-            <div>
-              <label class="inv-lbl">Internal Remarks <span style="color:#9ca3af;font-weight:400">(not printed)</span></label>
-              <textarea v-model="form.remarks" class="inv-fi" rows="3" style="resize:vertical" placeholder="Internal notes for your team…"></textarea>
-            </div>
-          </div>
-
-          <!-- Status -->
-          <div class="inv-sec-lbl">Status</div>
-          <div class="inv-fg inv-fg2">
-            <div>
-              <label class="inv-lbl">Save As</label>
-              <select v-model="form.docstatus" class="inv-fi">
-                <option :value="0">Draft</option>
-                <option :value="1">Submit (Post to Ledger)</option>
-              </select>
-              <div style="font-size:11px;color:#9ca3af;margin-top:4px">Submitted invoices are posted to the ledger and can be paid against.</div>
+            <div class="add-card-body" :class="{collapsed:collapsed.notes}">
+              <div class="inv-fg inv-fg2">
+                <div>
+                  <label class="inv-lbl">Customer Note <span style="color:#9ca3af;font-weight:400">(printed on invoice)</span></label>
+                  <textarea v-model="form.terms" class="inv-fi" rows="3" placeholder="Visible to customer on the invoice…"></textarea>
+                </div>
+                <div>
+                  <label class="inv-lbl">Internal Remarks <span style="color:#9ca3af;font-weight:400">(not printed)</span></label>
+                  <textarea v-model="form.remarks" class="inv-fi" rows="3" placeholder="Internal notes for your team…"></textarea>
+                </div>
+              </div>
+              <!-- Save As status selector -->
+              <div style="margin-top:14px;max-width:320px">
+                <label class="inv-lbl">Save As</label>
+                <select v-model="form.docstatus" class="inv-fi">
+                  <option :value="0">Draft</option>
+                  <option :value="1">Submit (Post to Ledger)</option>
+                </select>
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px">Submitted invoices are posted to the ledger and can be paid against.</div>
+              </div>
             </div>
           </div>
 
@@ -524,14 +612,31 @@
 
         </div><!-- /inv-content-row -->
 
+        <!-- ── Footer ── -->
         <div class="inv-dfooter">
-          <div style="font-size:12px;color:#9ca3af">{{ editingName ? 'Editing: '+editingName : 'New invoice' }}</div>
-          <div style="display:flex;gap:10px">
-            <button class="inv-btn-ghost" @click="drawerOpen=false">Cancel</button>
-            <button class="inv-btn-ghost" style="border-color:#3b82f6;color:#3b82f6" :disabled="drawerSaving" @click="saveInvoice(0)">Save Draft</button>
-            <button class="inv-btn-primary" :disabled="drawerSaving" @click="saveInvoice(1)">
-              <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Submit Invoice' }}
+          <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New invoice — unsaved changes' }}</div>
+          <div class="add-footer-actions">
+            <button class="add-btn-cancel" @click="drawerOpen=false">Cancel</button>
+            <button class="add-btn-draft" :disabled="drawerSaving" @click="saveInvoice(0)">
+              Save Draft
             </button>
+            <div style="position:relative">
+              <button class="add-btn-more" :disabled="drawerSaving" @click="moreActionsOpen=!moreActionsOpen">
+                {{ drawerSaving ? 'Saving…' : 'More Actions' }}
+                <svg class="add-btn-more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div v-if="moreActionsOpen" class="add-more-menu" v-click-outside="()=>moreActionsOpen=false">
+                <button class="add-more-menu-item" @click="saveInvoice(1);moreActionsOpen=false">
+                  <span v-html="icon('check',13)"></span> Submit Invoice
+                </button>
+                <button class="add-more-menu-item" @click="saveInvoice(0);moreActionsOpen=false">
+                  Save &amp; New
+                </button>
+                <button class="add-more-menu-item" @click="printInvoice(previewData);moreActionsOpen=false">
+                  <span v-html="icon('download',13)"></span> Save &amp; Print PDF
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -955,9 +1060,9 @@ const FILTERS   = [
   { key:"Paid",    label:"Paid" },
 ];
 const DATE_RANGES = [
+  { key:"all",        label:"All Time" },
   { key:"this_month", label:"This Month" },
   { key:"last_month", label:"Last Month" },
-  { key:"all",        label:"All Time" },
   { key:"custom",     label:"Custom" },
 ];
 const PAYMENT_TERMS = ["Due on Receipt","Net 7","Net 15","Net 30","Net 45","Net 60","Net 90"];
@@ -1003,7 +1108,7 @@ const search       = ref("");
 const selectedRows = ref(new Set());
 const sortKey      = ref("posting_date");
 const sortDir      = ref(-1);
-const dateRange    = ref("this_month");
+const dateRange    = ref("all");
 const customFrom   = ref("");
 const customTo     = ref("");
 const filterCustomer = ref("");
@@ -1018,6 +1123,8 @@ const drawerOpen   = ref(false);
 const editingName  = ref(null);
 const drawerSaving = ref(false);
 const addressLoading = ref(false);
+const moreActionsOpen = ref(false);
+const collapsed = reactive({ branding: false, details: false, billing: true, lines: false, notes: true });
 const form = reactive({
   customer:"", posting_date:"", due_date:"", po_no:"",
   payment_terms:"", place_of_supply:"", billing_address:"",
@@ -1433,6 +1540,8 @@ async function copyLastItems() {
 // ── Drawer open ────────────────────────────────────────────────────────
 function openAdd() {
   editingName.value=null;
+  moreActionsOpen.value=false;
+  Object.assign(collapsed,{branding:false,details:false,billing:true,lines:false,notes:true});
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
   taxRows.value=[];
   Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:""});
@@ -1683,6 +1792,13 @@ function exportCSV() {
 }
 
 // ── Branding persistence ───────────────────────────────────────────────
+function onLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { logoUrl.value = ev.target.result; saveBranding(); };
+  reader.readAsDataURL(file);
+}
 function saveBranding() {
   try {
     const co=window.__booksCompany||"_default";

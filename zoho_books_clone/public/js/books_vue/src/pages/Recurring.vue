@@ -829,7 +829,7 @@ function exportCSV() {
 
 <style scoped>
 /* ── Drawer slide-in ── */
-.inv-drawer-panel { position:fixed;top:0;right:-560px;bottom:0;width:560px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:8000;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1); }
+.inv-drawer-panel { position:fixed;top:0;right:-560px;bottom:0;width:560px;background:#fff;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:8000;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1); }
 .inv-drawer-panel.open { right:0; }
 .rec-view-drawer { width:600px;right:-600px; }
 .rec-view-drawer.open { right:0; }

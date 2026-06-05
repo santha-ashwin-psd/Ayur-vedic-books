@@ -191,7 +191,6 @@
     <div class="cn-drawer cn-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
         <div class="inv-view-header">
-          <button class="inv-dclose cn-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
           <div class="cn-view-head-body">
             <div class="cn-view-head-left">
               <div class="inv-view-number">{{ viewDoc.name }}</div>
@@ -199,11 +198,9 @@
                 <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer }}</DocLink>
               </div>
             </div>
-            <div class="cn-view-head-right">
-              <div class="cn-view-amount">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div>
-              <span class="inv-hdr-badge" :class="statusCls(viewDoc)">{{ statusLabel(viewDoc) }}</span>
-            </div>
           </div>
+          <button class="inv-dclose cn-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+          
         </div>
 
         <div class="cn-stepper-wrap"><TimelineStepper :steps="timelineSteps" /></div>
@@ -800,7 +797,6 @@ onMounted(async () => {
   top: 0; right: -620px; bottom: 0;
   width: 620px; max-width: 96vw;
   background: #fff;
-  border-left: 1px solid #e5e7eb;
   box-shadow: -12px 0 32px rgba(15,23,42,.12);
   z-index: 9001;
   display: flex; flex-direction: column;

@@ -89,7 +89,7 @@ defineEmits(["close"]);
 .nim-btn-danger {
   background: #dc2626; border-color: #dc2626; color: #fff;
 }
-.nim-btn-danger:hover:not(:disabled) { background: #b91c1c; border-color: #b91c1c; }
+.nim-btn-danger:hover:not(:disabled) { background: #b91c1c; border-color: #b91c1c;color: #fff; }
 @keyframes nim-overlay-in {
   from { opacity: 0; } to { opacity: 1; }
 }

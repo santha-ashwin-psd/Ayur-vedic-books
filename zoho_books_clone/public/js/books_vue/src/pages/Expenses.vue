@@ -493,7 +493,7 @@ onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseA
 
 <style scoped>
 /* ── Drawer slide-in ── */
-.inv-drawer-panel { position:fixed;top:0;right:-540px;bottom:0;width:540px;background:#fff;box-shadow:-12px 0 40px rgba(0,0,0,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.4,0,.2,1); }
+.inv-drawer-panel { position:fixed;top:0;right:-540px;bottom:0;width:540px;background:#fff;box-shadow:-12px 0 40px rgba(0,0,0,.12);z-index:8000;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.4,0,.2,1); }
 .inv-drawer-panel.open { right:0; }
 .exp-view-drawer { width:440px;right:-440px; }
 .exp-view-drawer.open { right:0; }

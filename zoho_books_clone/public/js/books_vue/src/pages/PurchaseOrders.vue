@@ -814,7 +814,16 @@ onMounted(() => { load(); loadTaxAccount(); });
 
 <style scoped>
 /* ── Drawer slide animation + width ── */
-
+.inv-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: -600px;
+  bottom: 0;
+  width: 600px;
+  max-width: 96vw;
+  z-index: 8000;
+  transition: right .22s ease;
+}
 .inv-drawer-panel.open { right: 0; }
 .po-view-drawer { width: 540px; right: -540px; }
 .po-view-drawer.open { right: 0; }

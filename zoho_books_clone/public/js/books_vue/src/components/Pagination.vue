@@ -119,6 +119,7 @@ const pageList = computed(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+  justify-content: center;
 }
 
 .pg-label {

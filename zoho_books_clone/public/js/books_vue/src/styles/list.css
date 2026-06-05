@@ -403,11 +403,12 @@
 .status-draft     { color: #6b7280; background: #f3f4f6; }
 .status-paid      { color: #059669; background: #d1fae5; }
 .status-unpaid    { color: #d97706; background: #fef3c7; }
+.status-partial   { color: #d97706; background: #fef3c7; }
 .status-overdue   { color: #dc2626; background: #fee2e2; }
 .status-cancelled { color: #dc2626; background: #fee2e2; }
 .status-submitted { color: #2563eb; background: #dbeafe; }
 .status-open      { color: #d97706; background: #fef3c7; }
-.status-closed    { color: #059669; background: #d1fae5; }
+.status-closed    { color: #08c0f8; background: #9cdcf36b; }
 .status-active    { color: #059669; background: #d1fae5; }
 .status-inactive  { color: #6b7280; background: #f3f4f6; }
 

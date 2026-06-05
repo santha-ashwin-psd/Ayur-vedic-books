@@ -1,7 +1,7 @@
 <template>
-  <div class="so-page">
+  <div class="inv-page">
 
-    <!-- ── Unified toolbar (matches e-Way Bills) ── -->
+    <!-- ── Unified toolbar ── -->
     <div class="sales-toolbar">
       <div class="sales-search">
         <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
@@ -23,17 +23,114 @@
 
     <!-- ── KPI Cards ── -->
     <div class="bk-kpi-grid">
-      <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Orders</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="soTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.total.up?'↑':'↓' }} {{ soTrends.total.pct }}% vs last month</div></div></div></div>
-      <div class="bk-kpi-card clickable" @click="activeTab='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#e2e8f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value">{{ counts.draft }}</div><div class="bk-kpi-trend" :class="soTrends.draft.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.draft.up?'↑':'↓' }} {{ soTrends.draft.pct }}% vs last month</div></div></div></div>
-      <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='toDeliver'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">To Deliver</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.toDeliver }}</div><div class="bk-kpi-trend" :class="soTrends.deliver.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.deliver.up?'↑':'↓' }} {{ soTrends.deliver.pct }}% vs last month</div></div></div></div>
-      <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='closed'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Closed</div><div class="bk-kpi-value bk-kpi-green">{{ counts.closed }}</div><div class="bk-kpi-trend" :class="soTrends.closed.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.closed.up?'↑':'↓' }} {{ soTrends.closed.pct }}% vs last month</div></div></div></div>
-      <div class="bk-kpi-card bk-kpi-danger clickable" @click="activeTab='cancelled'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fee2e2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Cancelled</div><div class="bk-kpi-value bk-kpi-red">{{ counts.cancelled }}</div><div class="bk-kpi-trend" :class="soTrends.cancelled.up?'bk-trend-down':'bk-trend-up'">{{ soTrends.cancelled.up?'↑':'↓' }} {{ soTrends.cancelled.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'">
+        <div class="bk-kpi-inner">
+          <div class="bk-kpi-icon" style="background:#dbeafe">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          </div>
+          <div class="bk-kpi-body">
+            <div class="bk-kpi-label">Total Orders</div>
+            <div class="bk-kpi-value">{{ list.length }}</div>
+            <div class="bk-kpi-trend" :class="soTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.total.up?'↑':'↓' }} {{ soTrends.total.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
+      <div class="bk-kpi-card clickable" @click="activeTab='draft'">
+        <div class="bk-kpi-inner">
+          <div class="bk-kpi-icon" style="background:#e2e8f0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+          <div class="bk-kpi-body">
+            <div class="bk-kpi-label">Draft</div>
+            <div class="bk-kpi-value">{{ counts.draft }}</div>
+            <div class="bk-kpi-trend" :class="soTrends.draft.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.draft.up?'↑':'↓' }} {{ soTrends.draft.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
+      <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='toDeliver'">
+        <div class="bk-kpi-inner">
+          <div class="bk-kpi-icon" style="background:#fef3c7">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <div class="bk-kpi-body">
+            <div class="bk-kpi-label">To Deliver</div>
+            <div class="bk-kpi-value bk-kpi-amber">{{ counts.toDeliver }}</div>
+            <div class="bk-kpi-trend" :class="soTrends.deliver.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.deliver.up?'↑':'↓' }} {{ soTrends.deliver.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
+      <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='closed'">
+        <div class="bk-kpi-inner">
+          <div class="bk-kpi-icon" style="background:#dcfce7">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="bk-kpi-body">
+            <div class="bk-kpi-label">Closed</div>
+            <div class="bk-kpi-value bk-kpi-green">{{ counts.closed }}</div>
+            <div class="bk-kpi-trend" :class="soTrends.closed.up?'bk-trend-up':'bk-trend-down'">{{ soTrends.closed.up?'↑':'↓' }} {{ soTrends.closed.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
+      <div class="bk-kpi-card bk-kpi-danger clickable" @click="activeTab='cancelled'">
+        <div class="bk-kpi-inner">
+          <div class="bk-kpi-icon" style="background:#fee2e2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <div class="bk-kpi-body">
+            <div class="bk-kpi-label">Cancelled</div>
+            <div class="bk-kpi-value bk-kpi-red">{{ counts.cancelled }}</div>
+            <div class="bk-kpi-trend" :class="soTrends.cancelled.up?'bk-trend-down':'bk-trend-up'">{{ soTrends.cancelled.up?'↑':'↓' }} {{ soTrends.cancelled.pct }}% vs last month</div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- ── Secondary Stats ── -->
     <div class="bk-stat-grid">
-      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ soThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
-      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Value</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">{{ fmtCur(soThisMonth.value) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
-      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Pipeline Value</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">{{ fmtCur(summary.totalValue) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div></div>
-      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">To Invoice</div><div class="bk-stat-value bk-kpi-blue">{{ counts.toInvoice }}</div></div><div class="bk-stat-icon" style="background:#cffafe;color:#0891b2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div></div>
+      <div class="bk-stat-card">
+        <div class="bk-stat-content">
+          <div>
+            <div class="bk-stat-label">This Month</div>
+            <div class="bk-stat-value">{{ soThisMonth.count }}</div>
+          </div>
+          <div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="bk-stat-card">
+        <div class="bk-stat-content">
+          <div>
+            <div class="bk-stat-label">This Month Value</div>
+            <div class="bk-stat-value" style="color:#16a34a;font-size:16px">{{ fmtCur(soThisMonth.value) }}</div>
+          </div>
+          <div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="bk-stat-card">
+        <div class="bk-stat-content">
+          <div>
+            <div class="bk-stat-label">Pipeline Value</div>
+            <div class="bk-stat-value" style="color:#16a34a;font-size:16px">{{ fmtCur(summary.totalValue) }}</div>
+          </div>
+          <div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="bk-stat-card">
+        <div class="bk-stat-content">
+          <div>
+            <div class="bk-stat-label">To Invoice</div>
+            <div class="bk-stat-value" style="color:#0891b2">{{ counts.toInvoice }}</div>
+          </div>
+          <div class="bk-stat-icon" style="background:#cffafe;color:#0891b2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ── Bulk actions bar ── -->
@@ -88,7 +185,7 @@
                 <div style="display:flex;gap:4px;justify-content:center">
                   <button class="inv-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
                   <button class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                  <button v-if="canInvoice(o)" class="inv-act-btn inv-act-conv" @click="openInvoiceModal(o)" title="Invoice"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+                  <button v-if="canInvoice(o)" class="inv-act-btn inv-act-pay" @click="openInvoiceModal(o)" title="Invoice"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
                   <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteSO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
                 </div>
               </td>
@@ -96,8 +193,18 @@
             <tr v-if="!sorted.length">
               <td colspan="8" class="bk-empty-state">
                 <div class="bk-empty-inner">
-                  <template v-if="search"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No sales orders match</p></template>
-                  <template v-else><div class="bk-empty-illus"><svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="8" y="18" width="64" height="48" rx="6" fill="#e2e8f0"/><rect x="12" y="22" width="56" height="40" rx="4" fill="#fff"/><rect x="20" y="32" width="40" height="3" rx="2" fill="#e2e8f0"/><rect x="20" y="40" width="30" height="3" rx="2" fill="#e2e8f0"/><rect x="20" y="48" width="35" height="3" rx="2" fill="#e2e8f0"/><rect x="56" y="56" width="14" height="14" rx="3" fill="#2563eb" opacity=".8"/><line x1="60" y1="63" x2="66" y2="63" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><line x1="63" y1="60" x2="63" y2="66" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></div><p class="bk-empty-title">No sales orders yet</p><p class="bk-empty-sub">Create a sales order to track customer fulfilment.</p><button class="bk-empty-btn" @click="openNew"><span v-html="icon('plus',13)"></span> New Sales Order</button></template>
+                  <template v-if="search">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <p class="bk-empty-title">No sales orders match</p>
+                  </template>
+                  <template v-else>
+                    <div class="bk-empty-illus">
+                      <svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="8" y="18" width="64" height="48" rx="6" fill="#e2e8f0"/><rect x="12" y="22" width="56" height="40" rx="4" fill="#fff"/><rect x="20" y="32" width="40" height="3" rx="2" fill="#e2e8f0"/><rect x="20" y="40" width="30" height="3" rx="2" fill="#e2e8f0"/><rect x="20" y="48" width="35" height="3" rx="2" fill="#e2e8f0"/><rect x="56" y="56" width="14" height="14" rx="3" fill="#2563eb" opacity=".8"/><line x1="60" y1="63" x2="66" y2="63" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><line x1="63" y1="60" x2="63" y2="66" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </div>
+                    <p class="bk-empty-title">No sales orders yet</p>
+                    <p class="bk-empty-sub">Create a sales order to track customer fulfilment.</p>
+                    <button class="bk-empty-btn" @click="openNew"><span v-html="icon('plus',13)"></span> New Sales Order</button>
+                  </template>
                 </div>
               </td>
             </tr>
@@ -105,333 +212,525 @@
         </tbody>
       </table>
     </div>
-    <div v-if="!loading && sorted.length" style="padding:12px 20px 4px">
+    <div v-if="!loading && sorted.length" style="padding:12px 0px 4px">
       <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
     </div>
 
-    <!-- ── Create / Edit Drawer ── -->
-    <div v-if="drawerOpen" class="so-drawer-bg" @click.self="drawerOpen=false">
-      <div class="so-drawer-panel">
+    <!-- ══ Modals / Drawers ══ -->
+    <Teleport to="body">
 
-        <!-- Header -->
-        <div class="so-dh">
-          <div>
-            <div class="so-dh-title">{{ editingName ? 'Edit Sales Order' : 'New Sales Order' }}</div>
-            <div class="so-dh-sub">{{ editingName || 'Fill in the details below' }}</div>
+      <!-- ── Create / Edit Drawer ── -->
+      <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false">
+        <div class="inv-drawer-panel">
+
+          <!-- Header -->
+          <div class="inv-dh">
+            <div>
+              <div class="inv-dh-title">{{ editingName ? 'Edit Sales Order' : 'New Sales Order' }}</div>
+              <div class="inv-dh-sub">{{ editingName || 'Fill in the details below' }}</div>
+            </div>
+            <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
           </div>
-          <button class="so-dclose-new" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
-        </div>
 
-        <!-- Body -->
-        <div class="so-dbody">
+          <!-- Body -->
+          <div class="inv-dbody">
 
-          <div class="so-sec-lbl">Order Details</div>
-          <div class="so-fg so-fg3">
-            <div style="grid-column:1/3">
-              <label class="so-lbl">Customer <span class="so-req">*</span></label>
-              <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer…"
-                :createable="true" createDoctype="Customer"
-                @search="fetchCustomers" @update:modelValue="onCustomerChange" />
-            </div>
-            <div>
-              <label class="so-lbl">Order Date <span class="so-req">*</span></label>
-              <input v-model="form.transaction_date" type="date" class="so-fi"/>
-            </div>
-            <div>
-              <label class="so-lbl">Delivery Date</label>
-              <input v-model="form.delivery_date" type="date" class="so-fi"/>
-            </div>
-            <div>
-              <label class="so-lbl">Customer PO #</label>
-              <input v-model="form.po_number" type="text" class="so-fi" placeholder="Customer's purchase order #"/>
-            </div>
-            <div style="grid-column:1/-1">
-              <label class="so-lbl">Shipping Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
-              <input v-model="form.shipping_address" type="text" class="so-fi" placeholder="Auto-filled from customer, or enter manually"/>
-            </div>
-            <div style="grid-column:1/-1">
-              <div class="so-inv-block" :class="form.set_warehouse ? 'so-wh-on' : 'so-wh-off'">
-                <div class="so-inv-toggle-row">
-                  <div class="so-inv-icon" v-html="icon('warehouse',16)"></div>
-                  <div class="so-inv-text">
-                    <div class="so-inv-title">Dispatch Warehouse <span style="color:#dc2626">*</span></div>
-                    <div class="so-inv-sub">Stock will be deducted from this warehouse when the invoice is submitted</div>
+            <!-- Order Details Card -->
+            <div class="add-card">
+              <div class="add-card-header" @click="collapsed.details=!collapsed.details">
+                <div class="add-card-title">
+                  <span class="add-card-title-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                  </span>
+                  Order Details
+                </div>
+                <span class="add-card-chevron" :class="{collapsed:collapsed.details}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+              <div class="add-card-body" :class="{collapsed:collapsed.details}">
+                <div class="inv-fg" style="grid-template-columns:1fr 1fr 1fr">
+                  <div style="grid-column:1/3">
+                    <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
+                    <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer…"
+                      :createable="true" createDoctype="Customer"
+                      @search="fetchCustomers" @update:modelValue="onCustomerChange" />
+                  </div>
+                  <div>
+                    <label class="inv-lbl">Order Date <span class="inv-req">*</span></label>
+                    <input v-model="form.transaction_date" type="date" class="inv-fi"/>
+                  </div>
+                  <div>
+                    <label class="inv-lbl">Delivery Date</label>
+                    <input v-model="form.delivery_date" type="date" class="inv-fi"/>
+                  </div>
+                  <div>
+                    <label class="inv-lbl">Customer PO #</label>
+                    <input v-model="form.po_number" type="text" class="inv-fi" placeholder="Customer's purchase order #"/>
+                  </div>
+                  <div style="grid-column:1/-1">
+                    <label class="inv-lbl">Shipping Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
+                    <input v-model="form.shipping_address" type="text" class="inv-fi" placeholder="Auto-filled from customer, or enter manually"/>
+                  </div>
+                  <div style="grid-column:1/-1">
+                    <label class="inv-lbl">Dispatch Warehouse <span class="inv-req">*</span></label>
+                    <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse stock will be dispatched from…" @search="fetchWarehouses" />
+                    <div style="font-size:11px;color:#6b7280;margin-top:4px">Stock will be deducted from this warehouse when invoiced</div>
                   </div>
                 </div>
-                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse stock will be dispatched from…" @search="fetchWarehouses" />
               </div>
             </div>
-          </div>
 
-          <!-- Line Items -->
-          <div class="so-sec-lbl" style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f2f5;padding-top:16px;margin-top:4px">
-            LINE ITEMS
-            <button class="so-add-item-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
-          </div>
-
-          <div class="so-lines-wrap">
-            <div class="so-lines-head">
-              <div>ITEM <span class="so-req">*</span></div>
-              <div>DESCRIPTION</div>
-              <div class="ta-r">QTY</div>
-              <div class="ta-r">RATE (₹)</div>
-              <div class="ta-r">AMOUNT</div>
-              <div></div>
-            </div>
-            <div v-for="line in lines" :key="line.id" class="so-lines-row">
-              <div style="min-width:0">
-                <SearchableSelect v-model="line.item_code" :options="items"
-                  placeholder="Item…" :createable="true" createDoctype="Item"
-                  @search="fetchItems" @select="v=>onItemSelect(line,v)"/>
-              </div>
-              <div><input v-model="line.description" class="so-ci" placeholder="Description"/></div>
-              <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="so-ci so-ci-r" @input="calcLine(line)"/></div>
-              <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="so-ci so-ci-r" @input="calcLine(line)"/></div>
-              <div class="ta-r mono-sm" style="display:flex;align-items:center;justify-content:flex-end;font-weight:600;font-size:13px">{{ fmtCur(line.amount) }}</div>
-              <div style="display:flex;align-items:center;justify-content:center">
-                <button @click="removeLine(line.id)" class="so-rm-line"><span v-html="icon('x',12)"></span></button>
-              </div>
-            </div>
-            <div v-if="!lines.length" class="so-lines-empty">No items yet — click <strong>Add Item</strong> to begin.</div>
-            <button class="so-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
-          </div>
-
-          <!-- Totals -->
-          <div class="so-totals-wrap">
-            <div class="so-tax-section">
-              <div class="so-tax-header">
-                <span class="so-tax-title">Tax</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:10px">
-                <label class="so-lbl" style="margin:0;white-space:nowrap">Tax Rate %</label>
-                <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="so-ci" style="max-width:100px"/>
-              </div>
-            </div>
-            <div class="so-totals-right-panel">
-              <div class="so-total-row-item">
-                <span>Subtotal</span>
-                <span class="so-total-amt">{{ fmtCur(subtotal) }}</span>
-              </div>
-              <div class="so-total-row-item" style="color:#6b7280;font-size:12px">
-                <span>Tax ({{ form.tax_rate||0 }}%)</span>
-                <span class="so-total-amt">{{ fmtCur(taxAmount) }}</span>
-              </div>
-              <div class="so-total-row-item so-grand-total">
-                <span>Grand Total</span>
-                <span class="so-total-amt" style="font-size:16px;color:#1a6ef7">{{ fmtCur(subtotal+taxAmount) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Terms -->
-          <div class="so-sec-lbl">Notes & Terms</div>
-          <div style="margin-bottom:14px">
-            <label class="so-lbl">Terms & Conditions <span style="color:#9ca3af;font-weight:400">(printed on order)</span></label>
-            <textarea v-model="form.terms" rows="3" class="so-fi" style="resize:vertical" placeholder="Payment terms, delivery terms…"></textarea>
-          </div>
-
-        </div><!-- /so-dbody -->
-
-        <div class="so-dfooter-new">
-          <div style="font-size:12px;color:#9ca3af">{{ editingName ? 'Editing: '+editingName : 'New sales order' }}</div>
-          <div style="display:flex;gap:10px">
-            <button class="so-btn-ghost" @click="drawerOpen=false">Cancel</button>
-            <button class="so-btn-ghost" style="border-color:#3b82f6;color:#3b82f6" :disabled="drawerSaving" @click="saveSO('Draft')">
-              <span v-html="icon('save',13)"></span> Save Draft
-            </button>
-            <button class="inv-btn-primary" :disabled="drawerSaving" @click="saveSO('To Deliver')">
-              <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Confirm Order' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── View Drawer ── -->
-    <div v-if="viewOpen" class="so-overlay" @click.self="viewOpen=false"></div>
-    <div class="so-view-drawer-panel" :class="{open:viewOpen}">
-      <template v-if="viewDoc">
-        <div class="so-view-head" :style="`background:${headerBg(viewDoc)}`">
-          <div>
-            <div class="so-view-num">{{ viewDoc.name }}</div>
-            <div class="so-view-sub">{{ viewDoc.customer_name||viewDoc.customer }}</div>
-          </div>
-          <div style="text-align:right">
-            <div class="so-view-amount">{{ fmtCur(viewDoc.grand_total) }}</div>
-            <span class="inv-status-badge so-badge-white" style="margin-top:4px;display:inline-flex">{{ displayStatus(viewDoc) }}</span>
-          </div>
-          <button class="so-dclose-view" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-        </div>
-
-        <!-- Inline timeline -->
-        <div class="so-timeline">
-          <template v-for="(step, i) in timelineSteps" :key="i">
-            <div class="so-tl-step" :class="{ done: step.done, danger: step.danger, current: step.current }">
-              <div class="so-tl-dot">
-                <span v-if="step.done && !step.danger" v-html="icon('check', 9)"></span>
-                <span v-else-if="step.danger" style="font-size:9px;font-weight:700">!</span>
-              </div>
-              <div class="so-tl-label">{{ step.label }}</div>
-            </div>
-            <div v-if="i < timelineSteps.length - 1" class="so-tl-line"
-              :class="{ done: timelineSteps[i+1]?.done, danger: timelineSteps[i+1]?.danger }"></div>
-          </template>
-        </div>
-
-        <div class="so-tabs">
-          <button class="so-tab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
-          <button class="so-tab" :class="{active:viewTab==='fulfill'}" @click="viewTab='fulfill'">Fulfillment</button>
-          <button class="so-tab" :class="{active:viewTab==='links'}" @click="viewTab='links'">
-            Linked<span v-if="links.sales_invoices.length>0" class="so-tab-count">{{ links.sales_invoices.length }}</span>
-          </button>
-        </div>
-
-        <div class="so-vbody">
-          <template v-if="viewTab==='details'">
-            <div class="so-meta-grid">
-              <div><div class="so-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.transaction_date) }}</div></div>
-              <div>
-                <div class="so-meta-lbl">Delivery Date</div>
-                <div class="mono-sm" :class="isPastDelivery(viewDoc)?'text-danger':''">{{ fmtDate(viewDoc.delivery_date)||'—' }}</div>
-              </div>
-              <div><div class="so-meta-lbl">Customer PO</div><div class="mono-sm">{{ viewDoc.po_number||'—' }}</div></div>
-              <div><div class="so-meta-lbl">From Quote</div><div class="mono-sm">{{ viewDoc.ref_quote||'—' }}</div></div>
-            </div>
-
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <template v-else-if="viewItems.length">
-              <div class="so-section-title" style="margin-top:12px">Line Items</div>
-              <div class="so-view-items">
-                <div class="so-view-items-head">
-                  <span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span>
-                </div>
-                <div v-for="it in viewItems" :key="it.name" class="so-view-items-row">
-                  <span>
-                    <strong>{{ it.item_name||it.item_code }}</strong>
-                    <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div>
+            <!-- Line Items Card -->
+            <div class="add-card">
+              <div class="add-card-header" @click="collapsed.lines=!collapsed.lines">
+                <div class="add-card-title">
+                  <span class="add-card-title-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                   </span>
-                  <span class="ta-r mono-sm">{{ it.qty }}</span>
-                  <span class="ta-r mono-sm">{{ fmtCur(it.rate) }}</span>
-                  <span class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(it.amount) }}</span>
+                  Line Items
+                </div>
+                <div style="display:flex;align-items:center;gap:8px" @click.stop>
+                  <button class="add-lines-add-btn" @click="addLine">
+                    <span v-html="icon('plus',13)"></span> Add Item
+                  </button>
+                  <span class="add-card-chevron" :class="{collapsed:collapsed.lines}" @click="collapsed.lines=!collapsed.lines">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
                 </div>
               </div>
-              <div v-if="viewDoc.grand_total" style="display:flex;justify-content:flex-end;padding:10px 12px;border-top:1px solid #e8ecf0;gap:32px;font-size:13px">
-                <span style="color:#6b7280">Grand Total</span>
-                <span style="font-family:monospace;font-weight:700;color:#1a6ef7;font-size:15px">{{ fmtCur(viewDoc.grand_total) }}</span>
-              </div>
-            </template>
+              <div class="add-card-body" :class="{collapsed:collapsed.lines}" style="padding:0">
+                <div style="overflow-x:auto">
+                  <table class="inv-lines-tbl">
+                    <thead>
+                      <tr>
+                        <th style="width:28px">#</th>
+                        <th style="min-width:160px">Item <span class="inv-req">*</span></th>
+                        <th style="min-width:140px">Description</th>
+                        <th style="min-width:60px;text-align:right">Qty</th>
+                        <th style="min-width:90px;text-align:right">Rate (₹)</th>
+                        <th style="min-width:90px;text-align:right">Amount (₹)</th>
+                        <th style="width:32px"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(line, idx) in lines" :key="line.id">
+                        <td><span class="add-line-num">{{ idx+1 }}</span></td>
+                        <td>
+                          <SearchableSelect v-model="line.item_code" :options="items"
+                            placeholder="Search item…" :compact="true" :createable="true" createDoctype="Item"
+                            @search="fetchItems" @select="v=>onItemSelect(line,v)"/>
+                        </td>
+                        <td><input v-model="line.description" class="inv-ci" placeholder="Item description"/></td>
+                        <td><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-ci inv-ci-r" @input="calcLine(line)"/></td>
+                        <td><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-ci inv-ci-r" @input="calcLine(line)"/></td>
+                        <td class="add-line-amount">{{ fmtCur(line.amount) }}</td>
+                        <td style="padding:4px 6px">
+                          <button @click="removeLine(line.id)" class="add-line-del"><span v-html="icon('trash',12)"></span></button>
+                        </td>
+                      </tr>
+                      <tr class="add-new-line-row">
+                        <td colspan="7" style="padding:6px 14px;border-bottom:none">
+                          <button class="add-new-line-btn" @click="addLine">
+                            <span v-html="icon('plus',12)"></span> Add new line
+                          </button>
+                        </td>
+                      </tr>
+                      <tr v-if="!lines.length">
+                        <td colspan="7" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
+                          No line items — click "+ Add Item" to get started
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
 
-            <div v-if="viewDoc.terms" class="so-terms" style="margin-top:12px">
-              <div class="so-meta-lbl">Terms & Conditions</div>
-              <div style="white-space:pre-wrap;font-size:12.5px;color:#374151">{{ viewDoc.terms }}</div>
+                <!-- Taxes + Totals -->
+                <div class="inv-totals-wrap">
+                  <div class="inv-tax-section">
+                    <div class="inv-tax-header">
+                      <span class="inv-tax-title">Tax Rate %</span>
+                    </div>
+                    <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="inv-fi" style="max-width:120px" placeholder="0"/>
+                  </div>
+                  <div class="inv-totals">
+                    <div class="inv-total-row">
+                      <span>Subtotal</span>
+                      <span class="inv-total-amt">{{ fmtCur(subtotal) }}</span>
+                    </div>
+                    <div class="inv-total-row" style="color:#6b7280;font-size:12px">
+                      <span>Tax ({{ form.tax_rate||0 }}%)</span>
+                      <span class="inv-total-amt">{{ fmtCur(taxAmount) }}</span>
+                    </div>
+                    <div class="inv-total-row inv-grand-total">
+                      <span>Grand Total</span>
+                      <span class="inv-total-amt" style="font-size:16px;color:#1565c0">{{ fmtCur(subtotal+taxAmount) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </template>
 
-          <template v-if="viewTab==='fulfill'">
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <template v-else-if="fulfill.lines.length">
-              <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Status: <strong>{{ fulfill.computed_status }}</strong></div>
-              <div class="so-fulfill-tbl">
-                <div class="so-fulfill-head">
-                  <span>Item</span>
-                  <span class="ta-r">Ordered</span>
-                  <span class="ta-r">Delivered</span>
-                  <span class="ta-r">Invoiced</span>
-                  <span class="ta-r">Remaining</span>
+            <!-- Terms & Notes Card -->
+            <div class="add-card">
+              <div class="add-card-header" @click="collapsed.notes=!collapsed.notes">
+                <div class="add-card-title">
+                  <span class="add-card-title-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </span>
+                  Terms & Notes
                 </div>
-                <div v-for="l in fulfill.lines" :key="l.name" class="so-fulfill-row">
-                  <span>{{ l.item_name||l.item_code }}</span>
-                  <span class="ta-r mono-sm">{{ l.qty }}</span>
-                  <span class="ta-r mono-sm" :class="l.delivered_qty>=l.qty?'text-success':'text-muted'">{{ l.delivered_qty }}</span>
-                  <span class="ta-r mono-sm" :class="l.billed_qty>=l.qty?'text-success':'text-muted'">{{ l.billed_qty }}</span>
-                  <span class="ta-r mono-sm text-danger">{{ l.remaining_to_deliver }} / {{ l.remaining_to_bill }}</span>
+                <span class="add-card-chevron" :class="{collapsed:collapsed.notes}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+              <div class="add-card-body" :class="{collapsed:collapsed.notes}">
+                <div>
+                  <label class="inv-lbl">Terms & Conditions <span style="color:#9ca3af;font-weight:400">(printed on order)</span></label>
+                  <textarea v-model="form.terms" rows="3" class="inv-fi" style="resize:vertical" placeholder="Payment terms, delivery terms…"></textarea>
                 </div>
               </div>
-              <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-                <button v-if="hasUndelivered" class="so-btn-ghost" @click="markAllDelivered" :disabled="actionRunning">📦 Mark All Delivered</button>
-              </div>
-            </template>
-            <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">No line items.</div>
-          </template>
+            </div>
 
-          <template v-if="viewTab==='links'">
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <template v-else>
-              <div v-if="viewDoc.ref_quote" class="so-section-title">Originating Quote</div>
-              <div v-if="viewDoc.ref_quote" class="so-link-row">
-                <span class="inv-link">{{ viewDoc.ref_quote }}</span>
-                <span class="text-muted">Quotation</span>
-              </div>
-              <div v-if="links.sales_invoices.length" class="so-section-title">Sales Invoices</div>
-              <div v-for="si in links.sales_invoices" :key="si.name" class="so-link-row">
-                <span class="inv-link">{{ si.name }}</span>
-                <span class="text-muted">{{ fmtDate(si.posting_date) }}</span>
-                <span class="text-muted">Out: {{ fmtCur(si.outstanding_amount) }}</span>
-                <span style="text-align:right;font-weight:600">{{ fmtCur(si.grand_total) }}</span>
-              </div>
-              <div v-if="!viewDoc.ref_quote && !links.sales_invoices.length"
-                style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
-                No linked documents yet.
-              </div>
-            </template>
-          </template>
-        </div>
+          </div><!-- /inv-dbody -->
 
-        <div class="so-vfooter">
-          <button class="so-btn-ghost" @click="viewOpen=false">Close</button>
-          <button class="so-btn-save" @click="openEdit(viewDoc);viewOpen=false">
-            <span v-html="icon('edit',13)"></span> Edit
-          </button>
-          <button class="so-btn-ghost" @click="emailSO(viewDoc)">
-            <span v-html="icon('mail',13)"></span> Email
-          </button>
-          <button class="so-btn-ghost" @click="printSO(viewDoc)" title="Print preview">🖨 Print</button>
-          <button v-if="canInvoice(viewDoc)" class="inv-btn-primary" @click="openInvoiceModal(viewDoc)">→ Invoice</button>
-          <button class="so-btn-danger" @click="cancelSO(viewDoc)">Cancel</button>
-          <button class="so-btn-danger" @click="deleteSO(viewDoc)">Delete</button>
-        </div>
-      </template>
-    </div>
-
-    <!-- ── Convert-to-Invoice modal ── -->
-    <div v-if="invModal.open" class="so-overlay" @click.self="invModal.open=false" style="z-index:60"></div>
-    <div v-if="invModal.open" class="so-inv-dialog">
-      <div class="so-dh" style="border-radius:12px 12px 0 0">
-        <div>
-          <div class="so-dh-title">Convert to Invoice</div>
-          <div class="so-dh-sub">{{ invModal.soName }}</div>
-        </div>
-        <button class="so-dclose-new" @click="invModal.open=false"><span v-html="icon('x',16)"></span></button>
-      </div>
-      <div class="so-vbody" style="padding:20px 24px;gap:12px">
-        <div style="font-size:12.5px;color:#374151">Enter the quantity to invoice for each line (defaults to remaining):</div>
-        <div class="so-inv-tbl">
-          <div class="so-inv-head">
-            <span>Item</span><span class="ta-r">Remaining</span><span class="ta-r">Invoice</span>
-          </div>
-          <div v-for="l in invModal.lines" :key="l.name" class="so-inv-row">
-            <span>{{ l.item_name||l.item_code }}</span>
-            <span class="ta-r mono-sm text-muted">{{ l.remaining_to_bill }}</span>
-            <input v-model.number="l.toInvoice" type="number" min="0" :max="l.remaining_to_bill" step="0.001"
-              class="so-ci so-ci-r" style="width:90px"/>
+          <!-- Footer -->
+          <div class="inv-dfooter">
+            <div style="font-size:12px;color:#9ca3af">{{ editingName ? 'Editing: '+editingName : 'New sales order' }}</div>
+            <div style="display:flex;gap:10px">
+              <button class="add-btn-cancel" @click="drawerOpen=false">Cancel</button>
+              <button class="add-btn-draft" :disabled="drawerSaving" @click="saveSO('Draft')">
+                <span v-html="icon('save',13)"></span> Save Draft
+              </button>
+              <button class="add-btn-more" :disabled="drawerSaving" @click="saveSO('To Deliver')">
+                <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Confirm Order' }}
+              </button>
+            </div>
           </div>
         </div>
-        <div>
-          <label class="so-lbl">Due Date</label>
-          <input v-model="invModal.dueDate" type="date" class="so-fi" style="max-width:200px"/>
-        </div>
-        <div style="text-align:right;font-size:13px;color:#6b7280">
-          Invoice Total: <strong style="color:#1a6ef7;font-size:15px;font-family:monospace">{{ fmtCur(invModalTotal) }}</strong>
-        </div>
       </div>
-      <div class="so-vfooter">
-        <button class="so-btn-ghost" @click="invModal.open=false" :disabled="invModal.saving">Cancel</button>
-        <button class="inv-btn-primary" :disabled="invModal.saving||invModalTotal<=0" @click="submitInvoice">
-          {{ invModal.saving ? 'Creating…' : `Create Invoice ${fmtCur(invModalTotal)}` }}
-        </button>
-      </div>
-    </div>
 
+      <!-- ── View Drawer ── -->
+      <div v-if="viewOpen&&viewDoc" class="inv-drawer-bg" @click.self="viewOpen=false">
+        <div class="inv-drawer-panel inv-drawer-wide inv-view-page">
+
+          <!-- Top header -->
+          <div class="inv-view-header" :style="`background:${headerBg(viewDoc)}`">
+            <div class="inv-view-header-left">
+              <div class="inv-view-title-row">
+                <span class="inv-view-number">{{ viewDoc.name }}</span>
+                <span class="inv-hdr-badge" :class="badgeClass(viewDoc)">{{ displayStatus(viewDoc) }}</span>
+              </div>
+              <div class="inv-view-subtitle">
+                <span class="inv-cust-link">
+                  <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer }}</DocLink>
+                </span>
+                <span v-if="viewDoc.delivery_date"> · Delivery {{ fmtDate(viewDoc.delivery_date) }}
+                  <span v-if="isPastDelivery(viewDoc)" style="color:#fca5a5"> (overdue)</span>
+                </span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button v-if="canInvoice(viewDoc)" class="inv-view-cta" @click="openInvoiceModal(viewDoc)">
+                <span v-html="icon('repeat',14)"></span> Invoice
+              </button>
+              <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
+                <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Main white card -->
+          <div class="inv-view-body">
+
+            <!-- Status timeline -->
+            <div class="inv-tl-wrap">
+              <div class="inv-tl">
+                <div class="inv-tl-progress" :style="{ width: tlProgressWidth }"></div>
+                <template v-for="(step, i) in timelineSteps" :key="i">
+                  <div class="inv-tl-step"
+                       :class="{ 'tl-done': step.done && !step.danger, 'tl-danger': step.danger, 'tl-pending': !step.done && !step.danger }">
+                    <div class="inv-tl-dot"
+                         :style="step.done && !step.danger ? 'background:#16a34a;border-color:#16a34a;color:#fff' : step.danger ? 'background:#dc2626;border-color:#dc2626;color:#fff' : ''">
+                      <span v-if="step.done && !step.danger" v-html="icon('check',14)"></span>
+                      <span v-else-if="step.danger" style="font-size:11px;font-weight:800">!</span>
+                    </div>
+                    <div class="inv-tl-label"
+                         :style="step.done && !step.danger ? 'color:#16a34a;font-weight:700' : ''">
+                      {{ step.label }}
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Action buttons bar -->
+            <div class="inv-action-bar">
+              <button class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
+                <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
+              </button>
+              <button class="inv-ab-btn" @click="printSO(viewDoc)">
+                <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
+              </button>
+              <button class="inv-ab-btn" @click="emailSO(viewDoc)">
+                <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
+              </button>
+              <button v-if="canInvoice(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="openInvoiceModal(viewDoc)">
+                <span v-html="icon('repeat',13)"></span> <span class="ab-label">Invoice</span>
+              </button>
+              <button class="inv-ab-btn inv-ab-danger" @click="cancelSO(viewDoc)">
+                <span v-html="icon('x',13)"></span> <span class="ab-label">Cancel</span>
+              </button>
+              <button class="inv-ab-btn inv-ab-danger" @click="deleteSO(viewDoc)">
+                <span v-html="icon('trash',13)"></span> <span class="ab-label">Delete</span>
+              </button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="inv-view-tabs">
+              <button class="inv-vtab" :class="{ active: viewTab==='details' }" @click="viewTab='details'">Details</button>
+              <button class="inv-vtab" :class="{ active: viewTab==='fulfill' }" @click="viewTab='fulfill'">Fulfillment</button>
+              <button class="inv-vtab" :class="{ active: viewTab==='links' }" @click="viewTab='links'">
+                Linked <span v-if="links.sales_invoices.length>0" class="inv-vtab-count">{{ links.sales_invoices.length }}</span>
+              </button>
+            </div>
+
+            <!-- ── Details tab ── -->
+            <template v-if="viewTab==='details'">
+              <div class="inv-tab-body">
+
+                <!-- Details meta row -->
+                <div class="inv-details-meta">
+                  <div class="inv-details-meta-col col-customer">
+                    <div class="inv-dmeta-icon-row">
+                      <span class="inv-dmeta-icon" v-html="icon('user',13)"></span>
+                      <span class="inv-dmeta-lbl">Customer</span>
+                    </div>
+                    <div class="inv-dmeta-primary">
+                      <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer }}</DocLink>
+                    </div>
+                  </div>
+                  <div class="inv-details-meta-col">
+                    <div class="inv-dmeta-icon-row">
+                      <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
+                      <span class="inv-dmeta-lbl">Order Date</span>
+                    </div>
+                    <div class="inv-dmeta-date-val">{{ fmtDate(viewDoc.transaction_date) }}</div>
+                  </div>
+                  <div class="inv-details-meta-col">
+                    <div class="inv-dmeta-icon-row">
+                      <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
+                      <span class="inv-dmeta-lbl">Delivery Date</span>
+                    </div>
+                    <div class="inv-dmeta-date-val" :class="{ 'is-overdue': isPastDelivery(viewDoc) }">
+                      {{ fmtDate(viewDoc.delivery_date) || '—' }}
+                    </div>
+                  </div>
+                  <div class="inv-details-meta-col">
+                    <div class="inv-dmeta-icon-row">
+                      <span class="inv-dmeta-icon" v-html="icon('indianrupee',13)"></span>
+                      <span class="inv-dmeta-lbl">Grand Total</span>
+                    </div>
+                    <div class="inv-balance-val">
+                      {{ fmtCur(viewDoc.grand_total) }}
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading details…</div>
+
+                <template v-else>
+                  <!-- Line items table -->
+                  <div v-if="viewItems.length" class="inv-items-wrap">
+                    <table class="inv-items-table">
+                      <thead>
+                        <tr>
+                          <th style="width:36px">#</th>
+                          <th>Item &amp; Description</th>
+                          <th class="th-r">Qty</th>
+                          <th class="th-r">Rate</th>
+                          <th class="th-r">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(it,i) in viewItems" :key="i">
+                          <td class="inv-item-num">{{ i+1 }}</td>
+                          <td>
+                            <div class="inv-item-name">{{ it.item_name||it.item_code }}</div>
+                            <div v-if="it.description" class="inv-item-desc">{{ it.description }}</div>
+                          </td>
+                          <td class="td-r">{{ flt(it.qty) }}</td>
+                          <td class="td-r">{{ fmtCur(it.rate) }}</td>
+                          <td class="td-r" style="font-weight:600">{{ fmtCur(it.amount) }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <!-- Totals section -->
+                    <div class="inv-totals-section">
+                      <div class="inv-totals-inner">
+                        <div class="inv-grand-total-line">
+                          <span class="inv-grand-lbl">Grand Total</span>
+                          <span class="inv-grand-amt">{{ fmtCur(viewDoc.grand_total) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No item details available.</div>
+                </template>
+              </div>
+
+              <!-- Bottom grid: Notes -->
+              <div class="inv-bottom-grid">
+                <div class="inv-bottom-card">
+                  <div class="inv-bottom-card-header">
+                    <div class="inv-bottom-card-title">
+                      <span v-html="icon('sticky-note',14)"></span> Terms & Notes
+                    </div>
+                  </div>
+                  <div class="inv-bottom-card-body">
+                    <div v-if="viewDoc.terms">
+                      <div style="font-size:13px;color:#374151;white-space:pre-wrap">{{ viewDoc.terms }}</div>
+                    </div>
+                    <div v-else class="inv-notes-empty">
+                      <div class="inv-notes-empty-icon" v-html="icon('file-text',36)"></div>
+                      <div class="inv-notes-empty-text">No terms added yet</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer -->
+              <div class="inv-view-footer" v-if="viewDoc.owner">
+                Created by {{ viewDoc.owner }} on {{ fmtDate(viewDoc.creation) }}
+              </div>
+            </template>
+
+            <!-- ── Fulfillment tab ── -->
+            <template v-if="viewTab==='fulfill'">
+              <div class="inv-tab-body">
+                <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading…</div>
+                <template v-else-if="fulfill.lines.length">
+                  <div style="font-size:12px;color:#6b7280;margin-bottom:12px">
+                    Status: <strong>{{ fulfill.computed_status }}</strong>
+                  </div>
+                  <div class="inv-items-wrap">
+                    <table class="inv-items-table">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th class="th-r">Ordered</th>
+                          <th class="th-r">Delivered</th>
+                          <th class="th-r">Invoiced</th>
+                          <th class="th-r">Remaining</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="l in fulfill.lines" :key="l.name">
+                          <td>{{ l.item_name||l.item_code }}</td>
+                          <td class="td-r mono-sm">{{ l.qty }}</td>
+                          <td class="td-r mono-sm" :class="l.delivered_qty>=l.qty?'text-success':'text-muted'">{{ l.delivered_qty }}</td>
+                          <td class="td-r mono-sm" :class="l.billed_qty>=l.qty?'text-success':'text-muted'">{{ l.billed_qty }}</td>
+                          <td class="td-r mono-sm text-danger">{{ l.remaining_to_deliver }} / {{ l.remaining_to_bill }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div v-if="hasUndelivered" style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+                    <button class="inv-ab-btn" @click="markAllDelivered" :disabled="actionRunning">
+                      <span v-html="icon('truck',13)"></span> <span class="ab-label">Mark All Delivered</span>
+                    </button>
+                  </div>
+                </template>
+                <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">No line items.</div>
+              </div>
+            </template>
+
+            <!-- ── Links tab ── -->
+            <template v-if="viewTab==='links'">
+              <div class="inv-tab-body">
+                <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading…</div>
+                <template v-else>
+                  <div v-if="viewDoc.ref_quote" style="margin-bottom:16px">
+                    <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Originating Quote</div>
+                    <div style="padding:10px 14px;border:1px solid #e8ecf0;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:space-between">
+                      <span class="inv-link">{{ viewDoc.ref_quote }}</span>
+                      <span class="text-muted">Quotation</span>
+                    </div>
+                  </div>
+                  <div v-if="links.sales_invoices.length">
+                    <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Sales Invoices</div>
+                    <div class="inv-items-wrap">
+                      <table class="inv-items-table">
+                        <thead>
+                          <tr>
+                            <th>Invoice #</th>
+                            <th>Date</th>
+                            <th class="th-r">Outstanding</th>
+                            <th class="th-r">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="si in links.sales_invoices" :key="si.name">
+                            <td><span class="inv-link">{{ si.name }}</span></td>
+                            <td class="mono-sm text-muted">{{ fmtDate(si.posting_date) }}</td>
+                            <td class="td-r mono-sm">{{ fmtCur(si.outstanding_amount) }}</td>
+                            <td class="td-r mono-sm" style="font-weight:600">{{ fmtCur(si.grand_total) }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div v-if="!viewDoc.ref_quote && !links.sales_invoices.length"
+                    style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
+                    No linked documents yet.
+                  </div>
+                </template>
+              </div>
+            </template>
+
+          </div><!-- /inv-view-body -->
+        </div><!-- /inv-drawer-panel -->
+      </div><!-- /inv-drawer-bg -->
+
+      <!-- ── Convert-to-Invoice modal ── -->
+      <div v-if="invModal.open" class="rp-backdrop" @click.self="invModal.open=false">
+        <div class="rp-dialog" style="max-width:560px">
+          <div class="rp-dialog-header">
+            <span class="rp-dialog-title">Convert to Invoice — {{ invModal.soName }}</span>
+            <button class="rp-close-btn" @click="invModal.open=false">✕</button>
+          </div>
+          <div class="rp-body">
+            <div style="font-size:12.5px;color:#374151;margin-bottom:12px">Enter the quantity to invoice for each line:</div>
+            <div style="border:1px solid #e8ecf0;border-radius:8px;overflow:hidden;margin-bottom:14px">
+              <div style="display:grid;grid-template-columns:2fr 100px 110px;gap:8px;background:#f8fafc;padding:8px 12px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase">
+                <span>Item</span><span class="ta-r">Remaining</span><span class="ta-r">Invoice</span>
+              </div>
+              <div v-for="l in invModal.lines" :key="l.name" style="display:grid;grid-template-columns:2fr 100px 110px;gap:8px;padding:8px 12px;border-top:1px solid #f3f4f6;align-items:center;font-size:12.5px">
+                <span>{{ l.item_name||l.item_code }}</span>
+                <span class="ta-r mono-sm text-muted">{{ l.remaining_to_bill }}</span>
+                <input v-model.number="l.toInvoice" type="number" min="0" :max="l.remaining_to_bill" step="0.001"
+                  class="inv-ci" style="width:100%;text-align:right"/>
+              </div>
+            </div>
+            <div>
+              <label class="inv-lbl">Due Date</label>
+              <input v-model="invModal.dueDate" type="date" class="inv-fi" style="max-width:200px"/>
+            </div>
+            <div style="text-align:right;font-size:13px;color:#6b7280;margin-top:12px">
+              Invoice Total: <strong style="color:#1a6ef7;font-size:15px;font-family:monospace">{{ fmtCur(invModalTotal) }}</strong>
+            </div>
+          </div>
+          <div class="rp-footer">
+            <button class="rp-btn rp-btn-outline" @click="invModal.open=false" :disabled="invModal.saving">Cancel</button>
+            <button class="rp-btn" :disabled="invModal.saving||invModalTotal<=0" @click="submitInvoice">
+              {{ invModal.saving ? 'Creating…' : `Create Invoice ${fmtCur(invModalTotal)}` }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </Teleport>
   </div>
 </template>
 
@@ -445,14 +744,11 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { usePagination } from "../composables/usePagination.js";
 import DocLink from "../components/DocLink.vue";
 import Pagination from "../components/Pagination.vue";
-import SummaryStrip from "../components/SummaryStrip.vue";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
-
-
 
 const { toast } = useToast();
 const route = useRoute();
@@ -482,6 +778,9 @@ const customers = ref([]), items = ref([]), lines = ref([]), taxAccountHead = re
 const addressLoading = ref(false);
 const sortCol = ref("transaction_date"), sortDir = ref("desc");
 const actionRunning = ref(false);
+
+// ── Collapsible state for add/edit cards ──
+const collapsed = reactive({ details: false, lines: false, notes: true });
 
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
@@ -519,12 +818,12 @@ function displayStatus(o) {
 }
 function badgeClass(o) {
   const s = (o?.status||"").toLowerCase();
-  if (!s || s === "draft")  return "so-bdg-grey";
-  if (s === "cancelled")    return "so-bdg-red";
-  if (s === "closed" || s === "invoiced") return "so-bdg-green";
-  if (s.includes("delivered") && !s.includes("partially")) return "so-bdg-blue";
-  if (s === "to deliver" || s.includes("partially"))      return "so-bdg-orange";
-  return "so-bdg-blue";
+  if (!s || s === "draft")  return "status-draft";
+  if (s === "cancelled")    return "status-cancelled";
+  if (s === "closed" || s === "invoiced") return "status-paid";
+  if (s.includes("delivered") && !s.includes("partially")) return "status-partial";
+  if (s === "to deliver" || s.includes("partially"))      return "status-overdue";
+  return "status-unpaid";
 }
 function headerBg(o) {
   const s = (o?.status||"").toLowerCase();
@@ -567,7 +866,7 @@ const counts = computed(() => {
     else if (s === "closed" || s === "invoiced") c.closed++;
     else if (s === "draft") c.draft++;
     else if (s === "delivered") c.toInvoice++;
-    else c.toDeliver++;   // To Deliver / Partially Delivered / Submitted
+    else c.toDeliver++;
   }
   return c;
 });
@@ -620,15 +919,7 @@ const sorted = computed(() => {
 const { page, pageSize, paged } = usePagination(sorted, { storageKey: "sales-orders" });
 
 function sortBy(col) { if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc"; else { sortCol.value = col; sortDir.value = "asc"; } }
-function sortArrow(col) { if (sortCol.value !== col) return '<span style="color:#d1d5db">⇅</span>'; return sortDir.value === "asc" ? "↑" : "↓"; }
-function sortArrowTxt(col) { if (sortCol.value !== col) return "⇅"; return sortDir.value === "asc" ? "↑" : "↓"; }
-function pillCls(key) {
-  if (key === "toDeliver") return "pc-orange";
-  if (key === "toInvoice") return "pc-blue";
-  if (key === "closed")    return "pc-green";
-  if (key === "cancelled") return "pc-red";
-  return "pc-muted";
-}
+function sortArrowTxt(col) { if (sortCol.value !== col) return ""; return sortDir.value === "asc" ? "↑" : "↓"; }
 
 const allChecked = computed(() => sorted.value.length > 0 && sorted.value.every(o => selected.value.has(o.name)));
 function toggle(n) { const s = new Set(selected.value); s.has(n) ? s.delete(n) : s.add(n); selected.value = s; }
@@ -662,6 +953,13 @@ const timelineSteps = computed(() => {
   ];
 });
 
+const tlProgressWidth = computed(() => {
+  const steps = timelineSteps.value;
+  if (!steps.length) return "0%";
+  const doneCount = steps.filter(s => s.done || s.danger).length;
+  return Math.round(((doneCount - 1) / (steps.length - 1)) * 100) + "%";
+});
+
 const invModalTotal = computed(() =>
   (invModal.lines || []).reduce((s, l) => s + flt(l.toInvoice) * flt(l.rate), 0)
 );
@@ -671,6 +969,7 @@ function openNew() {
   editingName.value = "";
   Object.assign(form, { customer: "", transaction_date: todayStr(), delivery_date: deliveryDefault(), po_number: "", shipping_address: "", set_warehouse: "", tax_rate: 0, terms: "" });
   lines.value = [blankLine()];
+  Object.assign(collapsed, { details: false, lines: false, notes: true });
   fetchCustomers(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
 }
@@ -682,6 +981,7 @@ async function openEdit(o) {
     shipping_address: "", set_warehouse: "", tax_rate: 0, terms: o.terms || "",
   });
   lines.value = [blankLine()];
+  Object.assign(collapsed, { details: false, lines: false, notes: true });
   fetchCustomers(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
   try {
@@ -730,14 +1030,12 @@ async function fetchCustomers(q = "") {
   } catch { customers.value = []; }
 }
 
-// ── Customer change: auto-fill shipping address from customer ship_* fields ──
 async function onCustomerChange() {
   form.shipping_address = "";
   if (!form.customer) return;
   addressLoading.value = true;
   try {
     const custDoc = await apiGet("Customer", form.customer);
-    // Build shipping address from ship_* fields, fall back to billing fields
     const shipFields = [
       custDoc?.ship_address_line1, custDoc?.ship_address_line2,
       custDoc?.ship_city, custDoc?.ship_state, custDoc?.ship_pincode, custDoc?.ship_country,
@@ -763,23 +1061,17 @@ async function fetchItems(q = "") {
 async function onItemSelect(line, opt) {
   const code = opt?.value ?? opt;
   line.item_code = code;
-
-  // Fill from already-loaded items list
   const found = items.value.find(i => i.name === code || i.value === code);
   if (found) {
     line.rate = flt(found.standard_rate ?? found.rate);
     if (found.description) line.description = found.description;
     calcLine(line);
   }
-
-  // Fetch full Item doc to get any fields not in the list
   if (code) {
     try {
       const doc = await apiGet("Item", code);
       if (doc?.description)  line.description = doc.description;
-      if (!found) {
-        line.rate = flt(doc.standard_rate || 0);
-      }
+      if (!found) line.rate = flt(doc.standard_rate || 0);
       calcLine(line);
     } catch {}
   }
@@ -796,7 +1088,7 @@ async function saveSO(newStatus) {
   try {
     const company = await resolveCompany();
     const taxes = form.tax_rate > 0 && taxAccountHead.value
-      ? [{ doctype: "Tax Line", charge_type: "On Net Total", account_head: taxAccountHead.value, description: taxAccountHead.value, rate: form.tax_rate }]
+      ? [{ doctype: "Sales Taxes and Charges", charge_type: "On Net Total", account_head: taxAccountHead.value, description: taxAccountHead.value, rate: form.tax_rate }]
       : [];
     const doc = {
       doctype: "Sales Order", company,
@@ -834,7 +1126,6 @@ async function emailSO(o) {
 }
 
 function openInvoiceModal(o) {
-  // Fetch fresh fulfillment to ensure we have remaining_to_bill
   apiGET("zoho_books_clone.api.docs.get_sales_order_fulfillment", { sales_order: o.name })
     .then(r => {
       const ful = r?.lines || [];
@@ -953,230 +1244,9 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
-/* ══ Page ══ */
-.so-page { display:flex; flex-direction:column; gap:16px; padding:24px; background:#f5f6f8; min-height:100vh; }
-
-/* ══ Toolbar ══ */
-.inv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 12px; gap:12px; flex-wrap:wrap; background:#fff; border-bottom:1px solid #e8ecf0; }
-.inv-heading { font-size:18px; font-weight:700; color:#1a1a2e; margin:0; }
-.inv-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.inv-search-wrap { display:flex; align-items:center; gap:8px; background:#ffffff; border-radius:8px; padding:7px 12px; min-width:240px; }
-.inv-search-input { border:none; background:transparent; outline:none; font:inherit; color:#111827; width:100%; font-size:13px; }
-.inv-btn-primary { display:inline-flex; align-items:center; gap:6px; background:#1a6ef7; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-.inv-btn-primary:hover:not(:disabled) { background:#155fd4; }
-.inv-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
-.inv-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:7px 12px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
-.inv-btn-ghost:hover { background:#f8fafc; }
-
-/* ══ Summary strip ══ */
-.inv-sum-strip { display:flex; gap:0; background:#fff; border-bottom:1px solid #e8ecf0; }
-.inv-sum-card { flex:1; padding:16px 24px; display:flex; flex-direction:column; gap:4px; border-left:3px solid transparent; }
-.inv-sum-lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; }
-.inv-sum-val { font-size:26px; font-weight:800; color:#1a1a2e; font-family:monospace; }
-
-/* ══ Filter bar ══ */
-.inv-filter-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 24px; background:#fff; border-bottom:1px solid #e8ecf0; gap:12px; flex-wrap:wrap; }
-.inv-pills { display:flex; gap:6px; flex-wrap:wrap; }
-.inv-pill { padding:5px 14px; border-radius:20px; font-size:12.5px; font-weight:600; border:1px solid #e2e8f0; background:#fff; color:#6b7280; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px; transition:all .12s; }
-.inv-pill:hover { color:#1a6ef7; border-color:#1a6ef7; }
-.inv-pill.active { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
-.inv-pill-count { padding:1px 7px; border-radius:999px; font-size:11px; font-weight:700; background:#f3f4f6; color:#6b7280; }
-.inv-pill.active .inv-pill-count { background:#1a6ef7; color:#fff; }
-.pc-muted   { background:#f3f4f6 !important; color:#6b7280 !important; }
-.pc-blue    { background:#dbeafe !important; color:#1a6ef7 !important; }
-.pc-green   { background:#d1fae5 !important; color:#059669 !important; }
-.pc-orange  { background:#fef3c7 !important; color:#d97706 !important; }
-.pc-red     { background:#fee2e2 !important; color:#dc2626 !important; }
-
-/* ══ Bulk bar ══ */
-.inv-bulk-bar { display:flex; align-items:center; gap:8px; padding:10px 16px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; flex-wrap:wrap; }
-.inv-bulk-count { font-size:13px; font-weight:700; color:#1a6ef7; margin-right:4px; }
-.inv-bulk-btn { display:inline-flex; align-items:center; gap:5px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:5px 12px; font-size:12.5px; font-weight:600; color:#374151; cursor:pointer; font-family:inherit; }
-.inv-bulk-btn:hover { background:#f8fafc; border-color:#1a6ef7; color:#1a6ef7; }
-.inv-bulk-danger { border-color:rgba(220,38,38,.3); color:#dc2626; }
-.inv-bulk-danger:hover { background:#fee2e2; border-color:#dc2626; }
-.inv-bulk-clear { background:none; border:none; font-size:12.5px; color:#6b7280; cursor:pointer; font-family:inherit; padding:4px 8px; border-radius:4px; }
-.inv-bulk-clear:hover { background:#e0e7ff; color:#1a6ef7; }
-
-/* ══ Table ══ */
-.inv-table-wrap { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; overflow-x:auto; }
-.inv-table { width:100%; border-collapse:collapse; font-size:13px; }
-.inv-table thead tr { background:#f8fafc; }
-.inv-table th { padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:11px; font-weight:600; letter-spacing:normal; color:#6b7280; text-align:left; white-space:nowrap; background:#f9f9fb; user-select:none;}
-.inv-table th.sortable { cursor:pointer; }
-.inv-table th.sortable:hover { color:#1a6ef7; }
-.th-check { width:36px; }
-.sort-arrow { font-size:11px; color:#1a6ef7; margin-left:2px; }
-.ta-r { text-align:right !important; }
-.inv-row td { padding:11px 12px; border-bottom:1px solid #f0f2f5; vertical-align:middle; cursor:pointer; color:#374151; }
-.inv-row:last-child td { border-bottom:none; }
-.inv-row:hover td { background:#f8faff; }
-.inv-row.selected td { background:#eaf1ff; }
-.td-check { cursor:default !important; width:36px; }
-.inv-link { font-family:monospace; font-size:12.5px; color:#1a6ef7; font-weight:700; }
-.inv-customer { font-weight:600; color:#1a1a2e; }
-.mono-sm { font-family:monospace; font-size:12.5px; }
-.text-muted { color:#9ca3af; }
-.text-danger { color:#dc2626; font-weight:600; }
-.text-success { color:#059669; font-weight:600; }
-
-/* ══ Status badges ══ */
-.inv-status-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:.03em; white-space:nowrap; }
-.so-bdg-grey   { background:#f3f4f6; color:#6b7280; }
-.so-bdg-blue   { background:#dbeafe; color:#1a6ef7; }
-.so-bdg-green  { background:#d1fae5; color:#059669; }
-.so-bdg-orange { background:#fef3c7; color:#d97706; }
-.so-bdg-red    { background:#fee2e2; color:#dc2626; }
-.so-badge-white { background:rgba(255,255,255,.2); color:#fff !important; border:1px solid rgba(255,255,255,.4); }
-
-/* ══ Action buttons ══ */
-.inv-act-btn { background:transparent; border:1px solid #e2e8f0; border-radius:6px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#6b7280; }
-.inv-act-btn:hover { background:#f3f4f6; color:#1a6ef7; border-color:#1a6ef7; }
-.inv-act-conv { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
-.inv-act-conv:hover { background:#dbeafe; }
-
-/* ══ Shimmer skeleton ══ */
-.shimmer-row td { padding:10px 12px; border-bottom:1px solid #f0f2f5; }
-.shimmer { height:13px; border-radius:4px; background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
-@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-/* ══ Empty state ══ */
-.empty-state { text-align:center; padding:56px 20px !important; cursor:default !important; color:#9ca3af; }
-.empty-inner { display:flex; flex-direction:column; align-items:center; gap:8px; }
-.empty-inner p { font-size:14px; color:#9ca3af; margin:0; }
-
-/* ══ Shared button styles ══ */
-.so-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:7px 12px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
-.so-btn-ghost:hover { background:#f8fafc; }
-.so-btn-save { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #16a34a; color:#16a34a; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-.so-btn-save:hover { background:#dcfce7; }
-.so-btn-save:disabled { opacity:.5; cursor:not-allowed; }
-.so-btn-danger { display:inline-flex; align-items:center; gap:6px; background:#fef2f2; border:1px solid #dc2626; color:#dc2626; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-.so-btn-danger:hover { background:#fee2e2; }
-
-/* ══ Create / Edit Drawer ══ */
-.so-drawer-bg { position:fixed; inset:0; z-index:8000; background:rgba(15,23,42,.45); display:flex; justify-content:flex-end; backdrop-filter:blur(2px); }
-.so-drawer-panel { width:720px; max-width:96vw; height:100%; background:#fff; display:flex; flex-direction:column; box-shadow:-20px 0 60px rgba(0,0,0,.15); overflow:hidden; }
-
-/* Blue gradient header */
-.so-dh { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; background:linear-gradient(135deg,#1e3a5f,#1a6ef7); flex-shrink:0; }
-.so-dh-title { color:#fff; font-size:16px; font-weight:700; }
-.so-dh-sub   { color:rgba(255,255,255,.75); font-size:12px; margin-top:2px; }
-.so-dclose-new { background:rgba(255,255,255,.15); border:none; cursor:pointer; width:30px; height:30px; border-radius:8px; color:#fff; display:grid; place-items:center; }
-.so-dclose-new:hover { background:rgba(255,255,255,.25); }
-
-/* Body */
-.so-dbody { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; }
-
-/* Section labels */
-.so-sec-lbl { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#9ca3af; margin-bottom:12px; margin-top:4px; padding-top:16px; border-top:1px solid #f0f2f5; display:block; }
-.so-sec-lbl:first-child { border-top:none; padding-top:0; margin-top:0; }
-.so-fg { display:grid; gap:12px; margin-bottom:14px; }
-.so-fg2 { grid-template-columns:1fr 1fr; }
-.so-fg3 { grid-template-columns:1fr 1fr 1fr; }
-.so-lbl { display:block; font-size:11.5px; font-weight:600; color:#495057; margin-bottom:5px; }
-.so-inv-block { border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:10px; border:1.5px solid #e5e7eb; background:#f9fafb; transition:border-color .2s,background .2s; }
-.so-inv-block.so-wh-on { background:#eff6ff; border-color:#93c5fd; }
-.so-inv-toggle-row { display:flex; align-items:center; gap:12px; }
-.so-inv-icon { width:32px; height:32px; border-radius:8px; background:#dbeafe; color:#2563eb; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.so-inv-block.so-wh-off .so-inv-icon { background:#f3f4f6; color:#9ca3af; }
-.so-inv-text { flex:1; }
-.so-inv-title { font-size:13px; font-weight:700; color:#111827; }
-.so-inv-sub { font-size:11.5px; color:#6b7280; margin-top:2px; line-height:1.4; }
-.so-req { color:#dc2626; }
-.so-fi { width:100%; border:1px solid #e2e8f0; border-radius:6px; padding:7px 10px; font-size:13px; font-family:inherit; outline:none; box-sizing:border-box; }
-.so-fi:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.08); }
-textarea.so-fi { resize:vertical; }
-
-/* Add item button */
-.so-add-item-btn { display:inline-flex; align-items:center; gap:5px; border:1px solid rgba(26,110,247,.3); background:#eaf1ff; color:#1a6ef7; border-radius:6px; padding:4px 12px; font-size:12px; font-weight:600; cursor:pointer; }
-.so-add-item-btn:hover { background:#dbeafe; }
-
-/* Line items grid */
-.so-lines-wrap { border:1px solid #e8ecf0; border-radius:8px; overflow:visible; margin-bottom:0; }
-.so-lines-head { display:grid; grid-template-columns:2fr 2fr 0.7fr 0.9fr 0.9fr 30px; gap:6px; padding:7px 10px; background:#f8fafc; border-bottom:1px solid #e8ecf0; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; }
-.so-lines-row { display:grid; grid-template-columns:2fr 2fr 0.7fr 0.9fr 0.9fr 30px; gap:6px; padding:5px 10px; border-bottom:1px solid #f0f2f5; align-items:center; }
-.so-lines-row:last-of-type { border-bottom:none; }
-.so-lines-empty { padding:16px; text-align:center; color:#9ca3af; font-size:13px; border-bottom:1px solid #f0f2f5; }
-.so-ci { width:100%; border:1px solid #e2e8f0; border-radius:5px; padding:5px 7px; font-size:12.5px; font-family:inherit; outline:none; box-sizing:border-box; }
-.so-ci:focus { border-color:#1a6ef7; box-shadow:0 0 0 2px rgba(26,110,247,.08); }
-.so-ci-r { text-align:right; }
-.so-rm-line { background:none; border:1px solid rgba(220,38,38,.3); border-radius:4px; padding:3px 5px; cursor:pointer; color:#dc2626; display:inline-flex; align-items:center; flex-shrink:0; }
-.so-rm-line:hover { background:#fee2e2; }
-.so-add-line-btn { display:inline-flex; align-items:center; gap:5px; border:none; background:transparent; color:#1a6ef7; font-size:12.5px; font-weight:600; cursor:pointer; padding:8px 12px; width:100%; }
-.so-add-line-btn:hover { background:#f0f7ff; }
-
-/* Totals section */
-.so-totals-wrap { border-top:1px solid #e8ecf0; padding:12px 14px; background:#f8fafc; display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; margin-top:0; }
-.so-tax-section { flex:1; min-width:240px; }
-.so-tax-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-.so-tax-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; }
-.so-totals-right-panel { min-width:240px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
-.so-total-row-item { display:flex; justify-content:space-between; align-items:center; width:240px; font-size:13px; color:#374151; }
-.so-total-amt { font-family:monospace; font-weight:600; font-size:13px; }
-.so-grand-total { border-top:1px solid #e8ecf0; padding-top:7px; margin-top:2px; font-weight:700; }
-
-/* Footer */
-.so-dfooter-new { padding:14px 24px; border-top:1px solid #e8ecf0; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; flex-shrink:0; }
-
-/* ══ View Drawer ══ */
-.so-overlay { position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:7900; backdrop-filter:blur(2px); }
-.so-view-drawer-panel { position:fixed; top:0; right:-560px; bottom:0; width:560px; max-width:96vw; background:#fff; display:flex; flex-direction:column; box-shadow:-20px 0 60px rgba(0,0,0,.15); z-index:7950; transition:right .22s ease; overflow:hidden; }
-.so-view-drawer-panel.open { right:0; }
-
-.so-view-head { position:relative; display:flex; align-items:flex-start; justify-content:space-between; padding:20px 24px; flex-shrink:0; color:#fff; }
-.so-view-num { font-size:18px; font-weight:700; font-family:monospace; color:#fff; }
-.so-view-sub { font-size:13px; color:rgba(255,255,255,.8); margin-top:2px; }
-.so-view-amount { font-size:22px; font-weight:800; font-family:monospace; color:#fff; }
-.so-dclose-view { position:absolute; top:12px; right:12px; background:rgba(255,255,255,.15); border:none; cursor:pointer; width:30px; height:30px; border-radius:8px; color:#fff; display:grid; place-items:center; }
-.so-dclose-view:hover { background:rgba(255,255,255,.25); }
-
-.so-tabs { display:flex; gap:4px; padding:0 20px; border-bottom:1px solid #e8ecf0; flex-shrink:0; background:#fff; }
-.so-tab { background:transparent; border:none; padding:10px 14px; font:inherit; font-size:12.5px; font-weight:600; color:#6b7280; cursor:pointer; border-bottom:2px solid transparent; display:inline-flex; align-items:center; gap:6px; }
-.so-tab:hover { color:#1a6ef7; }
-.so-tab.active { color:#1a6ef7; border-bottom-color:#1a6ef7; }
-.so-tab-count { background:#1a6ef7; color:#fff; padding:1px 7px; border-radius:999px; font-size:11px; font-weight:700; }
-
-.so-vbody { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:14px; }
-.so-vfooter { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:14px 20px; border-top:1px solid #e8ecf0; flex-shrink:0; flex-wrap:wrap; background:#f8fafc; }
-
-.so-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-.so-meta-lbl { font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
-.so-section-title { font-size:10.5px; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:.6px; padding-bottom:6px; border-bottom:1px solid #f0f2f5; margin-top:4px; }
-
-.so-view-items { display:flex; flex-direction:column; border:1px solid #e8ecf0; border-radius:6px; }
-.so-view-items-head { display:grid; grid-template-columns:2.5fr 70px 90px 100px; gap:8px; background:#f8fafc; padding:8px 12px; font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; }
-.so-view-items-row { display:grid; grid-template-columns:2.5fr 70px 90px 100px; gap:8px; padding:10px 12px; border-top:1px solid #f3f4f6; align-items:center; font-size:13px; color:#111827; background:#fff; }
-.so-view-items-row:hover { background:#f8faff; }
-.so-view-items-row strong { color:#1a1a2e; font-weight:600; }
-
-.so-terms { padding:10px 12px; background:#f8fafc; border-radius:6px; color:#374151; }
-
-.so-fulfill-tbl { display:flex; flex-direction:column; border:1px solid #e8ecf0; border-radius:6px; overflow:hidden; }
-.so-fulfill-head { display:grid; grid-template-columns:2fr 80px 100px 90px 110px; gap:8px; background:#f8fafc; padding:8px 12px; font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; }
-.so-fulfill-row { display:grid; grid-template-columns:2fr 80px 100px 90px 110px; gap:8px; padding:8px 12px; border-top:1px solid #f3f4f6; align-items:center; font-size:12.5px; }
-
-.so-link-row { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; padding:8px 12px; border:1px solid #e8ecf0; border-radius:6px; font-size:12.5px; align-items:center; background:#fff; color:#111827; }
-
-/* ══ Invoice modal ══ */
-.so-inv-dialog { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:520px; max-width:96vw; background:#fff; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,.2); z-index:8100; display:flex; flex-direction:column; overflow:hidden; }
-.so-inv-tbl { display:flex; flex-direction:column; border:1px solid #e8ecf0; border-radius:6px; overflow:hidden; }
-.so-inv-head { display:grid; grid-template-columns:2fr 100px 110px; gap:8px; background:#f8fafc; padding:8px 12px; font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; }
-.so-inv-row { display:grid; grid-template-columns:2fr 100px 110px; gap:8px; padding:8px 12px; border-top:1px solid #f3f4f6; align-items:center; font-size:12.5px; }
-
-/* ══ Inline timeline ══ */
-.so-timeline { display:flex; align-items:center; padding:14px 20px; background:#fff; border-bottom:1px solid #e8ecf0; flex-shrink:0; }
-.so-tl-step { display:flex; align-items:center; gap:6px; flex-shrink:0; }
-.so-tl-dot { width:22px; height:22px; border-radius:50%; border:2px solid #d1d5db; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; color:#9ca3af; flex-shrink:0; transition:all .2s; }
-.so-tl-step.done .so-tl-dot { background:#059669; border-color:#059669; color:#fff; }
-.so-tl-step.danger .so-tl-dot { background:#dc2626; border-color:#dc2626; color:#fff; }
-.so-tl-step.current:not(.done):not(.danger) .so-tl-dot { border-color:#1a6ef7; color:#1a6ef7; }
-.so-tl-label { font-size:11px; font-weight:600; color:#9ca3af; white-space:nowrap; }
-.so-tl-step.done .so-tl-label { color:#059669; }
-.so-tl-step.danger .so-tl-label { color:#dc2626; }
-.so-tl-step.current:not(.done):not(.danger) .so-tl-label { color:#1a6ef7; }
-.so-tl-line { flex:1; height:2px; background:#e5e7eb; min-width:16px; }
-.so-tl-line.done { background:#059669; }
-.so-tl-line.danger { background:#dc2626; }
+<style>
+@import '../styles/list.css';
+@import '../styles/view.css';
+@import '../styles/edit.css';
+@import '../styles/add.css';
 </style>

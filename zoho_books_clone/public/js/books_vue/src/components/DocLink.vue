@@ -73,11 +73,11 @@ const to = computed(() => {
   transition: color .15s, border-color .15s;
 }
 .doc-link:hover { color: #1d4ed8; border-bottom-color: #2563eb; }
-.doc-link.mono { font-family: monospace; font-size: 12.5px; }
+.doc-link.mono {font-size: 13px; }
 
 .doc-link-disabled {
   color: #0f172a;
   font-weight: 600;
 }
-.doc-link-disabled.mono { font-family: monospace; font-size: 12.5px; }
+.doc-link-disabled.mono {  font-size: 13px; }
 </style>

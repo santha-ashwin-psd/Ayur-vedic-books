@@ -829,7 +829,7 @@ function exportCSV() {
 
 <style scoped>
 /* ── Drawer slide-in ── */
-.inv-drawer-panel { position:fixed;top:0;right:-560px;bottom:0;width:560px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1); }
+.inv-drawer-panel { position:fixed;top:0;right:-560px;bottom:0;width:560px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:8000;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1); }
 .inv-drawer-panel.open { right:0; }
 .rec-view-drawer { width:600px;right:-600px; }
 .rec-view-drawer.open { right:0; }
@@ -843,7 +843,7 @@ function exportCSV() {
 .rec-view-stats-strip { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px 20px;background:#fff;border-bottom:1px solid #e5e7eb;flex-shrink:0; }
 .rec-view-stats-strip > div { background:#f8fafc;border-radius:8px;padding:8px 10px; }
 .vh-lbl { font-size:10.5px;color:#475569;text-transform:uppercase;letter-spacing:.05em;font-weight:600; }
-.vh-val { font-size:15px;font-weight:700;color:#0f172a;font-family:monospace;margin-top:2px; }
+.vh-val { font-size:15px;font-weight:700;color:#0f172a;margin-top:2px; }
 
 /* ── Frequency / subscription badge ── */
 .rec-badge-lg { padding:4px 12px;font-size:12.5px; }
@@ -871,7 +871,7 @@ function exportCSV() {
 .rec-tl-line.danger { background:#dc2626; }
 
 /* ── Section wrappers in drawer body ── */
-.rec-section { background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03); }
+.rec-section { background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);margin-bottom: 20px; }
 .rec-section-empty { font-size:12.5px;color:#6b7280;font-style:italic;line-height:1.5; }
 .rec-field-help { font-size:11.5px;color:#9ca3af;margin-top:4px; }
 
@@ -887,7 +887,7 @@ function exportCSV() {
 .rec-ctx-card { display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;box-shadow:0 1px 2px rgba(15,23,42,.04); }
 .rec-ctx-ico { width:36px;height:36px;border-radius:8px;background:#dbeafe;color:#2563eb;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0; }
 .rec-ctx-doctype { font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;font-weight:600; }
-.rec-ctx-name { font-family:monospace;font-size:13px;color:#0f172a;font-weight:600;margin-top:1px; }
+.rec-ctx-name { font-size:13px;color:#0f172a;font-weight:600;margin-top:1px; }
 .rec-ctx-meta { text-align:right;display:flex;flex-direction:column;gap:2px;flex-shrink:0; }
 .rec-ctx-party { font-size:12px;color:#475569;font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 
@@ -904,7 +904,7 @@ function exportCSV() {
 .rec-tab-empty { padding:24px;text-align:center;color:#9ca3af;font-size:13px; }
 .rec-upcoming-list { list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px; }
 .rec-upcoming-list li { background:#f9fafb;border:1px solid #f3f4f6;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-size:13px; }
-.rec-upcoming-idx { background:#dbeafe;color:#1d4ed8;font-weight:700;padding:2px 8px;border-radius:8px;font-size:11.5px;font-family:monospace; }
+.rec-upcoming-idx { background:#dbeafe;color:#1d4ed8;font-weight:700;padding:2px 8px;border-radius:8px;font-size:11.5px;}
 
 /* ── Misc ── */
 .rec-due-dot { display:inline-block;width:6px;height:6px;background:#2563eb;border-radius:50%;margin-left:6px;vertical-align:middle; }
@@ -917,7 +917,7 @@ function exportCSV() {
 .rec-hint { font-weight:400;color:#9ca3af;font-size:11px; }
 .text-muted { color:#6b7280; }
 .text-accent { color:#2563eb;font-weight:600; }
-.mono-sm { font-family:monospace;font-size:12.5px; }
+.mono-sm {font-size:13px; }
 .req { color:#dc2626; }
 .badge-green { background:#dcfce7;color:#16a34a; }
 .badge-orange { background:#fef3c7;color:#ea580c; }

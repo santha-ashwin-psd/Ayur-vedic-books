@@ -743,7 +743,7 @@ function printEwb(doc) {
     h1{margin:0 0 4px;font-size:18px}h2{font-size:13px;margin:18px 0 6px;color:#475569;text-transform:uppercase}
     table{width:100%;border-collapse:collapse;font-size:12px}
     td{padding:6px 10px;border-bottom:1px solid #eee}td:first-child{color:#64748b;width:35%}
-    .num{font-family:monospace;font-size:14px;font-weight:700}</style></head><body>
+    .num{font-size:14px;font-weight:700}</style></head><body>
     <h1>E-Way Bill</h1><div class="num">${doc.ewb_no || doc.name}</div>
     <h2>Document</h2><table>
       <tr><td>Invoice</td><td>${doc.invoice_no}</td></tr>
@@ -812,7 +812,7 @@ function exportCSV() {
 .ew-sum-card.warn{background:linear-gradient(135deg,#fffbeb,#fff);border-color:#fde68a;}
 .ew-sum-card.danger{background:linear-gradient(135deg,#fef2f2,#fff);border-color:#fecaca;}
 .ew-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;font-weight:600;}
-.ew-sum-val{font-size:20px;font-weight:700;color:#111827;font-family:monospace;}
+.ew-sum-val{font-size:20px;font-weight:700;color:#111827;}
 .green{color:#16a34a!important;}.orange{color:#ea580c!important;}.red{color:#dc2626!important;}.blue{color:#2563eb!important;}
 
 .ew-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
@@ -822,9 +822,9 @@ function exportCSV() {
 .ta-r{text-align:right!important;}
 .ew-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer;vertical-align:middle;}
 .ew-row:last-child td{border-bottom:none;}.ew-row:hover td{background:#f9fafb;}
-.ew-code{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
+.ew-code{font-size:13px;color:#2563eb;font-weight:600;}
 .ew-irn{background:#dbeafe;padding:2px 8px;border-radius:6px;color:#1d4ed8;font-size:11.5px;font-weight:600;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
 .ew-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .ew-badge-lg{padding:4px 12px;font-size:12.5px;}
 .badge-green{background:#dcfce7;color:#16a34a;}
@@ -871,11 +871,11 @@ function exportCSV() {
 .ew-ctx-card{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;box-shadow:0 1px 2px rgba(15,23,42,.04);}
 .ew-ctx-ico{width:36px;height:36px;border-radius:8px;background:#eff6ff;color:#2563eb;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 .ew-ctx-doctype{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;font-weight:600;}
-.ew-ctx-name{font-family:monospace;font-size:13px;color:#0f172a;font-weight:600;margin-top:1px;}
+.ew-ctx-name{font-size:13px;color:#0f172a;font-weight:600;margin-top:1px;}
 .ew-ctx-meta{text-align:right;display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
 .ew-ctx-party{font-size:12px;color:#475569;font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ew-ctx-amount{font-size:14px;font-weight:700;color:#0f172a;}
-.mono{font-family:monospace;}
+.mono{font-size:13px;}
 
 .ew-section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
 .ew-section-hdr{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;}
@@ -904,7 +904,7 @@ function exportCSV() {
 .ew-view-head.cancelled{background:linear-gradient(135deg,#f3f4f6 0%,#e5e7eb 100%);}
 .ew-view-head.expired{background:linear-gradient(135deg,#fef2f2 0%,#fecaca 100%);}
 .ew-view-head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
-.ew-view-num{font-size:18px;font-weight:700;font-family:monospace;color:#111827;}
+.ew-view-num{font-size:18px;font-weight:700;color:#111827;}
 .ew-view-sub{font-size:12.5px;color:#475569;margin-top:2px;}
 .ew-view-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;}
 .ew-view-stats > div{background:rgba(255,255,255,.55);border-radius:8px;padding:8px 10px;}

@@ -712,7 +712,7 @@ onMounted(async () => {
 .head-red   { background:#fff1f2; }
 .pmt-view-num-dark { color:#111827 !important; }
 .pmt-view-party { font-size:13px; color:#6b7280; margin-top:2px; }
-.pmt-view-amount { font-size:22px; font-weight:800; font-family:monospace; color:#111827; }
+.pmt-view-amount { font-size:22px; font-weight:800; color:#111827; }
 
 /* ── Meta grid ── */
 .pmt-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -720,13 +720,13 @@ onMounted(async () => {
 
 /* ── Invoice allocation table ── */
 .pmt-section-hdr { display:flex; align-items:center; justify-content:space-between; font-size:12px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
-.pmt-unalloc { font-family:monospace; font-size:12px; font-weight:600; color:#6b7280; }
+.pmt-unalloc { font-size:12px; font-weight:600; color:#6b7280; }
 .pmt-inv-empty { font-size:12.5px; color:#9ca3af; padding:18px 0; text-align:center; background:#f9fafb; border:1px dashed #e5e7eb; border-radius:8px; }
 .pmt-inv-table { border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; font-size:12.5px; background:#fff; }
 .pmt-inv-head { display:grid; grid-template-columns:24px 1fr 90px 90px 90px; gap:8px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; }
 .pmt-inv-row { display:grid; grid-template-columns:24px 1fr 90px 90px 90px; gap:8px; padding:8px 10px; border-top:1px solid #f3f4f6; align-items:center; }
 .pmt-inv-row:hover { background:#f9fafb; }
-.pmt-inv-name { font-family:monospace; color:#2563eb; font-weight:600; }
+.pmt-inv-name {color:#2563eb; font-weight:600; }
 .pmt-alloc-input { width:80px; border:1px solid #e2e8f0; border-radius:6px; padding:4px 8px; font:inherit; font-size:12px; text-align:right; outline:none; }
 .pmt-alloc-input:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.10); }
 

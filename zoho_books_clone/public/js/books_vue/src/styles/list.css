@@ -44,7 +44,7 @@
   border: 1px solid #e2e8f0;
   border-radius: 20px;
   padding: 6px 12px;
-  background: #f9fafb;
+  background: #ffffff;
   flex: 1;
   min-width: 180px;
   max-width: 320px;
@@ -58,13 +58,7 @@
   color: #374151;
 }
 
-/* Filter pills */
-.sales-pills {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  flex: 1;
-}
+
 .sales-pill {
   display: inline-flex;
   align-items: center;
@@ -179,7 +173,6 @@
    ══════════════════════════════════════════════ */
 .bk-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
   gap: 12px;
 }
 
@@ -196,10 +189,10 @@
   transform: translateY(-1px);
 }
 
-.bk-kpi-accent  { border-top: 3px solid #1a6ef7; }
+/* .bk-kpi-accent  { border-top: 3px solid #1a6ef7; }
 .bk-kpi-warn    { border-top: 3px solid #d97706; }
 .bk-kpi-danger  { border-top: 3px solid #dc2626; }
-.bk-kpi-success { border-top: 3px solid #16a34a; }
+.bk-kpi-success { border-top: 3px solid #16a34a; } */
 
 .bk-kpi-inner {
   display: flex;
@@ -336,7 +329,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  min-width: 600px; /* prevents collapse before horizontal scroll kicks in */
+  /*min-width:600px;*/ /* prevents collapse before horizontal scroll kicks in */
 }
 .inv-table th {
   padding: 10px 14px;

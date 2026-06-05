@@ -174,9 +174,9 @@
 
 /* Done state — solid blue fill */
 .inv-tl-step.tl-done .inv-tl-dot {
-  background: #1a6ef7;
-  border-color: #1a6ef7;
-  color: #fff;
+  background: #1a6ef7 !important;
+  border-color: #1a6ef7 !important;
+  color: #fff !important;
 }
 /* Done with a solid line behind to next step */
 .inv-tl-step.tl-done + .inv-tl-step .inv-tl-dot { border-color: #1a6ef7; }
@@ -199,7 +199,7 @@
 .inv-tl-label {
   font-size: 12px;
   font-weight: 700;
-  color: #374151;
+  color: #374151 !important;
   text-align: center;
 }
 .inv-tl-step.tl-pending .inv-tl-label { color: #9ca3af; }
@@ -810,6 +810,7 @@
   flex-direction: column;
   box-shadow: -20px 0 60px rgba(0,0,0,.15);
   overflow: hidden;
+  z-index:8001;
 }
 .inv-drawer-wide { width: 900px; }
 .inv-dh {

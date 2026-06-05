@@ -300,7 +300,7 @@
         </div>
         <div class="cn-field">
           <label class="inv-lbl">Amount to Apply <span class="inv-req">*</span></label>
-          <input v-model.number="applyModal.amount" type="number" min="0.01" :max="applyModal.balance" step="0.01" class="inv-fi ta-r" style="font-family:monospace" />
+          <input v-model.number="applyModal.amount" type="number" min="0.01" :max="applyModal.balance" step="0.01" class="inv-fi ta-r" />
         </div>
       </div>
       <div class="inv-dfooter">
@@ -323,7 +323,7 @@
         <div class="inv-fg inv-fg2">
           <div class="cn-field">
             <label class="inv-lbl">Refund Amount <span class="inv-req">*</span></label>
-            <input v-model.number="refundModal.amount" type="number" min="0.01" :max="refundModal.balance" step="0.01" class="inv-fi ta-r" style="font-family:monospace" />
+            <input v-model.number="refundModal.amount" type="number" min="0.01" :max="refundModal.balance" step="0.01" class="inv-fi ta-r"/>
           </div>
           <div class="cn-field">
             <label class="inv-lbl">Mode</label>
@@ -860,7 +860,7 @@ onMounted(async () => {
 .cn-view-head-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 4px; }
 .cn-view-head-left { display: flex; flex-direction: column; gap: 2px; }
 .cn-view-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-.cn-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #1a1a2e; line-height: 1; }
+.cn-view-amount { font-size: 22px; font-weight: 800; color: #1a1a2e; line-height: 1; }
 .cn-vclose { align-self: flex-end; margin-left: auto; margin-bottom: 4px; }
 
 /* ── Meta/detail 2-col grid ── */

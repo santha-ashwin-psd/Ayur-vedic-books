@@ -484,7 +484,7 @@
                       <tr v-for="tx in taxRows" :key="tx.id">
                         <td><input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/></td>
                         <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="recalcTax(tx)"/></td>
-                        <td style="text-align:right;padding:4px 10px;font-family:monospace;font-size:12.5px">{{ fmtCur(tx.amount) }}</td>
+                        <td style="text-align:right;padding:4px 10px;font-size:12.5px">{{ fmtCur(tx.amount) }}</td>
                         <td><button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></td>
                       </tr>
                     </tbody>
@@ -629,7 +629,7 @@
                   <div class="inv-tl-dot">
                     <span v-if="step.done && !step.danger" v-html="icon('check',14)"></span>
                     <span v-else-if="step.danger" style="font-size:11px;font-weight:800">!</span>
-                    <span v-else v-html="icon('circle',14)"></span>
+                    <!-- pending: CSS border draws the ring; no inner icon needed -->
                   </div>
                   <div class="inv-tl-label">{{ step.label }}</div>
                 </div>
@@ -737,10 +737,10 @@
                           <div v-if="it.description" class="inv-item-desc">{{ it.description }}</div>
                         </td>
                         <td class="inv-dash">{{ it.hsn_code || '—' }}</td>
-                        <td class="td-r" style="font-family:monospace">{{ flt(it.qty) }}</td>
-                        <td class="td-r" style="font-family:monospace">{{ fmtDocCur(it.rate, viewDoc) }}</td>
+                        <td class="td-r" >{{ flt(it.qty) }}</td>
+                        <td class="td-r" >{{ fmtDocCur(it.rate, viewDoc) }}</td>
                         <td class="td-r inv-dash">{{ it.discount_percentage ? it.discount_percentage+'%' : '—' }}</td>
-                        <td class="td-r" style="font-family:monospace;font-weight:600">{{ fmtDocCur(it.amount, viewDoc) }}</td>
+                        <td class="td-r" style="font-weight:600">{{ fmtDocCur(it.amount, viewDoc) }}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -817,7 +817,7 @@
                       <tr v-for="so in conv.sales_orders" :key="so.name">
                         <td><DocLink doctype="Sales Order" :name="so.name" /></td>
                         <td class="mono-sm">{{ fmtDate(so.transaction_date) }}</td>
-                        <td class="td-r" style="font-family:monospace;font-weight:600">{{ fmtCur(so.grand_total, so.currency) }}</td>
+                        <td class="td-r" style="font-weight:600">{{ fmtCur(so.grand_total, so.currency) }}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -832,7 +832,7 @@
                       <tr v-for="si in conv.sales_invoices" :key="si.name">
                         <td><DocLink doctype="Sales Invoice" :name="si.name" /></td>
                         <td class="mono-sm">{{ fmtDate(si.posting_date) }}</td>
-                        <td class="td-r" style="font-family:monospace;font-weight:600">{{ fmtCur(si.grand_total, si.currency) }}</td>
+                        <td class="td-r" style="font-weight:600">{{ fmtCur(si.grand_total, si.currency) }}</td>
                       </tr>
                     </tbody>
                   </table>

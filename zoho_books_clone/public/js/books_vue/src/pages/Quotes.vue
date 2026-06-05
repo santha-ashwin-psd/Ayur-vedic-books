@@ -625,13 +625,17 @@
               <div class="inv-tl-progress" :style="{ width: tlProgressWidth }"></div>
               <template v-for="(step, i) in timelineSteps" :key="i">
                 <div class="inv-tl-step"
-                     :class="{ 'tl-done': step.done && !step.danger, 'tl-danger': step.danger, 'tl-success': step.done && !step.danger, 'tl-pending': !step.done && !step.danger }">
-                  <div class="inv-tl-dot">
+                     :class="{ 'tl-done': step.done && !step.danger, 'tl-danger': step.danger, 'tl-pending': !step.done && !step.danger }">
+                  <div class="inv-tl-dot"
+                       :style="step.done && !step.danger ? 'background:#16a34a;border-color:#16a34a;color:#fff' : step.danger ? 'background:#dc2626;border-color:#dc2626;color:#fff' : ''">
                     <span v-if="step.done && !step.danger" v-html="icon('check',14)"></span>
                     <span v-else-if="step.danger" style="font-size:11px;font-weight:800">!</span>
-                    <!-- pending: CSS border draws the ring; no inner icon needed -->
+                    <!-- pending: the CSS border ring is sufficient — no inner SVG needed -->
                   </div>
-                  <div class="inv-tl-label">{{ step.label }}</div>
+                  <div class="inv-tl-label"
+                       :style="step.done && !step.danger ? 'color:#16a34a;font-weight:700' : ''">
+                    {{ step.label }}
+                  </div>
                 </div>
               </template>
             </div>

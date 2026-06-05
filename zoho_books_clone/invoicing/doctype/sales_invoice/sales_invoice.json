@@ -50,7 +50,8 @@
   "einvoice_status",
   "ack_no",
   "ack_date",
-  "shipping_address"
+  "shipping_address",
+  "logo"
  ],
  "fields": [
   {
@@ -327,11 +328,16 @@
    "fieldname": "shipping_address",
    "fieldtype": "Small Text",
    "label": "Shipping Address"
+  },
+  {
+   "fieldname": "logo",
+   "fieldtype": "Attach",
+   "label": "Logo"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-04 18:09:32.141172",
+ "modified": "2026-06-05 10:15:17.353446",
  "modified_by": "Administrator",
  "module": "Invoicing",
  "name": "Sales Invoice",

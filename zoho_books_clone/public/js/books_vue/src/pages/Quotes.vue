@@ -1,666 +1,908 @@
 <template>
-  <div class="qt-page">
+<div class="inv-page">
 
-    <!-- ── Unified toolbar (matches e-Way Bills) ── -->
-    <div class="sales-toolbar">
-      <div class="sales-search">
-        <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-        <input v-model="search" placeholder="Search quotes, customers…" class="sales-search-input"/>
-      </div>
-      <div class="sales-pills">
-        <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">
-          {{ t.label }}<span v-if="t.key!=='all'" class="sales-pill-count">{{ counts[t.key] }}</span>
-        </button>
-      </div>
-      <div class="sales-actions">
-        <select v-model="filterCustomer" class="sales-select" title="Filter by customer">
-          <option value="">All Customers</option>
-          <option v-for="c in customers" :key="c.name" :value="c.name">{{ c.customer_name || c.label }}</option>
-        </select>
-        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
-        <button class="sales-btn-primary" @click="openNew">
-          <span v-html="icon('plus',13)"></span> New Quotation
-        </button>
-      </div>
+  <!-- ── Unified toolbar ── -->
+  <div class="sales-toolbar">
+    <div class="sales-search">
+      <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+      <input v-model="search" placeholder="Search quotes, customers…" class="sales-search-input"/>
     </div>
+    <div class="sales-pills">
+      <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">
+        {{ t.label }}<span v-if="t.key!=='all'" class="sales-pill-count">{{ counts[t.key] }}</span>
+      </button>
+    </div>
+    <div class="sales-actions">
+      <select v-model="filterCustomer" class="sales-select" title="Filter by customer">
+        <option value="">All Customers</option>
+        <option v-for="c in customers" :key="c.name" :value="c.name">{{ c.customer_name || c.label }}</option>
+      </select>
+      <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
+      <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
+      <button class="sales-btn-primary" @click="openNew">
+        <span v-html="icon('plus',13)"></span> New Quotation
+      </button>
+    </div>
+  </div>
 
-    <!-- ── KPI Cards Row 1 ── -->
-    <div class="qt-kpi-grid">
-      <!-- Total Quotes -->
-      <div class="qt-kpi-card bk-kpi-accent" @click="activeTab='all'" style="cursor:pointer">
-        <div class="qt-kpi-inner">
-          <div class="qt-kpi-icon" style="background:#dbeafe">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          </div>
-          <div class="qt-kpi-body">
-            <div class="qt-kpi-label">Total Quotes</div>
-            <div class="qt-kpi-value">{{ list.length }}</div>
-            <div class="qt-kpi-trend" :class="qtTrends.total.up?'qt-trend-up':'qt-trend-down'">{{ qtTrends.total.up?'↑':'↓' }} {{ qtTrends.total.pct }}% vs last month</div>
-          </div>
+  <!-- ── KPI Cards ── -->
+  <div class="bk-kpi-grid">
+    <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#dbeafe">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         </div>
-      </div>
-      <!-- Draft -->
-      <div class="qt-kpi-card" @click="activeTab='draft'" style="cursor:pointer">
-        <div class="qt-kpi-inner">
-          <div class="qt-kpi-icon" style="background:#e2e8f0">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.7"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </div>
-          <div class="qt-kpi-body">
-            <div class="qt-kpi-label">Draft</div>
-            <div class="qt-kpi-value">{{ counts.draft }}</div>
-            <div class="qt-kpi-trend" :class="qtTrends.draft.up?'qt-trend-up':'qt-trend-down'">{{ qtTrends.draft.up?'↑':'↓' }} {{ qtTrends.draft.pct }}% vs last month</div>
-          </div>
-        </div>
-      </div>
-      <!-- Sent -->
-      <div class="qt-kpi-card bk-kpi-info" @click="activeTab='sent'" style="cursor:pointer">
-        <div class="qt-kpi-inner">
-          <div class="qt-kpi-icon" style="background:#cffafe">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="1.7"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </div>
-          <div class="qt-kpi-body">
-            <div class="qt-kpi-label">Sent</div>
-            <div class="qt-kpi-value qt-kpi-blue">{{ counts.sent }}</div>
-            <div class="qt-kpi-trend" :class="qtTrends.sent.up?'qt-trend-up':'qt-trend-down'">{{ qtTrends.sent.up?'↑':'↓' }} {{ qtTrends.sent.pct }}% vs last month</div>
-          </div>
-        </div>
-      </div>
-      <!-- Converted -->
-      <div class="qt-kpi-card bk-kpi-success" @click="activeTab='converted'" style="cursor:pointer">
-        <div class="qt-kpi-inner">
-          <div class="qt-kpi-icon" style="background:#dcfce7">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.7"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-          </div>
-          <div class="qt-kpi-body">
-            <div class="qt-kpi-label">Converted</div>
-            <div class="qt-kpi-value qt-kpi-green">{{ counts.converted }}</div>
-            <div class="qt-kpi-trend" :class="qtTrends.converted.up?'qt-trend-up':'qt-trend-down'">{{ qtTrends.converted.up?'↑':'↓' }} {{ qtTrends.converted.pct }}% vs last month</div>
-          </div>
-        </div>
-      </div>
-      <!-- Expired -->
-      <div class="qt-kpi-card bk-kpi-warn" @click="activeTab='expired'" style="cursor:pointer">
-        <div class="qt-kpi-inner">
-          <div class="qt-kpi-icon" style="background:#fef3c7">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </div>
-          <div class="qt-kpi-body">
-            <div class="qt-kpi-label">Expired</div>
-            <div class="qt-kpi-value qt-kpi-amber">{{ counts.expired }}</div>
-            <div class="qt-kpi-trend" :class="qtTrends.expired.up?'qt-trend-down':'qt-trend-up'">{{ qtTrends.expired.up?'↑':'↓' }} {{ qtTrends.expired.pct }}% vs last month</div>
-          </div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Total Quotes</div>
+          <div class="bk-kpi-value">{{ list.length }}</div>
+          <div class="bk-kpi-trend" :class="qtTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ qtTrends.total.up?'↑':'↓' }} {{ qtTrends.total.pct }}% vs last month</div>
         </div>
       </div>
     </div>
-
-    <!-- ── Secondary Stat Cards ── -->
-    <div class="qt-stat-grid">
-      <!-- This Month -->
-      <div class="qt-stat-card">
-        <div class="qt-stat-content">
-          <div>
-            <div class="qt-stat-label">This Month</div>
-            <div class="qt-stat-value">{{ thisMonthQuotes }}</div>
-            <div class="bk-stat-sub">quotes created</div>
-          </div>
-          <div class="qt-stat-icon" style="background:#dbeafe;color:#2563eb">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          </div>
+    <div class="bk-kpi-card clickable" @click="activeTab='draft'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#e2e8f0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.7"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </div>
-      </div>
-      <!-- Conversion Rate — Converted / Total -->
-      <div class="qt-stat-card">
-        <div class="qt-stat-content">
-          <div>
-            <div class="qt-stat-label">Conversion Rate</div>
-            <div class="qt-stat-value qt-kpi-green">{{ conversionRate }}</div>
-            <div class="bk-stat-sub">Converted / Total</div>
-          </div>
-          <div class="qt-stat-icon" style="background:#dcfce7;color:#16a34a">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-          </div>
-        </div>
-      </div>
-      <!-- Avg Quote Value -->
-      <div class="qt-stat-card">
-        <div class="qt-stat-content">
-          <div>
-            <div class="qt-stat-label">Avg Quote Value</div>
-            <div class="qt-stat-value">{{ fmtCur(avgQuoteValue) }}</div>
-            <div class="bk-stat-sub">per quotation</div>
-          </div>
-          <div class="qt-stat-icon" style="background:#e2e8f0;color:#475569">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          </div>
-        </div>
-      </div>
-      <!-- Awaiting Reply — Sent quotes not yet converted/expired -->
-      <div class="qt-stat-card">
-        <div class="qt-stat-content">
-          <div>
-            <div class="qt-stat-label">Awaiting Reply</div>
-            <div class="qt-stat-value qt-kpi-blue">{{ counts.sent }}</div>
-            <div class="bk-stat-sub">sent, not yet converted</div>
-          </div>
-          <div class="qt-stat-icon" style="background:#cffafe;color:#0891b2">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Draft</div>
+          <div class="bk-kpi-value">{{ counts.draft }}</div>
+          <div class="bk-kpi-trend" :class="qtTrends.draft.up?'bk-trend-up':'bk-trend-down'">{{ qtTrends.draft.up?'↑':'↓' }} {{ qtTrends.draft.pct }}% vs last month</div>
         </div>
       </div>
     </div>
-
-    <!-- ── Bulk actions bar ── -->
-    <div v-if="selected.size>0" class="inv-bulk-bar">
-      <span class="inv-bulk-count">{{ selected.size }} selected</span>
-      <button class="inv-bulk-btn" @click="bulkEmail"><span v-html="icon('mail',13)"></span> Send Email</button>
-      <button class="inv-bulk-btn" @click="bulkMarkSent">Mark as Sent</button>
-      <button class="inv-bulk-btn" @click="bulkMarkExpired">Mark Expired</button>
-      <button class="inv-bulk-btn inv-bulk-danger" @click="bulkDelete">Delete Drafts</button>
-      <button class="inv-bulk-btn" @click="exportCSV"><span v-html="icon('download',13)"></span> Export CSV</button>
-      <button class="inv-bulk-clear" @click="selected=new Set()">✕ Clear</button>
+    <div class="bk-kpi-card clickable" @click="activeTab='sent'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#cffafe">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="1.7"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Sent</div>
+          <div class="bk-kpi-value" style="color:#0891b2">{{ counts.sent }}</div>
+          <div class="bk-kpi-trend" :class="qtTrends.sent.up?'bk-trend-up':'bk-trend-down'">{{ qtTrends.sent.up?'↑':'↓' }} {{ qtTrends.sent.pct }}% vs last month</div>
+        </div>
+      </div>
     </div>
+    <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='converted'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#dcfce7">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.7"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Converted</div>
+          <div class="bk-kpi-value bk-kpi-green">{{ counts.converted }}</div>
+          <div class="bk-kpi-trend" :class="qtTrends.converted.up?'bk-trend-up':'bk-trend-down'">{{ qtTrends.converted.up?'↑':'↓' }} {{ qtTrends.converted.pct }}% vs last month</div>
+        </div>
+      </div>
+    </div>
+    <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='expired'">
+      <div class="bk-kpi-inner">
+        <div class="bk-kpi-icon" style="background:#fef3c7">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="bk-kpi-body">
+          <div class="bk-kpi-label">Expired</div>
+          <div class="bk-kpi-value bk-kpi-amber">{{ counts.expired }}</div>
+          <div class="bk-kpi-trend" :class="qtTrends.expired.up?'bk-trend-down':'bk-trend-up'">{{ qtTrends.expired.up?'↑':'↓' }} {{ qtTrends.expired.pct }}% vs last month</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <!-- ── Table ── -->
-    <div class="inv-table-wrap">
-      <table class="inv-table">
-        <thead><tr>
-          <th class="th-check"><input type="checkbox" @change="toggleAll" :checked="allChecked"/></th>
-          <th class="sortable" @click="sortBy('transaction_date')">DATE <span class="sort-arrow">{{ sortArrowTxt('transaction_date') }}</span></th>
-          <th class="sortable" @click="sortBy('name')">QUOTE # <span class="sort-arrow">{{ sortArrowTxt('name') }}</span></th>
-          <th class="sortable" @click="sortBy('customer_name')">CUSTOMER <span class="sort-arrow">{{ sortArrowTxt('customer_name') }}</span></th>
-          <th class="sortable" @click="sortBy('valid_till')">VALID TILL <span class="sort-arrow">{{ sortArrowTxt('valid_till') }}</span></th>
-          <th class="sortable" @click="sortBy('status')">STATUS <span class="sort-arrow">{{ sortArrowTxt('status') }}</span></th>
-          <th class="ta-r sortable" @click="sortBy('grand_total')">AMOUNT <span class="sort-arrow">{{ sortArrowTxt('grand_total') }}</span></th>
-          <th style="width:120px;text-align:center">ACTIONS</th>
-        </tr></thead>
-        <tbody>
-          <template v-if="loading">
-            <tr v-for="n in 7" :key="n" class="shimmer-row">
-              <td><div class="shimmer" style="width:14px;height:14px;border-radius:3px"></div></td>
-              <td><div class="shimmer" style="width:80px"></div></td>
-              <td><div class="shimmer" style="width:110px"></div></td>
-              <td><div class="shimmer" style="width:130px"></div></td>
-              <td><div class="shimmer" style="width:80px"></div></td>
-              <td><div class="shimmer" style="width:90px"></div></td>
-              <td><div class="shimmer" style="width:80px;margin-left:auto"></div></td>
-              <td></td>
-            </tr>
-          </template>
-          <template v-else>
-            <tr v-for="q in paged" :key="q.name" class="inv-row" :class="{selected:selected.has(q.name)}">
-              <td class="td-check" @click.stop>
-                <input type="checkbox" :checked="selected.has(q.name)" @change="toggle(q.name)"/>
-              </td>
-              <td @click="openView(q)" class="text-muted mono-sm">{{ fmtDate(q.transaction_date) }}</td>
-              <td @click="openView(q)"><span class="inv-link">{{ q.name }}</span></td>
-              <td @click="openView(q)"><span class="inv-customer">{{ q.customer_name || q.customer || '—' }}</span></td>
-              <td @click="openView(q)" :class="isExpired(q)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(q.valid_till) || '—' }}</td>
-              <td @click="openView(q)">
-                <span class="inv-status-badge" :class="badgeClass(q)">{{ displayStatus(q) }}</span>
-              </td>
-              <td class="ta-r mono-sm" @click="openView(q)">{{ fmtCur(q.grand_total) }}</td>
-              <td style="text-align:center" @click.stop>
-                <div style="display:flex;gap:4px;justify-content:center">
-                  <button class="inv-act-btn" @click="openView(q)" title="View"><span v-html="icon('eye',13)"></span></button>
-                  <button class="inv-act-btn" @click="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                  <button v-if="canConvert(q)" class="inv-act-btn inv-act-conv" @click="openConvertModal(q)" title="Convert to Invoice / SO"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-                  <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteQT(q)" title="Delete"><span v-html="icon('trash',13)"></span></button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="!sorted.length">
-              <td colspan="8" class="qt-empty-state">
+  <!-- ── Secondary Stat Cards ── -->
+  <div class="bk-stat-grid">
+    <div class="bk-stat-card">
+      <div class="bk-stat-content">
+        <div>
+          <div class="bk-stat-label">This Month</div>
+          <div class="bk-stat-value">{{ thisMonthQuotes }}</div>
+        </div>
+        <div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="bk-stat-card">
+      <div class="bk-stat-content">
+        <div>
+          <div class="bk-stat-label">Conversion Rate</div>
+          <div class="bk-stat-value" style="color:#16a34a">{{ conversionRate }}</div>
+        </div>
+        <div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="bk-stat-card">
+      <div class="bk-stat-content">
+        <div>
+          <div class="bk-stat-label">Avg Quote Value</div>
+          <div class="bk-stat-value" style="font-size:16px">{{ fmtCur(avgQuoteValue) }}</div>
+        </div>
+        <div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="bk-stat-card">
+      <div class="bk-stat-content">
+        <div>
+          <div class="bk-stat-label">Awaiting Reply</div>
+          <div class="bk-stat-value" style="color:#0891b2">{{ counts.sent }}</div>
+        </div>
+        <div class="bk-stat-icon" style="background:#cffafe;color:#0891b2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Bulk actions bar ── -->
+  <div v-if="selected.size>0" class="inv-bulk-bar">
+    <span class="inv-bulk-count">{{ selected.size }} selected</span>
+    <button class="inv-bulk-btn" @click="bulkEmail"><span v-html="icon('mail',13)"></span> Send Email</button>
+    <button class="inv-bulk-btn" @click="bulkMarkSent">Mark as Sent</button>
+    <button class="inv-bulk-btn" @click="bulkMarkExpired">Mark Expired</button>
+    <button class="inv-bulk-btn inv-bulk-danger" @click="bulkDelete">Delete Drafts</button>
+    <button class="inv-bulk-btn" @click="exportCSV"><span v-html="icon('download',13)"></span> Export CSV</button>
+    <button class="inv-bulk-clear" @click="selected=new Set()">✕ Clear</button>
+  </div>
+
+  <!-- ── Table ── -->
+  <div class="inv-table-wrap">
+    <table class="inv-table">
+      <thead><tr>
+        <th class="th-check"><input type="checkbox" @change="toggleAll" :checked="allChecked"/></th>
+        <th class="sortable" @click="sortBy('transaction_date')">DATE <span class="sort-arrow">{{ sortArrowTxt('transaction_date') }}</span></th>
+        <th class="sortable" @click="sortBy('name')">QUOTE # <span class="sort-arrow">{{ sortArrowTxt('name') }}</span></th>
+        <th class="sortable" @click="sortBy('customer_name')">CUSTOMER <span class="sort-arrow">{{ sortArrowTxt('customer_name') }}</span></th>
+        <th class="sortable" @click="sortBy('valid_till')">VALID TILL <span class="sort-arrow">{{ sortArrowTxt('valid_till') }}</span></th>
+        <th class="sortable" @click="sortBy('status')">STATUS <span class="sort-arrow">{{ sortArrowTxt('status') }}</span></th>
+        <th class="ta-r sortable" @click="sortBy('grand_total')">AMOUNT <span class="sort-arrow">{{ sortArrowTxt('grand_total') }}</span></th>
+        <th style="width:120px;text-align:center">ACTIONS</th>
+      </tr></thead>
+      <tbody>
+        <template v-if="loading">
+          <tr v-for="n in 7" :key="n" class="shimmer-row">
+            <td><div class="shimmer" style="width:14px;height:14px;border-radius:3px"></div></td>
+            <td><div class="shimmer" style="width:80px"></div></td>
+            <td><div class="shimmer" style="width:110px"></div></td>
+            <td><div class="shimmer" style="width:130px"></div></td>
+            <td><div class="shimmer" style="width:80px"></div></td>
+            <td><div class="shimmer" style="width:90px"></div></td>
+            <td><div class="shimmer" style="width:80px;margin-left:auto"></div></td>
+            <td></td>
+          </tr>
+        </template>
+        <template v-else>
+          <tr v-for="q in paged" :key="q.name" class="inv-row" :class="{selected:selected.has(q.name)}">
+            <td class="td-check" @click.stop>
+              <input type="checkbox" :checked="selected.has(q.name)" @change="toggle(q.name)"/>
+            </td>
+            <td @click="openView(q)" class="text-muted mono-sm">{{ fmtDate(q.transaction_date) }}</td>
+            <td @click="openView(q)"><span class="inv-link">{{ q.name }}</span></td>
+            <td @click="openView(q)"><span class="inv-customer">{{ q.customer_name || q.customer || '—' }}</span></td>
+            <td @click="openView(q)" :class="isExpired(q)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(q.valid_till) || '—' }}</td>
+            <td @click="openView(q)">
+              <span class="inv-status-badge" :class="badgeClass(q)">{{ displayStatus(q) }}</span>
+            </td>
+            <td class="ta-r mono-sm" @click="openView(q)">{{ fmtCur(q.grand_total) }}</td>
+            <td style="text-align:center" @click.stop>
+              <div style="display:flex;gap:4px;justify-content:center">
+                <button class="inv-act-btn" @click="openView(q)" title="View"><span v-html="icon('eye',13)"></span></button>
+                <button class="inv-act-btn" @click="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="canConvert(q)" class="inv-act-btn inv-act-pay" @click="openConvertModal(q)" title="Convert to Invoice / SO"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+                <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteQT(q)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="!sorted.length">
+            <td colspan="8" class="bk-empty-state">
+              <div class="bk-empty-inner">
                 <template v-if="search || filterCustomer">
-                  <div class="qt-empty-inner">
-                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <p class="qt-empty-title">No quotations match your filters</p>
-                  </div>
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <p class="bk-empty-title">No quotations match your filters</p>
                 </template>
                 <template v-else>
-                  <div class="qt-empty-inner">
-                    <!-- Clipboard illustration -->
-                    <div class="qt-empty-illus">
-                      <svg width="90" height="110" viewBox="0 0 90 110" fill="none">
-                        <ellipse cx="45" cy="98" rx="32" ry="8" fill="#f1f5f9"/>
-                        <rect x="18" y="20" width="54" height="72" rx="6" fill="#e2e8f0"/>
-                        <rect x="22" y="24" width="46" height="64" rx="4" fill="#fff"/>
-                        <rect x="35" y="14" width="20" height="12" rx="3" fill="#94a3b8"/>
-                        <rect x="33" y="12" width="24" height="10" rx="3" fill="#cbd5e1"/>
-                        <rect x="30" y="38" width="30" height="3" rx="2" fill="#e2e8f0"/>
-                        <rect x="30" y="46" width="24" height="3" rx="2" fill="#e2e8f0"/>
-                        <rect x="30" y="54" width="26" height="3" rx="2" fill="#e2e8f0"/>
-                        <rect x="30" y="62" width="20" height="3" rx="2" fill="#e2e8f0"/>
-                        <rect x="14" y="36" width="18" height="18" rx="4" fill="#3b82f6" opacity=".85"/>
-                        <line x1="19" y1="45" x2="27" y2="45" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="23" y1="41" x2="23" y2="49" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-                        <rect x="62" y="62" width="18" height="22" rx="4" fill="#a5b4c8" opacity=".6"/>
-                        <ellipse cx="71" cy="62" rx="5" ry="3" fill="#94a3b8"/>
-                      </svg>
-                    </div>
-                    <p class="qt-empty-title">No quotations created yet</p>
-                    <p class="qt-empty-sub">Create your first quotation to start managing<br>customer proposals and track approvals.</p>
-                    <button class="qt-empty-btn-primary" @click="openNew">
-                      <span v-html="icon('plus',13)"></span> New Quotation
-                    </button>
+                  <div class="bk-empty-illus">
+                    <svg width="80" height="96" viewBox="0 0 80 96" fill="none">
+                      <rect x="10" y="8" width="60" height="80" rx="6" fill="#e2e8f0"/>
+                      <rect x="14" y="12" width="52" height="72" rx="4" fill="#fff"/>
+                      <rect x="22" y="26" width="36" height="3" rx="2" fill="#e2e8f0"/>
+                      <rect x="22" y="34" width="28" height="3" rx="2" fill="#e2e8f0"/>
+                      <rect x="22" y="42" width="32" height="3" rx="2" fill="#e2e8f0"/>
+                      <rect x="22" y="58" width="20" height="3" rx="2" fill="#e2e8f0"/>
+                      <rect x="22" y="66" width="24" height="3" rx="2" fill="#e2e8f0"/>
+                      <rect x="8" y="22" width="20" height="20" rx="4" fill="#2563eb" opacity=".85"/>
+                      <line x1="13" y1="32" x2="23" y2="32" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+                      <line x1="18" y1="27" x2="18" y2="37" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
                   </div>
+                  <p class="bk-empty-title">No quotations created yet</p>
+                  <p class="bk-empty-sub">Create your first quotation to start managing customer proposals and track approvals.</p>
+                  <button class="bk-empty-btn" @click="openNew">
+                    <span v-html="icon('plus',13)"></span> New Quotation
+                  </button>
                 </template>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
-    </div>
-    <div v-if="!loading && sorted.length" style="padding:12px 20px 4px">
-      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
-    </div>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+  <div v-if="!loading && sorted.length" style="padding:12px 0px 4px">
+    <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
+  </div>
+
+  <!-- ══ Modals / Drawers ══ -->
+  <Teleport to="body">
 
     <!-- ── Create / Edit Drawer ── -->
-    <div v-if="drawerOpen" class="qt-drawer-bg" @click.self="drawerOpen=false">
-      <div class="qt-drawer-panel" :class="{'qt-split':showPreview}">
+    <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false">
+      <div class="inv-drawer-panel" :class="{'inv-split':showPreview, 'is-add':!editingName}">
 
         <!-- Header -->
-        <div class="qt-dh">
-          <div>
-            <div class="qt-dh-title">{{ editingName ? 'Edit Quotation' : 'New Quotation' }}</div>
-            <div class="qt-dh-sub">{{ editingName || 'Fill in the details below' }}</div>
+        <div class="inv-dh">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="inv-dh-title">{{ editingName ? 'Edit Quotation' : 'New Quotation' }}</div>
+            <span v-if="!editingName" class="add-status-badge">Draft</span>
+            <span v-if="!editingName" class="add-autosave-notice">
+              <span class="add-autosave-dot"></span>
+            </span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <button class="qt-preview-toggle" @click="showPreview=!showPreview" :title="showPreview?'Hide preview':'Live preview'">
+            <button class="inv-preview-toggle" @click="showPreview=!showPreview" :title="showPreview?'Hide preview':'Live preview'">
               <span v-html="icon('eye',13)"></span> {{ showPreview ? 'Hide' : 'Preview' }}
             </button>
-            <button class="qt-dclose-new" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
-          </div>
-        </div>
-
-        <!-- Template / branding toolbar -->
-        <div class="qt-tmpl-bar">
-          <div class="qt-tmpl-group">
-            <span class="qt-tmpl-lbl">Template</span>
-            <div class="qt-tmpl-btns">
-              <button v-for="t in TEMPLATES" :key="t.key" class="qt-tmpl-btn" :class="{active:selectedTemplate===t.key}" @click="selectedTemplate=t.key">{{ t.label }}</button>
-            </div>
-          </div>
-          <label class="qt-tmpl-group">
-            <span class="qt-tmpl-lbl">Brand Color</span>
-            <div style="display:flex;align-items:center;gap:6px">
-              <input type="color" v-model="brandColor" class="qt-color-pick"/>
-              <span class="qt-color-val">{{ brandColor }}</span>
-            </div>
-          </label>
-          <div class="qt-tmpl-group" style="flex:1">
-            <span class="qt-tmpl-lbl">Logo URL</span>
-            <input v-model="logoUrl" class="qt-logo-input" placeholder="https://yoursite.com/logo.png"/>
+            <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
           </div>
         </div>
 
         <!-- Content row: form + optional preview -->
-        <div class="qt-content-row">
-        <div class="qt-dbody">
+        <div class="inv-content-row">
+        <div class="inv-dbody">
 
-        <!-- Quote Details section -->
-        <div class="qt-sec-lbl">Quote Details</div>
-        <div class="qt-fg qt-fg3">
-          <div style="grid-column:1/3">
-            <label class="qt-lbl">Customer <span class="qt-req">*</span></label>
-            <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer"
-              :createable="true" createDoctype="Customer"
-              @search="fetchCustomers" @update:modelValue="onCustomerChange" />
-          </div>
-          <div>
-            <label class="qt-lbl">Quote Date <span class="qt-req">*</span></label>
-            <input v-model="form.transaction_date" type="date" class="qt-fi"/>
-          </div>
-          <div>
-            <label class="qt-lbl">Valid Till</label>
-            <input v-model="form.valid_till" type="date" class="qt-fi"/>
-          </div>
-          <div>
-            <label class="qt-lbl">Currency</label>
-            <select v-model="form.currency" class="qt-fi" @change="onCurrencyChange">
-              <option v-for="(sym,code) in CURRENCY_SYMBOLS" :key="code" :value="code">{{ code }} {{ sym }}</option>
-            </select>
-          </div>
-          <div v-if="form.currency !== 'INR'">
-            <label class="qt-lbl">Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span></label>
-            <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="qt-fi" placeholder="e.g. 83.5"/>
-          </div>
-          <div style="grid-column:1/-1">
-            <label class="qt-lbl">Title / Project</label>
-            <input v-model="form.title" type="text" class="qt-fi" placeholder="Project name or short description"/>
-          </div>
-        </div>
-
-        <!-- Billing Address -->
-        <div class="qt-sec-lbl">Billing Address</div>
-        <div class="qt-fg" style="margin-bottom:14px">
-          <div>
-            <label class="qt-lbl">Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
-            <textarea v-model="form.billing_address" class="qt-fi" rows="2" style="resize:vertical" placeholder="Auto-filled from customer, or enter manually"></textarea>
-          </div>
-        </div>
-
-        <!-- Line Items -->
-        <div class="qt-sec-lbl" style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f2f5;padding-top:16px;margin-top:4px">
-          LINE ITEMS
-          <button class="qt-add-item-btn" @click.prevent="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
-        </div>
-
-        <div class="qt-lines-wrap">
-          <!-- Column headers -->
-          <div class="qt-lines-head">
-            <div>ITEM <span class="qt-req">*</span></div>
-            <div>DESCRIPTION</div>
-            <div>HSN/SAC</div>
-            <div class="ta-r">QTY</div>
-            <div>UOM</div>
-            <div class="ta-r">RATE ({{ CURRENCY_SYMBOLS[form.currency] || '₹' }})</div>
-            <div class="ta-r">DISC %</div>
-            <div class="ta-r">AMOUNT</div>
-            <div></div>
-          </div>
-
-          <!-- Line rows -->
-          <div v-for="line in lines" :key="line.id" class="qt-lines-row">
-            <div style="min-width:0">
-              <SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…"
-                :createable="true" createDoctype="Item"
-                @search="fetchItems" @select="opt => onItemSelect(line, opt)"/>
+          <!-- ══ CARD 1: Branding & Template ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.branding=!collapsed.branding">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
+                Branding &amp; Template
+              </div>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.branding}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
             </div>
-            <div><input v-model="line.description" class="qt-ci" placeholder="Description"/></div>
-            <div><input v-model="line.hsn_code" class="qt-ci" placeholder="HSN/SAC"/></div>
-            <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="qt-ci qt-ci-r" @input="calcLine(line)"/></div>
-            <div><select v-model="line.uom" class="qt-ci"><option value="">UOM</option><option v-for="u in uomList" :key="u" :value="u">{{u}}</option></select></div>
-            <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="qt-ci qt-ci-r" @input="calcLine(line)"/></div>
-            <div><input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.5" class="qt-ci qt-ci-r" @input="calcLine(line)"/></div>
-            <div class="ta-r mono-sm" style="display:flex;align-items:center;justify-content:flex-end;font-weight:600;font-size:13px">{{ fmtCur(line.amount) }}</div>
-            <div style="display:flex;align-items:center;justify-content:center">
-              <button @click.prevent="removeLine(line.id)" class="qt-rm-line"><span v-html="icon('x',12)"></span></button>
-            </div>
-          </div>
-
-          <div v-if="!lines.length" class="qt-lines-empty">No items yet — click <strong>Add Item</strong> to begin.</div>
-
-          <button class="qt-add-line-btn" @click.prevent="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
-        </div>
-
-        <!-- Tax + Totals -->
-        <div class="qt-totals-wrap">
-          <div class="qt-tax-section">
-            <div class="qt-tax-header">
-              <span class="qt-tax-title">Taxes</span>
-              <div class="qt-tax-presets">
-                <button v-for="p in TAX_PRESETS" :key="p.label" class="qt-preset-btn" @click="applyTaxPreset(p)">{{ p.label }}</button>
-                <button class="qt-preset-btn qt-preset-custom" @click="addTaxRow">+ Custom</button>
-                <button v-if="taxRows.length" class="qt-preset-btn qt-preset-clear" @click="taxRows=[]">Clear</button>
+            <div class="add-card-body" :class="{collapsed:collapsed.branding}">
+              <div class="add-tmpl-bar">
+                <div class="add-tmpl-group">
+                  <span class="add-tmpl-lbl">Template</span>
+                  <div class="add-tmpl-btns">
+                    <button v-for="t in TEMPLATES" :key="t.key"
+                      class="add-tmpl-btn" :class="{active:selectedTemplate===t.key}"
+                      @click="selectedTemplate=t.key;saveBranding()">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                      {{ t.label }}
+                    </button>
+                  </div>
+                </div>
+                <div class="add-tmpl-group">
+                  <span class="add-tmpl-lbl">Brand Color</span>
+                  <label class="add-color-wrap" style="cursor:pointer">
+                    <span class="add-color-swatch" :style="{background:brandColor}"></span>
+                    <span class="add-color-hex">{{ brandColor }}</span>
+                    <input type="color" v-model="brandColor" @change="saveBranding()" class="add-color-input"/>
+                  </label>
+                </div>
+                <div class="add-tmpl-group">
+                  <span class="add-tmpl-lbl">Logo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af;font-size:9px">(saved per quote)</span></span>
+                  <!-- Show thumbnail + remove when logo is set -->
+                  <div v-if="form.logo" class="inv-logo-preview">
+                    <img :src="logoSrc(form.logo)" class="inv-logo-thumb" alt="logo"/>
+                    <button type="button" class="inv-logo-remove" @click="removeLogo" title="Remove logo">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                  <!-- Upload area when no logo -->
+                  <label v-else class="add-logo-upload" :class="{uploading: logoUploading}">
+                    <span class="add-logo-upload-icon">
+                      <svg v-if="!logoUploading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                      <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:inv-spin .8s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    </span>
+                    <div>
+                      <div>{{ logoUploading ? 'Uploading…' : 'Upload logo' }}</div>
+                      <div class="add-logo-sub">PNG, JPG or SVG (max. 2MB)</div>
+                    </div>
+                    <input id="qt-logo-file-input" type="file" accept="image/*" style="display:none" :disabled="logoUploading" @change="onLogoUpload"/>
+                  </label>
+                </div>
               </div>
             </div>
-            <table v-if="taxRows.length" class="qt-tax-tbl">
-              <thead><tr><th>Description</th><th class="ta-r">Rate %</th><th class="ta-r">Amount</th><th></th></tr></thead>
-              <tbody>
-                <tr v-for="tx in taxRows" :key="tx.id">
-                  <td><input v-model="tx.description" class="qt-ci" placeholder="e.g. CGST @ 9%"/></td>
-                  <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.5" class="qt-ci qt-ci-r" @input="recalcTax(tx)"/></td>
-                  <td class="ta-r mono-sm">{{ fmtCur(tx.amount) }}</td>
-                  <td><button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="qt-rm-line"><span v-html="icon('x',12)"></span></button></td>
-                </tr>
-              </tbody>
-            </table>
-            <div v-else style="font-size:12px;color:#9ca3af;padding:6px 0">No taxes — use preset buttons above or add a custom row.</div>
           </div>
 
-          <div class="qt-totals-right-panel">
-            <div class="qt-total-row-item">
-              <span>Subtotal</span>
-              <span class="qt-total-amt">{{ fmtCur(subtotal) }}</span>
+          <!-- ══ CARD 2: Quote Details ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.details=!collapsed.details">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+                Quote Details
+              </div>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.details}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
             </div>
-            <div v-for="tx in taxRows" :key="'tot-'+tx.id" class="qt-total-row-item" style="color:#6b7280;font-size:12px">
-              <span>{{ tx.description || 'Tax' }}</span>
-              <span class="qt-total-amt">{{ fmtCur(tx.amount) }}</span>
-            </div>
-            <div class="qt-total-row-item qt-grand-total">
-              <span>Grand Total</span>
-              <span class="qt-total-amt" style="font-size:16px;color:#1a6ef7">{{ fmtCur(grandTotal) }}</span>
+            <div class="add-card-body" :class="{collapsed:collapsed.details}">
+              <div class="add-details-grid">
+                <div>
+                  <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
+                  <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer"
+                    :createable="true" createDoctype="Customer"
+                    @search="fetchCustomers" @update:modelValue="onCustomerChange"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Quote Date <span class="inv-req">*</span></label>
+                  <input v-model="form.transaction_date" type="date" class="inv-fi"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Valid Till</label>
+                  <input v-model="form.valid_till" type="date" class="inv-fi"/>
+                </div>
+              </div>
+              <div class="add-details-row2">
+                <div>
+                  <label class="inv-lbl">Currency</label>
+                  <select v-model="form.currency" class="inv-fi" @change="onCurrencyChange">
+                    <option v-for="(sym,code) in CURRENCY_SYMBOLS" :key="code" :value="code">{{ code }} {{ sym }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="inv-lbl">Title / Project</label>
+                  <input v-model="form.title" type="text" class="inv-fi" placeholder="Project name or short description"/>
+                </div>
+              </div>
+              <div v-if="form.currency !== 'INR'" class="add-details-row2" style="margin-top:14px">
+                <div>
+                  <label class="inv-lbl">Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span></label>
+                  <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi" placeholder="e.g. 83.5"/>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Notes & Terms -->
-        <div class="qt-sec-lbl">Notes & Terms</div>
-        <div class="qt-fg qt-fg2" style="margin-bottom:14px">
-          <div>
-            <label class="qt-lbl">Terms & Conditions <span style="color:#9ca3af;font-weight:400">(printed on quote)</span></label>
-            <textarea v-model="form.terms" rows="3" class="qt-fi" style="resize:vertical" placeholder="Payment terms, delivery terms, validity…"></textarea>
+          <!-- ══ CARD 3: Billing Address ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.billing=!collapsed.billing">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+                Billing Address
+              </div>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.billing}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
+            <div class="add-card-body" :class="{collapsed:collapsed.billing}">
+              <div>
+                <label class="inv-lbl">Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
+                <textarea v-model="form.billing_address" class="inv-fi" rows="3" placeholder="Auto-filled from customer, or enter manually"></textarea>
+              </div>
+            </div>
           </div>
-          <div>
-            <label class="qt-lbl">Internal Remarks <span style="color:#9ca3af;font-weight:400">(not printed)</span></label>
-            <textarea v-model="form.remarks" rows="3" class="qt-fi" style="resize:vertical" placeholder="Internal notes for your team…"></textarea>
-          </div>
-        </div>
 
-        </div><!-- /qt-dbody -->
+          <!-- ══ CARD 4: Line Items ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.lines=!collapsed.lines">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+                Line Items
+              </div>
+              <div style="display:flex;align-items:center;gap:8px" @click.stop>
+                <button class="add-lines-add-btn" @click="addLine">
+                  <span v-html="icon('plus',13)"></span> Add Item
+                </button>
+                <span class="add-card-chevron" :class="{collapsed:collapsed.lines}" @click="collapsed.lines=!collapsed.lines">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+            </div>
+            <div class="add-card-body" :class="{collapsed:collapsed.lines}" style="padding:0">
+              <div style="overflow-x:auto">
+                <table class="inv-lines-tbl">
+                  <thead>
+                    <tr>
+                      <th style="width:28px">#</th>
+                      <th style="min-width:160px">Item <span class="inv-req">*</span></th>
+                      <th style="min-width:110px">Description</th>
+                      <th style="min-width:80px">HSN/SAC</th>
+                      <th style="min-width:60px">Qty</th>
+                      <th style="min-width:70px">UOM</th>
+                      <th style="min-width:90px;text-align:right">Rate ({{ CURRENCY_SYMBOLS[form.currency] || '₹' }})</th>
+                      <th style="min-width:60px;text-align:right">Disc %</th>
+                      <th style="min-width:90px;text-align:right">Amount ({{ CURRENCY_SYMBOLS[form.currency] || '₹' }})</th>
+                      <th style="width:32px"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(line, idx) in lines" :key="line.id">
+                      <td><span class="add-line-num">{{ idx+1 }}</span></td>
+                      <td>
+                        <SearchableSelect v-model="line.item_code" :options="items"
+                          placeholder="Search item or service"
+                          :compact="true" :createable="true" createDoctype="Item"
+                          @search="fetchItems" @select="opt => onItemSelect(line, opt)"/>
+                      </td>
+                      <td><input v-model="line.description" class="inv-ci" placeholder="Item description"/></td>
+                      <td><input v-model="line.hsn_code" class="inv-ci" placeholder="Enter HSN"/></td>
+                      <td><input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-ci" @input="calcLine(line)"/></td>
+                      <td>
+                        <select v-model="line.uom" class="inv-ci">
+                          <option v-for="u in uomList" :key="u" :value="u">{{ u }}</option>
+                        </select>
+                      </td>
+                      <td><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-ci inv-ci-r" @input="calcLine(line)"/></td>
+                      <td><input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="calcLine(line)" placeholder="0"/></td>
+                      <td class="add-line-amount">{{ fmtCur(line.amount) }}</td>
+                      <td style="padding:4px 6px">
+                        <button @click="removeLine(line.id)" class="add-line-del"><span v-html="icon('trash',12)"></span></button>
+                      </td>
+                    </tr>
+                    <tr class="add-new-line-row">
+                      <td colspan="10" style="padding:6px 14px;border-bottom:none">
+                        <button class="add-new-line-btn" @click="addLine">
+                          <span v-html="icon('plus',12)"></span> Add new line
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="!lines.length">
+                      <td colspan="10" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
+                        No line items — click "+ Add Item" to get started
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Taxes + Totals -->
+              <div class="inv-totals-wrap">
+                <div class="inv-tax-section">
+                  <div class="inv-tax-header">
+                    <span class="inv-tax-title">Taxes</span>
+                    <div class="inv-tax-presets">
+                      <button v-for="p in TAX_PRESETS" :key="p.label" class="inv-preset-btn" @click="applyTaxPreset(p)">{{ p.label }}</button>
+                      <button class="inv-preset-btn inv-preset-custom" @click="addTaxRow">+ Custom</button>
+                      <button v-if="taxRows.length" class="inv-preset-btn inv-preset-clear" @click="taxRows=[]">Clear</button>
+                    </div>
+                  </div>
+                  <table v-if="taxRows.length" class="inv-tax-tbl">
+                    <thead><tr>
+                      <th>Description</th>
+                      <th style="width:80px;text-align:right">Rate %</th>
+                      <th style="width:100px;text-align:right">Amount</th>
+                      <th style="width:28px"></th>
+                    </tr></thead>
+                    <tbody>
+                      <tr v-for="tx in taxRows" :key="tx.id">
+                        <td><input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/></td>
+                        <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="recalcTax(tx)"/></td>
+                        <td style="text-align:right;padding:4px 10px;font-family:monospace;font-size:12.5px">{{ fmtCur(tx.amount) }}</td>
+                        <td><button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div v-else style="font-size:12px;color:#9ca3af;padding:6px 0">No taxes — use preset buttons above or add a custom row.</div>
+                </div>
+                <div class="inv-totals">
+                  <div class="inv-total-row">
+                    <span>Sub Total</span>
+                    <span class="inv-total-amt">{{ fmtCur(subtotal) }}</span>
+                  </div>
+                  <div v-for="tx in taxRows" :key="tx.id" class="inv-total-row" style="color:#6b7280;font-size:12px">
+                    <span>{{ tx.description || 'Tax' }}</span>
+                    <span class="inv-total-amt">{{ fmtCur(tx.amount) }}</span>
+                  </div>
+                  <div class="inv-total-row inv-grand-total">
+                    <span>Grand Total</span>
+                    <span class="inv-total-amt" style="font-size:16px;color:#1565c0">{{ fmtCur(grandTotal) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:6px 16px 14px">
+                <button class="add-notes-link" @click="collapsed.notes=false">
+                  <span v-html="icon('plus',12)"></span> Add notes
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══ CARD 5: Notes & Terms ══ -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.notes=!collapsed.notes">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+                Notes &amp; Terms
+              </div>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.notes}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
+            <div class="add-card-body" :class="{collapsed:collapsed.notes}">
+              <div class="inv-fg inv-fg2">
+                <div>
+                  <label class="inv-lbl">Terms &amp; Conditions <span style="color:#9ca3af;font-weight:400">(printed on quote)</span></label>
+                  <textarea v-model="form.terms" class="inv-fi" rows="3" placeholder="Payment terms, delivery terms, validity…"></textarea>
+                </div>
+                <div>
+                  <label class="inv-lbl">Internal Remarks <span style="color:#9ca3af;font-weight:400">(not printed)</span></label>
+                  <textarea v-model="form.remarks" class="inv-fi" rows="3" placeholder="Internal notes for your team…"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /inv-dbody -->
 
           <!-- Live preview pane -->
-          <div v-if="showPreview" class="qt-preview-pane">
-            <div class="qt-preview-toolbar">
+          <div v-if="showPreview" class="inv-preview-pane">
+            <div class="inv-preview-toolbar">
               <span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#6b7280">LIVE PREVIEW</span>
               <div style="display:flex;gap:6px">
                 <span style="font-size:11px;color:#9ca3af">{{ TEMPLATES.find(t=>t.key===selectedTemplate)?.label }}</span>
-                <button class="qt-btn-ghost" style="font-size:11px;padding:4px 10px" @click="printQuote(previewData)">
+                <button class="inv-va-btn" style="font-size:11px;padding:4px 10px" @click="printQuote(previewData)">
                   <span v-html="icon('download',12)"></span> Print PDF
                 </button>
               </div>
             </div>
-            <iframe :srcdoc="previewHtml" class="qt-preview-iframe" sandbox="allow-same-origin"></iframe>
+            <iframe :srcdoc="previewHtml" class="inv-preview-iframe" sandbox="allow-same-origin"></iframe>
           </div>
 
-        </div><!-- /qt-content-row -->
+        </div><!-- /inv-content-row -->
 
-        <div class="qt-dfooter-new">
-          <div style="font-size:12px;color:#9ca3af">{{ editingName ? 'Editing: '+editingName : 'New quotation' }}</div>
-          <div style="display:flex;gap:10px">
-            <button class="qt-btn-ghost" @click="drawerOpen=false">Cancel</button>
-            <button class="qt-btn-ghost" style="border-color:#3b82f6;color:#3b82f6" :disabled="drawerSaving" @click="saveQT('Draft')">Save Draft</button>
-            <button class="qt-btn-primary" :disabled="drawerSaving" @click="saveQT('Sent')">
-              <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Submit Quote' }}
-            </button>
+        <!-- Footer -->
+        <div class="inv-dfooter">
+          <div class="add-footer-status">{{ editingName ? 'Editing: '+editingName : 'New quotation — unsaved changes' }}</div>
+          <div class="add-footer-actions">
+            <button class="add-btn-cancel" @click="drawerOpen=false">Cancel</button>
+            <button class="add-btn-draft" :disabled="drawerSaving" @click="saveQT('Draft')">Save Draft</button>
+            <div style="position:relative">
+              <button class="add-btn-more" :disabled="drawerSaving" @click="moreActionsOpen=!moreActionsOpen">
+                {{ drawerSaving ? 'Saving…' : 'More Actions' }}
+                <svg class="add-btn-more-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div v-if="moreActionsOpen" class="add-more-menu" v-click-outside="()=>moreActionsOpen=false">
+                <button class="add-more-menu-item" @click="saveQT('Sent');moreActionsOpen=false">
+                  <span v-html="icon('check',13)"></span> Submit Quote
+                </button>
+                <button class="add-more-menu-item" @click="saveQT('Draft');moreActionsOpen=false">
+                  Save &amp; New
+                </button>
+                <button class="add-more-menu-item" @click="printQuote(previewData);moreActionsOpen=false">
+                  <span v-html="icon('download',13)"></span> Save &amp; Print PDF
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- ── View Drawer ── -->
-    <div v-if="viewOpen" class="qt-overlay" @click.self="viewOpen=false"></div>
-    <div class="qt-drawer qt-view-drawer" :class="{open:viewOpen}">
-      <template v-if="viewDoc">
-        <div class="qt-view-head" :style="`background:${headerBg(viewDoc)}`">
-          <div>
-            <div class="qt-view-num">{{ viewDoc.name }}</div>
-            <div class="qt-view-sub">{{ viewDoc.customer_name||viewDoc.customer }}</div>
+    <div v-if="viewOpen&&viewDoc" class="inv-drawer-bg" @click.self="viewOpen=false">
+      <div class="inv-drawer-panel inv-drawer-wide inv-view-page">
+
+        <!-- Top header -->
+        <div class="inv-view-header">
+          <div class="inv-view-header-left">
+            <div class="inv-view-title-row">
+              <span class="inv-view-number">{{ viewDoc.name }}</span>
+              <span class="inv-hdr-badge" :class="badgeClass(viewDoc)">{{ displayStatus(viewDoc) }}</span>
+            </div>
+            <div class="inv-view-subtitle">
+              <span class="inv-cust-link">
+                <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer }}</DocLink>
+              </span>
+              <span v-if="viewDoc.valid_till"> · Valid till {{ fmtDate(viewDoc.valid_till) }}
+                <span v-if="isExpired(viewDoc)"> (expired)</span>
+              </span>
+            </div>
           </div>
-          <!-- <div style="text-align:right">
-            <div class="qt-view-amount">{{ fmtCur(viewDoc.grand_total) }}</div>
-            <span class="qt-badge qt-badge-white">{{ displayStatus(viewDoc) }}</span>
-          </div> -->
-          <button class="qt-dclose qt-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button v-if="canConvert(viewDoc)" class="inv-view-cta" @click="openConvertModal(viewDoc)">
+              <span v-html="icon('repeat',14)"></span> Convert
+            </button>
+            <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
+              <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Inline timeline — fully controlled, no external component -->
-        <div class="qt-timeline">
-          <template v-for="(step, i) in timelineSteps" :key="i">
-            <div class="qt-tl-step" :class="{ done: step.done, danger: step.danger, current: step.current }">
-              <div class="qt-tl-dot">
-                <span v-if="step.done && !step.danger" v-html="icon('check', 9)"></span>
-                <span v-else-if="step.danger" style="font-size:9px;font-weight:700">!</span>
-              </div>
-              <div class="qt-tl-label">{{ step.label }}</div>
-            </div>
-            <div v-if="i < timelineSteps.length - 1" class="qt-tl-line"
-              :class="{ done: timelineSteps[i+1]?.done, danger: timelineSteps[i+1]?.danger }"></div>
-          </template>
-        </div>
+        <!-- Main white card -->
+        <div class="inv-view-body">
 
-        <div class="qt-tabs">
-          <button class="qt-tab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
-          <button class="qt-tab" :class="{active:viewTab==='conversions'}" @click="viewTab='conversions'">
-            Conversions<span v-if="(conv.sales_orders.length+conv.sales_invoices.length)>0" class="qt-tab-count">{{ conv.sales_orders.length + conv.sales_invoices.length }}</span>
-          </button>
-        </div>
-
-        <div class="qt-dbody">
-          <template v-if="viewTab==='details'">
-            <div class="qt-meta-grid">
-              <div>
-                <div class="qt-meta-lbl">Date</div>
-                <div class="mono-sm">{{ fmtDate(viewDoc.transaction_date) }}</div>
-              </div>
-              <div>
-                <div class="qt-meta-lbl">Valid Till</div>
-                <div class="mono-sm" :class="isExpired(viewDoc)?'text-danger':''">{{ fmtDate(viewDoc.valid_till)||'—' }}</div>
-              </div>
-              <div>
-                <div class="qt-meta-lbl">Status</div>
-                <span class="inv-status-badge" :class="badgeClass(viewDoc)" style="margin-top:4px;display:inline-flex">{{ displayStatus(viewDoc) }}</span>
-              </div>
-              <div>
-                <div class="qt-meta-lbl">Currency</div>
-                <div class="mono-sm">{{ viewDoc.currency || 'INR' }}</div>
-              </div>
-              <div style="grid-column:1/-1" v-if="viewDoc.title">
-                <div class="qt-meta-lbl">Title</div>
-                <div>{{ viewDoc.title }}</div>
-              </div>
-            </div>
-
-            <!-- Line Items -->
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <template v-else>
-              <div class="qt-section-title" style="margin-top:12px">Line Items</div>
-              <div class="qt-view-items">
-                <div class="qt-view-items-head">
-                  <span>Item</span>
-                  <span class="ta-r">Qty</span>
-                  <span class="ta-r">Rate</span>
-                  <span class="ta-r">Amount</span>
-                </div>
-                <template v-if="viewItems.length">
-                  <div v-for="(it, idx) in viewItems" :key="idx" class="qt-view-items-row">
-                    <span>
-                      <strong>{{ it.item_name || it.item_code || '—' }}</strong>
-                      <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div>
-                    </span>
-                    <span class="ta-r mono-sm">{{ it.qty }}</span>
-                    <span class="ta-r mono-sm">{{ fmtDocCur(it.rate, viewDoc) }}</span>
-                    <span class="ta-r mono-sm" style="font-weight:600">{{ fmtDocCur(it.amount, viewDoc) }}</span>
+          <!-- Status timeline -->
+          <div class="inv-tl-wrap">
+            <div class="inv-tl">
+              <div class="inv-tl-progress" :style="{ width: tlProgressWidth }"></div>
+              <template v-for="(step, i) in timelineSteps" :key="i">
+                <div class="inv-tl-step"
+                     :class="{ 'tl-done': step.done && !step.danger, 'tl-danger': step.danger, 'tl-success': step.done && !step.danger, 'tl-pending': !step.done && !step.danger }">
+                  <div class="inv-tl-dot">
+                    <span v-if="step.done && !step.danger" v-html="icon('check',14)"></span>
+                    <span v-else-if="step.danger" style="font-size:11px;font-weight:800">!</span>
+                    <span v-else v-html="icon('circle',14)"></span>
                   </div>
-                </template>
-                <div v-else style="padding:16px;text-align:center;color:#9ca3af;font-size:13px">
-                  No line items found.
+                  <div class="inv-tl-label">{{ step.label }}</div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Action buttons bar -->
+          <div class="inv-action-bar">
+            <button class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
+              <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
+            </button>
+            <button class="inv-ab-btn" @click="printQuote(viewDoc)">
+              <span v-html="icon('printer',13)"></span> <span class="ab-label">Print PDF</span>
+            </button>
+            <button class="inv-ab-btn" @click="emailQT(viewDoc)">
+              <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
+            </button>
+            <button v-if="viewDoc.status!=='Accepted' && viewDoc.status!=='Converted'" class="inv-ab-btn" @click="markStatus(viewDoc,'Accepted')">
+              <span v-html="icon('check',13)"></span> <span class="ab-label">Accept</span>
+            </button>
+            <button v-if="viewDoc.status!=='Declined' && viewDoc.status!=='Converted'" class="inv-ab-btn" @click="markStatus(viewDoc,'Declined')">
+              <span v-html="icon('x',13)"></span> <span class="ab-label">Decline</span>
+            </button>
+            <button v-if="canConvert(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="openConvertModal(viewDoc)">
+              <span v-html="icon('repeat',13)"></span> <span class="ab-label">Convert</span>
+            </button>
+            <button class="inv-ab-btn inv-ab-danger" @click="deleteQT(viewDoc)">
+              <span v-html="icon('trash',13)"></span> <span class="ab-label">Delete</span>
+            </button>
+          </div>
+
+          <!-- Tabs -->
+          <div class="inv-view-tabs">
+            <button class="inv-vtab" :class="{ active: viewTab==='details' }" @click="viewTab='details'">Details</button>
+            <button class="inv-vtab" :class="{ active: viewTab==='conversions' }" @click="viewTab='conversions'">
+              Conversions <span v-if="(conv.sales_orders.length+conv.sales_invoices.length)>0" class="inv-vtab-count">{{ conv.sales_orders.length + conv.sales_invoices.length }}</span>
+            </button>
+          </div>
+
+          <!-- ── Details tab ── -->
+          <template v-if="viewTab==='details'">
+            <div class="inv-tab-body">
+
+              <!-- Details meta row -->
+              <div class="inv-details-meta">
+                <div class="inv-details-meta-col col-customer">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('user',13)"></span>
+                    <span class="inv-dmeta-lbl">Customer</span>
+                  </div>
+                  <div class="inv-dmeta-primary">
+                    <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer }}</DocLink>
+                  </div>
+                </div>
+                <div class="inv-details-meta-col">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
+                    <span class="inv-dmeta-lbl">Quote Date</span>
+                  </div>
+                  <div class="inv-dmeta-date-val">{{ fmtDate(viewDoc.transaction_date) }}</div>
+                </div>
+                <div class="inv-details-meta-col">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
+                    <span class="inv-dmeta-lbl">Valid Till</span>
+                  </div>
+                  <div class="inv-dmeta-date-val" :class="{ 'is-overdue': isExpired(viewDoc) }">
+                    {{ fmtDate(viewDoc.valid_till) || '—' }}
+                  </div>
+                </div>
+                <div class="inv-details-meta-col">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('indianrupee',13)"></span>
+                    <span class="inv-dmeta-lbl">Grand Total</span>
+                  </div>
+                  <div class="inv-balance-val">
+                    {{ fmtDocCur(viewDoc.grand_total, viewDoc) }}
+                  </div>
                 </div>
               </div>
 
-              <!-- Totals summary -->
-              <div v-if="viewDoc.grand_total" style="display:flex;justify-content:flex-end;padding:10px 12px;border-top:1px solid #e8ecf0;gap:32px;font-size:13px">
-                <span style="color:#6b7280">Grand Total</span>
-                <span style="font-family:monospace;font-weight:700;color:#1a6ef7;font-size:15px">{{ fmtDocCur(viewDoc.grand_total, viewDoc) }}</span>
-              </div>
-            </template>
+              <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading details…</div>
 
-            <div v-if="viewDoc.terms" class="qt-terms" style="margin-top:12px">
-              <div class="qt-meta-lbl">Terms & Conditions</div>
-              <div style="white-space:pre-wrap;font-size:12.5px;color:#374151">{{ viewDoc.terms }}</div>
+              <template v-else>
+                <!-- Line items table -->
+                <div v-if="viewItems.length" class="inv-items-wrap">
+                  <table class="inv-items-table">
+                    <thead>
+                      <tr>
+                        <th style="width:36px">#</th>
+                        <th>Item &amp; Description</th>
+                        <th>HSN/SAC</th>
+                        <th class="th-r">Qty</th>
+                        <th class="th-r">Rate</th>
+                        <th class="th-r">Discount</th>
+                        <th class="th-r">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(it,i) in viewItems" :key="i">
+                        <td class="inv-item-num">{{ i+1 }}</td>
+                        <td>
+                          <div class="inv-item-name">{{ it.item_name||it.item_code }}</div>
+                          <div v-if="it.description" class="inv-item-desc">{{ it.description }}</div>
+                        </td>
+                        <td class="inv-dash">{{ it.hsn_code || '—' }}</td>
+                        <td class="td-r" style="font-family:monospace">{{ flt(it.qty) }}</td>
+                        <td class="td-r" style="font-family:monospace">{{ fmtDocCur(it.rate, viewDoc) }}</td>
+                        <td class="td-r inv-dash">{{ it.discount_percentage ? it.discount_percentage+'%' : '—' }}</td>
+                        <td class="td-r" style="font-family:monospace;font-weight:600">{{ fmtDocCur(it.amount, viewDoc) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <!-- Totals section -->
+                  <div class="inv-totals-section">
+                    <div class="inv-totals-inner">
+                      <div class="inv-total-line">
+                        <span class="t-lbl">Subtotal</span>
+                        <span class="t-amt">{{ fmtDocCur((viewDoc.grand_total||0)-(viewDoc.total_taxes_and_charges||0), viewDoc) }}</span>
+                      </div>
+                      <template v-if="viewDoc.taxes&&viewDoc.taxes.length">
+                        <div v-for="(tx,i) in viewDoc.taxes" :key="i" class="inv-total-line">
+                          <span class="t-lbl">{{ tx.description||tx.account_head }}</span>
+                          <span class="t-amt">{{ fmtDocCur(tx.tax_amount||tx.amount||0, viewDoc) }}</span>
+                        </div>
+                      </template>
+                      <div class="inv-grand-total-line">
+                        <span class="inv-grand-lbl">Grand Total</span>
+                        <span class="inv-grand-amt">{{ fmtDocCur(viewDoc.grand_total, viewDoc) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No item details available.</div>
+              </template>
+            </div>
+
+            <!-- Bottom grid: Notes -->
+            <div class="inv-bottom-grid">
+              <div class="inv-bottom-card">
+                <div class="inv-bottom-card-header">
+                  <div class="inv-bottom-card-title">
+                    <span v-html="icon('sticky-note',14)"></span> Notes &amp; Terms
+                  </div>
+                </div>
+                <div class="inv-bottom-card-body">
+                  <div v-if="viewDoc.terms||viewDoc.remarks">
+                    <div v-if="viewDoc.terms" style="font-size:13px;color:#374151;margin-bottom:10px">
+                      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Terms & Conditions</div>
+                      <div style="white-space:pre-wrap">{{ viewDoc.terms }}</div>
+                    </div>
+                    <div v-if="viewDoc.remarks" style="font-size:13px;color:#374151">
+                      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Internal Remarks</div>
+                      {{ viewDoc.remarks }}
+                    </div>
+                  </div>
+                  <div v-else class="inv-notes-empty">
+                    <div class="inv-notes-empty-icon" v-html="icon('file-text',36)"></div>
+                    <div class="inv-notes-empty-text">No notes added yet</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="inv-view-footer" v-if="viewDoc.owner">
+              Created by {{ viewDoc.owner }} on {{ fmtDate(viewDoc.creation) }}
             </div>
           </template>
 
-          <template v-if="viewTab==='conversions'">
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <template v-else>
-              <div v-if="conv.sales_orders.length" class="qt-section-title">Sales Orders</div>
-              <div v-for="so in conv.sales_orders" :key="so.name" class="qt-conv-row">
-                <span class="qt-num">{{ so.name }}</span>
-                <span class="text-muted">{{ fmtDate(so.transaction_date) }}</span>
-                <span style="text-align:right;font-weight:600">{{ fmtCur(so.grand_total, so.currency) }}</span>
-              </div>
-              <div v-if="conv.sales_invoices.length" class="qt-section-title">Sales Invoices</div>
-              <div v-for="si in conv.sales_invoices" :key="si.name" class="qt-conv-row">
-                <span class="qt-num">{{ si.name }}</span>
-                <span class="text-muted">{{ fmtDate(si.posting_date) }}</span>
-                <span style="text-align:right;font-weight:600">{{ fmtCur(si.grand_total, si.currency) }}</span>
-              </div>
-              <div v-if="!conv.sales_orders.length && !conv.sales_invoices.length"
-                style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
-                Not converted yet.
-                <div v-if="canConvert(viewDoc)" style="margin-top:8px">
-                  <button class="qt-btn-primary" @click="openConvertModal(viewDoc)" style="font-size:12px;padding:6px 12px">Convert →</button>
+          <!-- ── Conversions tab ── -->
+          <template v-else-if="viewTab==='conversions'">
+            <div class="inv-tab-body">
+              <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading…</div>
+              <template v-else>
+                <div v-if="conv.sales_orders.length" class="inv-items-wrap" style="margin-bottom:16px">
+                  <div style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;background:#f9fafb;border-bottom:1px solid #e8ecf0">Sales Orders</div>
+                  <table class="inv-items-table">
+                    <thead><tr>
+                      <th>Order #</th><th>Date</th><th class="th-r">Amount</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr v-for="so in conv.sales_orders" :key="so.name">
+                        <td><DocLink doctype="Sales Order" :name="so.name" /></td>
+                        <td class="mono-sm">{{ fmtDate(so.transaction_date) }}</td>
+                        <td class="td-r" style="font-family:monospace;font-weight:600">{{ fmtCur(so.grand_total, so.currency) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </template>
+                <div v-if="conv.sales_invoices.length" class="inv-items-wrap">
+                  <div style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;background:#f9fafb;border-bottom:1px solid #e8ecf0">Sales Invoices</div>
+                  <table class="inv-items-table">
+                    <thead><tr>
+                      <th>Invoice #</th><th>Date</th><th class="th-r">Amount</th>
+                    </tr></thead>
+                    <tbody>
+                      <tr v-for="si in conv.sales_invoices" :key="si.name">
+                        <td><DocLink doctype="Sales Invoice" :name="si.name" /></td>
+                        <td class="mono-sm">{{ fmtDate(si.posting_date) }}</td>
+                        <td class="td-r" style="font-family:monospace;font-weight:600">{{ fmtCur(si.grand_total, si.currency) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-if="!conv.sales_orders.length && !conv.sales_invoices.length"
+                  style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
+                  Not converted yet.
+                  <div v-if="canConvert(viewDoc)" style="margin-top:12px">
+                    <button class="inv-view-cta" @click="openConvertModal(viewDoc)">Convert</button>
+                  </div>
+                </div>
+              </template>
+            </div>
           </template>
-        </div>
 
-        <div class="qt-dfooter">
-          <button class="qt-btn-ghost" @click="viewOpen=false">Close</button>
-          <button class="qt-btn-save" @click="openEdit(viewDoc);viewOpen=false">
-            <span v-html="icon('edit',13)"></span> Edit
-          </button>
-          <button class="qt-btn-ghost" @click="emailQT(viewDoc)">
-            <span v-html="icon('mail',13)"></span> Email
-          </button>
-          <button class="qt-btn-ghost" @click="printQuote(viewDoc)" title="Print preview">
-            🖨 Print
-          </button>
-          <button v-if="viewDoc.status!=='Accepted' && viewDoc.status!=='Converted'" class="qt-btn-ghost" @click="markStatus(viewDoc,'Accepted')">✓ Accept</button>
-          <button v-if="viewDoc.status!=='Declined' && viewDoc.status!=='Converted'" class="qt-btn-ghost" @click="markStatus(viewDoc,'Declined')">✕ Decline</button>
-          <button v-if="canConvert(viewDoc)" class="qt-btn-primary" @click="openConvertModal(viewDoc)">Convert →</button>
-          <button class="qt-btn-danger" @click="deleteQT(viewDoc)">Delete</button>
-        </div>
-      </template>
-    </div>
+        </div><!-- /inv-view-body -->
+      </div><!-- /inv-drawer-panel -->
+    </div><!-- /inv-drawer-bg -->
 
     <!-- ── Convert modal ── -->
-    <div v-if="convertModal.open" class="qt-overlay" @click.self="convertModal.open=false" style="z-index:60"></div>
-    <div v-if="convertModal.open" class="qt-apply-dialog">
-      <div class="qt-dheader" style="background:linear-gradient(135deg,#1e3a5f,#1a6ef7);color:#fff;height:auto;padding:14px 18px">
-        <div style="color:#fff;font-weight:700">Convert Quotation — {{ convertModal.qtName }}</div>
-        <button class="qt-dclose" style="color:#fff" @click="convertModal.open=false"><span v-html="icon('x',16)"></span></button>
-      </div>
-      <div class="qt-dbody">
-        <div style="font-size:13px;color:#374151;margin-bottom:8px">Choose how to convert this quote:</div>
-        <div class="qt-convert-options">
-          <button class="qt-convert-card" @click="convertModal.target='SO'" :class="{active:convertModal.target==='SO'}">
-            <div class="qt-convert-icon" style="background:#dcfce7;color:#16a34a">SO</div>
-            <div>
-              <div style="font-weight:700">Sales Order</div>
-              <div style="font-size:11.5px;color:#6b7280">Track fulfillment + delivery separately</div>
-            </div>
+    <div v-if="convertModal.open" class="rp-backdrop" @click.self="convertModal.open=false">
+      <div class="rp-dialog" style="max-width:520px">
+        <div class="rp-dialog-header">
+          <span class="rp-dialog-title">Convert Quotation — {{ convertModal.qtName }}</span>
+          <button class="rp-close-btn" @click="convertModal.open=false">✕</button>
+        </div>
+        <div class="rp-body">
+          <div style="font-size:13px;color:#374151;margin-bottom:12px">Choose how to convert this quote:</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <button style="background:#fff;border:2px solid;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s"
+              :style="convertModal.target==='SO'?'border-color:#1a6ef7;background:#eff6ff;box-shadow:0 0 0 4px rgba(26,110,247,.1)':'border-color:#e5e7eb'"
+              @click="convertModal.target='SO'">
+              <div style="width:40px;height:40px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:14px;background:#dcfce7;color:#16a34a;flex-shrink:0">SO</div>
+              <div>
+                <div style="font-weight:700">Sales Order</div>
+                <div style="font-size:11.5px;color:#6b7280">Track fulfillment + delivery separately</div>
+              </div>
+            </button>
+            <button style="background:#fff;border:2px solid;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s"
+              :style="convertModal.target==='Invoice'?'border-color:#1a6ef7;background:#eff6ff;box-shadow:0 0 0 4px rgba(26,110,247,.1)':'border-color:#e5e7eb'"
+              @click="convertModal.target='Invoice'">
+              <div style="width:40px;height:40px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:14px;background:#dbeafe;color:#1a6ef7;flex-shrink:0">$</div>
+              <div>
+                <div style="font-weight:700">Sales Invoice</div>
+                <div style="font-size:11.5px;color:#6b7280">Bill the customer immediately</div>
+              </div>
+            </button>
+          </div>
+          <div v-if="convertModal.target==='SO'" style="margin-top:14px">
+            <label class="inv-lbl">Delivery Date</label>
+            <input v-model="convertModal.deliveryDate" type="date" class="inv-fi" />
+          </div>
+          <div v-if="convertModal.target==='Invoice'" style="margin-top:14px">
+            <label class="inv-lbl">Due Date</label>
+            <input v-model="convertModal.dueDate" type="date" class="inv-fi" />
+          </div>
+        </div>
+        <div class="rp-footer">
+          <button class="rp-btn rp-btn-outline" @click="convertModal.open=false" :disabled="convertModal.saving">Cancel</button>
+          <button class="rp-btn" :disabled="convertModal.saving||!convertModal.target" @click="submitConvert">
+            {{ convertModal.saving ? 'Converting…' : (convertModal.target ? `Convert to ${convertModal.target==='SO' ? 'Sales Order' : 'Invoice'}` : 'Choose target') }}
           </button>
-          <button class="qt-convert-card" @click="convertModal.target='Invoice'" :class="{active:convertModal.target==='Invoice'}">
-            <div class="qt-convert-icon" style="background:#dbeafe;color:#1a6ef7">$</div>
-            <div>
-              <div style="font-weight:700">Sales Invoice</div>
-              <div style="font-size:11.5px;color:#6b7280">Bill the customer immediately</div>
-            </div>
-          </button>
         </div>
-        <div v-if="convertModal.target==='SO'" class="qt-field" style="margin-top:12px">
-          <label class="qt-label">Delivery Date</label>
-          <input v-model="convertModal.deliveryDate" type="date" class="qt-input" />
-        </div>
-        <div v-if="convertModal.target==='Invoice'" class="qt-field" style="margin-top:12px">
-          <label class="qt-label">Due Date</label>
-          <input v-model="convertModal.dueDate" type="date" class="qt-input" />
-        </div>
-      </div>
-      <div class="qt-dfooter">
-        <button class="qt-btn-ghost" @click="convertModal.open=false" :disabled="convertModal.saving">Cancel</button>
-        <button class="qt-btn-primary" :disabled="convertModal.saving||!convertModal.target" @click="submitConvert">
-          {{ convertModal.saving ? 'Converting…' : (convertModal.target ? `Convert to ${convertModal.target==='SO' ? 'Sales Order' : 'Invoice'}` : 'Choose target') }}
-        </button>
       </div>
     </div>
 
-  </div>
+  </Teleport>
+</div>
 </template>
+
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
@@ -682,14 +924,6 @@ const { toast } = useToast();
 const route = useRoute();
 const { confirm } = useConfirm();
 const { printDoc } = useLivePreview();
-function printQT(d) {
-  printDoc(d, {
-    title: "QUOTATION",
-    partyLabel: "Customer",
-    partyField: "customer_name",
-    companyName: d?.company || "",
-  });
-}
 const { openEmail } = useEmailDialog();
 
 // ── Tabs ──────────────────────────────────────────────────────────────
@@ -704,7 +938,7 @@ const tabs = [
   { key: "converted", label: "Converted" },
 ];
 
-// ── Templates & branding (mirrors Invoice) ───────────────────────────
+// ── Templates & branding ─────────────────────────────────────────────
 const TEMPLATES = [
   { key: "classic", label: "Classic" },
   { key: "modern",  label: "Modern"  },
@@ -714,7 +948,7 @@ const CURRENCY_SYMBOLS = {
   INR: "₹", USD: "$", EUR: "€", GBP: "£", AED: "د.إ", SGD: "S$", AUD: "A$", CAD: "C$",
 };
 
-// ── Tax presets — exactly like Invoice ───────────────────────────────
+// ── Tax presets ──────────────────────────────────────────────────────
 const TAX_PRESETS = [
   { label: "GST 5%",   rows: [{ desc: "CGST @ 2.5%", rate: 2.5 }, { desc: "SGST @ 2.5%", rate: 2.5 }] },
   { label: "GST 12%",  rows: [{ desc: "CGST @ 6%",   rate: 6   }, { desc: "SGST @ 6%",   rate: 6   }] },
@@ -735,9 +969,12 @@ const showPreview     = ref(false);
 const selectedTemplate = ref("modern");
 const brandColor      = ref("#1a6ef7");
 const logoUrl         = ref("");
+const logoUploading   = ref(false);
 const drawerOpen  = ref(false);
 const drawerSaving = ref(false);
 const editingName = ref("");
+const moreActionsOpen = ref(false);
+const collapsed = reactive({ branding: false, details: false, billing: true, lines: false, notes: true });
 const viewOpen    = ref(false);
 const viewDoc     = ref(null);
 const viewTab     = ref("details");
@@ -748,7 +985,7 @@ const conv        = reactive({ sales_orders: [], sales_invoices: [] });
 const customers   = ref([]);
 const items       = ref([]);
 const lines       = ref([]);
-const taxRows     = ref([]);          // ← replaces single tax_rate
+const taxRows     = ref([]);
 const uomList     = ref([]);
 const taxAccountHead = ref("");
 const sortCol     = ref("transaction_date");
@@ -802,9 +1039,10 @@ const form = reactive({
   billing_address: "",
   currency: "INR",
   exchange_rate: 1,
+  logo: "",  // stores the Frappe file URL from logo_attach field
 });
 
-// ── Blank line — matches Invoice exactly ─────────────────────────────
+// ── Blank line ───────────────────────────────────────────────────────
 let _id = 1;
 function blankLine() {
   return {
@@ -839,13 +1077,13 @@ function effectiveStatus(q) {
 function displayStatus(q) { return effectiveStatus(q).toUpperCase(); }
 function badgeClass(q) {
   const s = effectiveStatus(q);
-  if (s === "Draft")                         return "qt-bdg-grey";
-  if (s === "Sent")                          return "qt-bdg-blue";
-  if (s === "Accepted")                      return "qt-bdg-green";
-  if (s === "Converted")                     return "qt-bdg-purple";
-  if (s === "Declined" || s === "Lost")      return "qt-bdg-red";
-  if (s === "Expired")                       return "qt-bdg-red";
-  return "qt-bdg-grey";
+  if (s === "Draft")                         return "status-draft";
+  if (s === "Sent")                          return "status-unpaid";
+  if (s === "Accepted")                      return "status-paid";
+  if (s === "Converted")                     return "status-paid";
+  if (s === "Declined" || s === "Lost")      return "status-cancelled";
+  if (s === "Expired")                       return "status-overdue";
+  return "status-draft";
 }
 function headerBg(q) {
   const s = effectiveStatus(q);
@@ -856,9 +1094,6 @@ function headerBg(q) {
   if (s === "Sent")      return "linear-gradient(135deg,#1e3a5f,#1a6ef7)";
   return "linear-gradient(135deg,#1e3a5f,#2563eb)";
 }
-function pillCls(k) {
-  return { draft:"pc-muted", sent:"pc-blue", accepted:"pc-green", declined:"pc-red", expired:"pc-red", converted:"pc-purple" }[k] || "pc-muted";
-}
 function sortArrowTxt(col) {
   if (sortCol.value !== col) return "";
   return sortDir.value === "asc" ? "↑" : "↓";
@@ -867,6 +1102,40 @@ function canConvert(q) {
   const s = effectiveStatus(q);
   return s !== "Converted" && s !== "Declined" && s !== "Lost";
 }
+
+// ── Timeline ──────────────────────────────────────────────────────────
+const timelineSteps = computed(() => {
+  const q = viewDoc.value;
+  if (!q) return [];
+  const s = effectiveStatus(q);
+  if (s === "Declined" || s === "Lost") {
+    return [
+      { key: "draft", label: "Draft", done: true },
+      { key: "sent",  label: "Sent",  done: true },
+      { key: "end",   label: "Declined", danger: true },
+    ];
+  }
+  if (s === "Expired") {
+    return [
+      { key: "draft", label: "Draft", done: true },
+      { key: "sent",  label: "Sent",  done: true },
+      { key: "end",   label: "Expired", danger: true },
+    ];
+  }
+  return [
+    { key: "draft",     label: "Draft",     done: true },
+    { key: "sent",      label: "Sent",      done: s !== "Draft" },
+    { key: "accepted",  label: "Accepted",  done: s === "Accepted" || s === "Converted" },
+    { key: "converted", label: "Converted", done: s === "Converted" },
+  ];
+});
+
+const tlProgressWidth = computed(() => {
+  const steps = timelineSteps.value;
+  if (!steps.length) return "0%";
+  const doneCount = steps.filter(s => s.done || s.danger).length;
+  return Math.round(((doneCount - 1) / (steps.length - 1)) * 100) + "%";
+});
 
 // ── Load list ─────────────────────────────────────────────────────────
 async function load() {
@@ -957,18 +1226,18 @@ const _qtYM  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d
 const _qtLYM = () => { const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
 const _qtTr  = (a,b) => { if(!b&&!a) return {pct:0,up:true}; if(!b) return {pct:100,up:true}; const p=Math.round((a-b)/b*100); return {pct:Math.abs(p),up:p>=0}; };
 
-// ── KPI card trends (dynamic vs last month) ───────────────────────────
+// ── KPI card trends ───────────────────────────────────────────────────
 const qtTrends = computed(() => {
   const thisYM = _qtYM(), lastYM = _qtLYM();
   const thisAll = list.value.filter(q => (q.transaction_date||'').startsWith(thisYM));
   const lastAll = list.value.filter(q => (q.transaction_date||'').startsWith(lastYM));
   const es = (q) => effectiveStatus(q).toLowerCase();
   return {
-    total:     _qtTr(thisAll.length,                                                          lastAll.length),
-    draft:     _qtTr(thisAll.filter(q=>es(q)==='draft').length,                               lastAll.filter(q=>es(q)==='draft').length),
-    sent:      _qtTr(thisAll.filter(q=>es(q)==='sent').length,                                lastAll.filter(q=>es(q)==='sent').length),
-    converted: _qtTr(thisAll.filter(q=>es(q)==='converted').length,                           lastAll.filter(q=>es(q)==='converted').length),
-    expired:   _qtTr(thisAll.filter(q=>es(q)==='expired').length,                             lastAll.filter(q=>es(q)==='expired').length),
+    total:     _qtTr(thisAll.length,                                lastAll.length),
+    draft:     _qtTr(thisAll.filter(q=>es(q)==='draft').length,     lastAll.filter(q=>es(q)==='draft').length),
+    sent:      _qtTr(thisAll.filter(q=>es(q)==='sent').length,      lastAll.filter(q=>es(q)==='sent').length),
+    converted: _qtTr(thisAll.filter(q=>es(q)==='converted').length, lastAll.filter(q=>es(q)==='converted').length),
+    expired:   _qtTr(thisAll.filter(q=>es(q)==='expired').length,   lastAll.filter(q=>es(q)==='expired').length),
   };
 });
 
@@ -979,19 +1248,15 @@ const conversionRate = computed(() => {
   return ((counts.value.converted / list.value.length) * 100).toFixed(0) + "%";
 });
 const avgQuoteValue = computed(() => {
-  const items = list.value.filter(q => q.grand_total > 0);
-  if (!items.length) return 0;
-  return items.reduce((s, q) => s + flt(q.grand_total), 0) / items.length;
+  const itms = list.value.filter(q => q.grand_total > 0);
+  if (!itms.length) return 0;
+  return itms.reduce((s, q) => s + flt(q.grand_total), 0) / itms.length;
 });
 
 function sortBy(col) {
   if (sortCol.value === col)
     sortDir.value = sortDir.value === "asc" ? "desc" : "asc";
   else { sortCol.value = col; sortDir.value = "asc"; }
-}
-function sortArrow(col) {
-  if (sortCol.value !== col) return '<span style="color:#d1d5db">⇅</span>';
-  return sortDir.value === "asc" ? "↑" : "↓";
 }
 
 // ── Selection ─────────────────────────────────────────────────────────
@@ -1014,38 +1279,10 @@ const subtotal  = computed(() => lines.value.reduce((s, l) => s + flt(l.amount),
 const totalTax  = computed(() => taxRows.value.reduce((s, r) => s + flt(r.amount), 0));
 const grandTotal = computed(() => subtotal.value + totalTax.value);
 
-// Auto-recalc tax rows when subtotal changes — exactly like Invoice
 watch(subtotal, () => {
   taxRows.value.forEach(r => {
     r.amount = Math.round(subtotal.value * flt(r.rate) / 100 * 100) / 100;
   });
-});
-
-// ── Timeline ──────────────────────────────────────────────────────────
-const timelineSteps = computed(() => {
-  const q = viewDoc.value;
-  if (!q) return [];
-  const s = effectiveStatus(q);
-  if (s === "Declined" || s === "Lost") {
-    return [
-      { key: "draft", label: "Draft", done: true },
-      { key: "sent",  label: "Sent",  done: true },
-      { key: "end",   label: "Declined", danger: true, current: true },
-    ];
-  }
-  if (s === "Expired") {
-    return [
-      { key: "draft", label: "Draft", done: true },
-      { key: "sent",  label: "Sent",  done: true },
-      { key: "end",   label: "Expired", danger: true, current: true },
-    ];
-  }
-  return [
-    { key: "draft",     label: "Draft",     done: true },
-    { key: "sent",      label: "Sent",      done: s !== "Draft",     current: s === "Sent" },
-    { key: "accepted",  label: "Accepted",  done: s === "Accepted" || s === "Converted", current: s === "Accepted" },
-    { key: "converted", label: "Converted", done: s === "Converted", current: s === "Converted" },
-  ];
 });
 
 // ── Fetch helpers ─────────────────────────────────────────────────────
@@ -1079,13 +1316,9 @@ async function fetchItems(q = "") {
   } catch { items.value = []; }
 }
 
-// ── Line item helpers — mirrors Invoice exactly ───────────────────────
-function addLine() {
-  lines.value.push(blankLine());
-}
-function removeLine(id) {
-  lines.value = lines.value.filter(l => l.id !== id);
-}
+// ── Line item helpers ─────────────────────────────────────────────────
+function addLine() { lines.value.push(blankLine()); }
+function removeLine(id) { lines.value = lines.value.filter(l => l.id !== id); }
 function calcLine(line) {
   const base = Math.round(flt(line.qty) * flt(line.rate) * 100) / 100;
   const disc = Math.round(base * flt(line.discount_percentage) / 100 * 100) / 100;
@@ -1093,13 +1326,9 @@ function calcLine(line) {
   line.amount = base - disc;
 }
 
-// Fires when user picks an item from SearchableSelect
-// mirrors Invoice's onItemChange
 async function onItemSelect(line, opt) {
   const code = opt?.value ?? opt;
   line.item_code = code;
-
-  // Fill from already-loaded items list
   const found = items.value.find(i => i.name === code || i.value === code);
   if (found) {
     line.item_name  = found.item_name || found.label || code;
@@ -1109,8 +1338,6 @@ async function onItemSelect(line, opt) {
     if (found.description) line.description = found.description;
     calcLine(line);
   }
-
-  // Fetch full Item doc for any fields not in the list
   if (code) {
     try {
       const doc = await apiGet("Item", code);
@@ -1126,34 +1353,25 @@ async function onItemSelect(line, opt) {
   }
 }
 
-// ── Tax helpers — mirrors Invoice exactly ─────────────────────────────
+// ── Tax helpers ───────────────────────────────────────────────────────
 function addTaxRow() {
   taxRows.value.push({
-    id: Date.now(),
-    description: "",
-    rate: 0,
-    account_head: taxAccountHead.value,
-    amount: 0,
+    id: Date.now(), description: "", rate: 0,
+    account_head: taxAccountHead.value, amount: 0,
   });
-}
-function removeTaxRow(id) {
-  taxRows.value = taxRows.value.filter(r => r.id !== id);
 }
 function recalcTax(tx) {
   tx.amount = Math.round(subtotal.value * flt(tx.rate) / 100 * 100) / 100;
 }
 function applyTaxPreset(preset) {
   taxRows.value = preset.rows.map((r, i) => ({
-    id: Date.now() + i,
-    description:  r.desc,
-    rate:         r.rate,
+    id: Date.now() + i, description: r.desc, rate: r.rate,
     account_head: taxAccountHead.value,
-    amount:       Math.round(subtotal.value * r.rate / 100 * 100) / 100,
+    amount: Math.round(subtotal.value * r.rate / 100 * 100) / 100,
   }));
 }
 
-// ── Customer change: auto-fill currency & address ─────────────────────
-// ── Customer change: auto-fill address, currency (mirrors Invoice) ────
+// ── Customer change ───────────────────────────────────────────────────
 async function onCustomerChange() {
   form.billing_address = "";
   if (!form.customer) return;
@@ -1171,16 +1389,12 @@ async function onCustomerChange() {
         limit: 1,
       }),
     ]);
-
-    // Currency + exchange rate
     if (custDoc?.default_currency) {
       form.currency = custDoc.default_currency;
       form.exchange_rate = form.currency === "INR"
         ? 1
         : (await fetchExchangeRate(form.currency) || 1);
     }
-
-    // Billing address — prefer linked Address record, fall back to Customer doc fields
     const addrSrc = addrs?.[0] || null;
     const addrFields = addrSrc
       ? [addrSrc.address_line1, addrSrc.address_line2, addrSrc.city, addrSrc.state, addrSrc.pincode]
@@ -1192,12 +1406,9 @@ async function onCustomerChange() {
 }
 watch(() => form.customer, (newVal) => { if (newVal) onCustomerChange(); });
 
-// ── Currency change & exchange rate fetch ─────────────────────────────
+// ── Currency change ───────────────────────────────────────────────────
 async function onCurrencyChange() {
-  if (form.currency === "INR") {
-    form.exchange_rate = 1;
-    return;
-  }
+  if (form.currency === "INR") { form.exchange_rate = 1; return; }
   form.exchange_rate = await fetchExchangeRate(form.currency) || form.exchange_rate || 1;
 }
 async function fetchExchangeRate(currency) {
@@ -1213,23 +1424,73 @@ async function fetchExchangeRate(currency) {
   return null;
 }
 
+// ── Logo helpers ──────────────────────────────────────────────────────
+function logoSrc(url) {
+  if (!url) return "";
+  if (url.startsWith("data:") || url.startsWith("http")) return url;
+  const base = (window.frappe?.boot?.site_url || window.location.origin).replace(/\/$/, "");
+  return base + url;
+}
+function removeLogo() {
+  form.logo = "";
+  logoUrl.value = "";
+  saveBranding();
+}
+
+// ── Logo upload ───────────────────────────────────────────────────────
+async function onLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  // Reset input so the same file can be re-selected
+  e.target.value = "";
+  if (file.size > 2 * 1024 * 1024) {
+    toast.error("Logo must be smaller than 2 MB");
+    return;
+  }
+  logoUploading.value = true;
+  try {
+    // Try Frappe file upload
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    fd.append("is_private", "0");
+    fd.append("doctype", "Quotation");
+    const res = await fetch("/api/method/upload_file", { method: "POST", body: fd });
+    if (res.ok) {
+      const json = await res.json();
+      const url = json?.message?.file_url || json?.file_url;
+      if (url) {
+        form.logo = url;
+        logoUrl.value = url;
+        saveBranding();
+        logoUploading.value = false;
+        return;
+      }
+    }
+  } catch {}
+  // Fallback: data URL
+  const reader = new FileReader();
+  reader.onload = ev => {
+    form.logo = ev.target.result;
+    logoUrl.value = ev.target.result;
+    saveBranding();
+    logoUploading.value = false;
+  };
+  reader.readAsDataURL(file);
+}
+
 // ── Open New ──────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
+  moreActionsOpen.value = false;
+  Object.assign(collapsed, { branding: false, details: false, billing: true, lines: false, notes: true });
   Object.assign(form, {
-    customer:         "",
-    transaction_date: todayStr(),
-    valid_till:       validTillDefault(),
-    title:            "",
-    terms:            "",
-    remarks:          "",
-    billing_address:  "",
-    currency:         "INR",
-    exchange_rate:    1,
+    customer: "", transaction_date: todayStr(), valid_till: validTillDefault(),
+    title: "", terms: "", remarks: "", billing_address: "",
+    currency: "INR", exchange_rate: 1, logo: "",
   });
   showPreview.value = false;
-  lines.value    = [blankLine()];
-  taxRows.value  = [];
+  lines.value = [blankLine()];
+  taxRows.value = [];
   fetchCustomers("");
   fetchItems("");
   drawerOpen.value = true;
@@ -1238,164 +1499,110 @@ function openNew() {
 // ── Open Edit ─────────────────────────────────────────────────────────
 async function openEdit(q) {
   editingName.value = q.name;
+  moreActionsOpen.value = false;
+  Object.assign(collapsed, { branding: false, details: false, billing: true, lines: false, notes: true });
   Object.assign(form, {
-    customer:         q.customer         || "",
-    transaction_date: q.transaction_date || todayStr(),
-    valid_till:       q.valid_till       || validTillDefault(),
-    title:            q.title            || "",
-    terms:            q.terms            || "",
-    currency:         q.currency         || "INR",
-    exchange_rate:    q.exchange_rate     || 1,
+    customer: q.customer || "", transaction_date: q.transaction_date || todayStr(),
+    valid_till: q.valid_till || validTillDefault(), title: q.title || "",
+    terms: q.terms || "", currency: q.currency || "INR",
+    exchange_rate: q.exchange_rate || 1, remarks: "", billing_address: "",
+    logo: q.logo_attach || q.logo || "",
   });
-  // seed with one blank while loading
-  lines.value   = [blankLine()];
+  lines.value = [blankLine()];
   taxRows.value = [];
   fetchCustomers("");
   fetchItems("");
   drawerOpen.value = true;
-
   try {
     const doc = await apiGet("Quotation", q.name);
-
-    // Map items — mirrors Invoice openEdit exactly
     if (doc?.items?.length) {
-      lines.value = doc.items.map((it, i) => ({
-        id:                   _id++,
-        item_code:            it.item_code            || "",
-        item_name:            it.item_name            || it.item_code || "",
-        description:          it.description          || "",
-        hsn_code:             it.hsn_code            || "",
-        qty:                  flt(it.qty)             || 1,
-        rate:                 flt(it.rate)            || 0,
-        uom:                  it.uom                  || "Nos",
-        discount_percentage:  flt(it.discount_percentage) || 0,
-        discount_amount:      flt(it.discount_amount)     || 0,
-        amount:               flt(it.amount)              || 0,
+      lines.value = doc.items.map((it) => ({
+        id: _id++, item_code: it.item_code || "", item_name: it.item_name || it.item_code || "",
+        description: it.description || "", hsn_code: it.hsn_code || "",
+        qty: flt(it.qty) || 1, rate: flt(it.rate) || 0, uom: it.uom || "Nos",
+        discount_percentage: flt(it.discount_percentage) || 0,
+        discount_amount: flt(it.discount_amount) || 0, amount: flt(it.amount) || 0,
       }));
     }
-
-    // Map taxes — mirrors Invoice openEdit exactly
     if (doc?.taxes?.length) {
       taxRows.value = doc.taxes.map((tx, i) => ({
-        id:           Date.now() + 100 + i,
-        description:  tx.description  || "",
-        rate:         flt(tx.rate)    || 0,
-        account_head: tx.account_head || taxAccountHead.value,
-        amount:       flt(tx.tax_amount) || flt(tx.amount) || 0,
+        id: Date.now() + 100 + i, description: tx.description || "",
+        rate: flt(tx.rate) || 0, account_head: tx.account_head || taxAccountHead.value,
+        amount: flt(tx.tax_amount) || flt(tx.amount) || 0,
       }));
     }
-
-    if (doc?.terms)            form.terms           = doc.terms;
-    if (doc?.title)            form.title           = doc.title;
-    if (doc?.currency)         form.currency        = doc.currency;
-    if (doc?.exchange_rate)    form.exchange_rate   = flt(doc.exchange_rate) || 1;
-    if (doc?.remarks)          form.remarks         = doc.remarks;
-    if (doc?.billing_address)  form.billing_address = doc.billing_address;
+    if (doc?.terms)           form.terms           = doc.terms;
+    if (doc?.title)           form.title           = doc.title;
+    if (doc?.currency)        form.currency        = doc.currency;
+    if (doc?.exchange_rate)   form.exchange_rate   = flt(doc.exchange_rate) || 1;
+    if (doc?.remarks)         form.remarks         = doc.remarks;
+    if (doc?.billing_address) form.billing_address = doc.billing_address;
+    if (doc?.logo_attach)     form.logo            = doc.logo_attach;
   } catch {}
 }
 
 // ── Open View ─────────────────────────────────────────────────────────
 async function openView(q) {
-  viewDoc.value     = q;
-  viewOpen.value    = true;
-  viewTab.value     = "details";
-  viewLoading.value = true;
-  viewItems.value   = [];
-  conv.sales_orders   = [];
-  conv.sales_invoices = [];
-
-  // Fetch full doc and items in parallel
+  viewDoc.value = q; viewOpen.value = true; viewTab.value = "details";
+  viewLoading.value = true; viewItems.value = [];
+  conv.sales_orders = []; conv.sales_invoices = [];
   try {
     const doc = await apiGet("Quotation", q.name);
     const merged = doc?.message || doc || {};
     viewDoc.value = { ...q, ...merged };
-
-    // Try doc.items first; if empty fetch child table directly
-    let items = merged.items || [];
-    if (!items.length) {
+    let itms = merged.items || [];
+    if (!itms.length) {
       try {
-        items = await apiList("Quotation Item", {
+        itms = await apiList("Quotation Item", {
           fields: ["item_code","item_name","description","qty","rate","amount","uom","discount_percentage","hsn_code"],
-          filters: [["parent","=",q.name]],
-          limit: 200,
-          order: "idx asc",
+          filters: [["parent","=",q.name]], limit: 200, order: "idx asc",
         }) || [];
       } catch {}
     }
-    viewItems.value = items;
-  } catch (e) {
-    console.warn("openView doc fetch failed:", e);
-  }
-
-  // Fetch conversions independently — failure is non-fatal
+    viewItems.value = itms;
+  } catch (e) { console.warn("openView doc fetch failed:", e); }
   try {
     const convData = await apiGET("zoho_books_clone.api.docs.get_quote_conversions", { quotation_name: q.name });
     if (convData) {
-      conv.sales_orders   = convData.sales_orders   || [];
+      conv.sales_orders = convData.sales_orders || [];
       conv.sales_invoices = convData.sales_invoices || [];
     }
   } catch {}
-
   viewLoading.value = false;
 }
 
 // ── Save ──────────────────────────────────────────────────────────────
 async function saveQT(newStatus) {
-  if (!form.customer)
-    return toast.error("Customer is required");
+  if (!form.customer) return toast.error("Customer is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0))
     return toast.error("At least one item required");
-
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
-
-    // Items — mirrors Invoice saveInvoice exactly
-    const qtItems = lines.value
-      .filter(l => l.item_code)
-      .map(l => ({
-        doctype:              "Quotation Item",
-        item_code:            l.item_code,
-        item_name:            l.item_name || l.item_code,
-        description:          l.description || l.item_name || l.item_code,
-        qty:                  flt(l.qty) || 1,
-        rate:                 flt(l.rate),
-        uom:                  l.uom || "Nos",
-        amount:               flt(l.amount),
-        hsn_code:             l.hsn_code || "",
-        discount_percentage:  flt(l.discount_percentage) || 0,
-      }));
-
-    // Taxes — mirrors Invoice saveInvoice exactly
-    const taxes = taxRows.value
-      .filter(r => r.rate > 0)
-      .map(r => ({
-        doctype:      "Sales Taxes and Charges",
-        charge_type:  "On Net Total",
-        account_head: r.account_head || taxAccountHead.value,
-        description:  r.description,
-        rate:         r.rate,
-      }));
-
+    const qtItems = lines.value.filter(l => l.item_code).map(l => ({
+      doctype: "Quotation Item", item_code: l.item_code,
+      item_name: l.item_name || l.item_code,
+      description: l.description || l.item_name || l.item_code,
+      qty: flt(l.qty) || 1, rate: flt(l.rate), uom: l.uom || "Nos",
+      amount: flt(l.amount), hsn_code: l.hsn_code || "",
+      discount_percentage: flt(l.discount_percentage) || 0,
+    }));
+    const taxes = taxRows.value.filter(r => r.rate > 0).map(r => ({
+      doctype: "Sales Taxes and Charges", charge_type: "On Net Total",
+      account_head: r.account_head || taxAccountHead.value,
+      description: r.description, rate: r.rate,
+    }));
     const doc = {
-      doctype:          "Quotation",
-      company,
-      party_name:       form.customer,
-      customer:         form.customer,
-      transaction_date: form.transaction_date,
-      valid_till:       form.valid_till          || null,
-      title:            form.title               || "",
-      status:           newStatus                || "Draft",
-      terms:            form.terms               || "",
-      remarks:          form.remarks             || "",
-      billing_address:  form.billing_address     || "",
-      currency:         form.currency            || "INR",
-      exchange_rate:    form.currency === "INR" ? 1 : (flt(form.exchange_rate) || 1),
-      items:            qtItems,
-      taxes,
+      doctype: "Quotation", company, party_name: form.customer,
+      customer: form.customer, transaction_date: form.transaction_date,
+      valid_till: form.valid_till || null, title: form.title || "",
+      status: newStatus || "Draft", terms: form.terms || "",
+      remarks: form.remarks || "", billing_address: form.billing_address || "",
+      currency: form.currency || "INR",
+      exchange_rate: form.currency === "INR" ? 1 : (flt(form.exchange_rate) || 1),
+      items: qtItems, taxes,
     };
     if (editingName.value) doc.name = editingName.value;
-
     const saved = await apiSave(doc);
     toast.success(`Quotation ${saved?.name || ""} saved`);
     drawerOpen.value = false;
@@ -1410,20 +1617,16 @@ async function saveQT(newStatus) {
 // ── Actions ───────────────────────────────────────────────────────────
 async function emailQT(q) {
   const ok = await openEmail({
-    doctype:  "Quotation", name: q.name, docLabel: `Quotation ${q.name}`,
+    doctype: "Quotation", name: q.name, docLabel: `Quotation ${q.name}`,
     getDefaultsEndpoint: "zoho_books_clone.api.docs.get_quote_email_defaults",
-    sendEndpoint:        "zoho_books_clone.api.docs.send_quote_email",
-    paramKey:            "quotation_name",
+    sendEndpoint: "zoho_books_clone.api.docs.send_quote_email",
+    paramKey: "quotation_name",
   });
   if (ok) await load();
 }
 
 async function markStatus(q, status) {
-  const epMap = {
-    Sent:     "mark_quote_sent",
-    Accepted: "mark_quote_accepted",
-    Declined: "mark_quote_declined",
-  };
+  const epMap = { Sent: "mark_quote_sent", Accepted: "mark_quote_accepted", Declined: "mark_quote_declined" };
   const ep = epMap[status];
   if (!ep) return;
   try {
@@ -1448,8 +1651,8 @@ async function submitConvert() {
       ? "zoho_books_clone.api.docs.convert_quote_to_sales_order"
       : "zoho_books_clone.api.docs.convert_quote_to_invoice";
     const payload = { quotation_name: convertModal.qtName };
-    if (convertModal.target === "SO"      && convertModal.deliveryDate) payload.delivery_date = convertModal.deliveryDate;
-    if (convertModal.target === "Invoice" && convertModal.dueDate)      payload.due_date      = convertModal.dueDate;
+    if (convertModal.target === "SO" && convertModal.deliveryDate) payload.delivery_date = convertModal.deliveryDate;
+    if (convertModal.target === "Invoice" && convertModal.dueDate) payload.due_date = convertModal.dueDate;
     const r = await apiPOST(ep, payload);
     const created = r?.sales_order || r?.sales_invoice;
     toast.success(`Converted → ${convertModal.target === "SO" ? "Sales Order" : "Invoice"}: ${created}`);
@@ -1472,9 +1675,7 @@ async function deleteQT(q) {
 
 // ── Bulk actions ──────────────────────────────────────────────────────
 async function bulkDelete() {
-  const drafts = sorted.value.filter(q =>
-    selected.value.has(q.name) && (q.status === "Draft" || !q.status)
-  );
+  const drafts = sorted.value.filter(q => selected.value.has(q.name) && (q.status === "Draft" || !q.status));
   if (!drafts.length) { toast.info("No draft quotations selected"); return; }
   if (!await confirm({ title: "Delete Drafts", body: `Delete ${drafts.length} draft quotation(s)?`, okLabel: "Delete" })) return;
   for (const q of drafts) { try { await apiDelete("Quotation", q.name); } catch {} }
@@ -1483,9 +1684,7 @@ async function bulkDelete() {
   await load();
 }
 async function bulkMarkSent() {
-  const targets = sorted.value.filter(q =>
-    selected.value.has(q.name) && effectiveStatus(q) === "Draft"
-  );
+  const targets = sorted.value.filter(q => selected.value.has(q.name) && effectiveStatus(q) === "Draft");
   if (!targets.length) { toast.info("Select drafts to mark as sent"); return; }
   let done = 0;
   for (const q of targets) {
@@ -1512,10 +1711,10 @@ async function bulkEmail() {
   let sent = 0;
   for (const q of subs) {
     const ok = await openEmail({
-      doctype:  "Quotation", name: q.name, docLabel: `Quotation ${q.name}`,
+      doctype: "Quotation", name: q.name, docLabel: `Quotation ${q.name}`,
       getDefaultsEndpoint: "zoho_books_clone.api.docs.get_quote_email_defaults",
-      sendEndpoint:        "zoho_books_clone.api.docs.send_quote_email",
-      paramKey:            "quotation_name",
+      sendEndpoint: "zoho_books_clone.api.docs.send_quote_email",
+      paramKey: "quotation_name",
     });
     if (ok) sent++;
   }
@@ -1528,8 +1727,8 @@ function exportCSV() {
     ? sorted.value.filter(q => selected.value.has(q.name))
     : sorted.value;
   const head = ["Quote #","Customer","Date","Valid Till","Status","Amount"];
-  const esc  = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
-  const out  = [head.map(esc).join(",")];
+  const esc = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
+  const out = [head.map(esc).join(",")];
   for (const q of rows) {
     out.push([
       q.name, q.customer_name || q.customer,
@@ -1538,8 +1737,8 @@ function exportCSV() {
     ].map(esc).join(","));
   }
   const blob = new Blob(["﻿" + out.join("\n")], { type: "text/csv;charset=utf-8" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
   a.href = url; a.download = `quotations_${todayStr()}.csv`;
   a.click(); URL.revokeObjectURL(url);
   toast.success(`CSV exported — ${rows.length} quote(s)`);
@@ -1566,21 +1765,21 @@ function loadBranding() {
 
 // ── Live preview ───────────────────────────────────────────────────────
 const previewData = computed(() => ({
-  name:          editingName.value || "QT-PREVIEW",
-  customer:      form.customer,
+  name: editingName.value || "QT-PREVIEW",
+  customer: form.customer,
   customer_name: customers.value.find(c => c.name === form.customer)?.customer_name || form.customer,
   transaction_date: form.transaction_date,
-  valid_till:    form.valid_till,
-  title:         form.title,
+  valid_till: form.valid_till,
+  title: form.title,
   billing_address: form.billing_address,
-  currency:      form.currency,
-  items:         lines.value.filter(l => l.item_code || l.item_name),
-  taxes:         taxRows.value,
-  subtotal:      subtotal.value,
-  totalTax:      totalTax.value,
-  grandTotal:    grandTotal.value,
-  terms:         form.terms,
-  company:       window.__booksCompany || "",
+  currency: form.currency,
+  items: lines.value.filter(l => l.item_code || l.item_name),
+  taxes: taxRows.value,
+  subtotal: subtotal.value,
+  totalTax: totalTax.value,
+  grandTotal: grandTotal.value,
+  terms: form.terms,
+  company: window.__booksCompany || "",
 }));
 
 const previewHtml = computed(() =>
@@ -1678,31 +1877,23 @@ ${d.terms ? `<div class="fn"><div class="lbl">Notes</div><p>${d.terms}</p></div>
 }
 
 function printQuote(data) {
-  // For view drawer, build data object from the viewed doc
   if (data?.doctype === "Quotation" || data?.transaction_date) {
     const doc = data;
     data = {
-      name:             doc.name,
-      customer:         doc.customer,
-      customer_name:    doc.customer_name || doc.customer,
-      transaction_date: doc.transaction_date,
-      valid_till:       doc.valid_till,
-      title:            doc.title || "",
-      billing_address:  doc.billing_address || doc.address_display || "",
-      currency:         doc.currency || "INR",
-      items:            doc.items || [],
-      taxes:            doc.taxes || [],
-      subtotal:         flt(doc.grand_total) - flt(doc.total_taxes_and_charges),
-      totalTax:         flt(doc.total_taxes_and_charges),
-      grandTotal:       flt(doc.grand_total),
-      terms:            doc.terms || "",
-      company:          doc.company || window.__booksCompany || "",
+      name: doc.name, customer: doc.customer,
+      customer_name: doc.customer_name || doc.customer,
+      transaction_date: doc.transaction_date, valid_till: doc.valid_till,
+      title: doc.title || "", billing_address: doc.billing_address || doc.address_display || "",
+      currency: doc.currency || "INR", items: doc.items || [], taxes: doc.taxes || [],
+      subtotal: flt(doc.grand_total) - flt(doc.total_taxes_and_charges),
+      totalTax: flt(doc.total_taxes_and_charges), grandTotal: flt(doc.grand_total),
+      terms: doc.terms || "", company: doc.company || window.__booksCompany || "",
     };
   }
   const html = renderQuote(data, selectedTemplate.value, brandColor.value, logoUrl.value);
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url  = URL.createObjectURL(blob);
-  const win  = window.open(url, "_blank", "width=820,height=1060,scrollbars=yes");
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank", "width=820,height=1060,scrollbars=yes");
   if (!win) { URL.revokeObjectURL(url); toast.error("Pop-up blocked — allow pop-ups to print"); return; }
   win.addEventListener("load", () => {
     try { win.focus(); win.print(); } catch {}
@@ -1714,6 +1905,7 @@ function printQuote(data) {
 onMounted(async () => {
   await load();
   loadTaxAccount();
+  loadBranding();
   fetchCustomers("");
   fetchItems("");
   (async () => { try { const r = await apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 }); uomList.value = (r||[]).map(x=>x.name); } catch { uomList.value = ["Nos","Kg","Ltr","Mtr","Box","Pcs","Set","Dozen"]; } })();
@@ -1723,391 +1915,23 @@ onMounted(async () => {
   });
 });
 </script>
-<style scoped>
-/* ══ List page — mirrors Invoices exactly ══ */
-.qt-page { display:flex; flex-direction:column; gap:12px; padding:20px 24px; background:#f5f6f8; min-height:100vh; }
 
-/* Toolbar */
-.inv-toolbar { display:flex; align-items:center; justify-content:space-between; padding:16px 24px 12px; gap:12px; flex-wrap:wrap; background:#fff; border-bottom:1px solid #e8ecf0; }
-.inv-heading { font-size:18px; font-weight:700; color:#1a1a2e; margin:0; }
-.inv-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.inv-search-wrap { display:flex; align-items:center; gap:8px; background:#ffffff; border-radius:8px; padding:7px 12px; min-width:240px; }
-.inv-search-input { border:none; background:transparent; outline:none; font:inherit; color:#111827; width:100%; font-size:13px; }
-.inv-btn-primary { display:inline-flex; align-items:center; gap:6px; background:#1a6ef7; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-.inv-btn-primary:hover:not(:disabled) { background:#155fd4; }
-.inv-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
-.inv-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:7px 12px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
-.inv-btn-ghost:hover { background:#f8fafc; }
+<style>
+@import '../styles/list.css';
+@import '../styles/view.css';
+@import '../styles/edit.css';
+@import '../styles/add.css';
 
-/* Summary strip */
-.inv-sum-strip { display:flex; gap:0; background:#fff; border-bottom:1px solid #e8ecf0; }
-.inv-sum-card { flex:1; padding:16px 24px; display:flex; flex-direction:column; gap:4px; border-left:3px solid transparent; }
-.inv-sum-lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; }
-.inv-sum-val { font-size:26px; font-weight:800; color:#1a1a2e; font-family:monospace; }
+/* ── Logo preview (matches Invoices) ── */
+.inv-logo-preview { display:flex; align-items:center; gap:8px; }
+.inv-logo-thumb { height:36px; max-width:120px; object-fit:contain; border:1px solid #e2e8f0; border-radius:6px; background:#f9fafb; padding:2px 6px; }
+.inv-logo-remove { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border:1px solid rgba(220,38,38,.3); background:#fee2e2; color:#dc2626; border-radius:5px; cursor:pointer; flex-shrink:0; }
+.inv-logo-remove:hover { background:#fca5a5; }
 
-/* Filter bar */
-.inv-filter-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 24px; background:#fff; border-bottom:1px solid #e8ecf0; gap:12px; flex-wrap:wrap; }
-.inv-pills { display:flex; gap:6px; flex-wrap:wrap; }
-.inv-pill { padding:5px 14px; border-radius:20px; font-size:12.5px; font-weight:600; border:1px solid #e2e8f0; background:#fff; color:#6b7280; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px; transition:all .12s; }
-.inv-pill:hover { color:#1a6ef7; border-color:#1a6ef7; }
-.inv-pill.active { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
-.inv-pill-count { padding:1px 7px; border-radius:999px; font-size:11px; font-weight:700; background:#f3f4f6; color:#6b7280; }
-.inv-pill.active .inv-pill-count { background:#1a6ef7; color:#fff; }
-.pc-muted  { background:#f3f4f6 !important; color:#6b7280 !important; }
-.pc-blue   { background:#dbeafe !important; color:#1a6ef7 !important; }
-.pc-green  { background:#d1fae5 !important; color:#059669 !important; }
-.pc-red    { background:#fee2e2 !important; color:#dc2626 !important; }
-.pc-purple { background:#ede9fe !important; color:#7c3aed !important; }
-.inv-filter-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.inv-filter-select { border:1px solid #e2e8f0; border-radius:6px; padding:6px 10px; font-size:12.5px; font-family:inherit; outline:none; background:#fff; color:#374151; cursor:pointer; }
-.inv-filter-select:focus { border-color:#1a6ef7; }
+/* ── Spin animation for logo upload ── */
+@keyframes inv-spin { to { transform: rotate(360deg); } }
 
-/* Bulk bar */
-.inv-bulk-bar { display:flex; align-items:center; gap:8px; padding:10px 16px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; flex-wrap:wrap; }
-.inv-bulk-count { font-size:13px; font-weight:700; color:#1a6ef7; margin-right:4px; }
-.inv-bulk-btn { display:inline-flex; align-items:center; gap:5px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:5px 12px; font-size:12.5px; font-weight:600; color:#374151; cursor:pointer; font-family:inherit; }
-.inv-bulk-btn:hover { background:#f8fafc; border-color:#1a6ef7; color:#1a6ef7; }
-.inv-bulk-danger { border-color:rgba(220,38,38,.3); color:#dc2626; }
-.inv-bulk-danger:hover { background:#fee2e2; border-color:#dc2626; color:#dc2626; }
-.inv-bulk-clear { background:none; border:none; font-size:12.5px; color:#6b7280; cursor:pointer; font-family:inherit; padding:4px 8px; border-radius:4px; }
-.inv-bulk-clear:hover { background:#e0e7ff; color:#1a6ef7; }
-
-/* Table */
-.inv-table-wrap { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; overflow-x:auto; }
-.inv-table { width:100%; border-collapse:collapse; font-size:13px; }
-.inv-table thead tr { background:#f8fafc; }
-.inv-table th { padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:11px; font-weight:600; letter-spacing:normal; color:#6b7280; text-align:left; white-space:nowrap; background:#f9f9fb; user-select:none; }
-.inv-table th.sortable { cursor:pointer; }
-.inv-table th.sortable:hover { color:#1a6ef7; }
-.th-check { width:36px; }
-.sort-arrow { font-size:11px; color:#1a6ef7; margin-left:2px; }
-.ta-r { text-align:right !important; }
-.inv-row td { padding:11px 12px; border-bottom:1px solid #f0f2f5; vertical-align:middle; cursor:pointer; color:#374151; }
-.inv-row:last-child td { border-bottom:none; }
-.inv-row:hover td { background:#f8faff; }
-.inv-row.selected td { background:#eaf1ff; }
-.td-check { cursor:default !important; width:36px; }
-.inv-link { font-family:monospace; font-size:12.5px; color:#1a6ef7; font-weight:700; }
-.inv-customer { font-weight:600; color:#1a1a2e; }
-.mono-sm { font-family:monospace; font-size:12.5px; }
-.text-muted { color:#9ca3af; }
-.text-danger { color:#dc2626; font-weight:600; }
-.text-success { color:#059669; font-weight:600; }
-
-/* Status badges */
-.inv-status-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:.03em; white-space:nowrap; }
-.qt-bdg-grey   { background:#f3f4f6; color:#6b7280; }
-.qt-bdg-blue   { background:#dbeafe; color:#1a6ef7; }
-.qt-bdg-green  { background:#d1fae5; color:#059669; }
-.qt-bdg-purple { background:#ede9fe; color:#7c3aed; }
-.qt-bdg-red    { background:#fee2e2; color:#dc2626; }
-.qt-badge-white { background:rgba(255,255,255,.2); color:#fff !important; border:1px solid rgba(255,255,255,.4); }
-
-/* Action buttons */
-.inv-act-btn { background:transparent; border:1px solid #e2e8f0; border-radius:6px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#6b7280; }
-.inv-act-btn:hover { background:#f3f4f6; color:#1a6ef7; border-color:#1a6ef7; }
-.inv-act-conv { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
-.inv-act-conv:hover { background:#dbeafe; }
-
-/* Shimmer skeleton */
-.shimmer-row td { padding:10px 12px; border-bottom:1px solid #f0f2f5; }
-.shimmer { height:13px; border-radius:4px; background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
-@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-/* Empty state */
-.empty-state { text-align:center; padding:56px 20px !important; cursor:default !important; color:#9ca3af; }
-.empty-inner { display:flex; flex-direction:column; align-items:center; gap:8px; }
-.empty-inner p { font-size:14px; color:#9ca3af; margin:0; }
-
-/* Shared button styles also used by drawer footer */
-.qt-btn-primary { display:inline-flex; align-items:center; gap:6px; background:#1a6ef7; color:#fff; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-.qt-btn-primary:hover:not(:disabled) { background:#155fd4; }
-.qt-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
-.qt-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:7px 12px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
-.qt-btn-ghost:hover { background:#f8fafc; }
-.qt-btn-save { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #16a34a; color:#16a34a; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-.qt-btn-save:hover { background:#dcfce7; }
-.qt-btn-save:disabled { opacity:.5; cursor:not-allowed; }
-.qt-btn-danger { display:inline-flex; align-items:center; gap:6px; background:#fef2f2; border:1px solid #dc2626; color:#dc2626; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-.qt-btn-danger:hover { background:#fee2e2; }
-
-.qt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.2); z-index: 40; }
-.qt-drawer { position: fixed; top: 0; right: -600px; bottom: 0; width: 600px; max-width: 96vw; background: #fff; border-left: 1px solid #e5e7eb; box-shadow: -8px 0 24px rgba(0,0,0,.08); z-index: 50; display: flex; flex-direction: column; transition: right .22s ease; }
-.qt-drawer.open { right: 0; }
-.qt-view-drawer { width: 540px; right: -540px; }
-.qt-view-drawer.open { right: 0; }
-.qt-dheader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 60px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
-.qt-dheader-title { font-size: 15px; font-weight: 600; color: #111827; }
-.qt-dclose { background: transparent; border: none; cursor: pointer; color: #6b7280; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; }
-.qt-dbody { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; background: #fff; color: #111827; }
-.qt-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.qt-field { display: flex; flex-direction: column; gap: 4px; }
-.qt-label { font-size: 12px; font-weight: 600; color: #374151; }
-.req { color: #dc2626; }
-.qt-input { width: 100%; box-sizing: border-box; border: 1px solid #e5e7eb; border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; outline: none; background: #fff; color: #111827; }
-.qt-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
-textarea.qt-input { resize: vertical; }
-.qt-section-title { font-size: 12px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; }
-.qt-items-table { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-.qt-items-head { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: #374151; }
-.qt-items-row { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; }
-.qt-add-line { background: transparent; border: none; color: #2563eb; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 8px 12px; display: inline-flex; align-items: center; gap: 6px; }
-.qt-add-line:hover { background: #eff6ff; }
-.qt-rm-line { background: transparent; border: 1px solid #e5e7eb; border-radius: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca3af; }
-.qt-rm-line:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-.qt-totals { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.qt-totals-right { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
-.qt-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 3px 0; }
-.qt-total-row.grand { font-weight: 700; font-size: 14px; color: #111827; border-top: 1px solid #e5e7eb; padding-top: 6px; }
-
-/* Inline timeline — mirrors Invoice */
-.qt-timeline { display:flex; align-items:center; padding:14px 20px; background:#fff; border-bottom:1px solid #e8ecf0; flex-shrink:0; }
-.qt-tl-step { display:flex; align-items:center; gap:6px; flex-shrink:0; }
-.qt-tl-dot { width:22px; height:22px; border-radius:50%; border:2px solid #d1d5db; background:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; color:#9ca3af; flex-shrink:0; transition:all .2s; }
-.qt-tl-step.done .qt-tl-dot { background:#059669; border-color:#059669; color:#fff; }
-.qt-tl-step.danger .qt-tl-dot { background:#dc2626; border-color:#dc2626; color:#fff; }
-.qt-tl-step.current:not(.done):not(.danger) .qt-tl-dot { border-color:#1a6ef7; color:#1a6ef7; }
-.qt-tl-label { font-size:11px; font-weight:600; color:#9ca3af; white-space:nowrap; }
-.qt-tl-step.done .qt-tl-label { color:#059669; }
-.qt-tl-step.danger .qt-tl-label { color:#dc2626; }
-.qt-tl-step.current:not(.done):not(.danger) .qt-tl-label { color:#1a6ef7; }
-.qt-tl-line { flex:1; height:2px; background:#e5e7eb; min-width:16px; }
-.qt-tl-line.done { background:#059669; }
-.qt-tl-line.danger { background:#dc2626; }
-
-.qt-view-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; padding: 20px; flex-shrink: 0; color: #fff; }
-.qt-view-num { font-size: 18px; font-weight: 700; font-family: monospace; color: #fff; }
-.qt-view-sub { font-size: 13px; color: rgba(255,255,255,.8); margin-top: 2px; }
-.qt-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #fff; }
-.qt-vclose { position: absolute; top: 12px; right: 12px; color: #fff; }
-.qt-vclose:hover { background: rgba(255,255,255,.18); color: #fff; }
-.qt-tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: #fff; }
-.qt-tab { background: transparent; border: none; padding: 10px 14px; font: inherit; font-size: 12.5px; font-weight: 600; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; display: inline-flex; align-items: center; gap: 6px; }
-.qt-tab:hover { color: #2563eb; }
-.qt-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
-.qt-tab-count { background: #2563eb; color: #fff; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.qt-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; color: #111827; }
-.qt-meta-lbl { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
-.qt-view-items { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; }
-.qt-view-items-head { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-.qt-view-items-row { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; padding: 10px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 13px; color: #111827; background: #fff; }
-.qt-view-items-row:hover { background: #f8faff; }
-.qt-view-items-row strong { color: #1a1a2e; font-weight: 600; }
-.qt-terms { padding: 10px 12px; background: #f8fafc; border-radius: 6px; color: #374151; }
-.qt-conv-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12.5px; align-items: center; background: #fff; color: #111827; }
-.qt-dfooter { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid #e5e7eb; flex-shrink: 0; flex-wrap: wrap; }
-
-.qt-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 520px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 70; display: flex; flex-direction: column; overflow: hidden; }
-.qt-convert-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.qt-convert-card { background: #fff; border: 2px solid #e5e7eb; border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; font: inherit; text-align: left; transition: all .15s; }
-.qt-convert-card:hover { border-color: #1a6ef7; background: #f0f9ff; }
-.qt-convert-card.active { border-color: #1a6ef7; background: #eff6ff; box-shadow: 0 0 0 4px rgba(26,110,247,.1); }
-.qt-convert-icon { width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
-
-/* ══ Invoice-matching Create/Edit Modal ══ */
-.qt-drawer-bg { position:fixed; inset:0; z-index:8000; background:rgba(15,23,42,.45); display:flex; justify-content:flex-end; backdrop-filter:blur(2px); }
-.qt-drawer-panel { width:720px; max-width:96vw; height:100%; background:#fff; display:flex; flex-direction:column; box-shadow:-20px 0 60px rgba(0,0,0,.15); overflow:hidden; }
-.qt-split { width:min(1300px,98vw) !important; }
-
-/* Blue gradient header — identical to Invoice */
-.qt-dh { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; background:linear-gradient(135deg,#1e3a5f,#1a6ef7); flex-shrink:0; }
-.qt-dh-title { color:#fff; font-size:16px; font-weight:700; }
-.qt-dh-sub   { color:rgba(255,255,255,.75); font-size:12px; margin-top:2px; }
-.qt-dclose-new { background:rgba(255,255,255,.15); border:none; cursor:pointer; width:30px; height:30px; border-radius:8px; color:#fff; display:grid; place-items:center; }
-.qt-dclose-new:hover { background:rgba(255,255,255,.25); }
-.qt-preview-toggle { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3); color:#fff; border-radius:6px; padding:5px 11px; font-size:12px; font-weight:600; cursor:pointer; }
-.qt-preview-toggle:hover { background:rgba(255,255,255,.25); }
-
-/* Template / branding bar */
-.qt-tmpl-bar { display:flex; align-items:flex-start; gap:24px; padding:9px 22px; border-bottom:1px solid #e8ecf0; background:#f8fafc; flex-shrink:0; flex-wrap:wrap; }
-.qt-tmpl-group { display:flex; flex-direction:column; gap:4px; }
-.qt-tmpl-lbl { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; }
-.qt-tmpl-btns { display:flex; gap:4px; }
-.qt-tmpl-btn { border:1px solid #e8ecf0; background:#fff; color:#374151; border-radius:5px; padding:4px 11px; font-size:12px; font-weight:600; cursor:pointer; }
-.qt-tmpl-btn:hover { border-color:#1a6ef7; color:#1a6ef7; }
-.qt-tmpl-btn.active { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
-.qt-color-pick { width:34px; height:26px; border:1px solid #e8ecf0; border-radius:5px; cursor:pointer; padding:2px 3px; }
-.qt-color-val { font-size:12px; font-family:monospace; color:#374151; }
-.qt-logo-input { border:1px solid #e2e8f0; border-radius:5px; padding:4px 8px; font-size:12px; outline:none; width:100%; max-width:300px; }
-.qt-logo-input:focus { border-color:#1a6ef7; }
-
-/* Content row + body */
-.qt-content-row { flex:1; display:flex; overflow:hidden; min-height:0; }
-.qt-content-row .qt-dbody { flex:1; overflow-y:auto; min-width:0; padding:20px 24px; }
-.qt-dbody { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; }
-
-/* Section labels — matching Invoice */
-.qt-sec-lbl { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#9ca3af; margin-bottom:12px; margin-top:4px; padding-top:16px; border-top:1px solid #f0f2f5; display:block; }
-.qt-sec-lbl:first-child { border-top:none; padding-top:0; margin-top:0; }
-.qt-fg { display:grid; gap:12px; margin-bottom:14px; }
-.qt-fg2 { grid-template-columns:1fr 1fr; } .qt-fg3 { grid-template-columns:1fr 1fr 1fr; }
-.qt-lbl { display:block; font-size:11.5px; font-weight:600; color:#495057; margin-bottom:5px; }
-.qt-req { color:#dc2626; }
-.qt-fi { width:100%; border:1px solid #e2e8f0; border-radius:6px; padding:7px 10px; font-size:13px; font-family:inherit; outline:none; box-sizing:border-box; }
-.qt-fi:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.08); }
-textarea.qt-fi { resize:vertical; }
-select.qt-fi { cursor:pointer; }
-
-/* Add item header button */
-.qt-add-item-btn { display:inline-flex; align-items:center; gap:5px; border:1px solid rgba(26,110,247,.3); background:#eaf1ff; color:#1a6ef7; border-radius:6px; padding:4px 12px; font-size:12px; font-weight:600; cursor:pointer; }
-.qt-add-item-btn:hover { background:#dbeafe; }
-
-/* Line items grid (div-based, matching Invoice) */
-.qt-lines-wrap { border:1px solid #e8ecf0; border-radius:8px; overflow:visible; margin-bottom:0; }
-.qt-lines-head { display:grid; grid-template-columns:2fr 1.5fr 0.7fr 0.6fr 0.6fr 0.8fr 0.6fr 0.8fr 30px; gap:6px; padding:7px 10px; background:#f8fafc; border-bottom:1px solid #e8ecf0; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; }
-.qt-lines-row { display:grid; grid-template-columns:2fr 1.5fr 0.7fr 0.6fr 0.6fr 0.8fr 0.6fr 0.8fr 30px; gap:6px; padding:5px 10px; border-bottom:1px solid #f0f2f5; align-items:center; }
-.qt-lines-row:last-of-type { border-bottom:none; }
-.qt-lines-empty { padding:16px; text-align:center; color:#9ca3af; font-size:13px; border-bottom:1px solid #f0f2f5; }
-.qt-ci { width:100%; border:1px solid #e2e8f0; border-radius:5px; padding:5px 7px; font-size:12.5px; font-family:inherit; outline:none; box-sizing:border-box; }
-.qt-ci:focus { border-color:#1a6ef7; box-shadow:0 0 0 2px rgba(26,110,247,.08); }
-.qt-ci-r { text-align:right; }
-.qt-rm-line { background:none; border:1px solid rgba(220,38,38,.3); border-radius:4px; padding:3px 5px; cursor:pointer; color:#dc2626; display:inline-flex; align-items:center; flex-shrink:0; }
-.qt-rm-line:hover { background:#fee2e2; }
-.qt-add-line-btn { display:inline-flex; align-items:center; gap:5px; border:none; background:transparent; color:#1a6ef7; font-size:12.5px; font-weight:600; cursor:pointer; padding:8px 12px; width:100%; }
-.qt-add-line-btn:hover { background:#f0f7ff; }
-
-/* Tax + totals section */
-.qt-totals-wrap { border-top:1px solid #e8ecf0; padding:12px 14px; background:#f8fafc; display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; margin-top:0; }
-.qt-tax-section { flex:1; min-width:280px; }
-.qt-tax-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
-.qt-tax-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; }
-.qt-tax-presets { display:flex; gap:5px; flex-wrap:wrap; }
-.qt-preset-btn { border:1px solid #e8ecf0; background:#fff; color:#374151; border-radius:5px; padding:3px 8px; font-size:11.5px; font-weight:600; cursor:pointer; white-space:nowrap; }
-.qt-preset-btn:hover { border-color:#1a6ef7; color:#1a6ef7; }
-.qt-preset-custom { border-color:rgba(26,110,247,.3); color:#1a6ef7; }
-.qt-preset-clear { border-color:rgba(220,38,38,.3); color:#dc2626; }
-.qt-tax-tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
-.qt-tax-tbl th { padding:5px 8px; font-size:10px; font-weight:700; text-transform:uppercase; color:#9ca3af; text-align:left; border-bottom:1px solid #e8ecf0; }
-.qt-tax-tbl td { padding:4px 6px; border-bottom:1px solid #f0f2f5; }
-.qt-totals-right-panel { min-width:240px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
-.qt-total-row-item { display:flex; justify-content:space-between; align-items:center; width:240px; font-size:13px; color:#374151; }
-.qt-total-amt { font-family:monospace; font-weight:600; font-size:13px; }
-.qt-grand-total { border-top:1px solid #e8ecf0; padding-top:7px; margin-top:2px; font-weight:700; }
-
-/* Preview pane */
-.qt-preview-iframe { flex: 1; border: none; width: 100%; min-height: 0; background: #fff; }
-.qt-preview-pane { width:480px; flex-shrink:0; border-left:1px solid #e8ecf0; display:flex; flex-direction:column; background:#e8ecf0; overflow:hidden; }
-.qt-preview-toolbar { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#fff; border-bottom:1px solid #e8ecf0; flex-shrink:0; }
-.qt-preview-placeholder { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-
-/* Footer — matches Invoice dfooter */
-.qt-dfooter-new { padding:14px 24px; border-top:1px solid #e8ecf0; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; flex-shrink:0; }
-
-/* ══ KPI Cards Row 1 ══ */
-.qt-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
-}
-@media (max-width: 1200px) { .qt-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 800px)  { .qt-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-
-.qt-kpi-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px 18px;
-  transition: box-shadow .15s, transform .12s;
-}
-.qt-kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
-/* .qt-kpi-accepted border removed — gradient handles visual tone */
-
-.qt-kpi-inner {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-.qt-kpi-icon {
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0,0,0,.10);
-}
-.qt-kpi-body { flex: 1; min-width: 0; }
-.qt-kpi-label {
-  font-size: 10.5px; font-weight: 700; color: #9ca3af;
-  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px;
-}
-.qt-kpi-value {
-  font-size: 28px; font-weight: 800; color: #111827;
-  letter-spacing: -.03em; line-height: 1; margin-bottom: 6px;
-}
-.qt-kpi-green { color: #16a34a; }
-.qt-kpi-red   { color: #dc2626; }
-.qt-kpi-amber { color: #d97706; }
-.qt-kpi-trend {
-  font-size: 11.5px; font-weight: 500;
-  display: flex; align-items: center; gap: 2px;
-}
-.qt-trend-up   { color: #16a34a; }
-.qt-trend-down { color: #dc2626; }
-
-/* ══ Secondary Stat Cards ══ */
-.qt-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-@media (max-width: 1100px) { .qt-stat-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px)  { .qt-stat-grid { grid-template-columns: 1fr; } }
-
-.qt-stat-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px 18px;
-}
-.qt-stat-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.qt-stat-label {
-  font-size: 10.5px; font-weight: 700; color: #9ca3af;
-  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px;
-}
-.qt-stat-value {
-  font-size: 22px; font-weight: 800; color: #111827;
-  letter-spacing: -.02em;
-}
-.qt-stat-icon {
-  width: 40px; height: 40px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.qt-stat-spark {
-  width: 70px; height: 32px;
-  flex-shrink: 0;
-}
-
-/* ══ Updated empty state ══ */
-.qt-empty-state {
-  text-align: center;
-  padding: 60px 20px !important;
-  cursor: default !important;
-}
-.qt-empty-inner {
-  display: flex; flex-direction: column;
-  align-items: center; gap: 10px;
-}
-.qt-empty-illus { margin-bottom: 8px; }
-.qt-empty-title {
-  font-size: 17px; font-weight: 700; color: #1e293b; margin: 0;
-}
-.qt-empty-sub {
-  font-size: 13px; color: #94a3b8; line-height: 1.6;
-  max-width: 320px; margin: 0; text-align: center;
-}
-.qt-empty-btn-primary {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: #2563eb; color: #fff; border: none;
-  border-radius: 8px; padding: 10px 22px;
-  font-size: 13.5px; font-weight: 700; cursor: pointer;
-  font-family: inherit; margin-top: 6px;
-  transition: background .12s;
-}
-.qt-empty-btn-primary:hover { background: #1d4ed8; }
-
+/* ── dl menu item (for any download dropdown) ── */
+.inv-dl-menu-item { display:flex; align-items:center; gap:8px; width:100%; padding:8px 14px; font-size:13px; font-family:inherit; background:none; border:none; cursor:pointer; color:#111827; white-space:nowrap; text-align:left; }
+.inv-dl-menu-item:hover { background:#f3f4f6; }
 </style>

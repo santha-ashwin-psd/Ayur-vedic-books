@@ -222,7 +222,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .05em;
-  color: #9ca3af;
+  color: #6b7280 !important;
   margin-bottom: 3px;
 }
 .bk-kpi-value  {
@@ -230,7 +230,6 @@
   font-weight: 800;
   color: #1a1a2e;
   line-height: 1.1;
-  font-family: monospace;
 }
 .bk-kpi-amber  { color: #d97706; }
 .bk-kpi-red    { color: #dc2626; }
@@ -264,14 +263,13 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .04em;
-  color: #9ca3af;
+  color: #6b7280 !important;
   margin-bottom: 3px;
 }
 .bk-stat-value {
   font-size: 18px;
   font-weight: 700;
   color: #1a1a2e;
-  font-family: monospace;
 }
 .bk-stat-icon {
   width: 34px;
@@ -371,7 +369,7 @@
 /* Cell helpers */
 .inv-link     { color: #1a6ef7; font-weight: 600; }
 .inv-customer { font-weight: 600; color: #1a1a2e; }
-.mono-sm      { font-family: monospace; font-size: 12.5px; }
+.mono-sm      { font-size: 13px; }
 .ta-r         { text-align: right; }
 .text-danger  { color: #dc2626; }
 .text-success { color: #059669; }

@@ -250,16 +250,27 @@
                     <input type="color" v-model="brandColor" @change="saveBranding()" class="add-color-input"/>
                   </label>
                 </div>
-                <!-- Logo upload -->
+                <!-- Logo attach (per-invoice) -->
                 <div class="add-tmpl-group">
-                  <span class="add-tmpl-lbl">Logo</span>
-                  <label class="add-logo-upload">
-                    <span class="add-logo-upload-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></span>
+                  <span class="add-tmpl-lbl">Logo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af;font-size:9px">(saved per invoice)</span></span>
+                  <!-- Show thumbnail + remove when logo is set -->
+                  <div v-if="form.logo" class="inv-logo-preview">
+                    <img :src="logoSrc(form.logo)" class="inv-logo-thumb" alt="logo"/>
+                    <button type="button" class="inv-logo-remove" @click="removeLogo" title="Remove logo">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                  <!-- Upload area when no logo -->
+                  <label v-else class="add-logo-upload" :class="{uploading: logoUploading}">
+                    <span class="add-logo-upload-icon">
+                      <svg v-if="!logoUploading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                      <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:inv-spin .8s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    </span>
                     <div>
-                      <div>Upload logo</div>
+                      <div>{{ logoUploading ? 'Uploading…' : 'Upload logo' }}</div>
                       <div class="add-logo-sub">PNG, JPG or SVG (max. 2MB)</div>
                     </div>
-                    <input type="file" accept="image/*" style="display:none" @change="onLogoUpload"/>
+                    <input id="inv-logo-file-input" type="file" accept="image/*" style="display:none" :disabled="logoUploading" @change="onLogoUpload"/>
                   </label>
                 </div>
               </div>
@@ -518,7 +529,7 @@
                       <tr v-for="tx in taxRows" :key="tx.id">
                         <td><input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/></td>
                         <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="recalcTax(tx)"/></td>
-                        <td style="text-align:right;padding:4px 10px;font-family:monospace;font-size:12.5px">{{ fmtAmt(tx.amount) }}</td>
+                        <td style="text-align:right;padding:4px 10px;font-size:12.5px">{{ fmtAmt(tx.amount) }}</td>
                         <td><button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></td>
                       </tr>
                     </tbody>
@@ -594,12 +605,12 @@
           <div v-if="showPreview" class="inv-preview-pane">
             <div class="inv-preview-toolbar">
               <span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#6b7280">LIVE PREVIEW</span>
-              <div style="display:flex;gap:6px">
+              <!-- <div style="display:flex;gap:6px">
                 <span style="font-size:11px;color:#9ca3af">{{ TEMPLATES.find(t=>t.key===selectedTemplate)?.label }}</span>
-                <button class="inv-va-btn" style="font-size:11px;padding:4px 10px" @click="printInvoice(previewData)">
+                <button class="add-btn-draft" style="font-size:11px;padding:4px 10px" @click="printInvoice(previewData)">
                   <span v-html="icon('download',12)"></span> Print PDF
                 </button>
-              </div>
+              </div> -->
             </div>
             <iframe :srcdoc="previewHtml" class="inv-preview-iframe" sandbox="allow-same-origin"></iframe>
           </div>
@@ -698,9 +709,9 @@
           <button v-if="viewInv.docstatus===0" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewInv)">
             <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
           </button>
-          <button class="inv-ab-btn" @click="printViewInvoice">
+          <!-- <button class="inv-ab-btn" @click="printViewInvoice">
             <span v-html="icon('printer',13)"></span> <span class="ab-label">Print PDF</span>
-          </button>
+          </button> -->
           <button class="inv-ab-btn" @click="duplicateInvoice(viewInv)">
             <span v-html="icon('copy',13)"></span> <span class="ab-label">Duplicate</span>
           </button>
@@ -709,6 +720,14 @@
               <span v-html="icon('download',13)"></span> <span class="ab-label">Download</span>
               <span class="inv-ab-caret">▾</span>
             </button>
+            <div v-if="showDownloadMenu" style="position:absolute;top:calc(100% + 4px);right:0;z-index:999;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:160px;padding:4px 0;">
+              <button @click="downloadInvoicePdf('pdf')" class="inv-dl-menu-item">
+                <span v-html="icon('download',13)"></span> Download PDF
+              </button>
+              <button @click="downloadInvoicePdf('print')" class="inv-dl-menu-item">
+                <span v-html="icon('printer',13)"></span> Open &amp; Print
+              </button>
+            </div>
           </div>
           <button class="inv-ab-btn" @click="openEmail(viewInv)">
             <span v-html="icon('mail',13)"></span> <span class="ab-label">Send Email</span>
@@ -829,10 +848,10 @@
                         <div v-if="it.description" class="inv-item-desc">{{ it.description }}</div>
                       </td>
                       <td class="inv-dash">{{ it.hsn_code || '—' }}</td>
-                      <td class="td-r" style="font-family:monospace">{{ flt(it.qty) }}</td>
-                      <td class="td-r" style="font-family:monospace">{{ fmtN(it.rate) }}</td>
+                      <td class="td-r" >{{ flt(it.qty) }}</td>
+                      <td class="td-r" >{{ fmtN(it.rate) }}</td>
                       <td class="td-r inv-dash">{{ it.discount_amount ? fmtN(it.discount_amount) : '—' }}</td>
-                      <td class="td-r" style="font-family:monospace;font-weight:600">{{ fmtN(it.amount) }}</td>
+                      <td class="td-r" style="font-weight:600">{{ fmtN(it.amount) }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -965,7 +984,7 @@
                       <td class="mono-sm">{{ fmtDate(p.payment_date) }}</td>
                       <td>{{ p.mode_of_payment||'—' }}</td>
                       <td class="text-muted mono-sm">{{ p.reference_no||'—' }}</td>
-                      <td class="td-r" style="font-family:monospace;font-weight:600;color:#059669">{{ fmtAmt(p.paid_amount) }}</td>
+                      <td class="td-r" style="font-weight:600;color:#059669">{{ fmtAmt(p.paid_amount) }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1005,7 +1024,7 @@
               <span class="mono-sm" style="color:#374151">{{ p.name }}</span>
               <span style="color:#6b7280">{{ p.mode_of_payment||'—' }}</span>
               <span class="mono-sm" style="color:#6b7280">{{ fmtDate(p.payment_date) }}</span>
-              <span style="text-align:right;font-family:monospace;font-weight:600;color:#059669">{{ fmtAmt(p.paid_amount) }}</span>
+              <span style="text-align:right;font-weight:600;color:#059669">{{ fmtAmt(p.paid_amount) }}</span>
             </div>
           </div>
           <p v-if="confirmModal.payments.length" style="font-size:12px;color:#b91c1c;margin:8px 0 0">The payment(s) above will also be cancelled. This cannot be undone.</p>
@@ -1024,7 +1043,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, nextTick } from "vue";
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
@@ -1109,7 +1128,7 @@ const filterCustomer = ref("");
 const taxAccountHead    = ref("");
 const selectedTemplate  = ref("classic");
 const brandColor        = ref("#1a6ef7");
-const logoUrl           = ref("");
+// logoUrl removed — logo is now per-invoice via form.logo (from doc.logo_attach)
 const showPreview       = ref(false);
 
 // ── Drawer (create/edit) ───────────────────────────────────────────────
@@ -1126,6 +1145,7 @@ const form = reactive({
   terms:"", remarks:"", docstatus:0,
   currency:"INR", exchange_rate:1, gst_treatment:"",
   update_stock:1, set_warehouse:"",
+  logo:"",   // stores the Frappe file URL from logo_attach field
 });
 const customerBillingAddrs  = ref([]);
 const customerShippingAddrs = ref([]);
@@ -1266,9 +1286,10 @@ const previewData = computed(()=>({
   grandTotal: grandTotal.value,
   terms: form.terms,
   company: window.__booksCompany||"",
+  logo: logoSrc(form.logo),
 }));
 
-const previewHtml = computed(()=>renderInvoice(previewData.value, selectedTemplate.value, brandColor.value, logoUrl.value));
+const previewHtml = computed(()=>renderInvoice(previewData.value, selectedTemplate.value, brandColor.value, previewData.value.logo));
 
 const timelineSteps = computed(()=>{
   if (!viewInv.value) return [];
@@ -1284,7 +1305,7 @@ const timelineSteps = computed(()=>{
   return [
     {label:"Draft",   done:true,       icon:"file-text", date:inv.creation},
     {label:"Sent",    done:isSubmitted, icon:"send",      date:isSubmitted?inv.modified:null},
-    {label:"Paid",    done:isPaid,      icon:"indian-rupee", date:isPaid?inv.modified:null},
+    {label:"Paid",    done:isPaid,      icon:"indianrupees", date:isPaid?inv.modified:null},
     ...(!isPaid ? [{label:"Overdue", done:isOverdue(inv), danger:isOverdue(inv), icon:"alert-circle", date:isOverdue(inv)?inv.due_date:null}] : []),
   ];
 });
@@ -1301,6 +1322,49 @@ const tlProgressWidth = computed(()=>{
 });
 
 const showDownloadMenu = ref(false);
+
+async function downloadInvoicePdf(mode = 'pdf') {
+  showDownloadMenu.value = false;
+  if (!viewInv.value?.name) return;
+  try {
+    const params = new URLSearchParams({
+      doctype: 'Sales Invoice',
+      name: viewInv.value.name,
+      format: 'Standard',
+      no_letterhead: 0,
+      letterhead: 'No Letterhead',
+      settings: '{}',
+      _lang: 'en',
+    });
+    const url = `/api/method/frappe.utils.print_format.download_pdf?${params}`;
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    if (mode === 'print') {
+      const win = window.open(objectUrl, '_blank');
+      win?.addEventListener('load', () => win.print());
+    } else {
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `${viewInv.value.name}.pdf`;
+      a.click();
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch (err) {
+    console.error('PDF download failed:', err);
+    alert('Could not download PDF: ' + err.message);
+  }
+}
+
+// close download menu when clicking outside
+function onDocClickForDownloadMenu(e) {
+  if (!e.target.closest('.inv-ab-dropdown') && !e.target.closest('.inv-dl-menu-item')) {
+    showDownloadMenu.value = false;
+  }
+}
+onMounted(() => document.addEventListener('click', onDocClickForDownloadMenu));
+onUnmounted(() => document.removeEventListener('click', onDocClickForDownloadMenu));
 
 // ── New date / format helpers ───────────────────────────────────────────
 function fmtDateLong(d) {
@@ -1538,7 +1602,7 @@ function openAdd() {
   Object.assign(collapsed,{branding:false,details:false,billing:true,lines:false,notes:true});
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
   taxRows.value=[];
-  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:""});
+  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:"",logo:""});
   customerBillingAddrs.value=[]; customerShippingAddrs.value=[]; sameAsBillingAddr.value=false;
   fetchWarehouses("");
   drawerOpen.value=true;
@@ -1567,6 +1631,7 @@ async function openEdit(inv) {
       terms:doc.terms||"",remarks:doc.remarks||"",docstatus:doc.docstatus||0,
       currency:doc.currency||"INR",exchange_rate:doc.exchange_rate||1,gst_treatment:doc.gst_category||"",
       update_stock:doc.update_stock||0,set_warehouse:doc.set_warehouse||"",
+      logo:doc.logo||"",
     });
     lines.value=(doc.items||[]).map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:it.hsn_code||"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:it.uom||"Nos",discount_percentage:flt(it.discount_percentage)||0,discount_amount:flt(it.discount_amount)||0,amount:flt(it.amount)||0}));
     taxRows.value=(doc.taxes||[]).map((tx,i)=>({id:Date.now()+100+i,description:tx.description||"",rate:flt(tx.rate)||0,account_head:tx.account_head||taxAccountHead.value,amount:flt(tx.tax_amount)||0}));
@@ -1593,9 +1658,57 @@ async function saveInvoice(docstatus) {
     const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0}));
     const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>({doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate}));
     const shipAddr=sameAsBillingAddr.value?form.billing_address:form.shipping_address||"";
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",shipping_address:shipAddr,place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:form.update_stock?1:0,set_warehouse:form.set_warehouse||""};
+
+    // If form.logo is still a data URL it means the background upload failed or
+    // this is a brand-new invoice (no docname yet). Strip it from the initial
+    // save payload — Frappe will reject a base64 blob in a Link/Attach field.
+    const pendingDataUrl = (form.logo||"").startsWith("data:") ? form.logo : "";
+    const resolvedLogoPath = pendingDataUrl ? "" : (form.logo || "");
+
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",shipping_address:shipAddr,place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:form.update_stock?1:0,set_warehouse:form.set_warehouse||"",logo:resolvedLogoPath};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
+
+    // Now we have a docname — upload the pending logo and link it to the doc.
+    if (pendingDataUrl && saved?.name) {
+      try {
+        const [meta, b64] = pendingDataUrl.split(",");
+        const mime = meta.match(/:(.*?);/)?.[1] || "image/png";
+        const ext  = mime.split("/")[1]?.split("+")[0] || "png";
+        const bytes = atob(b64);
+        const arr = new Uint8Array(bytes.length);
+        for (let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+        const blob = new Blob([arr], {type: mime});
+        const fd = new FormData();
+        fd.append("file", blob, `logo.${ext}`);
+        fd.append("is_private", "0");
+        fd.append("folder", "Home/Attachments");
+        fd.append("doctype", "Sales Invoice");
+        fd.append("docname", saved.name);
+        fd.append("fieldname", "logo");
+        const res = await fetch("/api/method/upload_file", {
+          method: "POST",
+          headers: { "X-Frappe-CSRF-Token": window.csrf_token || frappe?.csrf_token || "" },
+          body: fd,
+        });
+        const json = await res.json();
+        const fileUrl = json?.message?.file_url || json?.file_url || "";
+        if (fileUrl) {
+          form.logo = fileUrl;
+          // Patch logo_attach on the already-saved doc so it persists
+          await apiPOST("frappe.client.set_value", {
+            doctype: "Sales Invoice",
+            name: saved.name,
+            fieldname: "logo",
+            value: fileUrl,
+          });
+        }
+      } catch(uploadErr) {
+        console.warn("Logo upload on save failed:", uploadErr);
+        // Non-fatal: invoice is saved, logo just won't be persisted
+      }
+    }
+
     if (docstatus===1) await apiSubmit("Sales Invoice",saved.name);
     await load();
     toast(docstatus===1?"Invoice submitted":"Invoice saved as draft");
@@ -1785,18 +1898,11 @@ function exportCSV() {
   toast(`CSV exported — ${label}`);
 }
 
-// ── Branding persistence ───────────────────────────────────────────────
-function onLogoUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => { logoUrl.value = ev.target.result; saveBranding(); };
-  reader.readAsDataURL(file);
-}
+// ── Branding persistence (template + color only — logo is per-invoice) ──
 function saveBranding() {
   try {
     const co=window.__booksCompany||"_default";
-    localStorage.setItem("books_inv_branding_"+co, JSON.stringify({template:selectedTemplate.value,color:brandColor.value,logo:logoUrl.value}));
+    localStorage.setItem("books_inv_branding_"+co, JSON.stringify({template:selectedTemplate.value,color:brandColor.value}));
   } catch {}
 }
 function loadBranding() {
@@ -1805,8 +1911,73 @@ function loadBranding() {
     const s=JSON.parse(localStorage.getItem("books_inv_branding_"+co)||"{}");
     if (s.template) selectedTemplate.value=s.template;
     if (s.color)    brandColor.value=s.color;
-    if (s.logo)     logoUrl.value=s.logo;
   } catch {}
+}
+
+// ── Logo helpers ────────────────────────────────────────────────────────
+// Convert a Frappe file path (/files/...) or data-URL to a usable src for the PDF renderer.
+function logoSrc(path) {
+  if (!path) return "";
+  if (path.startsWith("data:") || path.startsWith("http")) return path;
+  // Frappe stores relative paths like /files/logo.png — prefix with origin.
+  return (window.location.origin || "") + path;
+}
+
+// Upload a logo file to Frappe and store the returned URL in form.logo.
+// Strategy:
+//   - Existing invoice (editingName set): upload immediately, linked to the doc.
+//   - New invoice (no docname yet): store as data URL; saveInvoice() will upload
+//     once the doc is created and patch logo_attach on it.
+const logoUploading = ref(false);
+async function onLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  // Always show an instant preview via data URL
+  const reader = new FileReader();
+  reader.onload = ev => { form.logo = ev.target.result; };
+  reader.readAsDataURL(file);
+
+  // Only upload immediately when editing an existing invoice (docname known)
+  if (!editingName.value) return; // saveInvoice() will handle it on save
+
+  logoUploading.value = true;
+  try {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    fd.append("is_private", "0");
+    fd.append("folder", "Home/Attachments");
+    fd.append("doctype", "Sales Invoice");
+    fd.append("docname", editingName.value);
+    fd.append("fieldname", "logo");
+    const res = await fetch("/api/method/upload_file", {
+      method: "POST",
+      headers: { "X-Frappe-CSRF-Token": window.csrf_token || frappe?.csrf_token || "" },
+      body: fd,
+    });
+    const json = await res.json();
+    const fileUrl = json?.message?.file_url || json?.file_url || "";
+    if (fileUrl) {
+      form.logo = fileUrl;
+      // Also patch the field on the existing doc right away so it survives a
+      // page reload even if the user doesn't click Save again.
+      await apiPOST("frappe.client.set_value", {
+        doctype: "Sales Invoice",
+        name: editingName.value,
+        fieldname: "logo",
+        value: fileUrl,
+      });
+    }
+  } catch(err) {
+    console.warn("Logo upload failed:", err);
+    // Keep data URL so the preview still works; will retry on next save
+  }
+  logoUploading.value = false;
+}
+
+function removeLogo() {
+  form.logo = "";
+  const inp = document.getElementById("inv-logo-file-input");
+  if (inp) inp.value = "";
 }
 
 // ── Invoice rendering ──────────────────────────────────────────────────
@@ -1829,7 +2000,7 @@ function renderInvoice(d, tmpl, color, logo) {
   const logoTag = logo?`<img src="${logo}" style="max-width:80px;max-height:55px;object-fit:contain;display:block;margin-bottom:8px" alt="logo"/>`:"";
   const noItems = `<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">No items</td></tr>`;
   if (tmpl==="modern") return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#1a1a2e;background:#fff}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#1a1a2e;background:#fff}
 .hband{background:${c};color:#fff;padding:28px 36px}.hinner{display:flex;justify-content:space-between;align-items:flex-start}
 .co-name{font-size:19px;font-weight:700}.inv-chip{background:rgba(255,255,255,.2);border-radius:6px;padding:3px 12px;font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:6px;display:inline-block}
 .inv-num{font-size:22px;font-weight:700}.body{padding:28px 36px}
@@ -1840,7 +2011,41 @@ table.it thead th{padding:9px 11px;font-size:10px;font-weight:700;text-transform
 table.it tbody td{padding:9px 11px;border-bottom:1px solid #f0f2f5;font-size:12px}
 .tw{display:flex;justify-content:flex-end;margin-bottom:20px}.tot{width:270px;background:#f8fafc;border-radius:8px;padding:14px}
 .tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.tr2.gr{border-top:2px solid ${c};margin-top:7px;padding-top:9px;font-size:14px;font-weight:700;color:${c}}
-@media print{@page{size:A4;margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+@media print{@page{size:A4;margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+/* ── Per-invoice logo widget ── */
+.inv-logo-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  padding: 6px 10px;
+}
+.inv-logo-thumb {
+  max-width: 90px;
+  max-height: 44px;
+  object-fit: contain;
+  border-radius: 4px;
+  display: block;
+}
+.inv-logo-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(220,38,38,.3);
+  background: none;
+  color: #dc2626;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.inv-logo-remove:hover { background: #fee2e2; }
+.add-logo-upload.uploading { opacity: .7; cursor: wait; }
+@keyframes inv-spin { to { transform: rotate(360deg); } }
+</style></head><body>
 <div class="hband"><div class="hinner"><div>${logoTag}<div class="co-name">${co}</div></div><div style="text-align:right"><div class="inv-chip">INVOICE</div><div class="inv-num">${d.name||"DRAFT"}</div></div></div></div>
 <div class="body"><div class="mgrid">
 <div><div class="ml">Bill To</div><div class="mv">${d.customer_name||d.customer||"—"}</div>${d.billing_address?`<div style="font-size:11px;color:#6b7280;margin-top:4px">${d.billing_address}</div>`:""}</div>
@@ -1852,7 +2057,7 @@ table.it tbody td{padding:9px 11px;border-bottom:1px solid #f0f2f5;font-size:12p
 ${d.terms?`<div style="background:#f0f9ff;border-radius:8px;padding:11px 14px;font-size:12px;color:#374151"><strong>Note:</strong> ${d.terms}</div>`:""}</div></body></html>`;
 
   if (tmpl==="minimal") return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;color:#333;background:#fff;padding:48px}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#333;background:#fff;padding:48px}
 .page{max-width:720px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:20px;border-bottom:3px solid ${c}}
 .co-name{font-size:17px;font-weight:700;color:#111}.inv-label{font-size:30px;font-weight:300;color:#999;letter-spacing:3px}.inv-num{font-size:13px;font-weight:700;color:${c};margin-top:4px}
 .brow{display:flex;justify-content:space-between;margin-bottom:32px}.lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#aaa;margin-bottom:6px}
@@ -1872,16 +2077,16 @@ ${d.po_no?`<div style="text-align:right"><div class="lbl">PO Number</div><div cl
 ${d.terms?`<div class="notes"><strong>Note:</strong> ${d.terms}</div>`:""}</div></body></html>`;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:Georgia,'Times New Roman',serif;font-size:12px;color:#333;background:#fff;padding:40px}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#333;background:#fff;padding:40px}
 .page{max-width:750px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px}
 .co-name{font-size:21px;font-weight:bold;color:${c};margin-bottom:4px}.inv-label{font-size:28px;font-weight:bold;color:${c};text-align:right;letter-spacing:2px}
-.meta{text-align:right;margin-top:8px}.meta table{margin-left:auto}.meta td{padding:2px 6px;font-size:12px}.meta td:first-child{color:#666;text-align:right}.meta td:last-child{font-weight:600;color:#333}
+.meta{text-align:right;margin-top:8px}.meta table{margin-left:auto}.meta td{padding:2px 6px;font-size:13px}.meta td:first-child{color:#6b7280;text-align:right;font-size:11.5px}.meta td:last-child{font-weight:600;color:#1a1a2e}
 .div{border:none;border-top:2px solid ${c};margin:18px 0}.brow{display:flex;justify-content:space-between;margin-bottom:22px}
-.lbl{font-size:10px;font-weight:bold;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:5px}.val{font-size:14px;font-weight:bold;color:#222}.sval{font-size:12px;color:#555;margin-top:3px;white-space:pre-wrap}
-table.it{width:100%;border-collapse:collapse;margin-bottom:14px}table.it thead tr{background:${c};color:#fff}table.it thead th{padding:8px 10px;font-size:11px;font-weight:600;text-align:left}
-table.it tbody td{padding:8px 10px;border-bottom:1px solid #eee;font-size:12px}table.it tbody tr:last-child td{border-bottom:2px solid ${c}}
-.tw{display:flex;justify-content:flex-end;margin-bottom:22px}.tot{width:260px}.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
-.tr2.gr{border-top:2px solid ${c};margin-top:6px;padding-top:8px;font-size:14px;font-weight:bold;color:${c}}
+.lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:5px}.val{font-size:13px;font-weight:600;color:#1a1a2e}.sval{font-size:12px;color:#495057;margin-top:3px;white-space:pre-wrap}
+table.it{width:100%;border-collapse:collapse;margin-bottom:14px}table.it thead tr{background:${c};color:#fff}table.it thead th{padding:8px 10px;font-size:10.5px;font-weight:700;text-align:left;letter-spacing:.04em}
+table.it tbody td{padding:8px 10px;border-bottom:1px solid #f0f2f5;font-size:13px}table.it tbody tr:last-child td{border-bottom:2px solid ${c}}
+.tw{display:flex;justify-content:flex-end;margin-bottom:22px}.tot{width:260px}.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.tr2.gr{border-top:2px solid ${c};margin-top:6px;padding-top:8px;font-size:15px;font-weight:700;color:${c}}
 .fn{border-top:1px solid #ddd;padding-top:12px;font-size:11px;color:#666}
 @media print{body{padding:0}@page{size:A4;margin:20mm}}</style></head><body>
 <div class="page"><div class="header"><div>${logoTag}<div class="co-name">${co}</div></div><div><div class="inv-label">INVOICE</div><div class="meta"><table><tr><td>Invoice #</td><td>${d.name||"DRAFT"}</td></tr><tr><td>Date</td><td>${fmtD(d.posting_date)}</td></tr><tr><td>Due Date</td><td>${fmtD(d.due_date)}</td></tr>${d.po_no?`<tr><td>PO #</td><td>${d.po_no}</td></tr>`:""}</table></div></div></div>
@@ -1893,7 +2098,7 @@ ${d.terms?`<div class="fn"><div class="lbl">Notes</div><p>${d.terms}</p></div>`:
 }
 
 function printInvoice(data) {
-  const html=renderInvoice(data, selectedTemplate.value, brandColor.value, logoUrl.value);
+  const html=renderInvoice(data, selectedTemplate.value, brandColor.value, data.logo||"");
   const win=window.open("","_blank","width=820,height=1060,scrollbars=yes");
   if (!win) { toast("Pop-up blocked — allow pop-ups to print","error"); return; }
   win.document.write(html);
@@ -1912,6 +2117,7 @@ function printViewInvoice() {
     subtotal:(flt(inv.grand_total)-flt(inv.total_taxes_and_charges)),
     totalTax:flt(inv.total_taxes_and_charges), grandTotal:flt(inv.grand_total),
     terms:inv.terms||"", company:inv.company||window.__booksCompany||"",
+    logo:logoSrc(inv.logo||""),
   });
 }
 
@@ -2008,7 +2214,7 @@ watch(() => route.query, (q) => {
 .inv-sum-card { padding:14px 24px; border-right:1px solid #e8ecf0; }
 .inv-sum-card:last-child { border-right:none; }
 .inv-sum-lbl { font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; margin-bottom:4px; }
-.inv-sum-val { font-size:20px; font-weight:700; font-family:monospace; color:#1a1a2e; }
+.inv-sum-val { font-size:20px; font-weight:700; color:#1a1a2e; }
 
 /* ── Filter bar ── */
 .inv-filter-bar { display:flex; align-items:center; justify-content:space-between; padding:10px 24px; border-bottom:1px solid #e8ecf0; flex-wrap:wrap; gap:8px; }
@@ -2049,7 +2255,7 @@ watch(() => route.query, (q) => {
 .inv-row:hover td { background:#f8faff; } .inv-row.selected td { background:#eaf1ff; }
 .inv-table tr:last-child td { border-bottom:none; }
 .inv-link { color:#1a6ef7; font-weight:600; } .inv-customer { font-weight:600; color:#1a1a2e; }
-.mono-sm { font-family:monospace; font-size:12.5px; } .ta-r { text-align:right; }
+.mono-sm { font-size:12.5px; } .ta-r { text-align:right; }
 .text-danger { color:#dc2626; } .text-success { color:#059669; } .text-muted { color:#9ca3af; }
 
 /* ── Status badges ── */
@@ -2141,7 +2347,7 @@ watch(() => route.query, (q) => {
 /* ── Totals ── */
 .inv-totals { min-width:240px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
 .inv-total-row { display:flex; justify-content:space-between; align-items:center; width:240px; font-size:13px; color:#374151; }
-.inv-total-amt { font-family:monospace; font-weight:600; font-size:13px; }
+.inv-total-amt { font-weight:600; font-size:13px; }
 .inv-grand-total { border-top:1px solid #e8ecf0; padding-top:7px; margin-top:2px; font-weight:700; }
 
 /* ══ Record Payment ══ */
@@ -2155,7 +2361,7 @@ watch(() => route.query, (q) => {
 .inv-tmpl-btn:hover { border-color:#1a6ef7; color:#1a6ef7; }
 .inv-tmpl-btn.active { background:#eaf1ff; border-color:#1a6ef7; color:#1a6ef7; }
 .inv-color-pick { width:34px; height:26px; border:1px solid #e8ecf0; border-radius:5px; cursor:pointer; padding:2px 3px; }
-.inv-color-val { font-size:12px; font-family:monospace; color:#374151; }
+.inv-color-val { font-size:12px; color:#374151; }
 .inv-logo-input { border:1px solid #e2e8f0; border-radius:5px; padding:4px 8px; font-size:12px; outline:none; width:100%; max-width:300px; }
 .inv-logo-input:focus { border-color:#1a6ef7; }
 .inv-preview-toggle { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3); color:#fff; border-radius:6px; padding:5px 11px; font-size:12px; font-weight:600; cursor:pointer; }
@@ -2188,4 +2394,8 @@ watch(() => route.query, (q) => {
 .inv-view-page .inv-tab-body {
   padding: 16px;
 }
+
+/* ── Download dropdown menu ── */
+.inv-dl-menu-item { display:flex; align-items:center; gap:8px; width:100%; padding:8px 14px; font-size:13px; font-family:inherit; background:none; border:none; cursor:pointer; color:#111827; white-space:nowrap; text-align:left; }
+.inv-dl-menu-item:hover { background:#f3f4f6; }
 </style>

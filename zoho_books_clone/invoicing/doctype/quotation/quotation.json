@@ -25,7 +25,8 @@
   "amended_from",
   "remarks",
   "billing_address",
-  "exchange_rate"
+  "exchange_rate",
+  "logo"
  ],
  "fields": [
   {
@@ -147,11 +148,16 @@
    "fieldname": "billing_address",
    "fieldtype": "Small Text",
    "label": "Address"
+  },
+  {
+   "fieldname": "logo",
+   "fieldtype": "Attach",
+   "label": "Logo"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-25 10:38:21.785567",
+ "modified": "2026-06-05 12:13:41.928122",
  "modified_by": "Administrator",
  "module": "Invoicing",
  "name": "Quotation",

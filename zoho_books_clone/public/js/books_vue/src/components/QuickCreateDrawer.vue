@@ -170,7 +170,7 @@
 
         <div class="qcd-footer">
           <button class="qcd-btn-cancel" @click="onCancel">Cancel</button>
-          <button class="qcd-btn-save" :disabled="saving" @click="onSave">
+          <button class="add-btn-draft" :disabled="saving" @click="onSave">
             {{ saving ? 'Saving…' : 'Create & Select' }}
           </button>
         </div>

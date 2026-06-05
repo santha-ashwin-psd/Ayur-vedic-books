@@ -396,7 +396,6 @@
   font-size: 22px;
   font-weight: 800;
   color: #dc2626;
-  font-family: monospace;
   line-height: 1.1;
   margin-top: 4px;
 }
@@ -506,7 +505,7 @@
   gap: 32px;
 }
 .inv-total-line .t-lbl { color: #6b7280; }
-.inv-total-line .t-amt { font-family: monospace; font-weight: 600; }
+.inv-total-line .t-amt {font-weight: 600; }
 
 .inv-grand-total-line {
   display: flex;
@@ -518,7 +517,7 @@
   border-top: 1.5px solid #e5e7eb;
 }
 .inv-grand-lbl { font-size: 15px; font-weight: 800; color: #1a1a2e; }
-.inv-grand-amt { font-size: 18px; font-weight: 800; color: #1a6ef7; font-family: monospace; }
+.inv-grand-amt { font-size: 18px; font-weight: 800; color: #1a6ef7;}
 
 /* Amount in words */
 .inv-amount-words {
@@ -748,7 +747,7 @@
   outline: none;
 }
 .rp-input:focus { border-color: #1a6ef7; box-shadow: 0 0 0 3px rgba(26,110,247,.08); }
-.rp-amount-input { font-family: monospace; font-size: 16px; font-weight: 700; }
+.rp-amount-input {font-size: 16px; font-weight: 700; }
 .rp-select   { cursor: pointer; }
 .rp-textarea { resize: vertical; }
 .rp-summary {

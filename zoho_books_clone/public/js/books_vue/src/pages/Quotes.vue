@@ -190,7 +190,7 @@
             <td style="text-align:center" @click.stop>
               <div style="display:flex;gap:4px;justify-content:center">
                 <button class="inv-act-btn" @click="openView(q)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button class="inv-act-btn" @click="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="q.docstatus!==1" class="inv-act-btn" @click="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button v-if="canConvert(q)" class="inv-act-btn inv-act-pay" @click="openConvertModal(q)" title="Convert to Invoice / SO"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
                 <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteQT(q)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </div>
@@ -639,7 +639,7 @@
 
           <!-- Action buttons bar -->
           <div class="inv-action-bar">
-            <button class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
+            <button v-if="viewDoc.docstatus!==1" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
               <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
             </button>
             <button class="inv-ab-btn" @click="printQuote(viewDoc)">
@@ -1144,7 +1144,7 @@ async function load() {
     const co = await resolveCompany();
     list.value = await apiList("Quotation", {
       fields: ["name","customer","customer_name","transaction_date",
-               "valid_till","status","grand_total","title","currency"],
+               "valid_till","status","docstatus","grand_total","title","currency"],
       filters: [["company","=",co]],
       limit: 500,
       order: "transaction_date desc",
@@ -1434,48 +1434,65 @@ function logoSrc(url) {
 function removeLogo() {
   form.logo = "";
   logoUrl.value = "";
-  saveBranding();
+  // logo is per-quote, not a branding preference
 }
 
 // ── Logo upload ───────────────────────────────────────────────────────
+// Strategy:
+//   - Existing quote (editingName set): upload immediately, linked to the doc.
+//   - New quote (no docname yet): store as data URL; saveQT() will upload once
+//     the doc is created and patch the `logo` field on it.
 async function onLogoUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
-  // Reset input so the same file can be re-selected
   e.target.value = "";
   if (file.size > 2 * 1024 * 1024) {
     toast.error("Logo must be smaller than 2 MB");
     return;
   }
-  logoUploading.value = true;
-  try {
-    // Try Frappe file upload
-    const fd = new FormData();
-    fd.append("file", file, file.name);
-    fd.append("is_private", "0");
-    fd.append("doctype", "Quotation");
-    const res = await fetch("/api/method/upload_file", { method: "POST", body: fd });
-    if (res.ok) {
-      const json = await res.json();
-      const url = json?.message?.file_url || json?.file_url;
-      if (url) {
-        form.logo = url;
-        logoUrl.value = url;
-        saveBranding();
-        logoUploading.value = false;
-        return;
-      }
-    }
-  } catch {}
-  // Fallback: data URL
+  // Always show an instant preview via data URL
   const reader = new FileReader();
   reader.onload = ev => {
     form.logo = ev.target.result;
     logoUrl.value = ev.target.result;
-    saveBranding();
-    logoUploading.value = false;
   };
   reader.readAsDataURL(file);
+
+  // Only upload immediately when editing an existing quote (docname known)
+  if (!editingName.value) return; // saveQT() will handle it on save
+
+  logoUploading.value = true;
+  try {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    fd.append("is_private", "0");
+    fd.append("folder", "Home/Attachments");
+    fd.append("doctype", "Quotation");
+    fd.append("docname", editingName.value);
+    fd.append("fieldname", "logo");
+    const res = await fetch("/api/method/upload_file", {
+      method: "POST",
+      headers: { "X-Frappe-CSRF-Token": window.csrf_token || frappe?.csrf_token || "" },
+      body: fd,
+    });
+    const json = await res.json();
+    const fileUrl = json?.message?.file_url || json?.file_url || "";
+    if (fileUrl) {
+      form.logo = fileUrl;
+      logoUrl.value = fileUrl;
+      // Patch the field on the existing doc right away so it survives a reload
+      await apiPOST("frappe.client.set_value", {
+        doctype: "Quotation",
+        name: editingName.value,
+        fieldname: "logo",
+        value: fileUrl,
+      });
+    }
+  } catch(err) {
+    console.warn("Logo upload failed:", err);
+    // Keep data URL so preview still works; will retry on next save
+  }
+  logoUploading.value = false;
 }
 
 // ── Open New ──────────────────────────────────────────────────────────
@@ -1506,7 +1523,7 @@ async function openEdit(q) {
     valid_till: q.valid_till || validTillDefault(), title: q.title || "",
     terms: q.terms || "", currency: q.currency || "INR",
     exchange_rate: q.exchange_rate || 1, remarks: "", billing_address: "",
-    logo: q.logo_attach || q.logo || "",
+    logo:  q.logo || q.logo_attach ||"",
   });
   lines.value = [blankLine()];
   taxRows.value = [];
@@ -1537,7 +1554,8 @@ async function openEdit(q) {
     if (doc?.exchange_rate)   form.exchange_rate   = flt(doc.exchange_rate) || 1;
     if (doc?.remarks)         form.remarks         = doc.remarks;
     if (doc?.billing_address) form.billing_address = doc.billing_address;
-    if (doc?.logo_attach)     form.logo            = doc.logo_attach;
+    if (doc?.logo)            form.logo            = doc.logo;
+    else if (doc?.logo_attach) form.logo            = doc.logo_attach;
   } catch {}
 }
 
@@ -1592,6 +1610,12 @@ async function saveQT(newStatus) {
       account_head: r.account_head || taxAccountHead.value,
       description: r.description, rate: r.rate,
     }));
+    // If form.logo is still a data URL it means the file hasn't been uploaded to
+    // Frappe yet (new quote with no docname, or prior upload failed).
+    // Strip it from the initial save — Frappe rejects base64 in an Attach field.
+    const pendingDataUrl = (form.logo || "").startsWith("data:") ? form.logo : "";
+    const resolvedLogoPath = pendingDataUrl ? "" : (form.logo || "");
+
     const doc = {
       doctype: "Quotation", company, party_name: form.customer,
       customer: form.customer, transaction_date: form.transaction_date,
@@ -1601,9 +1625,52 @@ async function saveQT(newStatus) {
       currency: form.currency || "INR",
       exchange_rate: form.currency === "INR" ? 1 : (flt(form.exchange_rate) || 1),
       items: qtItems, taxes,
+      logo: resolvedLogoPath,
     };
     if (editingName.value) doc.name = editingName.value;
     const saved = await apiSave(doc);
+
+    // Now that we have a docname, upload the pending logo and link it to the doc
+    if (pendingDataUrl && saved?.name) {
+      try {
+        const [meta, b64] = pendingDataUrl.split(",");
+        const mime = meta.match(/:(.*?);/)?.[1] || "image/png";
+        const ext  = mime.split("/")[1]?.split("+")[0] || "png";
+        const bytes = atob(b64);
+        const arr = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        const blob = new Blob([arr], { type: mime });
+        const fd = new FormData();
+        fd.append("file", blob, `logo.${ext}`);
+        fd.append("is_private", "0");
+        fd.append("folder", "Home/Attachments");
+        fd.append("doctype", "Quotation");
+        fd.append("docname", saved.name);
+        fd.append("fieldname", "logo");
+        const res = await fetch("/api/method/upload_file", {
+          method: "POST",
+          headers: { "X-Frappe-CSRF-Token": window.csrf_token || frappe?.csrf_token || "" },
+          body: fd,
+        });
+        const json = await res.json();
+        const fileUrl = json?.message?.file_url || json?.file_url || "";
+        if (fileUrl) {
+          form.logo = fileUrl;
+          logoUrl.value = fileUrl;
+          // Patch logo on the already-saved doc so it persists
+          await apiPOST("frappe.client.set_value", {
+            doctype: "Quotation",
+            name: saved.name,
+            fieldname: "logo",
+            value: fileUrl,
+          });
+        }
+      } catch (uploadErr) {
+        console.warn("Logo upload on save failed:", uploadErr);
+        // Non-fatal: quote is saved, logo just won't persist
+      }
+    }
+
     toast.success(`Quotation ${saved?.name || ""} saved`);
     drawerOpen.value = false;
     await load();

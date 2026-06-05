@@ -789,20 +789,18 @@ async function saveRec() {
       });
       toast.success(`${form._name} updated`);
     } else {
-      const doc = {
-        doctype: "Auto Repeat",
-        reference_doctype: form.reference_doctype,
+      const saved = await apiPOST("zoho_books_clone.api.recurring.make_recurring_from_doc", {
+        reference_doctype:  form.reference_doctype,
         reference_document: form.reference_document,
-        frequency: form.frequency,
-        start_date: form.start_date,
-        end_date: form.end_date || null,
+        frequency:          form.frequency,
+        start_date:         form.start_date,
+        end_date:           form.end_date || "",
         submit_on_creation: form.submit_on_creation,
-        notify_by_email: form._notify ? 1 : 0,
-        recipients: form.recipients || "",
-        subject: form.subject || "",
-        message: form.message || "",
-      };
-      const saved = await apiSave(doc);
+        notify_by_email:    form._notify ? "1" : "",
+        recipients:         form.recipients || "",
+        subject:            form.subject || "",
+        message:            form.message || "",
+      });
       toast.success(`Subscription ${saved?.name || ""} created`);
     }
     drawerOpen.value = false;

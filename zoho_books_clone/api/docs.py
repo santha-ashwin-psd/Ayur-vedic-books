@@ -262,10 +262,11 @@ def save_doc(doc):
         # Auto-supply naming_series for doctypes that use autoname="naming_series:"
         # but where the SPA doesn't expose the series picker.
         _NAMING_DEFAULTS = {
-            "Journal Entry":   "JV-.YYYY.-.#####",
-            "Payment Entry":   "PAY-.YYYY.-.#####",
-            "Sales Invoice":   "INV-.YYYY.-.#####",
-            "Purchase Invoice":"PINV-.YYYY.-.#####",
+            "Journal Entry":    "JV-.YYYY.-.#####",
+            "Payment Entry":    "PAY-.YYYY.-.#####",
+            "Sales Invoice":    "INV-.YYYY.-.#####",
+            "Purchase Invoice": "PINV-.YYYY.-.#####",
+            "Auto Repeat":      "SUBS-.YYYY.-.#####",
         }
         if doctype in _NAMING_DEFAULTS and not doc.get("naming_series"):
             doc["naming_series"] = _NAMING_DEFAULTS[doctype]

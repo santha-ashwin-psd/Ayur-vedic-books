@@ -2,23 +2,23 @@
 <div>
 
   <!-- ── FLAT TABLE VIEW (default, nothing selected) ── -->
-  <div v-if="!selectedVendor" class="b-page cust-page">
-    <div class="cust-toolbar">
+  <div v-if="!selectedVendor" class="list-page">
+    <div class="sales-toolbar">
       <div class="cust-toolbar-left">
-        <div class="cust-filters">
-          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='all'}" @click="activeFilter='all'">All <span class="zb-pill-cnt" :class="activeFilter==='all'?'':'zb-pc-muted'">{{counts.all}}</span></button>
-          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='active'}" @click="activeFilter='active'">Active <span class="zb-pill-cnt" :class="activeFilter==='active'?'':'zb-pc-muted'">{{counts.active}}</span></button>
-          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='disabled'}" @click="activeFilter='disabled'">Disabled <span class="zb-pill-cnt" :class="activeFilter==='disabled'?'':'zb-pc-muted'">{{counts.disabled}}</span></button>
+        <div class="sales-pills">
+          <button class="sales-pill" :class="{'active':activeFilter==='all'}" @click="activeFilter='all'">All <span class="sales-pill-count" :class="activeFilter==='all'?'':'zb-pc-muted'">{{counts.all}}</span></button>
+          <button class="sales-pill" :class="{'active':activeFilter==='active'}" @click="activeFilter='active'">Active <span class="sales-pill-count" :class="activeFilter==='active'?'':'zb-pc-muted'">{{counts.active}}</span></button>
+          <button class="sales-pill" :class="{'active':activeFilter==='disabled'}" @click="activeFilter='disabled'">Disabled <span class="sales-pill-count" :class="activeFilter==='disabled'?'':'zb-pc-muted'">{{counts.disabled}}</span></button>
         </div>
       </div>
       <div class="cust-toolbar-right">
-        <div class="cust-search">
+        <div class="sales-search">
           <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search vendors…" class="cust-search-input" autocomplete="off"/>
+          <input v-model="search" placeholder="Search vendors…" class="sales-search-input" autocomplete="off"/>
         </div>
-        <button class="zb-tb-btn" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
-        <button class="zb-tb-btn" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
-        <button class="zb-tb-btn zb-tb-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
+        <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
+        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
+        <button class="sales-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
       </div>
     </div>
 
@@ -50,9 +50,9 @@
       <button class="inv-bulk-clear" @click="clearSelection">✕ Clear</button>
     </div>
 
-    <div class="vt-table-card">
-      <div class="vt-table-wrap">
-        <table class="vt-table">
+    <div class="inv-table-wrap">
+      <div class="inv-table-wrap">
+        <table class="inv-table">
           <thead>
             <tr>
               <th class="vt-th vt-th-check">
@@ -72,7 +72,7 @@
           <tbody>
             <template v-if="loading">
               <tr v-for="n in 6" :key="n" class="vt-row-shimmer">
-                <td colspan="10"><div class="b-shimmer" style="height:12px;border-radius:3px;width:65%"></div></td>
+                <td colspan="10"><div class="shimmer" style="height:12px;border-radius:3px;width:65%"></div></td>
               </tr>
             </template>
             <tr v-else-if="!filtered.length">
@@ -86,7 +86,7 @@
               </td>
             </tr>
             <tr v-else v-for="v in filtered" :key="v.name"
-              class="vt-row"
+              class="inv-row"
               :class="[v.disabled ? 'vt-row-disabled' : '', selectedRows.has(v.name) ? 'vt-row-selected' : '']"
               @click="selectVendor(v)">
               <td class="vt-td vt-td-check" @click.stop>
@@ -96,7 +96,7 @@
                 <div class="vt-vendor-cell">
                   <div class="vt-avatar" :class="v.disabled ? 'vt-avatar-disabled' : ''">{{vendorInitials(v.supplier_name)}}</div>
                   <div>
-                    <div class="vt-vendor-name">{{v.supplier_name||v.name}}</div>
+                    <div class="vt-vendor-name inv-customer">{{v.supplier_name||v.name}}</div>
                     <div class="vt-vendor-id">{{v.name}}</div>
                   </div>
                 </div>
@@ -114,14 +114,14 @@
               <td class="vt-td vt-td-secondary">{{v.mobile_no||'—'}}</td>
               <td class="vt-td vt-td-secondary">{{v.city ? (v.city + (v.state ? ', '+v.state : '')) : '—'}}</td>
               <td class="vt-td">
-                <span class="vt-badge" :class="v.disabled ? 'vt-badge-red' : 'vt-badge-green'">
+                <span class="inv-status-badge" :class="v.disabled ? 'vt-badge-red' : 'vt-badge-green'">
                   <span class="vt-badge-dot"></span>{{v.disabled ? 'Disabled' : 'Active'}}
                 </span>
               </td>
               <td class="vt-td vt-td-actions" @click.stop>
                 <div class="vt-actions">
-                  <button class="vt-act-btn vt-act-edit" @click="openEdit(v.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                  <button class="vt-act-btn vt-act-del" @click="confirmDelete(v)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                  <button class="inv-act-btn vt-act-edit" @click="openEdit(v.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                  <button class="inv-act-btn vt-act-del" @click="confirmDelete(v)" title="Delete"><span v-html="icon('trash',13)"></span></button>
                 </div>
               </td>
             </tr>
@@ -147,14 +147,14 @@
             <span v-html="icon('plus',12)"></span> New Vendor
           </button>
         </div>
-        <div class="cust-search" style="width:100%">
+        <div class="sales-search" style="width:100%">
           <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search vendors…" class="cust-search-input" autocomplete="off"/>
+          <input v-model="search" placeholder="Search vendors…" class="sales-search-input" autocomplete="off"/>
         </div>
         <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">
-          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='all'}" @click="activeFilter='all'" style="font-size:11.5px">All <span class="zb-pill-cnt" :class="activeFilter==='all'?'':'zb-pc-muted'">{{counts.all}}</span></button>
-          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='active'}" @click="activeFilter='active'" style="font-size:11.5px">Active <span class="zb-pill-cnt" :class="activeFilter==='active'?'':'zb-pc-muted'">{{counts.active}}</span></button>
-          <button class="zb-inv-pill" :class="{'zb-inv-pill-active':activeFilter==='disabled'}" @click="activeFilter='disabled'" style="font-size:11.5px">Disabled <span class="zb-pill-cnt" :class="activeFilter==='disabled'?'':'zb-pc-muted'">{{counts.disabled}}</span></button>
+          <button class="sales-pill" :class="{'active':activeFilter==='all'}" @click="activeFilter='all'" style="font-size:11.5px">All <span class="sales-pill-count" :class="activeFilter==='all'?'':'zb-pc-muted'">{{counts.all}}</span></button>
+          <button class="sales-pill" :class="{'active':activeFilter==='active'}" @click="activeFilter='active'" style="font-size:11.5px">Active <span class="sales-pill-count" :class="activeFilter==='active'?'':'zb-pc-muted'">{{counts.active}}</span></button>
+          <button class="sales-pill" :class="{'active':activeFilter==='disabled'}" @click="activeFilter='disabled'" style="font-size:11.5px">Disabled <span class="sales-pill-count" :class="activeFilter==='disabled'?'':'zb-pc-muted'">{{counts.disabled}}</span></button>
         </div>
       </div>
 
@@ -428,9 +428,9 @@
         <div v-else-if="activeVendorTab==='statement'">
           <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
             <span style="font-size:12px;font-weight:600;color:#6B7280">FROM</span>
-            <input v-model="stmtRange.from" type="date" class="nim-input" style="width:160px"/>
+            <input v-model="stmtRange.from" type="date" class="inv-fi" style="width:160px"/>
             <span style="font-size:12px;font-weight:600;color:#6B7280">TO</span>
-            <input v-model="stmtRange.to" type="date" class="nim-input" style="width:160px"/>
+            <input v-model="stmtRange.to" type="date" class="inv-fi" style="width:160px"/>
             <button class="nim-btn" style="border:1px solid #E5E7EB" @click="loadStatement">Refresh</button>
             <div style="margin-left:auto;display:flex;gap:8px">
               <button class="nim-btn" style="border:1px solid #E5E7EB" @click="emailVendorStatement">📧 Email Statement</button>
@@ -465,33 +465,33 @@
 
   <!-- Drawer -->
   <Teleport to="body">
-    <div v-if="showDrawer" class="cust-backdrop" @click.self="showDrawer=false">
-      <div class="cust-drawer" style="width:min(600px,96vw)">
+    <div v-if="showDrawer" class="inv-drawer-bg" @click.self="showDrawer=false">
+      <div class="inv-drawer-panel" :class="{open:showDrawer}" style="width:min(600px,96vw)">
 
-        <div class="cust-drawer-header" style="background:linear-gradient(135deg,#E67700,#C96200);padding:18px 24px">
+        <div class="inv-dh" style="background:linear-gradient(135deg,#E67700,#C96200);padding:18px 24px">
           <div class="cust-drawer-header-left">
             <div class="cust-drawer-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
             <div>
-              <div class="cust-drawer-title">{{drawerMode==='add'?'New Vendor':'Edit Vendor'}}</div>
+              <div class="inv-dh-title">{{drawerMode==='add'?'New Vendor':'Edit Vendor'}}</div>
               <div class="cust-drawer-sub">{{drawerMode==='edit'?form.name:'Fill in vendor details'}}</div>
             </div>
           </div>
-          <button class="nim-close" @click="showDrawer=false" v-html="icon('x',15)"></button>
+          <button class="inv-dclose" @click="showDrawer=false" v-html="icon('x',15)"></button>
         </div>
 
         <div v-if="drawerLoading" style="flex:1;display:grid;place-items:center;color:#9ca3af;font-size:13px">
           <div>Loading vendor…</div>
         </div>
 
-        <div v-else class="cust-drawer-body" style="padding:24px;overflow-y:auto;flex:1">
+        <div v-else class="inv-dbody" style="padding:24px;overflow-y:auto;flex:1">
 
-          <div class="cust-sec-label">Basic Information</div>
-          <div class="nim-grid-2 nim-mb">
-            <div class="nim-field" style="grid-column:span 2">
-              <label class="nim-label">Vendor Name <span class="nim-req">*</span></label>
-              <input v-model="form.supplier_name" class="nim-input"
+          <div class="inv-sec-lbl">Basic Information</div>
+          <div class="inv-fg inv-fg2">
+            <div class="inv-field" style="grid-column:span 2">
+              <label class="inv-lbl">Vendor Name <span class="nim-req">*</span></label>
+              <input v-model="form.supplier_name" class="inv-fi"
                 :style="formErrors.supplier_name?'border-color:#dc2626;background:#fff5f5':''"
                 placeholder="Company or individual name"
                 @input="form.supplier_name=form.supplier_name.replace(/[^a-zA-Z\s.'&-]/g,''); delete formErrors.supplier_name"
@@ -501,15 +501,15 @@
                 {{formErrors.supplier_name}}
               </div>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">Vendor Type</label>
-              <select v-model="form.supplier_type" class="nim-select">
+            <div class="inv-field">
+              <label class="inv-lbl">Vendor Type</label>
+              <select v-model="form.supplier_type" class="inv-fi">
                 <option>Company</option><option>Individual</option>
               </select>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">GSTIN / Tax ID</label>
-              <input v-model="form.tax_id" class="nim-input"
+            <div class="inv-field">
+              <label class="inv-lbl">GSTIN / Tax ID</label>
+              <input v-model="form.tax_id" class="inv-fi"
                 :style="formErrors.tax_id?'border-color:#dc2626;background:#fff5f5':form.tax_id&&!formErrors.tax_id&&form.country==='India'&&GSTIN_REGEX.test(form.tax_id)?'border-color:#2f9e44':''"
                 placeholder="27AAPFU0939F1ZV"
                 @input="form.tax_id=form.tax_id.toUpperCase(); delete formErrors.tax_id"
@@ -523,15 +523,15 @@
                 Valid GSTIN
               </div>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">Currency</label>
-              <select v-model="form.default_currency" class="nim-select">
+            <div class="inv-field">
+              <label class="inv-lbl">Currency</label>
+              <select v-model="form.default_currency" class="inv-fi">
                 <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option>
               </select>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">Payment Terms</label>
-              <select v-model="form.payment_terms" class="nim-select">
+            <div class="inv-field">
+              <label class="inv-lbl">Payment Terms</label>
+              <select v-model="form.payment_terms" class="inv-fi">
                 <option value="">Select</option>
                 <option>Net 30</option><option>Net 15</option><option>Net 7</option>
                 <option>Due on Receipt</option><option>End of Month</option>
@@ -539,11 +539,11 @@
             </div>
           </div>
 
-          <div class="cust-sec-label">Contact</div>
-          <div class="nim-grid-2 nim-mb">
-            <div class="nim-field">
-              <label class="nim-label">Email</label>
-              <input v-model="form.email_id" type="email" class="nim-input"
+          <div class="inv-sec-lbl">Contact</div>
+          <div class="inv-fg inv-fg2">
+            <div class="inv-field">
+              <label class="inv-lbl">Email</label>
+              <input v-model="form.email_id" type="email" class="inv-fi"
                 :style="formErrors.email_id?'border-color:#dc2626;background:#fff5f5':form.email_id&&EMAIL_REGEX.test(form.email_id)?'border-color:#2f9e44':''"
                 placeholder="email@vendor.com"
                 @input="delete formErrors.email_id"
@@ -557,10 +557,10 @@
                 Valid email
               </div>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">Mobile</label>
+            <div class="inv-field">
+              <label class="inv-lbl">Mobile</label>
               <div style="display:flex">
-                <select v-model="form.mobile_code" style="width:85px;border-right:none;border-top-right-radius:0;border-bottom-right-radius:0;text-align:center;background:#f9fafb;padding:0 5px" class="nim-input"
+                <select v-model="form.mobile_code" style="width:85px;border-right:none;border-top-right-radius:0;border-bottom-right-radius:0;text-align:center;background:#f9fafb;padding:0 5px" class="inv-fi"
                   @change="delete formErrors.mobile_no; if(form.mobile_no) validateField('mobile_no')">
                   <option value="+91">🇮🇳 +91</option>
                   <option value="+1">🇺🇸 +1</option>
@@ -581,7 +581,7 @@
                   <option value="+86">🇨🇳 +86</option>
                   <option value="+81">🇯🇵 +81</option>
                 </select>
-                <input v-model="form.mobile_no" class="nim-input"
+                <input v-model="form.mobile_no" class="inv-fi"
                   style="border-top-left-radius:0;border-bottom-left-radius:0;flex:1"
                   :style="formErrors.mobile_no?'border-color:#dc2626;background:#fff5f5':form.mobile_no&&!formErrors.mobile_no?'border-color:#2f9e44':''"
                   placeholder="Mobile number"
@@ -593,9 +593,9 @@
                 {{formErrors.mobile_no}}
               </div>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">Phone</label>
-              <input v-model="form.phone" class="nim-input" placeholder="Landline"
+            <div class="inv-field">
+              <label class="inv-lbl">Phone</label>
+              <input v-model="form.phone" class="inv-fi" placeholder="Landline"
                 :style="formErrors.phone?'border-color:#dc2626;background:#fff5f5':''"
                 @input="form.phone=form.phone.replace(/[^\d+\-\s()]/g,''); delete formErrors.phone"
                 @blur="validateField('phone')"/>
@@ -604,9 +604,9 @@
                 {{formErrors.phone}}
               </div>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">Website</label>
-              <input v-model="form.website" class="nim-input" placeholder="https://"
+            <div class="inv-field">
+              <label class="inv-lbl">Website</label>
+              <input v-model="form.website" class="inv-fi" placeholder="https://"
                 :style="formErrors.website?'border-color:#dc2626;background:#fff5f5':form.website&&URL_REGEX.test(form.website)?'border-color:#2f9e44':''"
                 @input="delete formErrors.website"
                 @blur="validateField('website')"/>
@@ -617,39 +617,39 @@
             </div>
           </div>
 
-          <div class="cust-sec-label">Address</div>
-          <div class="nim-grid-2 nim-mb">
-            <div class="nim-field" style="grid-column:span 2">
-              <label class="nim-label">Address Line 1</label>
-              <input v-model="form.address_line1" class="nim-input" placeholder="Street, building no."/>
+          <div class="inv-sec-lbl">Address</div>
+          <div class="inv-fg inv-fg2">
+            <div class="inv-field" style="grid-column:span 2">
+              <label class="inv-lbl">Address Line 1</label>
+              <input v-model="form.address_line1" class="inv-fi" placeholder="Street, building no."/>
             </div>
-            <div class="nim-field" style="grid-column:span 2">
-              <label class="nim-label">Address Line 2</label>
-              <input v-model="form.address_line2" class="nim-input" placeholder="Area, landmark"/>
+            <div class="inv-field" style="grid-column:span 2">
+              <label class="inv-lbl">Address Line 2</label>
+              <input v-model="form.address_line2" class="inv-fi" placeholder="Area, landmark"/>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">City</label>
-              <input v-model="form.city" class="nim-input" placeholder="Mumbai"
+            <div class="inv-field">
+              <label class="inv-lbl">City</label>
+              <input v-model="form.city" class="inv-fi" placeholder="Mumbai"
                 @input="form.city=form.city.replace(/[^a-zA-Z\s]/g,'')"/>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">Country</label>
-              <select v-model="form.country" class="nim-select" @change="form.state=''; delete formErrors.pincode; if(form.pincode) validateField('pincode')">
+            <div class="inv-field">
+              <label class="inv-lbl">Country</label>
+              <select v-model="form.country" class="inv-fi" @change="form.state=''; delete formErrors.pincode; if(form.pincode) validateField('pincode')">
                 <option value="">— Select Country —</option>
                 <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
               </select>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">State / Province</label>
-              <select v-if="statesFor(form.country).length" v-model="form.state" class="nim-select">
+            <div class="inv-field">
+              <label class="inv-lbl">State / Province</label>
+              <select v-if="statesFor(form.country).length" v-model="form.state" class="inv-fi">
                 <option value="">— Select State —</option>
                 <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{s}}</option>
               </select>
-              <input v-else v-model="form.state" class="nim-input" placeholder="Enter state / province"/>
+              <input v-else v-model="form.state" class="inv-fi" placeholder="Enter state / province"/>
             </div>
-            <div class="nim-field">
-              <label class="nim-label">Pincode / ZIP</label>
-              <input v-model="form.pincode" class="nim-input"
+            <div class="inv-field">
+              <label class="inv-lbl">Pincode / ZIP</label>
+              <input v-model="form.pincode" class="inv-fi"
                 :placeholder="pincodePlaceholder(form.country)"
                 :style="formErrors.pincode?'border-color:#dc2626;background:#fff5f5':form.pincode&&!formErrors.pincode?'border-color:#2f9e44':''"
                 @input="form.pincode=sanitizePincode(form.pincode, form.country); delete formErrors.pincode"
@@ -664,7 +664,7 @@
 
           <!-- Shipping Address -->
           <template v-if="drawerMode==='edit' && form.name">
-            <div class="cust-sec-label" style="margin-top:4px">Shipping Addresses</div>
+            <div class="inv-sec-lbl" style="margin-top:4px">Shipping Addresses</div>
             <AddressManager
               :partyDoctype="'Supplier'"
               :partyName="form.name"
@@ -673,7 +673,7 @@
             />
           </template>
           <template v-else>
-            <div class="cust-sec-label" style="margin-top:4px">Shipping Address
+            <div class="inv-sec-lbl" style="margin-top:4px">Shipping Address
               <span style="font-size:11px;font-weight:400;color:#9ca3af;margin-left:6px">— leave blank to use billing</span>
             </div>
             <div style="margin-bottom:10px">
@@ -682,46 +682,46 @@
                 Use same address as billing
               </label>
             </div>
-            <div v-if="!shipSameAsBilling" class="nim-grid-2 nim-mb">
-              <div class="nim-field" style="grid-column:span 2">
-                <label class="nim-label">Address Line 1</label>
-                <input v-model="form.ship_address_line1" class="nim-input" placeholder="Street, building no."/>
+            <div v-if="!shipSameAsBilling" class="inv-fg inv-fg2">
+              <div class="inv-field" style="grid-column:span 2">
+                <label class="inv-lbl">Address Line 1</label>
+                <input v-model="form.ship_address_line1" class="inv-fi" placeholder="Street, building no."/>
               </div>
-              <div class="nim-field" style="grid-column:span 2">
-                <label class="nim-label">Address Line 2</label>
-                <input v-model="form.ship_address_line2" class="nim-input" placeholder="Area, landmark"/>
+              <div class="inv-field" style="grid-column:span 2">
+                <label class="inv-lbl">Address Line 2</label>
+                <input v-model="form.ship_address_line2" class="inv-fi" placeholder="Area, landmark"/>
               </div>
-              <div class="nim-field">
-                <label class="nim-label">City</label>
-                <input v-model="form.ship_city" class="nim-input" placeholder="City"/>
+              <div class="inv-field">
+                <label class="inv-lbl">City</label>
+                <input v-model="form.ship_city" class="inv-fi" placeholder="City"/>
               </div>
-              <div class="nim-field">
-                <label class="nim-label">Country</label>
-                <select v-model="form.ship_country" class="nim-select">
+              <div class="inv-field">
+                <label class="inv-lbl">Country</label>
+                <select v-model="form.ship_country" class="inv-fi">
                   <option value="">— Select Country —</option>
                   <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
                 </select>
               </div>
-              <div class="nim-field">
-                <label class="nim-label">State</label>
-                <select v-if="statesFor(form.ship_country).length" v-model="form.ship_state" class="nim-select">
+              <div class="inv-field">
+                <label class="inv-lbl">State</label>
+                <select v-if="statesFor(form.ship_country).length" v-model="form.ship_state" class="inv-fi">
                   <option value="">— Select State —</option>
                   <option v-for="s in statesFor(form.ship_country)" :key="s" :value="s">{{s}}</option>
                 </select>
-                <input v-else v-model="form.ship_state" class="nim-input" placeholder="State"/>
+                <input v-else v-model="form.ship_state" class="inv-fi" placeholder="State"/>
               </div>
-              <div class="nim-field">
-                <label class="nim-label">Pincode</label>
-                <input v-model="form.ship_pincode" class="nim-input" placeholder="Pincode"/>
+              <div class="inv-field">
+                <label class="inv-lbl">Pincode</label>
+                <input v-model="form.ship_pincode" class="inv-fi" placeholder="Pincode"/>
               </div>
             </div>
           </template>
 
-          <div class="cust-sec-label">Account Settings</div>
-          <div class="nim-grid-1 nim-mb">
-            <div class="nim-field">
-              <label class="nim-label">Default Payable Account</label>
-              <select v-model="form.default_payable_account" class="nim-select">
+          <div class="inv-sec-lbl">Account Settings</div>
+          <div class="inv-fg">
+            <div class="inv-field">
+              <label class="inv-lbl">Default Payable Account</label>
+              <select v-model="form.default_payable_account" class="inv-fi">
                 <option value="">Select</option>
                 <option v-for="a in accounts" :key="a.name" :value="a.name">{{a.name}}</option>
               </select>
@@ -735,9 +735,9 @@
 
         </div>
 
-        <div class="nim-footer">
-          <button class="nim-btn nim-btn-ghost" @click="showDrawer=false">Cancel</button>
-          <button class="nim-btn nim-btn-primary" @click="saveVendor" :disabled="saving">
+        <div class="inv-dfooter">
+          <button class="form-btn form-btn-outline" @click="showDrawer=false">Cancel</button>
+          <button class="form-btn form-btn-primary" @click="saveVendor" :disabled="saving">
             <span v-if="saving" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
             {{saving ? 'Saving…' : (drawerMode==='add' ? 'Create Vendor' : 'Save Changes')}}
           </button>
@@ -766,8 +766,8 @@
             This action cannot be undone.
           </p>
         </div>
-        <div class="nim-footer">
-          <button class="nim-btn nim-btn-ghost" @click="showDelete=false">Cancel</button>
+        <div class="inv-dfooter">
+          <button class="form-btn form-btn-outline" @click="showDelete=false">Cancel</button>
           <button @click="doDelete" :disabled="deleting"
             style="height:37px;padding:0 18px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;border:none;background:#dc2626;color:#fff;display:inline-flex;align-items:center;gap:7px">
             <span v-if="deleting" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
@@ -1275,95 +1275,17 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* ── KPI Cards (unchanged) ─────────────────────────────── */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-@media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px)  { .kpi-grid { grid-template-columns: 1fr 1fr; } }
-
-.kpi-card  { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
-.kpi-icon  { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.kpi-label { font-size: 11px; color: #6b7280; letter-spacing: .06em; text-transform: uppercase; }
-.kpi-value { font-size: 19px; font-weight: 700; margin-top: 3px; letter-spacing: -.02em; color: #111827; }
-.kv-blue  { color: #2563eb; }
-.kv-green { color: #16a34a; }
-.kv-red   { color: #dc2626; }
-.kv-amber { color: #d97706; }
-
-/* ── Vendor Table ───────────────────────────────────────── */
-.vt-table-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
+/* ── Drawer slide-in animation ──────────────────────────── */
+.inv-drawer-panel {
+  width: min(600px, 96vw);
+  transform: translateX(100%);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.inv-drawer-panel.open {
+  transform: translateX(0);
 }
 
-.vt-table-wrap {
-  overflow-x: auto;
-}
-
-.vt-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-/* Header */
-.vt-th {
-  padding: 10px 14px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
-  user-select: none;
-}
-.vt-th-check  { width: 36px; padding-left: 16px; }
-.vt-th-num    { text-align: right; }
-.vt-th-actions{ text-align: center; width: 88px; }
-
-/* Rows */
-.vt-row {
-  border-bottom: 1px solid #f3f4f6;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-.vt-row:last-child { border-bottom: none; }
-.vt-row:hover { background: #fafafa; }
-.vt-row:hover .vt-actions { opacity: 1; }
-.vt-row-selected { background: #fff7ed !important; }
-.vt-row-disabled { opacity: 0.55; }
-
-.vt-row-shimmer td {
-  padding: 13px 14px;
-}
-
-/* Cells */
-.vt-td {
-  padding: 11px 14px;
-  vertical-align: middle;
-  color: #374151;
-  white-space: nowrap;
-}
-.vt-td-check  { padding-left: 16px; width: 36px; }
-.vt-td-num    { text-align: right; }
-.vt-td-mono   { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
-.vt-td-secondary { color: #6b7280; font-size: 12.5px; }
-.vt-td-actions { text-align: center; width: 88px; }
-
-/* Checkbox */
-.vt-checkbox {
-  width: 15px;
-  height: 15px;
-  accent-color: #E67700;
-  cursor: pointer;
-  border-radius: 3px;
-}
-
-/* Vendor name cell */
+/* ── Vendor avatar circle (orange gradient) ─────────────── */
 .vt-vendor-cell {
   display: flex;
   align-items: center;
@@ -1396,11 +1318,50 @@ onMounted(async () => {
   margin-top: 1px;
 }
 
-/* Amounts */
+/* ── Vendor-specific column helpers ─────────────────────── */
+.vt-th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  user-select: none;
+}
+.vt-th-check  { width: 36px; padding-left: 16px; }
+.vt-th-num    { text-align: right; }
+.vt-th-actions { text-align: center; width: 88px; }
+.vt-td {
+  padding: 11px 14px;
+  vertical-align: middle;
+  color: #374151;
+  white-space: nowrap;
+}
+.vt-td-check  { padding-left: 16px; width: 36px; }
+.vt-td-num    { text-align: right; }
+.vt-td-mono   { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
+.vt-td-secondary { color: #6b7280; font-size: 12.5px; }
+.vt-td-actions { text-align: center; width: 88px; }
+.vt-checkbox { width: 15px; height: 15px; accent-color: #E67700; cursor: pointer; border-radius: 3px; }
+.vt-row-shimmer td { padding: 13px 14px; }
+.vt-row-disabled   { opacity: 0.55; }
+.vt-row-selected   { background: #fff7ed !important; }
+.vt-actions {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.inv-row:hover .vt-actions { opacity: 1; }
+.vt-act-edit:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.vt-act-del:hover  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 .vt-amount-due { font-weight: 600; color: #E67700; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12.5px; }
 .vt-amount-nil { color: #d1d5db; }
-
-/* Badges */
 .vt-badge {
   display: inline-flex;
   align-items: center;
@@ -1412,69 +1373,21 @@ onMounted(async () => {
   white-space: nowrap;
   line-height: 1.6;
 }
-.vt-badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.vt-badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .vt-badge-green             { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
 .vt-badge-green .vt-badge-dot { background: #22c55e; }
 .vt-badge-red               { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .vt-badge-red   .vt-badge-dot { background: #ef4444; }
 .vt-badge-blue  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .vt-badge-gray  { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
-
-/* Action buttons — visible only on row hover */
-.vt-actions {
-  display: flex;
-  gap: 3px;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-.vt-act-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  cursor: pointer;
-  color: #6b7280;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
-}
-.vt-act-edit:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-.vt-act-del:hover  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
-
-/* Empty state */
-.vt-empty {
-  padding: 52px 24px;
-  text-align: center;
-}
+.vt-empty { padding: 52px 24px; text-align: center; }
 .vt-empty-icon {
-  margin: 0 auto 14px;
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 0 auto 14px; width: 56px; height: 56px; border-radius: 14px;
+  background: #f9fafb; border: 1px solid #e5e7eb;
+  display: flex; align-items: center; justify-content: center;
 }
 .vt-empty-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 5px; }
 .vt-empty-sub   { font-size: 13px; color: #9ca3af; }
-
-/* Footer */
-.vt-footer {
-  padding: 9px 16px;
-  border-top: 1px solid #f3f4f6;
-  font-size: 12px;
-  color: #9ca3af;
-  background: #fafafa;
-}
+.vt-footer { padding: 9px 16px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; background: #fafafa; }
 .vt-footer strong { color: #6b7280; font-weight: 600; }
 </style>

@@ -1,21 +1,21 @@
 <template>
-<div class="b-page">
+<div class="list-page">
   <!-- Toolbar -->
-  <div class="b-action-bar">
-    <div class="rec-search-wrap" style="min-width:220px">
+  <div class="sales-toolbar">
+    <div class="sales-search" style="min-width:220px">
       <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-      <input v-model="search" placeholder="Search challans, customers…" class="rec-search-input"/>
+      <input v-model="search" placeholder="Search challans, customers…" class="sales-search-input"/>
     </div>
-    <div style="display:flex;gap:6px">
-      <button v-for="t in TABS" :key="t.k" class="b-pill" :class="{active:tab===t.k}" @click="tab=t.k">
+    <div class="sales-pills">
+      <button v-for="t in TABS" :key="t.k" class="sales-pill" :class="{active:tab===t.k}" @click="tab=t.k">
         {{t.l}}
-        <span v-if="t.k!=='all'" class="b-pill-count">{{tabCounts[t.k]}}</span>
+        <span v-if="t.k!=='all'" class="sales-pill-count">{{tabCounts[t.k]}}</span>
       </button>
     </div>
     <div style="margin-left:auto;display:flex;gap:6px">
-      <button class="b-btn b-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
-      <button class="b-btn b-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
-      <button class="b-btn b-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Challan</button>
+      <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
+      <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
+      <button class="sales-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Challan</button>
     </div>
   </div>
 
@@ -46,8 +46,8 @@
     <button class="inv-bulk-clear" @click="selected = new Set()">✕ Clear</button>
   </div>
 
-  <div class="b-card" style="padding:0;overflow:hidden">
-    <table class="b-table">
+  <div class="inv-table-wrap">
+    <table class="inv-table">
       <thead>
         <tr>
           <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
@@ -62,26 +62,26 @@
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 6" :key="n"><td colspan="8" style="padding:14px"><div class="b-shimmer" style="height:12px"></div></td></tr>
+          <tr v-for="n in 6" :key="n"><td colspan="8" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
         </template>
         <tr v-else-if="!sorted.length">
           <td colspan="8" class="b-empty">{{search?'No challans match your search':'No delivery challans yet'}}</td>
         </tr>
-        <tr v-else v-for="r in paged" :key="r.name" class="clickable dc-row" :class="{selected: selected.has(r.name)}" @click="openView(r)">
+        <tr v-else v-for="r in paged" :key="r.name" class="inv-row" :class="{selected: selected.has(r.name)}" @click="openView(r)">
           <td @click.stop><input v-if="r._source==='dn'" type="checkbox" :checked="selected.has(r.name)" @change="toggle(r.name)" /></td>
-          <td><span class="mono" style="font-size:12px;color:#3B5BDB">{{r.name}}</span></td>
+          <td><span class="inv-link">{{r.name}}</span></td>
           <td class="fw-600">{{r.customer_name||r.customer||'—'}}</td>
           <td class="c-muted" style="font-size:12.5px">{{r.posting_date||'—'}}</td>
           <td class="c-muted mono" style="font-size:12px">{{r.sales_order||r.name||'—'}}</td>
-          <td><span class="b-badge" :class="statusClass(r)">{{statusLabel(r)}}</span></td>
+          <td><span class="inv-status-badge" :class="statusClass(r)">{{statusLabel(r)}}</span></td>
           <td class="ta-r c-muted" style="font-size:12.5px">{{r.total_qty||'—'}}</td>
           <td @click.stop>
             <div class="dc-actions-row">
-              <button class="dc-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
-              <button v-if="canEdit(r)" class="dc-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
-              <button v-if="r._source==='dn' && r.docstatus===0" class="dc-act-btn" @click.stop="submitOne(r)" title="Submit"><span v-html="icon('check',12)"></span></button>
-              <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled'" class="dc-act-btn dc-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel"><span v-html="icon('x',12)"></span></button>
-              <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="dc-act-btn dc-act-del" @click.stop="deleteTarget={row:r,mode:'delete'}" title="Delete"><span v-html="icon('trash',12)"></span></button>
+              <button class="inv-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
+              <button v-if="canEdit(r)" class="inv-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
+              <button v-if="r._source==='dn' && r.docstatus===0" class="inv-act-btn" @click.stop="submitOne(r)" title="Submit"><span v-html="icon('check',12)"></span></button>
+              <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled'" class="inv-act-btn dc-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel"><span v-html="icon('x',12)"></span></button>
+              <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="inv-act-btn dc-act-del" @click.stop="deleteTarget={row:r,mode:'delete'}" title="Delete"><span v-html="icon('trash',12)"></span></button>
             </div>
           </td>
         </tr>
@@ -97,19 +97,17 @@
   <Teleport to="body">
 
     <!-- VIEW DRAWER -->
-    <div v-if="viewOpen" class="dc-overlay" @click.self="viewOpen=false"></div>
-    <div class="dc-drawer dc-view-drawer" :class="{open:viewOpen}">
+    <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
+    <div class="inv-drawer-panel dc-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
-        <div class="dc-view-head" :class="dcHeadClass(viewDoc)">
-          <div class="dc-view-head-row">
-            <div>
-              <div class="dc-view-num">{{ viewDoc.name }}</div>
-              <div class="dc-view-sub">Delivery Challan · {{ viewDoc.posting_date }}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="b-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
-              <button class="dc-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-            </div>
+        <div class="inv-view-header">
+          <div>
+            <div class="inv-view-number">{{ viewDoc.name }}</div>
+            <div class="inv-view-subtitle">Delivery Challan · {{ viewDoc.posting_date }}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+            <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
           </div>
         </div>
 
@@ -134,10 +132,10 @@
                 {{ (viewDoc.items||[]).length }} line{{ (viewDoc.items||[]).length!==1?'s':'' }}
               </span>
             </div>
-            <table class="b-table" style="font-size:12.5px">
+            <table class="inv-table" style="font-size:12.5px">
               <thead><tr><th>Item</th><th>Description</th><th class="ta-r">Qty</th><th>UOM</th></tr></thead>
               <tbody>
-                <tr v-for="it in viewDoc.items||[]" :key="it.name||it.item_code">
+                <tr v-for="it in viewDoc.items||[]" :key="it.name||it.item_code" class="inv-row">
                   <td>{{ it.item_name||it.item_code }}</td>
                   <td class="c-muted">{{ it.description||'—' }}</td>
                   <td class="ta-r mono">{{ it.qty }}</td>
@@ -149,12 +147,12 @@
           </div>
         </div>
 
-        <div class="dc-dfooter">
-          <button class="b-btn b-btn-ghost" @click="viewOpen=false">Close</button>
-          <button v-if="canEdit(viewDoc)" class="b-btn b-btn-ghost" @click="openEdit(viewDoc);viewOpen=false">
+        <div class="inv-dfooter">
+          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
+          <button v-if="canEdit(viewDoc)" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
-          <button v-if="viewDoc.docstatus===0" class="b-btn b-btn-primary" @click="submitChallan" :disabled="submitting">
+          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitChallan" :disabled="submitting">
             {{ submitting?'Submitting…':'Submit Challan' }}
           </button>
         </div>
@@ -162,29 +160,24 @@
     </div>
 
     <!-- CREATE / EDIT DRAWER -->
-    <div v-if="formOpen" class="dc-overlay" @click.self="formOpen=false"></div>
-    <div class="dc-drawer" :class="{open:formOpen}">
-      <div class="dc-dheader" :class="editingName?'edit':''">
-        <div class="dc-dheader-left">
-          <div class="dc-dheader-ico" :class="editingName?'edit':''">
-            <span v-html="icon(editingName?'edit':'warehouse',18)"></span>
-          </div>
-          <div>
-            <div class="dc-dheader-title">{{ editingName ? 'Edit Challan' : 'New Delivery Challan' }}</div>
-            <div class="dc-dheader-sub">{{ editingName ? editingName : 'Dispatch goods to a customer' }}</div>
-          </div>
+    <div v-if="formOpen" class="inv-drawer-bg" @click.self="formOpen=false"></div>
+    <div class="inv-drawer-panel" :class="{open:formOpen}">
+      <div class="inv-dh" :class="editingName?'edit':''">
+        <div>
+          <div class="inv-dh-title">{{ editingName ? 'Edit Challan' : 'New Delivery Challan' }}</div>
+          <div class="inv-dh-sub">{{ editingName ? editingName : 'Dispatch goods to a customer' }}</div>
         </div>
-        <button class="dc-dclose" @click="formOpen=false"><span v-html="icon('x',16)"></span></button>
+        <button class="inv-dclose" @click="formOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
 
-      <div class="dc-dbody">
+      <div class="inv-dbody">
 
         <!-- Customer & Date -->
         <div class="dc-section">
           <div class="dc-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
-          <div class="dc-grid">
-            <div class="dc-field" style="grid-column:1/-1">
-              <label class="dc-flbl">Customer <span class="req">*</span></label>
+          <div class="inv-fg inv-fg2">
+            <div style="grid-column:1/-1">
+              <label class="inv-lbl">Customer <span class="req">*</span></label>
               <SearchableSelect
                 v-model="form.customer"
                 :options="customers"
@@ -195,12 +188,12 @@
                 @select="onCustomerSelect"
               />
             </div>
-            <div class="dc-field">
-              <label class="dc-flbl">Date <span class="req">*</span></label>
-              <input class="dc-input" type="date" v-model="form.posting_date"/>
+            <div>
+              <label class="inv-lbl">Date <span class="req">*</span></label>
+              <input class="inv-fi" type="date" v-model="form.posting_date"/>
             </div>
-            <div class="dc-field">
-              <label class="dc-flbl">Sales Order (optional)</label>
+            <div>
+              <label class="inv-lbl">Sales Order (optional)</label>
               <SearchableSelect
                 v-model="form.sales_order"
                 :options="salesOrders"
@@ -215,26 +208,26 @@
         <!-- Transport -->
         <div class="dc-section">
           <div class="dc-section-hdr"><span v-html="icon('warehouse',13)"></span><span>Transport</span></div>
-          <div class="dc-grid">
-            <div class="dc-field" style="grid-column:1/-1">
-              <label class="dc-flbl">Dispatch Warehouse</label>
+          <div class="inv-fg inv-fg2">
+            <div style="grid-column:1/-1">
+              <label class="inv-lbl">Dispatch Warehouse</label>
               <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Ship stock from…" @search="fetchWarehouses" />
             </div>
-            <div class="dc-field">
-              <label class="dc-flbl">LR / Tracking #</label>
-              <input class="dc-input" v-model="form.lr_no" placeholder="e.g. LR12345"/>
+            <div>
+              <label class="inv-lbl">LR / Tracking #</label>
+              <input class="inv-fi" v-model="form.lr_no" placeholder="e.g. LR12345"/>
             </div>
-            <div class="dc-field">
-              <label class="dc-flbl">Transporter</label>
-              <input class="dc-input" v-model="form.transporter_name" placeholder="e.g. BlueDart, VRL"/>
+            <div>
+              <label class="inv-lbl">Transporter</label>
+              <input class="inv-fi" v-model="form.transporter_name" placeholder="e.g. BlueDart, VRL"/>
             </div>
-            <div class="dc-field" style="grid-column:1/-1">
-              <label class="dc-flbl">Delivery Address</label>
-              <input class="dc-input" v-model="form.shipping_address" :placeholder="addressLoading?'Loading…':'Shipping address'"/>
+            <div style="grid-column:1/-1">
+              <label class="inv-lbl">Delivery Address</label>
+              <input class="inv-fi" v-model="form.shipping_address" :placeholder="addressLoading?'Loading…':'Shipping address'"/>
             </div>
-            <div class="dc-field" style="grid-column:1/-1">
-              <label class="dc-flbl">Remarks</label>
-              <input class="dc-input" v-model="form.remarks" placeholder="Optional remarks"/>
+            <div style="grid-column:1/-1">
+              <label class="inv-lbl">Remarks</label>
+              <input class="inv-fi" v-model="form.remarks" placeholder="Optional remarks"/>
             </div>
           </div>
         </div>
@@ -246,7 +239,7 @@
             <span style="margin-left:auto;font-size:11.5px;color:#6b7280;text-transform:none;letter-spacing:0">
               {{ form.items.length }} line{{ form.items.length!==1?'s':'' }}
             </span>
-            <button class="b-btn b-btn-ghost" style="padding:4px 10px;font-size:12px;margin-left:8px" @click="addItem">
+            <button class="inv-add-line-btn" style="margin-left:8px" @click="addItem">
               <span v-html="icon('plus',11)" style="vertical-align:-1px;margin-right:3px"></span> Add Item
             </button>
           </div>
@@ -266,16 +259,16 @@
               />
             </div>
             <div>
-              <input class="dc-input" v-model="it.description" placeholder="Description"/>
+              <input class="inv-fi" v-model="it.description" placeholder="Description"/>
             </div>
             <div>
-              <input class="dc-input ta-r" type="number" v-model.number="it.qty" placeholder="Qty" min="0.01" step="0.01"/>
+              <input class="inv-fi ta-r" type="number" v-model.number="it.qty" placeholder="Qty" min="0.01" step="0.01"/>
             </div>
             <div>
-              <input class="dc-input" v-model="it.uom" placeholder="Nos"/>
+              <input class="inv-fi" v-model="it.uom" placeholder="Nos"/>
             </div>
             <div>
-              <button class="dc-rm" @click="removeItem(i)"><span v-html="icon('trash',12)"></span></button>
+              <button class="inv-rm-line" @click="removeItem(i)"><span v-html="icon('trash',12)"></span></button>
             </div>
           </div>
           <div v-if="!form.items.length" class="dc-items-empty">No items yet — click Add Item</div>
@@ -283,12 +276,12 @@
 
       </div>
 
-      <div class="dc-dfooter">
-        <button class="b-btn b-btn-ghost" @click="formOpen=false" :disabled="saving">Cancel</button>
-        <button class="b-btn b-btn-save" @click="saveChallan(0)" :disabled="saving">
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="formOpen=false" :disabled="saving">Cancel</button>
+        <button class="form-btn form-btn-success" @click="saveChallan(0)" :disabled="saving">
           <span v-html="icon('save',13)"></span> {{ saving?'Saving…':'Save Draft' }}
         </button>
-        <button class="b-btn b-btn-primary" @click="saveChallan(1)" :disabled="saving">
+        <button class="form-btn form-btn-primary" @click="saveChallan(1)" :disabled="saving">
           <span v-html="icon('check',13)"></span> {{ saving?'Saving…':'Submit' }}
         </button>
       </div>
@@ -296,7 +289,7 @@
 
 
     <!-- DELETE / CANCEL CONFIRM DIALOG -->
-    <div v-if="deleteTarget" class="dc-overlay" style="z-index:60" @click.self="deleteTarget=null"></div>
+    <div v-if="deleteTarget" class="inv-drawer-bg" style="z-index:60" @click.self="deleteTarget=null"></div>
     <div v-if="deleteTarget" class="dc-confirm" style="z-index:61">
       <div class="dc-confirm-icon" :class="deleteTarget.mode==='delete'?'danger':'warn'">
         <span v-html="icon(deleteTarget.mode==='delete'?'trash':'x', 20)"></span>
@@ -952,107 +945,54 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.rec-search-wrap{display:flex;align-items:center;gap:8px;background:#ffffff;border-radius:8px;padding:6px 12px;}
-.rec-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
-.sortable{cursor:pointer;user-select:none;}.sortable:hover{color:#2563eb;}
-.dc-strip-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-.dc-strip-val{font-size:20px;font-weight:700;font-family:monospace}
+/* ── Drawer slide-in ── */
+.inv-drawer-panel { position:fixed;top:0;right:-620px;bottom:0;width:620px;max-width:96vw;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1); }
+.inv-drawer-panel.open { right:0; }
+.dc-view-drawer { width:560px;right:-560px; }
+.dc-view-drawer.open { right:0; }
 
-/* Badges */
-.b-badge-yellow{background:#fff9db;color:#e67700;border:1px solid #ffe066;}
-.b-pill-count{background:#e5e7eb;color:#6b7280;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;}
-.b-pill.active .b-pill-count{background:#2563eb;color:#fff;}
+/* ── Section layout ── */
+.dc-dbody { flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc; }
+.dc-section { background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03); }
+.dc-section-hdr { display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a; }
+.dc-section-hdr svg { color:#2563eb; }
 
-/* Row */
-.dc-row:hover td{background:#f9fafb;}
-.dc-act-btn{background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;font:inherit;font-size:14px;margin:0 2px;}
-.dc-act-btn:hover{background:#e5e7eb;color:#2563eb;}
-.dc-actions-row{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:nowrap;}
-.dc-act-del:hover{background:#fef2f2 !important;border-color:#fecaca !important;color:#dc2626 !important;}
-.dc-act-cancel:hover{background:#fffbeb !important;border-color:#fde68a !important;color:#d97706 !important;}
-.dc-confirm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
-.dc-confirm-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
-.dc-confirm-icon.danger{background:#fee2e2;color:#dc2626;}
-.dc-confirm-icon.warn{background:#fffbeb;color:#d97706;}
-.dc-confirm-title{font-size:16px;font-weight:700;color:#111827;}
-.dc-confirm-sub{font-size:13px;color:#6b7280;line-height:1.5;}
-.dc-confirm-actions{display:flex;gap:8px;margin-top:6px;width:100%;}
-.dc-confirm-actions .b-btn{flex:1;justify-content:center;}
-.dc-btn-danger{background:#dc2626;border:1px solid #dc2626;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
-.dc-btn-danger:hover{background:#b91c1c;}
-.dc-btn-danger:disabled,.dc-btn-warn:disabled{opacity:.5;cursor:not-allowed;}
-.dc-btn-warn{background:#d97706;border:1px solid #d97706;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
-.dc-btn-warn:hover{background:#b45309;}
-.dc-act-del:hover{background:#fef2f2 !important;border-color:#fecaca !important;color:#dc2626 !important;}
-.dc-act-cancel:hover{background:#fffbeb !important;border-color:#fde68a !important;color:#d97706 !important;}
+/* ── Items table column grid ── */
+.dc-items-head { display:grid;grid-template-columns:2fr 2fr 80px 80px 32px;gap:8px;background:#f9fafb;padding:6px 10px;border-radius:6px 6px 0 0;font-size:11.5px;font-weight:600;color:#374151;border:1px solid #e5e7eb;border-bottom:none; }
+.dc-item-row { display:grid;grid-template-columns:2fr 2fr 80px 80px 32px;gap:8px;padding:6px 0;border-top:1px solid #f3f4f6;align-items:center; }
+.dc-items-empty { font-size:12px;color:#868E96;text-align:center;padding:14px;background:#f9fafb;border:1px dashed #e5e7eb;border-radius:8px; }
 
-/* Confirm dialog */
-.dc-confirm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;}
-.dc-confirm-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
-.dc-confirm-icon.danger{background:#fee2e2;color:#dc2626;}
-.dc-confirm-icon.warn{background:#fffbeb;color:#d97706;}
-.dc-confirm-title{font-size:16px;font-weight:700;color:#111827;}
-.dc-confirm-sub{font-size:13px;color:#6b7280;line-height:1.5;}
-.dc-confirm-actions{display:flex;gap:8px;margin-top:6px;width:100%;}
-.dc-confirm-actions .b-btn{flex:1;justify-content:center;}
-.dc-btn-danger{background:#dc2626;border:1px solid #dc2626;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
-.dc-btn-danger:hover{background:#b91c1c;border-color:#b91c1c;}
-.dc-btn-danger:disabled{opacity:.5;cursor:not-allowed;}
-.dc-btn-warn{background:#d97706;border:1px solid #d97706;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
-.dc-btn-warn:hover{background:#b45309;border-color:#b45309;}
-.dc-btn-warn:disabled{opacity:.5;cursor:not-allowed;}
+/* ── Meta grid in view ── */
+.dc-meta-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.dc-meta-lbl { font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;font-weight:600; }
 
-/* Drawer */
-.dc-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(2px);z-index:40;}
-.dc-drawer{position:fixed;top:0;right:-620px;bottom:0;width:620px;max-width:96vw;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
-.dc-drawer.open{right:0;}
-.dc-view-drawer{width:560px;right:-560px;}.dc-view-drawer.open{right:0;}
+/* ── Confirm dialog ── */
+.dc-confirm { position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center; }
+.dc-confirm-icon { width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px; }
+.dc-confirm-icon.danger { background:#fee2e2;color:#dc2626; }
+.dc-confirm-icon.warn { background:#fffbeb;color:#d97706; }
+.dc-confirm-title { font-size:16px;font-weight:700;color:#111827; }
+.dc-confirm-sub { font-size:13px;color:#6b7280;line-height:1.5; }
+.dc-confirm-actions { display:flex;gap:8px;margin-top:6px;width:100%; }
+.dc-confirm-actions .form-btn { flex:1;justify-content:center; }
+.dc-btn-danger { background:#dc2626;border:1px solid #dc2626;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px; }
+.dc-btn-danger:hover { background:#b91c1c;border-color:#b91c1c; }
+.dc-btn-danger:disabled,.dc-btn-warn:disabled { opacity:.5;cursor:not-allowed; }
+.dc-btn-warn { background:#d97706;border:1px solid #d97706;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px; }
+.dc-btn-warn:hover { background:#b45309;border-color:#b45309; }
 
-.dc-dheader{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}
-.dc-dheader.edit{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);}
-.dc-dheader-left{display:flex;align-items:flex-start;gap:12px;}
-.dc-dheader-ico{width:38px;height:38px;border-radius:10px;background:#fff;border:1px solid rgba(37,99,235,.18);display:inline-flex;align-items:center;justify-content:center;color:#2563eb;box-shadow:0 1px 3px rgba(15,23,42,.06);flex-shrink:0;}
-.dc-dheader-ico.edit{color:#ca8a04;border-color:rgba(202,138,4,.25);}
-.dc-dheader-title{font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.01em;}
-.dc-dheader-sub{font-size:12px;color:#475569;margin-top:3px;font-weight:500;}
-.dc-dclose{background:rgba(255,255,255,.6);border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;transition:background .15s;}
-.dc-dclose:hover{background:#fff;color:#111827;}
+/* ── Action button hover states ── */
+.dc-actions-row { display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:nowrap; }
+.dc-act-del:hover { background:#fef2f2 !important;border-color:#fecaca !important;color:#dc2626 !important; }
+.dc-act-cancel:hover { background:#fffbeb !important;border-color:#fde68a !important;color:#d97706 !important; }
 
-.dc-view-head{padding:18px 20px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);flex-shrink:0;}
-.dc-view-head.delivered{background:linear-gradient(135deg,#f0fdf4 0%,#bbf7d0 100%);}
-.dc-view-head.cancelled{background:linear-gradient(135deg,#f3f4f6 0%,#e5e7eb 100%);}
-.dc-view-head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
-.dc-view-num{font-size:18px;font-weight:700;font-family:monospace;color:#111827;}
-.dc-view-sub{font-size:12.5px;color:#475569;margin-top:2px;}
-
-.dc-dbody{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc;}
-.dc-section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
-.dc-section-hdr{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;}
-.dc-section-hdr svg{color:#2563eb;}
-.dc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.dc-field{display:flex;flex-direction:column;gap:4px;}
-.dc-flbl{font-size:12px;font-weight:600;color:#374151;}
-.dc-input{border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;transition:border-color .15s,box-shadow .15s;width:100%;box-sizing:border-box;}
-.dc-input:hover:not(:disabled){border-color:#cbd5e1;}
-.dc-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
-.req{color:#dc2626;}
-
-/* Items table in form */
-.dc-items-head{display:grid;grid-template-columns:2fr 2fr 80px 80px 32px;gap:8px;background:#f9fafb;padding:6px 10px;border-radius:6px 6px 0 0;font-size:11.5px;font-weight:600;color:#374151;border:1px solid #e5e7eb;border-bottom:none;}
-.dc-item-row{display:grid;grid-template-columns:2fr 2fr 80px 80px 32px;gap:8px;padding:6px 0;border-top:1px solid #f3f4f6;align-items:center;}
-.dc-rm{background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;color:#dc2626;height:32px;width:32px;display:inline-flex;align-items:center;justify-content:center;}
-.dc-rm:hover{background:#fee2e2;}
-.dc-items-empty{font-size:12px;color:#868E96;text-align:center;padding:14px;background:#f9fafb;border:1px dashed #e5e7eb;border-radius:8px;}
-
-.dc-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.dc-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;font-weight:600;}
-
-.dc-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0;flex-wrap:wrap;}
-.b-btn-save{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #16a34a;color:#16a34a;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
-.b-btn-save:hover{background:#dcfce7;}
-.b-btn-save:disabled{opacity:.5;cursor:not-allowed;}
-.mono{font-family:monospace;}
-.ta-r{text-align:right;}
-.fw-600{font-weight:600;}
-.c-muted{color:#6b7280;}
+/* ── Misc ── */
+.b-empty { text-align:center;color:#9ca3af;padding:24px!important; }
+.ta-r { text-align:right; }
+.fw-600 { font-weight:600; }
+.c-muted { color:#6b7280; }
+.mono { font-family:monospace; }
+.req { color:#dc2626; }
+.sortable { cursor:pointer;user-select:none; }
+.sortable:hover { color:#2563eb; }
 </style>

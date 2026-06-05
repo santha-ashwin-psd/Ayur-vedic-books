@@ -1,24 +1,24 @@
 <template>
-  <div class="cn-page">
+  <div class="list-page">
 
     <!-- ── Toolbar ── -->
-    <div class="cn-actions">
-      <div class="cn-search-wrap">
+    <div class="sales-toolbar">
+      <div class="sales-search">
         <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-        <input v-model="search" placeholder="Search credit notes, customers…" class="cn-search-input" />
+        <input v-model="search" placeholder="Search credit notes, customers…" class="sales-search-input" />
       </div>
-      <div class="cn-pills">
+      <div class="sales-pills">
         <button v-for="t in tabs" :key="t.key"
-          class="cn-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}"
+          class="sales-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}"
           @click="activeTab=t.key">
           {{ t.label }}
-          <span v-if="t.key!=='all'" class="cn-pill-count">{{ counts[t.key] }}</span>
+          <span v-if="t.key!=='all'" class="sales-pill-count">{{ counts[t.key] }}</span>
         </button>
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
-        <button class="cn-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
-        <button class="cn-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <button class="cn-btn-primary" @click="openNew">
+        <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
+        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
+        <button class="sales-btn-primary" @click="openNew">
           <span v-html="icon('plus',13)"></span> New Credit Note
         </button>
       </div>
@@ -46,8 +46,8 @@
     </BulkActionBar>
 
     <!-- ── Table ── -->
-    <div class="cn-card">
-      <table class="cn-table">
+    <div class="inv-table-wrap">
+      <table class="inv-table">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
@@ -63,26 +63,26 @@
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="9"><div class="cn-shimmer"></div></td></tr>
+            <tr v-for="n in 6" :key="n"><td colspan="9"><div class="shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="c in paged" :key="c.name" class="cn-row" :class="{selected:selected.has(c.name)}">
+            <tr v-for="c in paged" :key="c.name" class="inv-row" :class="{selected:selected.has(c.name)}">
               <td><input type="checkbox" :checked="selected.has(c.name)" @change="toggle(c.name)" /></td>
-              <td @click="openView(c)"><span class="cn-num">{{ c.name }}</span></td>
+              <td @click="openView(c)"><span class="inv-link">{{ c.name }}</span></td>
               <td @click="openView(c)">{{ c.customer_name || c.customer || '—' }}</td>
               <td @click="openView(c)" class="text-muted mono-sm">{{ fmtDate(c.posting_date) }}</td>
               <td @click="openView(c)" class="text-muted mono-sm">{{ c.return_against||'—' }}</td>
-              <td @click="openView(c)"><span class="cn-badge" :class="statusCls(c)">{{ statusLabel(c) }}</span></td>
+              <td @click="openView(c)"><span class="inv-status-badge" :class="statusCls(c)">{{ statusLabel(c) }}</span></td>
               <td @click="openView(c)" class="ta-r mono-sm" style="color:#7f1d1d">{{ fmtCur(Math.abs(c.grand_total||0)) }}</td>
               <td @click="openView(c)" class="ta-r mono-sm">
                 <span v-if="c.docstatus===1" :class="balanceFor(c.name)>0?'text-danger':'text-success'">{{ fmtCur(balanceFor(c.name)) }}</span>
                 <span v-else class="text-muted">—</span>
               </td>
               <td class="cn-act-cell">
-                <button class="cn-act-btn" @click="openView(c)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button v-if="c.docstatus===0" class="cn-act-btn" @click="openEdit(c)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                <button v-if="c.docstatus===1 && balanceFor(c.name)>0" class="cn-act-btn cn-act-apply" @click="applyCN(c)" title="Apply to Invoice">↳</button>
-                <button v-if="c.docstatus===0 || c.docstatus===2" class="cn-act-btn cn-act-del" @click="deleteCN(c)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                <button class="inv-act-btn" @click="openView(c)" title="View"><span v-html="icon('eye',13)"></span></button>
+                <button v-if="c.docstatus===0" class="inv-act-btn" @click="openEdit(c)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="c.docstatus===1 && balanceFor(c.name)>0" class="inv-act-btn cn-act-apply" @click="applyCN(c)" title="Apply to Invoice">↳</button>
+                <button v-if="c.docstatus===0 || c.docstatus===2" class="inv-act-btn cn-act-del" @click="deleteCN(c)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
             <tr v-if="!sorted.length"><td colspan="9" class="cn-empty">No credit notes match</td></tr>
@@ -96,46 +96,46 @@
     </div>
 
     <!-- ── Create / Edit Drawer ── -->
-    <div v-if="drawerOpen" class="cn-overlay" @click.self="drawerOpen=false"></div>
+    <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false"></div>
     <div class="cn-drawer" :class="{open:drawerOpen}">
-      <div class="cn-dheader" :class="editingName?'edit':''">
+      <div class="inv-dh">
         <div class="cn-dheader-left">
           <div class="cn-dheader-ico" :class="editingName?'edit':''">
             <span v-html="icon(editingName?'edit':'creditnote',18)"></span>
           </div>
           <div>
-            <div class="cn-dheader-title">{{ editingName ? 'Edit Credit Note' : 'New Credit Note' }}</div>
-            <div class="cn-dheader-sub">
+            <div class="inv-dh-title">{{ editingName ? 'Edit Credit Note' : 'New Credit Note' }}</div>
+            <div class="inv-dh-sub">
               {{ editingName ? editingName : 'Issue a credit against a customer invoice' }}
             </div>
           </div>
         </div>
-        <button class="cn-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
+        <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
 
-      <div class="cn-dbody">
+      <div class="inv-dbody">
         <!-- Section: Customer & Date -->
         <div class="cn-section">
           <div class="cn-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
-          <div class="cn-fields-grid">
+          <div class="inv-fg inv-fg2">
             <div class="cn-field" style="grid-column:1/-1">
-              <label class="cn-label">Customer <span class="req">*</span></label>
+              <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
               <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer…"
                 :createable="true" createDoctype="Customer"
                 @search="fetchCustomers" @select="onCustomerSelect" />
             </div>
             <div class="cn-field">
-              <label class="cn-label">Date <span class="req">*</span></label>
-              <input v-model="form.posting_date" type="date" class="cn-input" />
+              <label class="inv-lbl">Date <span class="inv-req">*</span></label>
+              <input v-model="form.posting_date" type="date" class="inv-fi" />
             </div>
             <div class="cn-field">
-              <label class="cn-label">Return Against Invoice</label>
+              <label class="inv-lbl">Return Against Invoice</label>
               <SearchableSelect v-model="form.return_against" :options="invoices"
                 placeholder="Select invoice (optional)…" @search="fetchInvoices" @select="onInvoiceSelect" />
             </div>
             <div class="cn-field" style="grid-column:1/-1">
-              <label class="cn-label">Reason</label>
-              <select v-model="form.reason" class="cn-input">
+              <label class="inv-lbl">Reason</label>
+              <select v-model="form.reason" class="inv-fi">
                 <option>Price Adjustment</option>
                 <option>Goods Returned</option>
                 <option>Damaged Goods</option>
@@ -161,13 +161,13 @@
               <div><SearchableSelect v-model="line.item_code" :options="items"
                 placeholder="Item…" :createable="true" createDoctype="Item"
                 @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
-              <div><input v-model="line.description" class="cn-input" placeholder="Description" /></div>
-              <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="cn-input ta-r" @input="calcLine(line)" /></div>
-              <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="cn-input ta-r" @input="calcLine(line)" /></div>
+              <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
+              <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
+              <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
               <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
-              <div><button @click="removeLine(line.id)" class="cn-rm-line"><span v-html="icon('x',12)"></span></button></div>
+              <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
             </div>
-            <button class="cn-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+            <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
           </div>
           <div class="cn-total-row grand"><span>Total Credit</span><span style="color:#7f1d1d">{{ fmtCur(subtotal) }}</span></div>
         </div>
@@ -175,47 +175,47 @@
         <!-- Section: Notes -->
         <div class="cn-section">
           <div class="cn-section-hdr"><span v-html="icon('mail',13)"></span><span>Notes</span></div>
-          <textarea v-model="form.notes" rows="3" class="cn-input" placeholder="Internal note (optional)…"></textarea>
+          <textarea v-model="form.notes" rows="3" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
         </div>
       </div>
 
-      <div class="cn-dfooter">
-        <button class="cn-btn-ghost" @click="drawerOpen=false" :disabled="drawerSaving">Cancel</button>
-        <button class="cn-btn-save" :disabled="drawerSaving" @click="saveCN(0)"><span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}</button>
-        <button class="cn-btn-primary" :disabled="drawerSaving" @click="saveCN(1)"><span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}</button>
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="drawerOpen=false" :disabled="drawerSaving">Cancel</button>
+        <button class="form-btn form-btn-success" :disabled="drawerSaving" @click="saveCN(0)"><span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}</button>
+        <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="saveCN(1)"><span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}</button>
       </div>
     </div>
 
     <!-- ── View Drawer ── -->
-    <div v-if="viewOpen" class="cn-overlay" @click.self="viewOpen=false"></div>
+    <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
     <div class="cn-drawer cn-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
-        <div class="cn-view-head" :style="`background:${statusBg(viewDoc)}`">
-          <button class="cn-dclose cn-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+        <div class="inv-view-header">
+          <button class="inv-dclose cn-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
           <div class="cn-view-head-body">
             <div class="cn-view-head-left">
-              <div class="cn-view-num">{{ viewDoc.name }}</div>
-              <div class="cn-view-sub">
+              <div class="inv-view-number">{{ viewDoc.name }}</div>
+              <div class="inv-view-subtitle">
                 <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer }}</DocLink>
               </div>
             </div>
             <div class="cn-view-head-right">
               <div class="cn-view-amount">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div>
-              <span class="cn-badge cn-badge-white">{{ statusLabel(viewDoc) }}</span>
+              <span class="inv-hdr-badge" :class="statusCls(viewDoc)">{{ statusLabel(viewDoc) }}</span>
             </div>
           </div>
         </div>
 
         <div class="cn-stepper-wrap"><TimelineStepper :steps="timelineSteps" /></div>
 
-        <div class="cn-tabs">
-          <button class="cn-tab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
-          <button class="cn-tab" :class="{active:viewTab==='applied'}" @click="viewTab='applied'">
-            Applied To<span v-if="viewApplications.length" class="cn-tab-count">{{ viewApplications.length }}</span>
+        <div class="inv-view-tabs">
+          <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
+          <button class="inv-vtab" :class="{active:viewTab==='applied'}" @click="viewTab='applied'">
+            Applied To<span v-if="viewApplications.length" class="inv-vtab-count">{{ viewApplications.length }}</span>
           </button>
         </div>
 
-        <div class="cn-dbody">
+        <div class="inv-dbody">
           <template v-if="viewTab==='details'">
             <div class="cn-meta-grid">
               <div><div class="cn-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}</div></div>
@@ -228,7 +228,7 @@
 
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
             <template v-else-if="viewItems.length">
-              <div class="cn-section-title">Line Items</div>
+              <div class="inv-sec-lbl">Line Items</div>
               <div class="cn-view-items">
                 <div class="cn-view-items-head"><span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span></div>
                 <div v-for="it in viewItems" :key="it.name" class="cn-view-items-row">
@@ -255,43 +255,43 @@
             <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
               No applications yet.
               <div v-if="viewBalance>0 && viewDoc.docstatus===1" style="margin-top:8px">
-                <button class="cn-btn-primary" @click="applyCN(viewDoc)" style="font-size:12px;padding:6px 12px">↳ Apply to Invoice</button>
+                <button class="form-btn form-btn-primary" @click="applyCN(viewDoc)" style="font-size:12px;padding:6px 12px">↳ Apply to Invoice</button>
               </div>
             </div>
           </template>
         </div>
 
-        <div class="cn-dfooter">
-          <button class="cn-btn-ghost" @click="viewOpen=false">Close</button>
-          <button v-if="viewDoc.docstatus===0" class="cn-btn-save" @click="openEdit(viewDoc);viewOpen=false">
+        <div class="inv-dfooter">
+          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
+          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-success" @click="openEdit(viewDoc);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
-          <button v-if="viewDoc.docstatus===1" class="cn-btn-ghost" @click="emailCN(viewDoc)">
+          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" @click="emailCN(viewDoc)">
             <span v-html="icon('mail',13)"></span> Email
           </button>
-          <button class="cn-btn-ghost" @click="printCN(viewDoc)" title="Print preview">
+          <button class="form-btn form-btn-outline" @click="printCN(viewDoc)" title="Print preview">
             🖨 Print
           </button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="cn-btn-primary" @click="applyCN(viewDoc)">↳ Apply to Invoice</button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="cn-btn-warn" @click="refundCN(viewDoc)">↩ Refund</button>
-          <button v-if="viewDoc.docstatus===1" class="cn-btn-danger" @click="cancelCN(viewDoc)">Cancel</button>
-          <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="cn-btn-danger" @click="deleteCN(viewDoc)">Delete</button>
+          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-primary" @click="applyCN(viewDoc)">↳ Apply to Invoice</button>
+          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-outline" @click="refundCN(viewDoc)">↩ Refund</button>
+          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="cancelCN(viewDoc)">Cancel</button>
+          <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="form-btn form-btn-danger" @click="deleteCN(viewDoc)">Delete</button>
         </div>
       </template>
     </div>
 
     <!-- ── Apply-to-Invoice modal ── -->
-    <div v-if="applyModal.open" class="cn-overlay" @click.self="applyModal.open=false" style="z-index:60"></div>
+    <div v-if="applyModal.open" class="inv-drawer-bg" @click.self="applyModal.open=false" style="z-index:60"></div>
     <div v-if="applyModal.open" class="cn-apply-dialog">
-      <div class="cn-dheader" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff;height:auto;padding:14px 18px">
-        <div style="color:#fff;font-weight:700">Apply Credit Note — {{ applyModal.cnName }}</div>
-        <button class="cn-dclose" style="color:#fff" @click="applyModal.open=false"><span v-html="icon('x',16)"></span></button>
+      <div class="inv-dh" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);height:auto;padding:14px 18px">
+        <div class="inv-dh-title">Apply Credit Note — {{ applyModal.cnName }}</div>
+        <button class="inv-dclose" @click="applyModal.open=false"><span v-html="icon('x',16)"></span></button>
       </div>
-      <div class="cn-dbody">
+      <div class="inv-dbody">
         <div style="font-size:12.5px;color:#374151">Available Balance: <strong>{{ fmtCur(applyModal.balance) }}</strong></div>
         <div class="cn-field">
-          <label class="cn-label">Target Invoice <span class="req">*</span></label>
-          <select v-model="applyModal.invoice" class="cn-input">
+          <label class="inv-lbl">Target Invoice <span class="inv-req">*</span></label>
+          <select v-model="applyModal.invoice" class="inv-fi">
             <option value="">— Select invoice —</option>
             <option v-for="i in applyModal.openInvoices" :key="i.name" :value="i.name">
               {{ i.name }} · {{ fmtCur(i.outstanding_amount) }} due
@@ -299,35 +299,35 @@
           </select>
         </div>
         <div class="cn-field">
-          <label class="cn-label">Amount to Apply <span class="req">*</span></label>
-          <input v-model.number="applyModal.amount" type="number" min="0.01" :max="applyModal.balance" step="0.01" class="cn-input ta-r" style="font-family:monospace" />
+          <label class="inv-lbl">Amount to Apply <span class="inv-req">*</span></label>
+          <input v-model.number="applyModal.amount" type="number" min="0.01" :max="applyModal.balance" step="0.01" class="inv-fi ta-r" style="font-family:monospace" />
         </div>
       </div>
-      <div class="cn-dfooter">
-        <button class="cn-btn-ghost" @click="applyModal.open=false" :disabled="applyModal.saving">Cancel</button>
-        <button class="cn-btn-primary" :disabled="applyModal.saving || !applyModal.invoice || applyModal.amount<=0" @click="submitApply">
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="applyModal.open=false" :disabled="applyModal.saving">Cancel</button>
+        <button class="form-btn form-btn-primary" :disabled="applyModal.saving || !applyModal.invoice || applyModal.amount<=0" @click="submitApply">
           {{ applyModal.saving ? 'Applying…' : `Apply ${fmtCur(applyModal.amount)}` }}
         </button>
       </div>
     </div>
 
     <!-- ── Refund modal ── -->
-    <div v-if="refundModal.open" class="cn-overlay" @click.self="refundModal.open=false" style="z-index:60"></div>
+    <div v-if="refundModal.open" class="inv-drawer-bg" @click.self="refundModal.open=false" style="z-index:60"></div>
     <div v-if="refundModal.open" class="cn-apply-dialog">
-      <div class="cn-dheader" style="background:linear-gradient(135deg,#78350f,#d97706);color:#fff;height:auto;padding:14px 18px">
-        <div style="color:#fff;font-weight:700">Refund Credit Note — {{ refundModal.cnName }}</div>
-        <button class="cn-dclose" style="color:#fff" @click="refundModal.open=false"><span v-html="icon('x',16)"></span></button>
+      <div class="inv-dh" style="background:linear-gradient(135deg,#78350f,#d97706);height:auto;padding:14px 18px">
+        <div class="inv-dh-title">Refund Credit Note — {{ refundModal.cnName }}</div>
+        <button class="inv-dclose" @click="refundModal.open=false"><span v-html="icon('x',16)"></span></button>
       </div>
-      <div class="cn-dbody">
+      <div class="inv-dbody">
         <div style="font-size:12.5px;color:#374151">Available Balance: <strong>{{ fmtCur(refundModal.balance) }}</strong></div>
-        <div class="cn-fields-grid">
+        <div class="inv-fg inv-fg2">
           <div class="cn-field">
-            <label class="cn-label">Refund Amount <span class="req">*</span></label>
-            <input v-model.number="refundModal.amount" type="number" min="0.01" :max="refundModal.balance" step="0.01" class="cn-input ta-r" style="font-family:monospace" />
+            <label class="inv-lbl">Refund Amount <span class="inv-req">*</span></label>
+            <input v-model.number="refundModal.amount" type="number" min="0.01" :max="refundModal.balance" step="0.01" class="inv-fi ta-r" style="font-family:monospace" />
           </div>
           <div class="cn-field">
-            <label class="cn-label">Mode</label>
-            <select v-model="refundModal.mode" class="cn-input">
+            <label class="inv-lbl">Mode</label>
+            <select v-model="refundModal.mode" class="inv-fi">
               <option>Bank Transfer</option>
               <option>Cash</option>
               <option>Cheque</option>
@@ -336,14 +336,14 @@
             </select>
           </div>
           <div class="cn-field" style="grid-column:1/-1">
-            <label class="cn-label">Reference / Cheque #</label>
-            <input v-model="refundModal.reference" class="cn-input" placeholder="Optional reference" />
+            <label class="inv-lbl">Reference / Cheque #</label>
+            <input v-model="refundModal.reference" class="inv-fi" placeholder="Optional reference" />
           </div>
         </div>
       </div>
-      <div class="cn-dfooter">
-        <button class="cn-btn-ghost" @click="refundModal.open=false" :disabled="refundModal.saving">Cancel</button>
-        <button class="cn-btn-warn" :disabled="refundModal.saving || refundModal.amount<=0" @click="submitRefund">
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="refundModal.open=false" :disabled="refundModal.saving">Cancel</button>
+        <button class="form-btn form-btn-outline" :disabled="refundModal.saving || refundModal.amount<=0" @click="submitRefund">
           {{ refundModal.saving ? 'Processing…' : `Refund ${fmtCur(refundModal.amount)}` }}
         </button>
       </div>
@@ -794,127 +794,122 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.cn-page { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
-.cn-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.cn-search-wrap { display: flex; align-items: center; gap: 8px; background: #ffffff; border-radius: 8px; padding: 6px 12px; min-width: 220px; }
-.cn-search-input { border: none; background: transparent; outline: none; font: inherit; color: #111827; width: 100%; font-size: 13px; }
-.cn-pills { display: flex; gap: 6px; }
-.cn-pill { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 600; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
-.cn-pill:hover { color: #2563eb; border-color: #2563eb; }
-.cn-pill.active { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
-.cn-pill-count { background: #f3f4f6; color: #6b7280; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.cn-pill.active .cn-pill-count { background: #2563eb; color: #fff; }
-.cn-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.cn-btn-primary:hover:not(:disabled) { background: #1d4ed8; }
-.cn-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-.cn-btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #374151; cursor: pointer; }
-.cn-btn-ghost:hover { background: #f9fafb; }
-.cn-btn-save { display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.cn-btn-save:hover { background: #dcfce7; }
-.cn-btn-save:disabled { opacity: .5; cursor: not-allowed; }
-.cn-btn-warn { display: inline-flex; align-items: center; gap: 6px; background: #fff7ed; border: 1px solid #d97706; color: #d97706; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.cn-btn-warn:hover { background: #ffedd5; }
-.cn-btn-danger { display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; border: 1px solid #dc2626; color: #dc2626; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.cn-btn-danger:hover { background: #fee2e2; }
+/* ── Drawer slide-in transition ── */
+.cn-drawer {
+  position: fixed;
+  top: 0; right: -620px; bottom: 0;
+  width: 620px; max-width: 96vw;
+  background: #fff;
+  border-left: 1px solid #e5e7eb;
+  box-shadow: -12px 0 32px rgba(15,23,42,.12);
+  z-index: 9001;
+  display: flex; flex-direction: column;
+  transition: right .24s cubic-bezier(.32,.72,0,1);
+}
+.cn-drawer.open { right: 0; }
+.cn-view-drawer { width: 520px; right: -520px; }
+.cn-view-drawer.open { right: 0; }
 
-.cn-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
-.cn-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.cn-table th { background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 11.5px; font-weight: 600; color: #374151; text-align: left; white-space: nowrap; }
-.cn-table th.sortable { cursor: pointer; user-select: none; }
-.cn-table th.sortable:hover { color: #2563eb; }
-.ta-r { text-align: right !important; }
-.cn-row td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; cursor: pointer; }
-.cn-row:last-child td { border-bottom: none; }
-.cn-row:hover td { background: #f9fafb; }
-.cn-row.selected td { background: #eff6ff; }
-.cn-num { font-family: monospace; font-size: 12.5px; color: #2563eb; font-weight: 600; }
-.mono-sm { font-family: monospace; font-size: 12.5px; }
-.text-muted { color: #6b7280; }
-.text-danger { color: #dc2626; }
-.text-success { color: #059669; }
-.cn-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
-.cn-badge.status-paid { background: #d1fae5; color: #059669; }
-.cn-badge.status-unpaid { background: #fef3c7; color: #92400e; }
-.cn-badge.status-draft { background: #f3f4f6; color: #6b7280; }
-.cn-badge.status-cancelled { background: #fee2e2; color: #7f1d1d; }
-.cn-badge-white { background: rgba(255,255,255,.2); color: #fff !important; border: 1px solid rgba(255,255,255,.4); }
+/* ── Section cards inside drawer body ── */
+.cn-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 1px 2px rgba(15,23,42,.03);
+}
+.cn-section-hdr {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; color: #0f172a;
+}
+.cn-dheader-left { display: flex; align-items: flex-start; gap: 12px; }
+.cn-dheader-ico {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: #fff; border: 1px solid rgba(220,38,38,.22);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #dc2626; flex-shrink: 0;
+}
+.cn-dheader-ico.edit { color: #ca8a04; border-color: rgba(202,138,4,.25); }
+
+/* ── Field helpers ── */
+.cn-field { display: flex; flex-direction: column; gap: 4px; }
+
+/* ── Items line table ── */
+.cn-items-table {
+  display: flex; flex-direction: column;
+  border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+}
+.cn-items-head {
+  display: grid;
+  grid-template-columns: 2fr 2fr 80px 100px 100px 32px;
+  gap: 8px; background: #f9fafb; padding: 8px 12px;
+  font-size: 11.5px; font-weight: 600; color: #374151;
+}
+.cn-items-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 80px 100px 100px 32px;
+  gap: 8px; padding: 8px 12px;
+  border-top: 1px solid #f3f4f6; align-items: center;
+}
+.cn-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 8px 0; }
+.cn-total-row.grand { font-weight: 700; font-size: 15px; color: #111827; border-top: 2px solid #e5e7eb; padding-top: 10px; }
+
+/* ── View panel header ── */
+.cn-view-head-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.cn-view-head-left { display: flex; flex-direction: column; gap: 2px; }
+.cn-view-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.cn-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #1a1a2e; line-height: 1; }
+.cn-vclose { align-self: flex-end; margin-left: auto; margin-bottom: 4px; }
+
+/* ── Meta/detail 2-col grid ── */
+.cn-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cn-meta-lbl { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+
+/* ── View items table ── */
+.cn-view-items { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+.cn-view-items-head {
+  display: grid; grid-template-columns: 2.5fr 70px 90px 100px;
+  gap: 8px; background: #f9fafb; padding: 8px 12px;
+  font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;
+}
+.cn-view-items-row {
+  display: grid; grid-template-columns: 2.5fr 70px 90px 100px;
+  gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6;
+  align-items: center; font-size: 12.5px;
+}
+
+/* ── Applications grid ── */
+.cn-app-head {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px; background: #f9fafb; padding: 8px 12px;
+  font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;
+  border-radius: 6px 6px 0 0; border: 1px solid #e5e7eb; border-bottom: none;
+}
+.cn-app-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6;
+  border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;
+  align-items: center; font-size: 12.5px;
+}
+.cn-app-row:last-child { border-bottom: 1px solid #e5e7eb; border-radius: 0 0 6px 6px; }
+
+/* ── Row action button variants ── */
 .cn-act-cell { display: flex; gap: 4px; justify-content: flex-end; cursor: default !important; }
-.cn-act-btn { background: transparent; border: 1px solid #e5e7eb; border-radius: 6px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #6b7280; font: inherit; font-size: 14px; }
-.cn-act-btn:hover { background: #f3f4f6; color: #2563eb; }
 .cn-act-apply { background: #fef2f2; border-color: #dc2626; color: #dc2626; }
 .cn-act-apply:hover { background: #fee2e2; color: #b91c1c; }
 .cn-act-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
 .cn-empty { text-align: center; color: #9ca3af; padding: 48px !important; cursor: default !important; }
-.cn-shimmer { height: 13px; background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%); border-radius: 4px; animation: shimmer 1.2s infinite; background-size: 200% 100%; }
-@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
-.cn-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.28); backdrop-filter: blur(2px); z-index: 40; }
-.cn-drawer { position: fixed; top: 0; right: -620px; bottom: 0; width: 620px; max-width: 96vw; background: #fff; border-left: 1px solid #e5e7eb; box-shadow: -12px 0 32px rgba(15,23,42,.12); z-index: 50; display: flex; flex-direction: column; transition: right .24s cubic-bezier(.32,.72,0,1); }
-.cn-drawer.open { right: 0; }
-.cn-view-drawer { width: 520px; right: -520px; }
-.cn-view-drawer.open { right: 0; }
-.cn-dheader { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: linear-gradient(135deg,#fff1f2 0%,#fecaca 100%); }
-.cn-dheader.edit { background: linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); }
-.cn-dheader-left { display:flex; align-items:flex-start; gap:12px; }
-.cn-dheader-ico { width:38px; height:38px; border-radius:10px; background:#fff; border:1px solid rgba(220,38,38,.22); display:inline-flex; align-items:center; justify-content:center; color:#dc2626; box-shadow:0 1px 3px rgba(15,23,42,.06); flex-shrink:0; }
-.cn-dheader-ico.edit { color:#ca8a04; border-color:rgba(202,138,4,.25); }
-.cn-dheader-title { font-size: 15px; font-weight: 700; color: #111827; letter-spacing:-0.01em; }
-.cn-dheader-sub { font-size: 12px; color:#475569; margin-top:3px; font-weight:500; }
-.cn-dclose { background: rgba(255,255,255,.6); border: none; cursor: pointer; color: #475569; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; transition: background .15s; }
-.cn-dclose:hover { background: #fff; color: #111827; }
-.cn-dbody { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; background:#f8fafc; }
+/* ── Apply/Refund dialog ── */
+.cn-apply-dialog {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 480px; max-width: 96vw; background: #fff;
+  border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2);
+  z-index: 9100; display: flex; flex-direction: column; overflow: hidden;
+}
 
-/* Sections */
-.cn-section { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 1px 2px rgba(15,23,42,.03); }
-.cn-section-hdr { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#0f172a; }
-.cn-section-hdr svg { color:#dc2626; }
-.cn-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.cn-field { display: flex; flex-direction: column; gap: 4px; }
-.cn-label { font-size: 12px; font-weight: 600; color: #374151; }
-.req { color: #dc2626; }
-.cn-input { width: 100%; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 13px; outline: none; background: #fff; color: #0f172a; transition: border-color .15s, box-shadow .15s; }
-.cn-input:hover:not(:disabled) { border-color:#cbd5e1; }
-.cn-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
-.cn-input:disabled { background:#f1f5f9; color:#94a3b8; cursor:not-allowed; border-color:#e2e8f0; }
-textarea.cn-input { resize:vertical; font-family:inherit; }
-textarea.cn-input { resize: vertical; }
-.cn-section-title { font-size: 12px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; }
-.cn-items-table { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-.cn-items-head { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: #374151; }
-.cn-items-row { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; }
-.cn-add-line { background: transparent; border: none; color: #2563eb; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 8px 12px; display: inline-flex; align-items: center; gap: 6px; }
-.cn-add-line:hover { background: #eff6ff; }
-.cn-rm-line { background: transparent; border: 1px solid #e5e7eb; border-radius: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca3af; }
-.cn-rm-line:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-.cn-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 8px 0; }
-.cn-total-row.grand { font-weight: 700; font-size: 15px; color: #111827; border-top: 2px solid #e5e7eb; padding-top: 10px; }
-
-.cn-view-head { position: relative; display: flex; flex-direction: column; padding: 16px 20px 20px; flex-shrink: 0; color: #fff; gap: 0; }
-.cn-view-head-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 4px; }
-.cn-view-head-left { display: flex; flex-direction: column; gap: 2px; }
-.cn-view-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-.cn-view-num { font-size: 18px; font-weight: 700; font-family: monospace; color: #fff; }
-.cn-view-sub { font-size: 13px; color: rgba(255,255,255,.8); margin-top: 2px; }
-.cn-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #fff; line-height: 1; }
-.cn-vclose { align-self: flex-end; margin-left: auto; color: #fff; margin-bottom: 4px; }
-.cn-vclose:hover { background: rgba(255,255,255,.18); color: #fff; }
-.cn-tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: #fff; }
-.cn-tab { background: transparent; border: none; padding: 10px 14px; font: inherit; font-size: 12.5px; font-weight: 600; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; display: inline-flex; align-items: center; gap: 6px; }
-.cn-tab:hover { color: #2563eb; }
-.cn-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
-.cn-tab-count { background: #2563eb; color: #fff; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.cn-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.cn-meta-lbl { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
-.cn-view-items { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.cn-view-items-head { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-.cn-view-items-row { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
-.cn-app-head { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; border-radius: 6px 6px 0 0; border: 1px solid #e5e7eb; border-bottom: none; }
-.cn-app-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; align-items: center; font-size: 12.5px; }
-.cn-app-row:last-child { border-bottom: 1px solid #e5e7eb; border-radius: 0 0 6px 6px; }
-.cn-dfooter { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid #e5e7eb; background:#fff; flex-shrink: 0; flex-wrap: wrap; }
-
-.cn-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 480px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 70; display: flex; flex-direction: column; overflow: hidden; }
-
-.cn-stepper-wrap { background: #fff; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; color: #374151 !important; }
-.cn-stepper-wrap * { color: #374151 !important; }
+/* ── Timeline stepper wrapper ── */
+.cn-stepper-wrap { background: #fff; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
 </style>

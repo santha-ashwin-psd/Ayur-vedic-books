@@ -415,7 +415,7 @@
         <div class="inv-drawer-panel inv-drawer-wide inv-view-page">
 
           <!-- Top header -->
-          <div class="inv-view-header" :style="`background:${headerBg(viewDoc)}`">
+          <div class="inv-view-header">
             <div class="inv-view-header-left">
               <div class="inv-view-title-row">
                 <span class="inv-view-number">{{ viewDoc.name }}</span>

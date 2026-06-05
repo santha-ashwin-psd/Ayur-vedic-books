@@ -1,17 +1,17 @@
 <template>
-  <div class="pmt-page">
+  <div class="list-page">
 
-    <div class="pmt-actions">
-      <div class="pmt-search-wrap">
+    <div class="sales-toolbar">
+      <div class="sales-search">
         <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-        <input v-model="search" placeholder="Search payments…" class="pmt-search-input" />
+        <input v-model="search" placeholder="Search payments…" class="sales-search-input" />
       </div>
-      <div class="pmt-pills">
-        <button v-for="t in tabs" :key="t.key" class="pmt-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">{{ t.label }}</button>
+      <div class="sales-pills">
+        <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">{{ t.label }}</button>
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
-        <button class="pmt-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
-        <button class="pmt-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Payment</button>
+        <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
+        <button class="sales-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Payment</button>
       </div>
     </div>
 
@@ -29,7 +29,7 @@
       <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg Payment</div><div class="bk-stat-value" style="font-size:16px">{{ fmtCur(pmtAvg) }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
     </div>
 
-    <!-- Bulk action bar (light style, matching Sales Orders/Quotes/Invoices) -->
+    <!-- Bulk action bar -->
     <div v-if="selected.size" class="inv-bulk-bar">
       <span class="inv-bulk-count">{{ selected.size }} selected</span>
       <button class="inv-bulk-btn" @click="bulkCancel" :disabled="bulkBusy">Cancel Submitted</button>
@@ -40,8 +40,8 @@
       <button class="inv-bulk-clear" @click="selected = new Set()">✕ Clear</button>
     </div>
 
-    <div class="pmt-card">
-      <table class="pmt-table">
+    <div class="inv-table-wrap">
+      <table class="inv-table">
         <thead><tr>
           <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
           <th @click="sort('name')" class="sortable">PAYMENT # <span v-html="sortArrow('name')"></span></th>
@@ -55,27 +55,27 @@
         </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 8" :key="n"><td colspan="9"><div class="pmt-shimmer"></div></td></tr>
+            <tr v-for="n in 8" :key="n"><td colspan="9"><div class="shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="p in paged" :key="p.name" class="pmt-row" :class="{selected:selected.has(p.name)}">
+            <tr v-for="p in paged" :key="p.name" class="inv-row" :class="{selected:selected.has(p.name)}">
               <td><input type="checkbox" :checked="selected.has(p.name)" @change="toggle(p.name)" /></td>
-              <td @click="openView(p)"><span class="pmt-num">{{ p.name }}</span></td>
+              <td @click="openView(p)"><span class="inv-link">{{ p.name }}</span></td>
               <td @click="openView(p)">{{ p.party_name||p.party||'—' }}</td>
               <td @click="openView(p)" class="text-muted">{{ p.mode_of_payment||'—' }}</td>
               <td @click="openView(p)" class="text-muted mono-sm">{{ p.reference_no||'—' }}</td>
               <td @click="openView(p)" class="text-muted mono-sm">{{ fmtDate(p.payment_date) }}</td>
               <td @click="openView(p)">
-                <span class="pmt-badge" :class="p.payment_type==='Receive'?'badge-green':'badge-red'">
+                <span class="inv-status-badge" :class="p.payment_type==='Receive'?'badge-green':'badge-red'">
                   {{ p.payment_type==='Receive'?'Received':'Paid Out' }}
                 </span>
               </td>
               <td @click="openView(p)" class="ta-r mono-sm" :class="p.payment_type==='Receive'?'green':'red'">{{ fmtCur(p.paid_amount) }}</td>
               <td class="pmt-act-cell">
-                <button class="pmt-act-btn" @click="openView(p)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button v-if="p.docstatus===0" class="pmt-act-btn" @click="openEdit(p)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                <button v-if="p.docstatus===1" class="pmt-act-btn" style="border-color:#fee2e2;color:#dc2626" @click="cancelPmt(p)" title="Cancel">✕</button>
-                <button v-if="p.docstatus===0 || p.docstatus===2" class="pmt-act-btn" style="border-color:#fee2e2;color:#dc2626" @click="deletePmt(p)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                <button class="inv-act-btn" @click="openView(p)" title="View"><span v-html="icon('eye',13)"></span></button>
+                <button v-if="p.docstatus===0" class="inv-act-btn" @click="openEdit(p)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="p.docstatus===1" class="inv-act-btn" style="border-color:#fee2e2;color:#dc2626" @click="cancelPmt(p)" title="Cancel">✕</button>
+                <button v-if="p.docstatus===0 || p.docstatus===2" class="inv-act-btn" style="border-color:#fee2e2;color:#dc2626" @click="deletePmt(p)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
             <tr v-if="!sorted.length"><td colspan="9" class="bk-empty-state"><div class="bk-empty-inner"><template v-if="search"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No payments match</p></template><template v-else><div class="bk-empty-illus"><svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="8" y="22" width="64" height="40" rx="8" fill="#e2e8f0"/><rect x="12" y="26" width="56" height="32" rx="6" fill="#fff"/><rect x="12" y="38" width="56" height="6" fill="#cbd5e1"/><circle cx="22" cy="50" r="5" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/><polyline points="19.5 50 21.5 52 24.5 48" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p class="bk-empty-title">No payments recorded yet</p><p class="bk-empty-sub">Record your first payment to track cash flow.</p><button class="bk-empty-btn" @click="openAdd(activeTab==='Pay'?'Pay':'Receive')"><span v-html="icon('plus',13)"></span> Record Payment</button></template></div></td></tr>
@@ -89,8 +89,8 @@
     </div>
 
     <!-- Create / Edit drawer -->
-    <div v-if="drawerOpen" class="pmt-overlay" @click.self="drawerOpen=false"></div>
-    <div class="pmt-drawer" :class="{open:drawerOpen}">
+    <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false"></div>
+    <div class="inv-drawer-panel pmt-edit-drawer" :class="{open:drawerOpen}">
       <div class="pmt-dheader" :class="form.payment_type==='Pay'?'pay':'recv'">
         <div class="pmt-dheader-left">
           <div class="pmt-dheader-ico" :class="form.payment_type==='Pay'?'pay':'recv'">
@@ -103,10 +103,10 @@
             </div>
           </div>
         </div>
-        <button class="pmt-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
+        <button class="inv-dclose pmt-dclose-light" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
 
-      <div class="pmt-dbody">
+      <div class="inv-dbody pmt-dbody">
         <!-- Section: Payment Type -->
         <div class="pmt-section">
           <div class="pmt-section-hdr-bar">
@@ -137,20 +137,20 @@
             <span v-html="icon('user',13)"></span>
             <span>{{ form.payment_type==='Receive'?'Customer & Amount':'Vendor & Amount' }}</span>
           </div>
-          <div class="pmt-fields-grid">
-            <div class="pmt-field" style="grid-column:1/-1">
-              <label class="pmt-label">{{ form.payment_type==='Receive'?'Customer':'Vendor' }} <span class="req">*</span></label>
+          <div class="inv-fg inv-fg2">
+            <div style="grid-column:1/-1">
+              <label class="inv-lbl">{{ form.payment_type==='Receive'?'Customer':'Vendor' }} <span class="req">*</span></label>
               <SearchableSelect v-model="form.party" :options="partyOptions"
                 :placeholder="form.payment_type==='Receive'?'Select customer…':'Select vendor…'"
                 @search="fetchParties" @select="onPartySelect" />
             </div>
-            <div class="pmt-field">
-              <label class="pmt-label">Amount <span class="req">*</span></label>
-              <input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="pmt-input" placeholder="0.00" @input="syncUnallocated" />
+            <div>
+              <label class="inv-lbl">Amount <span class="req">*</span></label>
+              <input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="inv-fi" placeholder="0.00" @input="syncUnallocated" />
             </div>
-            <div class="pmt-field">
-              <label class="pmt-label">Mode of Payment</label>
-              <select v-model="form.mode_of_payment" class="pmt-select">
+            <div>
+              <label class="inv-lbl">Mode of Payment</label>
+              <select v-model="form.mode_of_payment" class="inv-fi">
                 <option value="">— Select —</option>
                 <option v-for="m in paymentModes" :key="m" :value="m">{{ m }}</option>
               </select>
@@ -164,18 +164,18 @@
             <span v-html="icon('hash',13)"></span>
             <span>Reference & Dates</span>
           </div>
-          <div class="pmt-fields-grid">
-            <div class="pmt-field">
-              <label class="pmt-label">Payment Date <span class="req">*</span></label>
-              <input v-model="form.payment_date" type="date" class="pmt-input" />
+          <div class="inv-fg inv-fg2">
+            <div>
+              <label class="inv-lbl">Payment Date <span class="req">*</span></label>
+              <input v-model="form.payment_date" type="date" class="inv-fi" />
             </div>
-            <div class="pmt-field">
-              <label class="pmt-label">Reference Date</label>
-              <input v-model="form.reference_date" type="date" class="pmt-input" />
+            <div>
+              <label class="inv-lbl">Reference Date</label>
+              <input v-model="form.reference_date" type="date" class="inv-fi" />
             </div>
-            <div class="pmt-field" style="grid-column:1/-1">
-              <label class="pmt-label">Reference / Cheque No</label>
-              <input v-model="form.reference_no" type="text" class="pmt-input" placeholder="e.g. CHQ-001, NEFT-78902" />
+            <div style="grid-column:1/-1">
+              <label class="inv-lbl">Reference / Cheque No</label>
+              <input v-model="form.reference_no" type="text" class="inv-fi" placeholder="e.g. CHQ-001, NEFT-78902" />
             </div>
           </div>
         </div>
@@ -186,13 +186,13 @@
             <span v-html="icon('ledger',13)"></span>
             <span>Accounts</span>
           </div>
-          <div class="pmt-fields-grid">
-            <div class="pmt-field">
-              <label class="pmt-label">Paid From</label>
+          <div class="inv-fg inv-fg2">
+            <div>
+              <label class="inv-lbl">Paid From</label>
               <SearchableSelect v-model="form.paid_from" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
             </div>
-            <div class="pmt-field">
-              <label class="pmt-label">Paid To</label>
+            <div>
+              <label class="inv-lbl">Paid To</label>
               <SearchableSelect v-model="form.paid_to" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
             </div>
           </div>
@@ -234,28 +234,28 @@
             <span v-html="icon('mail',13)"></span>
             <span>Notes</span>
           </div>
-          <textarea v-model="form.remarks" rows="3" class="pmt-input" placeholder="Optional notes about this payment…"></textarea>
+          <textarea v-model="form.remarks" rows="3" class="inv-fi" placeholder="Optional notes about this payment…"></textarea>
         </div>
       </div>
 
-      <div class="pmt-dfooter">
-        <button class="pmt-btn-ghost" @click="drawerOpen=false" :disabled="drawerSaving">Cancel</button>
-        <button class="pmt-btn-save" :disabled="drawerSaving" @click="savePayment(0)">
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="drawerOpen=false" :disabled="drawerSaving">Cancel</button>
+        <button class="form-btn form-btn-success" :disabled="drawerSaving" @click="savePayment(0)">
           <span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}
         </button>
-        <button class="pmt-btn-primary" :disabled="drawerSaving" @click="savePayment(1)">
+        <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="savePayment(1)">
           <span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}
         </button>
       </div>
     </div>
 
     <!-- View drawer -->
-    <div v-if="viewOpen" class="pmt-overlay" @click.self="viewOpen=false"></div>
-    <div class="pmt-drawer pmt-view-drawer" :class="{open:viewOpen}">
+    <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
+    <div class="inv-drawer-panel pmt-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewPmt">
         <div class="pmt-view-head" :class="viewPmt.payment_type==='Receive'?'head-green':'head-red'">
           <div>
-            <div class="pmt-view-num">{{ viewPmt.name }}</div>
+            <div class="inv-view-number pmt-view-num-dark">{{ viewPmt.name }}</div>
             <div class="pmt-view-party">
               <DocLink :doctype="viewPmt.party_type || (viewPmt.payment_type==='Receive'?'Customer':'Supplier')" :name="viewPmt.party" :mono-style="false">
                 {{ viewPmt.party_name || viewPmt.party || '—' }}
@@ -264,13 +264,13 @@
           </div>
           <div style="text-align:right">
             <div class="pmt-view-amount">{{ fmtCur(viewPmt.paid_amount) }}</div>
-            <span class="pmt-badge" :class="viewPmt.payment_type==='Receive'?'badge-green':'badge-red'">
+            <span class="inv-status-badge" :class="viewPmt.payment_type==='Receive'?'badge-green':'badge-red'">
               {{ viewPmt.payment_type==='Receive'?'Received':'Paid Out' }}
             </span>
           </div>
-          <button class="pmt-dclose pmt-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+          <button class="inv-dclose pmt-dclose-light" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
-        <div class="pmt-dbody">
+        <div class="inv-dbody pmt-dbody">
           <div class="pmt-meta-grid">
             <div><div class="pmt-meta-lbl">Payment Date</div><div>{{ fmtDate(viewPmt.payment_date) }}</div></div>
             <div><div class="pmt-meta-lbl">Mode</div><div>{{ viewPmt.mode_of_payment||'—' }}</div></div>
@@ -296,15 +296,15 @@
             <div class="pmt-meta-lbl">Remarks</div><div>{{ viewPmt.remarks }}</div>
           </div>
         </div>
-        <div class="pmt-dfooter">
-          <button class="pmt-btn-ghost" @click="viewOpen=false">Close</button>
-          <button v-if="viewPmt.docstatus===0" class="pmt-btn-save" @click="openEdit(viewPmt);viewOpen=false">
+        <div class="inv-dfooter">
+          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
+          <button v-if="viewPmt.docstatus===0" class="form-btn form-btn-success" @click="openEdit(viewPmt);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
-          <button v-if="viewPmt.docstatus===1" class="pmt-btn-ghost" style="border-color:#dc2626;color:#dc2626" @click="cancelPmt(viewPmt)">
+          <button v-if="viewPmt.docstatus===1" class="form-btn form-btn-danger" @click="cancelPmt(viewPmt)">
             Cancel Payment
           </button>
-          <button v-if="viewPmt.docstatus===0 || viewPmt.docstatus===2" class="pmt-btn-ghost" style="border-color:#dc2626;color:#dc2626" @click="deletePmt(viewPmt)">
+          <button v-if="viewPmt.docstatus===0 || viewPmt.docstatus===2" class="form-btn form-btn-danger" @click="deletePmt(viewPmt)">
             <span v-html="icon('trash',13)"></span> Delete
           </button>
         </div>
@@ -665,114 +665,80 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.pmt-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
-.pmt-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.pmt-search-wrap{display:flex;align-items:center;gap:8px;background:#ffffff;border-radius:8px;padding:6px 12px;min-width:220px;}
-.pmt-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
-.pmt-pills{display:flex;gap:6px;}
-.pmt-pill{padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:600;border:1px solid #e5e7eb;background:#fff;color:#6b7280;cursor:pointer;font-family:inherit;}
-.pmt-pill.active{background:#eff6ff;border-color:#2563eb;color:#2563eb;}
-.pmt-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
-.pmt-btn-primary:hover{background:#1d4ed8;}.pmt-btn-primary:disabled{opacity:.5;cursor:not-allowed;}
-.pmt-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;}
-.pmt-btn-ghost:hover{background:#f9fafb;}
-.pmt-btn-save{display:inline-flex;align-items:center;gap:6px;background:#f0fdf4;border:1px solid #16a34a;color:#16a34a;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
-.pmt-btn-save:hover{background:#dcfce7;}.pmt-btn-save:disabled{opacity:.5;cursor:not-allowed;}
-.pmt-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-.pmt-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
-.pmt-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
-.pmt-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
-.green{color:#16a34a!important;}.red{color:#dc2626!important;}.orange{color:#ea580c!important;}
-.inv-bulk-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;flex-wrap:wrap;}
-.inv-bulk-count{font-size:13px;font-weight:700;color:#1a6ef7;margin-right:4px;}
-.inv-bulk-btn{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:5px 12px;font-size:12.5px;font-weight:600;color:#374151;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s,color .15s;}
-.inv-bulk-btn:hover:not(:disabled){background:#f8fafc;border-color:#1a6ef7;color:#1a6ef7;}
-.inv-bulk-btn:disabled{opacity:.5;cursor:not-allowed;}
-.inv-bulk-danger{border-color:rgba(220,38,38,.3);color:#dc2626;}
-.inv-bulk-danger:hover:not(:disabled){background:#fee2e2;border-color:#dc2626;color:#dc2626;}
-.inv-bulk-clear{background:none;border:none;font-size:12.5px;color:#6b7280;cursor:pointer;font-family:inherit;padding:4px 8px;border-radius:4px;}
-.inv-bulk-clear:hover{background:#e0e7ff;color:#1a6ef7;}
+/* ── Edit drawer width override ── */
+.pmt-edit-drawer { width: 580px; right: -580px; transition: right .24s cubic-bezier(.32,.72,0,1); position: fixed; top: 0; bottom: 0; }
+.pmt-edit-drawer.open { right: 0; }
 
-.pmt-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
-.pmt-table{width:100%;border-collapse:collapse;font-size:13px;}
-.pmt-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
-.pmt-table th.sortable{cursor:pointer;user-select:none;}.pmt-table th.sortable:hover{color:#2563eb;}
-.ta-r{text-align:right!important;}
-.pmt-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;cursor:pointer;}
-.pmt-row:last-child td{border-bottom:none;}.pmt-row:hover td{background:#f9fafb;}.pmt-row.selected td{background:#eff6ff;}
-.pmt-act-cell{cursor:default!important;display:flex;gap:4px;justify-content:flex-end;}
-.pmt-num{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
-.pmt-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
-.badge-green{background:#dcfce7;color:#16a34a;}.badge-red{background:#fee2e2;color:#dc2626;}
-.pmt-act-btn{background:transparent;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;}
-.pmt-act-btn:hover{background:#e5e7eb;color:#2563eb;}
-.pmt-empty{text-align:center;color:#9ca3af;padding:48px 20px!important;font-size:13px;cursor:default!important;}
-.pmt-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
-@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.pmt-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(2px);z-index:40;}
-.pmt-drawer{position:fixed;top:0;right:-580px;bottom:0;width:580px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
-.pmt-drawer.open{right:0;}
-.pmt-view-drawer{width:520px;right:-520px;}.pmt-view-drawer.open{right:0;}
+/* ── View drawer width override ── */
+.pmt-view-drawer { width: 520px; right: -520px; transition: right .24s cubic-bezier(.32,.72,0,1); position: fixed; top: 0; bottom: 0; }
+.pmt-view-drawer.open { right: 0; }
 
-.pmt-dheader{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}
-.pmt-dheader.recv{background:linear-gradient(135deg,#f0fdf4 0%,#bbf7d0 100%);}
-.pmt-dheader.pay{background:linear-gradient(135deg,#fff1f2 0%,#fecaca 100%);}
-.pmt-dheader-left{display:flex;align-items:flex-start;gap:12px;}
-.pmt-dheader-ico{width:38px;height:38px;border-radius:10px;background:#fff;border:1px solid rgba(37,99,235,.18);display:inline-flex;align-items:center;justify-content:center;color:#2563eb;box-shadow:0 1px 3px rgba(15,23,42,.06);flex-shrink:0;}
-.pmt-dheader-ico.recv{color:#16a34a;border-color:rgba(22,163,74,.22);}
-.pmt-dheader-ico.pay{color:#dc2626;border-color:rgba(220,38,38,.25);}
-.pmt-dheader-title{font-size:15px;font-weight:700;color:#111827;letter-spacing:-0.01em;}
-.pmt-dheader-sub{font-size:12px;color:#475569;margin-top:3px;font-weight:500;}
-.pmt-dclose{background:rgba(255,255,255,.6);border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;transition:background .15s;}
-.pmt-dclose:hover{background:#fff;color:#111827;}
+/* ── Payment-specific drawer header (light bg, not gradient) ── */
+.pmt-dheader { display:flex; align-items:flex-start; justify-content:space-between; padding:18px 20px; border-bottom:1px solid #e5e7eb; flex-shrink:0; background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%); }
+.pmt-dheader.recv { background:linear-gradient(135deg,#f0fdf4 0%,#bbf7d0 100%); }
+.pmt-dheader.pay  { background:linear-gradient(135deg,#fff1f2 0%,#fecaca 100%); }
+.pmt-dheader-left { display:flex; align-items:flex-start; gap:12px; }
+.pmt-dheader-ico  { width:38px; height:38px; border-radius:10px; background:#fff; border:1px solid rgba(37,99,235,.18); display:inline-flex; align-items:center; justify-content:center; color:#2563eb; box-shadow:0 1px 3px rgba(15,23,42,.06); flex-shrink:0; }
+.pmt-dheader-ico.recv { color:#16a34a; border-color:rgba(22,163,74,.22); }
+.pmt-dheader-ico.pay  { color:#dc2626; border-color:rgba(220,38,38,.25); }
+.pmt-dheader-title { font-size:15px; font-weight:700; color:#111827; letter-spacing:-0.01em; }
+.pmt-dheader-sub   { font-size:12px; color:#475569; margin-top:3px; font-weight:500; }
+/* Close button override for light header */
+.pmt-dclose-light  { background:rgba(0,0,0,.06); color:#475569; }
+.pmt-dclose-light:hover { background:rgba(0,0,0,.12); color:#111827; }
 
-.pmt-dbody{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc;}
+/* ── Body: section card style ── */
+.pmt-dbody { background:#f8fafc; }
+.pmt-section { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 1px 2px rgba(15,23,42,.03); }
+.pmt-section-hdr-bar { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#0f172a; }
+.pmt-section-hdr-bar .pmt-unalloc { margin-left:auto; text-transform:none; font-size:11.5px; font-weight:700; color:#16a34a; }
+.pmt-section-hdr-bar .pmt-unalloc.red { color:#dc2626; }
+.pmt-section-hdr-bar .pmt-unalloc.orange { color:#ea580c; }
 
-/* Section cards */
-.pmt-section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
-.pmt-section-hdr-bar{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;}
-.pmt-section-hdr-bar svg{color:#2563eb;}
-.pmt-section-hdr-bar .pmt-unalloc{margin-left:auto;text-transform:none;font-size:11.5px;font-weight:700;color:#16a34a;}
-.pmt-section-hdr-bar .pmt-unalloc.red{color:#dc2626;}
-.pmt-section-hdr-bar .pmt-unalloc.orange{color:#ea580c;}
-.pmt-view-head{position:relative;display:flex;align-items:flex-start;justify-content:space-between;padding:20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;}
-.head-green{background:#f0fdf4;}.head-red{background:#fff1f2;}
-.pmt-view-num{font-size:18px;font-weight:700;font-family:monospace;color:#111827;}
-.pmt-view-party{font-size:13px;color:#6b7280;margin-top:2px;}
-.pmt-view-amount{font-size:22px;font-weight:800;font-family:monospace;color:#111827;}
-.pmt-vclose{position:absolute;top:12px;right:12px;}
-.pmt-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.pmt-field{display:flex;flex-direction:column;gap:4px;}
-.pmt-label{font-size:12px;font-weight:600;color:#374151;}.req{color:#dc2626;}
-.pmt-input,.pmt-select{border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;transition:border-color .15s, box-shadow .15s;}
-.pmt-input:hover:not(:disabled),.pmt-select:hover:not(:disabled){border-color:#cbd5e1;}
-.pmt-input:focus,.pmt-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
-.pmt-input:disabled,.pmt-select:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;border-color:#e2e8f0;}
-textarea.pmt-input{resize:vertical;font-family:inherit;}
-.pmt-select{border:1px solid #e5e7eb;border-radius:6px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;cursor:pointer;}
-.pmt-select:focus{border-color:#2563eb;}
-.pmt-radio-group{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.pmt-radio{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid #e5e7eb;border-radius:10px;cursor:pointer;font-size:13px;color:#374151;user-select:none;transition:border-color .15s,background .15s,box-shadow .15s;}
-.pmt-radio:hover{border-color:#cbd5e1;}
-.pmt-radio.checked{border-color:#2563eb;background:#eff6ff;box-shadow:0 0 0 3px rgba(37,99,235,.10);}
-.pmt-radio-dot{width:16px;height:16px;border-radius:50%;border:2px solid #d1d5db;display:inline-block;flex-shrink:0;transition:border-color .15s, background .15s;}
-.pmt-radio-dot.on{border-color:#2563eb;background:#2563eb;box-shadow:inset 0 0 0 3px #fff;}
-.pmt-radio-title{font-weight:600;color:#0f172a;font-size:13px;line-height:1.2;}
-.pmt-radio.checked .pmt-radio-title{color:#1d4ed8;}
-.pmt-radio-sub{font-size:11.5px;color:#6b7280;margin-top:2px;}
-.pmt-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.pmt-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
-/* Invoice section */
-.pmt-section-hdr{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;padding-bottom:6px;border-bottom:1px solid #f3f4f6;}
-.pmt-unalloc{font-family:monospace;font-size:12px;font-weight:600;color:#6b7280;}
-.pmt-inv-empty{font-size:12.5px;color:#9ca3af;padding:18px 0;text-align:center;background:#f9fafb;border:1px dashed #e5e7eb;border-radius:8px;}
-.pmt-inv-table{border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;font-size:12.5px;background:#fff;}
-.pmt-inv-head{display:grid;grid-template-columns:24px 1fr 90px 90px 90px;gap:8px;background:#f9fafb;padding:8px 10px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;}
-.pmt-inv-row{display:grid;grid-template-columns:24px 1fr 90px 90px 90px;gap:8px;padding:8px 10px;border-top:1px solid #f3f4f6;align-items:center;}
-.pmt-inv-row:hover{background:#f9fafb;}
-.pmt-inv-name{font-family:monospace;color:#2563eb;font-weight:600;}
-.pmt-alloc-input{width:80px;border:1px solid #e2e8f0;border-radius:6px;padding:4px 8px;font:inherit;font-size:12px;text-align:right;outline:none;}
-.pmt-alloc-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.10);}
-.pmt-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0;}
+/* ── Radio group ── */
+.pmt-radio-group { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.pmt-radio { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid #e5e7eb; border-radius:10px; cursor:pointer; font-size:13px; color:#374151; user-select:none; transition:border-color .15s,background .15s,box-shadow .15s; }
+.pmt-radio:hover { border-color:#cbd5e1; }
+.pmt-radio.checked { border-color:#2563eb; background:#eff6ff; box-shadow:0 0 0 3px rgba(37,99,235,.10); }
+.pmt-radio-dot { width:16px; height:16px; border-radius:50%; border:2px solid #d1d5db; display:inline-block; flex-shrink:0; transition:border-color .15s, background .15s; }
+.pmt-radio-dot.on { border-color:#2563eb; background:#2563eb; box-shadow:inset 0 0 0 3px #fff; }
+.pmt-radio-title { font-weight:600; color:#0f172a; font-size:13px; line-height:1.2; }
+.pmt-radio.checked .pmt-radio-title { color:#1d4ed8; }
+.pmt-radio-sub { font-size:11.5px; color:#6b7280; margin-top:2px; }
+
+/* ── View head (coloured bg stays, no gradient override) ── */
+.pmt-view-head { position:relative; display:flex; align-items:flex-start; justify-content:space-between; padding:20px; border-bottom:1px solid #e5e7eb; flex-shrink:0; }
+.head-green { background:#f0fdf4; }
+.head-red   { background:#fff1f2; }
+.pmt-view-num-dark { color:#111827 !important; }
+.pmt-view-party { font-size:13px; color:#6b7280; margin-top:2px; }
+.pmt-view-amount { font-size:22px; font-weight:800; font-family:monospace; color:#111827; }
+
+/* ── Meta grid ── */
+.pmt-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.pmt-meta-lbl { font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
+
+/* ── Invoice allocation table ── */
+.pmt-section-hdr { display:flex; align-items:center; justify-content:space-between; font-size:12px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
+.pmt-unalloc { font-family:monospace; font-size:12px; font-weight:600; color:#6b7280; }
+.pmt-inv-empty { font-size:12.5px; color:#9ca3af; padding:18px 0; text-align:center; background:#f9fafb; border:1px dashed #e5e7eb; border-radius:8px; }
+.pmt-inv-table { border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; font-size:12.5px; background:#fff; }
+.pmt-inv-head { display:grid; grid-template-columns:24px 1fr 90px 90px 90px; gap:8px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; }
+.pmt-inv-row { display:grid; grid-template-columns:24px 1fr 90px 90px 90px; gap:8px; padding:8px 10px; border-top:1px solid #f3f4f6; align-items:center; }
+.pmt-inv-row:hover { background:#f9fafb; }
+.pmt-inv-name { font-family:monospace; color:#2563eb; font-weight:600; }
+.pmt-alloc-input { width:80px; border:1px solid #e2e8f0; border-radius:6px; padding:4px 8px; font:inherit; font-size:12px; text-align:right; outline:none; }
+.pmt-alloc-input:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.10); }
+
+/* ── Row action cell ── */
+.pmt-act-cell { cursor:default !important; display:flex; gap:4px; justify-content:flex-end; }
+
+/* ── Color helpers ── */
+.green { color:#16a34a !important; }
+.red   { color:#dc2626 !important; }
+.orange{ color:#ea580c !important; }
+
+/* ── Payment-specific badge colours (not in shared CSS) ── */
+.badge-green { background:#dcfce7; color:#16a34a; }
+.badge-red   { background:#fee2e2; color:#dc2626; }
 </style>

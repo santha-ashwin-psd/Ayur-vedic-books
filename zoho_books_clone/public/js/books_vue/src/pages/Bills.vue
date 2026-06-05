@@ -1,24 +1,24 @@
 <template>
-  <div class="bill-page">
+  <div class="list-page">
 
     <!-- ── Toolbar ── -->
-    <div class="bill-actions">
-      <div class="bill-search-wrap">
+    <div class="sales-toolbar">
+      <div class="sales-search">
         <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-        <input v-model="search" placeholder="Search bills, vendors, bill #…" class="bill-search-input" />
+        <input v-model="search" placeholder="Search bills, vendors, bill #…" class="sales-search-input" />
       </div>
-      <div class="bill-pills">
+      <div class="sales-pills">
         <button v-for="t in tabs" :key="t.key"
-          class="bill-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}"
+          class="sales-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}"
           @click="activeTab=t.key">
           {{ t.label }}
-          <span v-if="t.key!=='all'" class="bill-pill-count">{{ counts[t.key] }}</span>
+          <span v-if="t.key!=='all'" class="sales-pill-count">{{ counts[t.key] }}</span>
         </button>
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
-        <button class="bill-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
-        <button class="bill-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <button class="bill-btn-primary" @click="openNew">
+        <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
+        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
+        <button class="sales-btn-primary" @click="openNew">
           <span v-html="icon('plus',13)"></span> New Bill
         </button>
       </div>
@@ -48,8 +48,8 @@
     </BulkActionBar>
 
     <!-- ── Table ── -->
-    <div class="bill-card">
-      <table class="bill-table">
+    <div class="inv-table-wrap">
+      <table class="inv-table">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
@@ -66,24 +66,24 @@
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 7" :key="n"><td colspan="10"><div class="bill-shimmer"></div></td></tr>
+            <tr v-for="n in 7" :key="n"><td colspan="10"><div class="shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="b in paged" :key="b.name" class="bill-row" :class="{selected:selected.has(b.name)}">
+            <tr v-for="b in paged" :key="b.name" class="inv-row" :class="{selected:selected.has(b.name)}">
               <td><input type="checkbox" :checked="selected.has(b.name)" @change="toggle(b.name)" /></td>
-              <td @click="openView(b)"><span class="bill-num">{{ b.name }}</span></td>
+              <td @click="openView(b)"><span class="inv-link">{{ b.name }}</span></td>
               <td @click="openView(b)">{{ b.supplier_name || b.supplier || '—' }}</td>
               <td @click="openView(b)" class="text-muted mono-sm">{{ b.bill_no||'—' }}</td>
               <td @click="openView(b)" class="text-muted mono-sm">{{ fmtDate(b.posting_date) }}</td>
               <td @click="openView(b)" :class="isOverdue(b)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(b.due_date)||'—' }}</td>
-              <td @click="openView(b)"><span class="bill-badge" :class="statusCls(b)">{{ statusLabel(b) }}</span></td>
+              <td @click="openView(b)"><span class="inv-status-badge" :class="statusCls(b)">{{ statusLabel(b) }}</span></td>
               <td @click="openView(b)" class="ta-r mono-sm">{{ fmtCur(b.grand_total) }}</td>
               <td @click="openView(b)" class="ta-r mono-sm" :class="{'text-danger':flt(b.outstanding_amount)>0,'text-success':flt(b.outstanding_amount)<=0&&b.docstatus===1}">{{ fmtCur(b.outstanding_amount) }}</td>
               <td class="bill-act-cell">
-                <button class="bill-act-btn" @click="openView(b)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button v-if="b.docstatus===0" class="bill-act-btn" @click="openEdit(b)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="bill-act-btn bill-act-pay" @click="payBill(b)" title="Record Payment">₹</button>
-                <button v-if="b.docstatus===0 || b.docstatus===2" class="bill-act-btn bill-act-del" @click="deleteBill(b)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                <button class="inv-act-btn" @click="openView(b)" title="View"><span v-html="icon('eye',13)"></span></button>
+                <button v-if="b.docstatus===0" class="inv-act-btn" @click="openEdit(b)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="inv-act-btn inv-act-pay" @click="payBill(b)" title="Record Payment">₹</button>
+                <button v-if="b.docstatus===0 || b.docstatus===2" class="inv-act-btn bill-act-del" @click="deleteBill(b)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
             <tr v-if="!sorted.length"><td colspan="10" class="bk-empty-state"><div class="bk-empty-inner"><template v-if="search||filterVendor"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No bills match your filters</p></template><template v-else><div class="bk-empty-illus"><svg width="80" height="96" viewBox="0 0 80 96" fill="none"><rect x="10" y="8" width="60" height="80" rx="6" fill="#e2e8f0"/><rect x="14" y="12" width="52" height="72" rx="4" fill="#fff"/><rect x="22" y="26" width="36" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="34" width="28" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="42" width="32" height="3" rx="2" fill="#e2e8f0"/><rect x="50" y="64" width="18" height="20" rx="3" fill="#f59e0b" opacity=".7"/><rect x="36" y="70" width="12" height="14" rx="3" fill="#2563eb" opacity=".6"/></svg></div><p class="bk-empty-title">No bills created yet</p><p class="bk-empty-sub">Add your first vendor bill to start tracking payables.</p><button class="bk-empty-btn" @click="openNew"><span v-html="icon('plus',13)"></span> New Bill</button></template></div></td></tr>
@@ -98,64 +98,64 @@
     </div>
 
     <!-- ── Create / Edit drawer ── -->
-    <div v-if="drawerOpen" class="bill-overlay" @click.self="drawerOpen=false"></div>
-    <div class="bill-drawer" :class="{open:drawerOpen}">
-      <div class="bill-dheader">
-        <div class="bill-dheader-title">{{ editingName ? 'Edit Bill' : 'New Bill' }}</div>
-        <button class="bill-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
+    <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false"></div>
+    <div class="inv-drawer-panel bill-edit-drawer" :class="{open:drawerOpen}">
+      <div class="inv-dh">
+        <div class="inv-dh-title">{{ editingName ? 'Edit Bill' : 'New Bill' }}</div>
+        <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
-      <div class="bill-dbody">
-        <div class="bill-fields-grid">
-          <div class="bill-field" style="grid-column:1/-1">
-            <label class="bill-label">Vendor <span class="req">*</span></label>
+      <div class="inv-dbody">
+        <div class="inv-fg inv-fg2">
+          <div style="grid-column:1/-1">
+            <label class="inv-lbl">Vendor <span class="req">*</span></label>
             <SearchableSelect v-model="form.supplier" :options="vendors"
               placeholder="Select vendor…" :createable="true" createDoctype="Supplier"
               @search="fetchVendors" @select="onVendorSelect" />
           </div>
-          <div class="bill-field">
-            <label class="bill-label">Bill Date <span class="req">*</span></label>
-            <input v-model="form.posting_date" type="date" class="bill-input" />
+          <div>
+            <label class="inv-lbl">Bill Date <span class="req">*</span></label>
+            <input v-model="form.posting_date" type="date" class="inv-fi" />
           </div>
-          <div class="bill-field">
-            <label class="bill-label">Due Date</label>
-            <input v-model="form.due_date" type="date" class="bill-input" />
+          <div>
+            <label class="inv-lbl">Due Date</label>
+            <input v-model="form.due_date" type="date" class="inv-fi" />
           </div>
-          <div class="bill-field">
-            <label class="bill-label">Vendor Bill #</label>
-            <input v-model="form.bill_no" type="text" class="bill-input" placeholder="Vendor's invoice number" />
+          <div>
+            <label class="inv-lbl">Vendor Bill #</label>
+            <input v-model="form.bill_no" type="text" class="inv-fi" placeholder="Vendor's invoice number" />
           </div>
-          <div class="bill-field">
-            <label class="bill-label">Vendor Bill Date</label>
-            <input v-model="form.bill_date" type="date" class="bill-input" />
+          <div>
+            <label class="inv-lbl">Vendor Bill Date</label>
+            <input v-model="form.bill_date" type="date" class="inv-fi" />
           </div>
-          <div class="bill-field" style="grid-column:1/-1">
-            <div class="bill-inv-block" :class="form.update_stock ? 'inv-on' : 'inv-off'">
-              <div class="bill-inv-toggle-row">
-                <div class="bill-inv-icon" v-html="icon('box', 16)"></div>
-                <div class="bill-inv-text">
-                  <div class="bill-inv-title">Update Inventory on Submit</div>
-                  <div class="bill-inv-sub">Stock increases in the selected warehouse when this bill is submitted</div>
+          <div style="grid-column:1/-1">
+            <div class="inv-inv-block" :class="form.update_stock ? 'inv-on' : 'inv-off'">
+              <div class="inv-inv-toggle-row">
+                <div class="inv-inv-icon" v-html="icon('box', 16)"></div>
+                <div class="inv-inv-text">
+                  <div class="inv-inv-title">Update Inventory on Submit</div>
+                  <div class="inv-inv-sub">Stock increases in the selected warehouse when this bill is submitted</div>
                 </div>
-                <label class="bill-inv-switch">
+                <label class="inv-inv-switch">
                   <input type="checkbox" v-model="form.update_stock" :true-value="1" :false-value="0" />
-                  <span class="bill-inv-slider"></span>
+                  <span class="inv-inv-slider"></span>
                 </label>
               </div>
-              <div v-if="form.update_stock" class="bill-inv-wh-row">
-                <label class="bill-label" style="margin-bottom:6px">Receiving Warehouse <span style="color:#dc2626">*</span></label>
+              <div v-if="form.update_stock" class="inv-inv-wh-row">
+                <label class="inv-lbl" style="margin-bottom:6px">Receiving Warehouse <span style="color:#dc2626">*</span></label>
                 <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where stock will be received…" @search="fetchWarehouses" />
               </div>
             </div>
           </div>
-          <div class="bill-field">
-            <label class="bill-label">Currency</label>
-            <select v-model="form.currency" class="bill-input" @change="form.exchange_rate=form.currency==='INR'?1:form.exchange_rate">
+          <div>
+            <label class="inv-lbl">Currency</label>
+            <select v-model="form.currency" class="inv-fi" @change="form.exchange_rate=form.currency==='INR'?1:form.exchange_rate">
               <option v-for="(sym,code) in BILL_CURRENCIES" :key="code" :value="code">{{ code }} {{ sym }}</option>
             </select>
           </div>
-          <div v-if="form.currency !== 'INR'" class="bill-field">
-            <label class="bill-label">Exchange Rate</label>
-            <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="bill-input"/>
+          <div v-if="form.currency !== 'INR'">
+            <label class="inv-lbl">Exchange Rate</label>
+            <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi"/>
           </div>
         </div>
 
@@ -163,16 +163,16 @@
         <div style="margin-bottom:14px">
           <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Billing Address</div>
           <div v-if="vendorBillingAddrs.length > 1" style="margin-bottom:8px">
-            <select v-model="form.selected_billing_addr_name" class="bill-input" @change="applyVendorBillingAddr">
+            <select v-model="form.selected_billing_addr_name" class="inv-fi" @change="applyVendorBillingAddr">
               <option value="">— Select address —</option>
               <option v-for="a in vendorBillingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
             </select>
           </div>
-          <textarea v-model="form.billing_address" class="bill-input" rows="2" style="resize:vertical;width:100%;box-sizing:border-box" placeholder="Auto-filled from vendor, or enter manually"></textarea>
+          <textarea v-model="form.billing_address" class="inv-fi" rows="2" style="resize:vertical;width:100%;box-sizing:border-box" placeholder="Auto-filled from vendor, or enter manually"></textarea>
         </div>
 
         <div class="bill-section-row">
-          <div class="bill-section-title">Items</div>
+          <div class="inv-sec-lbl" style="border-top:none;padding-top:0;margin-top:0">Items</div>
           <button v-if="form.supplier" class="bill-copy-btn" @click="copyLastItems" :disabled="copyingLast">
             <span v-html="icon('copy',12)"></span> {{ copyingLast ? 'Loading…' : 'Copy Last' }}
           </button>
@@ -185,19 +185,19 @@
             <div><SearchableSelect v-model="line.item_code" :options="items"
               placeholder="Select item…" :createable="true" createDoctype="Item"
               @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
-            <div><input v-model="line.description" class="bill-input" placeholder="Description" /></div>
-            <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="bill-input ta-r" @input="calcLine(line)" /></div>
-            <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="bill-input ta-r" @input="calcLine(line)" /></div>
+            <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
+            <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
+            <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
             <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
-            <div><button @click="removeLine(line.id)" class="bill-rm-line"><span v-html="icon('x',12)"></span></button></div>
+            <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
           </div>
-          <button class="bill-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+          <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
         </div>
 
         <div class="bill-totals">
-          <div class="bill-field" style="max-width:160px">
-            <label class="bill-label">Tax Rate %</label>
-            <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="bill-input" />
+          <div style="max-width:160px">
+            <label class="inv-lbl">Tax Rate %</label>
+            <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="inv-fi" />
           </div>
           <div class="bill-totals-right">
             <div class="bill-total-row"><span>Subtotal</span><span>{{ fmtCur(subtotal) }}</span></div>
@@ -206,48 +206,48 @@
           </div>
         </div>
 
-        <div class="bill-field">
-          <label class="bill-label">Remarks</label>
-          <textarea v-model="form.remarks" rows="2" class="bill-input" placeholder="Optional…"></textarea>
+        <div>
+          <label class="inv-lbl">Remarks</label>
+          <textarea v-model="form.remarks" rows="2" class="inv-fi" placeholder="Optional…"></textarea>
         </div>
       </div>
-      <div class="bill-dfooter">
-        <button class="bill-btn-ghost" @click="drawerOpen=false">Cancel</button>
-        <button class="bill-btn-save" :disabled="drawerSaving" @click="saveBill(0)">
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="drawerOpen=false">Cancel</button>
+        <button class="form-btn form-btn-success" :disabled="drawerSaving" @click="saveBill(0)">
           <span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}
         </button>
-        <button class="bill-btn-primary" :disabled="drawerSaving" @click="saveBill(1)">
+        <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="saveBill(1)">
           <span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}
         </button>
       </div>
     </div>
 
     <!-- ── View drawer ── -->
-    <div v-if="viewOpen" class="bill-overlay" @click.self="viewOpen=false"></div>
-    <div class="bill-drawer bill-view-drawer" :class="{open:viewOpen}">
+    <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
+    <div class="inv-drawer-panel bill-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
-        <div class="bill-view-head" :style="`background:${statusBg(viewDoc)}`">
+        <div class="inv-view-header bill-view-head">
           <div>
-            <div class="bill-view-num">{{ viewDoc.name }}</div>
-            <div class="bill-view-sub">{{ viewDoc.supplier_name||viewDoc.supplier }}</div>
+            <div class="inv-view-number">{{ viewDoc.name }}</div>
+            <div class="inv-view-subtitle">{{ viewDoc.supplier_name||viewDoc.supplier }}</div>
           </div>
           <div style="text-align:right">
             <div class="bill-view-amount">{{ fmtCur(viewDoc.grand_total) }}</div>
-            <span class="bill-badge bill-badge-white">{{ statusLabel(viewDoc) }}</span>
+            <span class="inv-hdr-badge" :class="statusCls(viewDoc)">{{ statusLabel(viewDoc) }}</span>
           </div>
-          <button class="bill-dclose bill-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+          <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
 
         <TimelineStepper :steps="timelineSteps" />
 
-        <div class="bill-tabs">
-          <button class="bill-tab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
-          <button class="bill-tab" :class="{active:viewTab==='payments'}" @click="viewTab='payments'">
-            Payments<span v-if="viewPayments.length" class="bill-tab-count">{{ viewPayments.length }}</span>
+        <div class="inv-view-tabs">
+          <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
+          <button class="inv-vtab" :class="{active:viewTab==='payments'}" @click="viewTab='payments'">
+            Payments<span v-if="viewPayments.length" class="inv-vtab-count">{{ viewPayments.length }}</span>
           </button>
         </div>
 
-        <div class="bill-dbody">
+        <div class="inv-dbody">
           <template v-if="viewTab==='details'">
             <div class="bill-meta-grid">
               <div><div class="bill-meta-lbl">Bill Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}</div></div>
@@ -260,7 +260,7 @@
 
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading details…</div>
             <template v-else>
-              <div v-if="viewItems.length" class="bill-section-title">Line Items</div>
+              <div v-if="viewItems.length" class="bill-meta-lbl" style="margin-top:12px">Line Items</div>
               <div v-if="viewItems.length" class="bill-view-items">
                 <div class="bill-view-items-head">
                   <span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span>
@@ -292,36 +292,36 @@
             <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
               No payments recorded yet.
               <div v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1" style="margin-top:8px">
-                <button class="bill-btn-primary" @click="payBill(viewDoc)" style="font-size:12px;padding:6px 12px">₹ Record Payment</button>
+                <button class="form-btn form-btn-primary" @click="payBill(viewDoc)" style="font-size:12px;padding:6px 12px">₹ Record Payment</button>
               </div>
             </div>
           </template>
         </div>
 
-        <div class="bill-dfooter">
-          <button class="bill-btn-ghost" @click="viewOpen=false">Close</button>
-          <button v-if="viewDoc.docstatus===0" class="bill-btn-save" @click="openEdit(viewDoc);viewOpen=false">
+        <div class="inv-dfooter">
+          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
+          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-success" @click="openEdit(viewDoc);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
-          <button v-if="viewDoc.docstatus===1" class="bill-btn-ghost" @click="emailBill(viewDoc)">
+          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" @click="emailBill(viewDoc)">
             <span v-html="icon('mail',13)"></span> Email
           </button>
-          <button class="bill-btn-ghost" @click="printBILL(viewDoc)" title="Print preview">
+          <button class="form-btn form-btn-outline" @click="printBILL(viewDoc)" title="Print preview">
             🖨 Print
           </button>
-          <button v-if="viewDoc.docstatus===1 && flt(viewDoc.outstanding_amount)>0" class="bill-btn-primary" @click="payBill(viewDoc)">
+          <button v-if="viewDoc.docstatus===1 && flt(viewDoc.outstanding_amount)>0" class="form-btn form-btn-primary" @click="payBill(viewDoc)">
             ₹ Record Payment
           </button>
-          <button v-if="viewDoc.docstatus===1" class="bill-btn-warn" @click="issueDebitNote(viewDoc)">
+          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="issueDebitNote(viewDoc)">
             <span v-html="icon('arrow-left',13)"></span> Issue Debit Note
           </button>
-          <button v-if="viewDoc.docstatus===1" class="bill-btn-ghost" @click="makeRecurringBill(viewDoc)">
+          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" @click="makeRecurringBill(viewDoc)">
             <span v-html="icon('repeat',13)"></span> Make Recurring
           </button>
-          <button v-if="viewDoc.docstatus===1" class="bill-btn-danger" @click="cancelBill(viewDoc)">
+          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="cancelBill(viewDoc)">
             Cancel
           </button>
-          <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="bill-btn-danger" @click="deleteBill(viewDoc)">
+          <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="form-btn form-btn-danger" @click="deleteBill(viewDoc)">
             Delete
           </button>
         </div>
@@ -814,144 +814,56 @@ onMounted(() => { load(); loadTaxAccount(); });
 </script>
 
 <style scoped>
-.bill-page { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
-.bill-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.bill-search-wrap { display: flex; align-items: center; gap: 8px; background: #ffffff; border-radius: 8px; padding: 6px 12px; min-width: 220px; }
-.bill-search-input { border: none; background: transparent; outline: none; font: inherit; color: #111827; width: 100%; font-size: 13px; }
-.bill-pills { display: flex; gap: 6px; }
-.bill-pill { padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 600; border: 1px solid #e5e7eb; background: #fff; color: #6b7280; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
-.bill-pill:hover { color: #2563eb; border-color: #2563eb; }
-.bill-pill.active { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
-.bill-pill-count { background: #f3f4f6; color: #6b7280; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-.bill-pill.active .bill-pill-count { background: #2563eb; color: #fff; }
-.bill-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.bill-btn-primary:hover:not(:disabled) { background: #1d4ed8; }
-.bill-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-.bill-btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #374151; cursor: pointer; }
-.bill-btn-ghost:hover { background: #f9fafb; }
-.bill-btn-save { display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.bill-btn-save:hover { background: #dcfce7; }
-.bill-btn-save:disabled { opacity: .5; cursor: not-allowed; }
-.bill-btn-warn { display: inline-flex; align-items: center; gap: 6px; background: #fff7ed; border: 1px solid #ea580c; color: #ea580c; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.bill-btn-warn:hover { background: #ffedd5; }
-.bill-btn-danger { display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; border: 1px solid #dc2626; color: #dc2626; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.bill-btn-danger:hover { background: #fee2e2; }
+/* ── Edit drawer: narrower than default 720px ── */
+.bill-edit-drawer { width: 600px; right: -600px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; }
+.bill-edit-drawer.open { right: 0; }
 
-.bill-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
-.bill-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.bill-table th { background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 10px 12px; font-size: 11.5px; font-weight: 600; color: #374151; text-align: left; white-space: nowrap; text-transform:uppercase;}
-.bill-table th.sortable { cursor: pointer; user-select: none; }
-.bill-table th.sortable:hover { color: #2563eb; }
-.ta-r { text-align: right !important; }
-.bill-row td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; cursor: pointer; }
-.bill-row:last-child td { border-bottom: none; }
-.bill-row:hover td { background: #f9fafb; }
-.bill-row.selected td { background: #eff6ff; }
-.bill-num { font-family: monospace; font-size: 12.5px; color: #2563eb; font-weight: 600; }
-.mono-sm { font-family: monospace; font-size: 12.5px; }
-.text-muted { color: #6b7280; }
-.text-danger { color: #dc2626; }
-.text-success { color: #059669; }
-.bill-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
-.bill-badge.status-paid { background: #d1fae5; color: #059669; }
-.bill-badge.status-unpaid { background: #fef3c7; color: #92400e; }
-.bill-badge.status-overdue { background: transparent; color: #dc2626; font-weight: 700; }
-.bill-badge.status-cancelled { background: #fee2e2; color: #7f1d1d; }
-.bill-badge.status-draft { background: #f3f4f6; color: #6b7280; }
-.bill-badge-white { background: rgba(255,255,255,.2); color: #fff !important; border: 1px solid rgba(255,255,255,.4); }
-
-.bill-act-cell { display: flex; gap: 4px; justify-content: flex-end; cursor: default !important; }
-.bill-act-btn { background: transparent; border: 1px solid #e5e7eb; border-radius: 6px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #6b7280; font: inherit; font-size: 13px; font-weight: 600; }
-.bill-act-btn:hover { background: #f3f4f6; color: #2563eb; }
-.bill-act-pay { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
-.bill-act-pay:hover { background: #dbeafe; }
-.bill-act-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-.bill-empty { text-align: center; color: #9ca3af; padding: 48px !important; cursor: default !important; }
-.bill-shimmer { height: 13px; background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%); border-radius: 4px; animation: shimmer 1.2s infinite; background-size: 200% 100%; }
-@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-.bill-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.2); z-index: 40; }
-.bill-drawer { position: fixed; top: 0; right: -600px; bottom: 0; width: 600px; max-width: 96vw; background: #fff; border-left: 1px solid #e5e7eb; box-shadow: -8px 0 24px rgba(0,0,0,.08); z-index: 50; display: flex; flex-direction: column; transition: right .22s ease; }
-.bill-drawer.open { right: 0; }
-.bill-view-drawer { width: 540px; right: -540px; }
+/* ── View drawer: even narrower ── */
+.bill-view-drawer { width: 540px; right: -540px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; }
 .bill-view-drawer.open { right: 0; }
-.bill-dheader { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 60px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0;background:linear-gradient(135deg,#1e3a5f,#1a6ef7); }
-.bill-dheader-title { font-size: 15px; font-weight: 600; color: #ffffff; }
-.bill-dclose { background: #ffffff26;
-    border: none;
-    cursor: pointer;
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    color: #fff;
-    display: grid;
-    place-items: center;}
-.bill-dclose:hover { background: #f3f4f6; color: #111827; }
-.bill-dbody { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-.bill-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.bill-field { display: flex; flex-direction: column; gap: 4px; }
-.bill-label { font-size: 12px; font-weight: 600; color: #374151; }
-.req { color: #dc2626; }
-.bill-inv-block { border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; transition: background .2s, border-color .2s; }
-.bill-inv-block.inv-on  { background: #eff6ff; border: 1.5px solid #93c5fd; }
-.bill-inv-block.inv-off { background: #f9fafb; border: 1.5px solid #e5e7eb; }
-.bill-inv-toggle-row { display: flex; align-items: center; gap: 12px; }
-.bill-inv-icon { width: 32px; height: 32px; border-radius: 8px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.bill-inv-block.inv-off .bill-inv-icon { background: #f3f4f6; color: #9ca3af; }
-.bill-inv-text { flex: 1; }
-.bill-inv-title { font-size: 13px; font-weight: 700; color: #111827; }
-.bill-inv-sub { font-size: 11.5px; color: #6b7280; margin-top: 2px; line-height: 1.4; }
-.bill-inv-wh-row { display: flex; flex-direction: column; padding-top: 4px; border-top: 1px solid #bfdbfe; }
-/* Toggle switch */
-.bill-inv-switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
-.bill-inv-switch input { opacity: 0; width: 0; height: 0; }
-.bill-inv-slider { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 24px; transition: .2s; }
-.bill-inv-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-.bill-inv-switch input:checked + .bill-inv-slider { background: #2563eb; }
-.bill-inv-switch input:checked + .bill-inv-slider:before { transform: translateX(18px); }
-.bill-input { width: 100%; box-sizing: border-box; border: 1px solid #e5e7eb; border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; outline: none; background: #fff; color: #111827; }
-.bill-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
-textarea.bill-input { resize: vertical; }
-.bill-section-row { display: flex; align-items: center; justify-content: space-between; }
-.bill-section-title { font-size: 12px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em; padding-bottom: 4px; border-bottom: 1px solid #f3f4f6; flex: 1; }
+
+/* ── View header: flat (no status-based background) ── */
+.bill-view-head {
+  position: relative;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc !important;
+  padding: 20px;
+}
+.bill-view-head .inv-view-number { color: #1a1a2e; }
+.bill-view-head .inv-view-subtitle { color: #6b7280; }
+.bill-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #1a1a2e; }
+
+/* ── Meta grid in view ── */
+.bill-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.bill-meta-lbl { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+
+/* ── Line items table (edit drawer) ── */
+.bill-section-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .bill-copy-btn { background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; padding: 4px 10px; border-radius: 6px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
 .bill-copy-btn:hover { background: #dcfce7; }
 .bill-copy-btn:disabled { opacity: .5; cursor: not-allowed; }
 .bill-items-table { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 8px; }
 .bill-items-head { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: #374151; }
 .bill-items-row { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; }
-.bill-add-line { background: transparent; border: none; color: #2563eb; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 8px 12px; display: inline-flex; align-items: center; gap: 6px; }
-.bill-add-line:hover { background: #eff6ff; }
-.bill-rm-line { background: transparent; border: 1px solid #e5e7eb; border-radius: 4px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca3af; }
-.bill-rm-line:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+/* ── Totals block ── */
 .bill-totals { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .bill-totals-right { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
 .bill-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 3px 0; }
 .bill-total-row.grand { font-weight: 700; font-size: 14px; color: #111827; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 2px; }
 
-.bill-view-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; padding: 20px; flex-shrink: 0; color: #fff; }
-.bill-view-num { font-size: 18px; font-weight: 700; font-family: monospace; color: #fff; }
-.bill-view-sub { font-size: 13px; color: rgba(255,255,255,.8); margin-top: 2px; }
-.bill-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #fff; }
-.bill-vclose { position: absolute; top: 12px; right: 12px; color: #fff; }
-.bill-vclose:hover { background: rgba(255,255,255,.18); color: #fff; }
-
-.bill-tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; background: #fff; }
-.bill-tab { background: transparent; border: none; padding: 10px 14px; font: inherit; font-size: 12.5px; font-weight: 600; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; display: inline-flex; align-items: center; gap: 6px; }
-.bill-tab:hover { color: #2563eb; }
-.bill-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
-.bill-tab-count { background: #2563eb; color: #fff; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-
-.bill-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.bill-meta-lbl { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
-
+/* ── View: line items grid ── */
 .bill-view-items { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
 .bill-view-items-head { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
 .bill-view-items-row { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
 
+/* ── View: payments grid ── */
 .bill-pay-head { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; border-radius: 6px 6px 0 0; border: 1px solid #e5e7eb; border-bottom: none; }
 .bill-pay-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; align-items: center; font-size: 12.5px; }
 .bill-pay-row:last-child { border-bottom: 1px solid #e5e7eb; border-radius: 0 0 6px 6px; }
 
-.bill-dfooter { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid #e5e7eb; flex-shrink: 0; flex-wrap: wrap; }
+/* ── Row actions cell ── */
+.bill-act-cell { display: flex; gap: 4px; justify-content: flex-end; cursor: default !important; }
+.bill-act-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
 </style>

@@ -4,6 +4,10 @@ import router from "./router";
 import { bootstrapSession } from "./api/session.js";
 import "./shell.css";
 import "./legacy-extras.css";
+import "./styles/list.css";
+import "./styles/view.css";
+import "./styles/edit.css";
+import "./styles/add.css";
 
 // Bootstrap the session before mounting so usePermissions() and the API
 // client see populated state synchronously after the await.

@@ -1,27 +1,27 @@
 <template>
 <div>
   <!-- ── FLAT TABLE VIEW (default) ── -->
-  <div v-if="!selectedCustomer" class="b-page cust-page">
+  <div v-if="!selectedCustomer" class="list-page">
 
-    <div class="cust-toolbar">
+    <div class="sales-toolbar">
       <div class="cust-toolbar-left">
-        <div class="cust-filters">
+        <div class="sales-pills">
           <button v-for="f in [{k:'all',l:'All'},{k:'active',l:'Active'},{k:'disabled',l:'Disabled'}]"
-            :key="f.k" class="zb-inv-pill" :class="{'zb-inv-pill-active': activeFilter===f.k}"
+            :key="f.k" class="sales-pill" :class="{'active': activeFilter===f.k}"
             @click="activeFilter=f.k">
             {{f.l}}
-            <span class="zb-pill-cnt" :class="activeFilter===f.k?'':'zb-pc-muted'">{{counts[f.k]}}</span>
+            <span class="sales-pill-count" :class="activeFilter===f.k?'':'zb-pc-muted'">{{counts[f.k]}}</span>
           </button>
         </div>
       </div>
       <div class="cust-toolbar-right">
-        <div class="cust-search">
+        <div class="sales-search">
           <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search customers…" class="cust-search-input" autocomplete="off"/>
+          <input v-model="search" placeholder="Search customers…" class="sales-search-input" autocomplete="off"/>
         </div>
-        <button class="zb-tb-btn" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
-        <button class="zb-tb-btn" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
-        <button class="zb-tb-btn zb-tb-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
+        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
+        <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
+        <button class="sales-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
       </div>
     </div>
 
@@ -56,9 +56,9 @@
       <button class="inv-bulk-clear" @click="clearSelection">✕ Clear</button>
     </div>
 
-    <div class="vt-table-card">
-      <div class="vt-table-wrap">
-        <table class="vt-table">
+    <div class="inv-table-wrap">
+      <div class="inv-table-wrap">
+        <table class="inv-table">
           <thead>
             <tr>
               <th class="vt-th vt-th-check">
@@ -78,7 +78,7 @@
           <tbody>
             <template v-if="loading">
               <tr v-for="n in 6" :key="n" class="vt-row-shimmer">
-                <td colspan="9"><div class="b-shimmer" style="height:12px;border-radius:3px;width:65%"></div></td>
+                <td colspan="9"><div class="shimmer" style="height:12px;border-radius:3px;width:65%"></div></td>
               </tr>
             </template>
             <tr v-else-if="!filtered.length">
@@ -92,7 +92,7 @@
               </td>
             </tr>
             <tr v-else v-for="c in filtered" :key="c.name"
-              class="vt-row"
+              class="inv-row"
               :class="[c.disabled ? 'vt-row-disabled' : '', selectedRows.has(c.name) ? 'vt-row-selected' : '']"
               @click="selectCustomer(c)">
               <td class="vt-td vt-td-check" @click.stop>
@@ -102,7 +102,7 @@
                 <div class="vt-vendor-cell">
                   <div class="vt-avatar" :class="c.disabled ? 'vt-avatar-disabled' : ''">{{custInitials(c.customer_name)}}</div>
                   <div>
-                    <div class="vt-vendor-name">{{c.customer_name}}</div>
+                    <div class="vt-vendor-name inv-customer">{{c.customer_name}}</div>
                     <div class="vt-vendor-id">{{c.name}}</div>
                   </div>
                 </div>
@@ -114,14 +114,14 @@
               <td class="vt-td vt-td-secondary">{{c.mobile_no||'—'}}</td>
               <td class="vt-td vt-td-secondary">{{c.city ? (c.city + (c.state ? ', '+c.state : '')) : '—'}}</td>
               <td class="vt-td">
-                <span class="vt-badge" :class="c.disabled ? 'vt-badge-red' : 'vt-badge-green'">
+                <span class="inv-status-badge" :class="c.disabled ? 'vt-badge-red' : 'vt-badge-green'">
                   <span class="vt-badge-dot"></span>{{c.disabled ? 'Disabled' : 'Active'}}
                 </span>
               </td>
               <td class="vt-td vt-td-actions" @click.stop>
                 <div class="vt-actions">
-                  <button class="vt-act-btn vt-act-edit" @click="openEdit(c.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                  <button class="vt-act-btn vt-act-del" @click="confirmDelete(c)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                  <button class="inv-act-btn vt-act-edit" @click="openEdit(c.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                  <button class="inv-act-btn vt-act-del" @click="confirmDelete(c)" title="Delete"><span v-html="icon('trash',13)"></span></button>
                 </div>
               </td>
             </tr>
@@ -141,11 +141,11 @@
       <div style="padding:16px 16px 10px;border-bottom:1px solid #f0f2f5;flex-shrink:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <span style="font-size:14px;font-weight:700;color:#111827">Active Customers ▾</span>
-          <button class="zb-tb-btn zb-tb-primary" style="padding:5px 10px;font-size:12px" @click="openAdd"><span v-html="icon('plus',12)"></span> New</button>
+          <button class="sales-btn-primary" style="padding:5px 10px;font-size:12px" @click="openAdd"><span v-html="icon('plus',12)"></span> New</button>
         </div>
-        <div class="cust-search" style="width:100%">
+        <div class="sales-search" style="width:100%">
           <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search customers…" class="cust-search-input" autocomplete="off"/>
+          <input v-model="search" placeholder="Search customers…" class="sales-search-input" autocomplete="off"/>
         </div>
       </div>
       <div style="flex:1;overflow-y:auto">
@@ -445,26 +445,26 @@
 
   <!-- Drawer -->
   <Teleport to="body">
-    <div v-if="showDrawer" class="cust-backdrop" @click.self="showDrawer=false">
-      <div class="cust-drawer" style="width:680px;max-width:98vw">
+    <div v-if="showDrawer" class="inv-drawer-bg" @click.self="showDrawer=false">
+      <div class="inv-drawer-panel" :class="{open:showDrawer}" style="width:680px;max-width:98vw">
 
-        <div class="cust-drawer-header" style="background:linear-gradient(135deg,#3B5BDB,#2244b8);padding:18px 24px">
+        <div class="inv-dh" style="background:linear-gradient(135deg,#3B5BDB,#2244b8);padding:18px 24px">
           <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
             <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
             <div style="min-width:0">
-              <div style="font-size:16px;font-weight:700;color:#fff">{{drawerMode==='add'?'New Customer':'Edit Customer'}}</div>
+              <div class="inv-dh-title">{{drawerMode==='add'?'New Customer':'Edit Customer'}}</div>
               <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:1px">{{drawerMode==='edit'?form.name:'Fill in customer details'}}</div>
             </div>
           </div>
-          <button @click="showDrawer=false" style="background:rgba(255,255,255,.15);border:none;border-radius:6px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0" v-html="icon('x',14)"></button>
+          <button class="inv-dclose" @click="showDrawer=false" v-html="icon('x',14)"></button>
         </div>
 
-        <div style="display:flex;gap:0;border-bottom:2px solid #e8ecf0;background:#fff;padding:0 24px">
+        <div class="inv-view-tabs">
           <button v-for="t in [{k:'overview',l:'Overview'},{k:'address',l:'Address'},{k:'other',l:'Other Details'},{k:'bank',l:'Bank Details'},{k:'remarks',l:'Remarks'}]"
             :key="t.k" @click="drawerTab=t.k"
-            :style="'padding:11px 16px;border:none;border-bottom:2px solid '+(drawerTab===t.k?'#3B5BDB':'transparent')+';margin-bottom:-2px;background:none;font-size:13px;font-weight:'+(drawerTab===t.k?'600':'500')+';color:'+(drawerTab===t.k?'#3B5BDB':'#6b7280')+';cursor:pointer;font-family:inherit;transition:all .15s'">
+            class="inv-vtab" :class="{active: drawerTab===t.k}">
             {{t.l}}
           </button>
         </div>
@@ -473,13 +473,13 @@
           Loading customer…
         </div>
 
-        <div v-else class="cust-drawer-body" style="padding:24px;overflow-y:auto;flex:1">
+        <div v-else class="inv-dbody" style="padding:24px;overflow-y:auto;flex:1">
 
           <!-- Overview Tab -->
           <template v-if="drawerTab==='overview'">
 
             <div style="margin-bottom:20px">
-              <label class="nim-label" style="margin-bottom:8px;display:block">Customer Type</label>
+              <label class="inv-lbl" style="margin-bottom:8px;display:block">Customer Type</label>
               <div style="display:flex;gap:24px">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:#374151">
                   <input type="radio" v-model="form.customer_type" value="Company" style="width:16px;height:16px;accent-color:#3B5BDB;cursor:pointer"/>
@@ -493,7 +493,7 @@
             </div>
 
             <div style="margin-bottom:20px">
-              <label class="nim-label" style="margin-bottom:8px;display:block">GST Treatment</label>
+              <label class="inv-lbl" style="margin-bottom:8px;display:block">GST Treatment</label>
               <div style="display:flex;flex-wrap:wrap;gap:8px">
                 <button v-for="opt in GST_TREATMENT_OPTIONS" :key="opt" @click="form.gst_treatment=opt" type="button"
                   :style="'padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;border:1.5px solid '+(form.gst_treatment===opt?GST_RULES[opt].badge.color:'#e2e8f0')+';background:'+(form.gst_treatment===opt?GST_RULES[opt].badge.bg:'#fff')+';color:'+(form.gst_treatment===opt?GST_RULES[opt].badge.color:'#6b7280')">
@@ -508,21 +508,21 @@
             </div>
 
             <div style="margin-bottom:16px">
-              <label class="nim-label" style="margin-bottom:8px;display:block">Primary Contact</label>
+              <label class="inv-lbl" style="margin-bottom:8px;display:block">Primary Contact</label>
               <div style="display:grid;grid-template-columns:140px 1fr 1fr;gap:10px">
-                <select v-model="form.salutation" class="nim-input" style="cursor:pointer">
+                <select v-model="form.salutation" class="inv-fi" style="cursor:pointer">
                   <option value="">Salutation</option>
                   <option>Mr.</option><option>Ms.</option><option>Mrs.</option><option>Dr.</option><option>Prof.</option>
                 </select>
                 <div style="position:relative">
-                  <input v-model="form.first_name" class="nim-input" placeholder="First Name"
+                  <input v-model="form.first_name" class="inv-fi" placeholder="First Name"
                     :style="formErrors.first_name?'border-color:#dc2626;background:#fff5f5':''"
                     @input="form.first_name=form.first_name.replace(/[^a-zA-Z\s.']/g,''); delete formErrors.first_name"
                     @blur="validateField('first_name')"/>
                   <div v-if="formErrors.first_name" style="position:absolute;left:0;top:100%;margin-top:3px;font-size:11.5px;color:#dc2626;white-space:nowrap">{{formErrors.first_name}}</div>
                 </div>
                 <div style="position:relative">
-                  <input v-model="form.last_name" class="nim-input" placeholder="Last Name"
+                  <input v-model="form.last_name" class="inv-fi" placeholder="Last Name"
                     :style="formErrors.last_name?'border-color:#dc2626;background:#fff5f5':''"
                     @input="form.last_name=form.last_name.replace(/[^a-zA-Z\s.']/g,''); delete formErrors.last_name"
                     @blur="validateField('last_name')"/>
@@ -532,8 +532,8 @@
             </div>
 
             <div style="margin-bottom:16px">
-              <label class="nim-label">Company Name <span v-if="form.customer_type==='Company'" class="nim-req">*</span></label>
-              <input v-model="form.company_name" class="nim-input" placeholder="Company name"
+              <label class="inv-lbl">Company Name <span v-if="form.customer_type==='Company'" class="nim-req">*</span></label>
+              <input v-model="form.company_name" class="inv-fi" placeholder="Company name"
                 :style="formErrors.company_name?'border-color:#dc2626;background:#fff5f5':''"
                 @input="delete formErrors.company_name"
                 @blur="validateField('company_name')"/>
@@ -544,11 +544,11 @@
             </div>
 
             <div style="margin-bottom:16px">
-              <label class="nim-label" style="display:flex;justify-content:space-between">
+              <label class="inv-lbl" style="display:flex;justify-content:space-between">
                 <span>Display Name <span class="nim-req">*</span></span>
                 <span :style="{fontSize:'11px',color:form.customer_name.length>90?'#dc2626':form.customer_name.length>0?'#9ca3af':'transparent'}">{{form.customer_name.length}}/100</span>
               </label>
-              <input v-model="form.customer_name" class="nim-input" maxlength="100"
+              <input v-model="form.customer_name" class="inv-fi" maxlength="100"
                 :style="formErrors.customer_name?'border-color:#dc2626;background:#fff5f5':''"
                 placeholder="Name shown on invoices and orders"
                 @input="form.customer_name=form.customer_name.replace(/[^a-zA-Z\s.'-]/g,''); delete formErrors.customer_name"
@@ -564,12 +564,12 @@
                 style="display:grid;gap:14px;margin-bottom:16px"
                 :style="{gridTemplateColumns: (activeRule.showGstin && activeRule.showPan) ? '1fr 1fr' : '1fr'}">
                 <div v-if="activeRule.showGstin">
-                  <label class="nim-label">
+                  <label class="inv-lbl">
                     GSTIN / Tax ID
                     <span v-if="activeRule.requireGstin" class="nim-req">*</span>
                     <span v-else style="font-size:11px;font-weight:400;color:#9ca3af;margin-left:4px">(optional)</span>
                   </label>
-                  <input v-model="form.tax_id" class="nim-input"
+                  <input v-model="form.tax_id" class="inv-fi"
                     :style="formErrors.tax_id?'border-color:#dc2626;background:#fff5f5':''"
                     :placeholder="activeRule.gstinPlaceholder||'27AAPFU0939F1ZV'"
                     style="font-family:var(--mono);letter-spacing:.04em"
@@ -585,8 +585,8 @@
                   </div>
                 </div>
                 <div v-if="activeRule.showPan">
-                  <label class="nim-label">PAN Number <span style="font-size:11px;font-weight:400;color:#9ca3af">(optional)</span></label>
-                  <input v-model="form.pan_no" class="nim-input" placeholder="ABCDE1234F" maxlength="10"
+                  <label class="inv-lbl">PAN Number <span style="font-size:11px;font-weight:400;color:#9ca3af">(optional)</span></label>
+                  <input v-model="form.pan_no" class="inv-fi" placeholder="ABCDE1234F" maxlength="10"
                     style="font-family:var(--mono);letter-spacing:.04em"
                     :style="formErrors.pan_no?'border-color:#dc2626;background:#fff5f5':''"
                     @input="form.pan_no=form.pan_no.toUpperCase().replace(/[^A-Z0-9]/g,''); delete formErrors.pan_no"
@@ -607,8 +607,8 @@
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
               <div>
-                <label class="nim-label">Email Address</label>
-                <input v-model="form.email_id" class="nim-input" placeholder="name@company.com"
+                <label class="inv-lbl">Email Address</label>
+                <input v-model="form.email_id" class="inv-fi" placeholder="name@company.com"
                   :style="formErrors.email_id?'border-color:#dc2626;background:#fff5f5':form.email_id&&EMAIL_REGEX.test(form.email_id)?'border-color:#2f9e44':''"
                   @input="delete formErrors.email_id"
                   @blur="validateField('email_id')"/>
@@ -622,8 +622,8 @@
                 </div>
               </div>
               <div>
-                <label class="nim-label">Work Phone</label>
-                <input v-model="form.phone" class="nim-input" placeholder="022-12345678"
+                <label class="inv-lbl">Work Phone</label>
+                <input v-model="form.phone" class="inv-fi" placeholder="022-12345678"
                   :style="formErrors.phone?'border-color:#dc2626;background:#fff5f5':''"
                   @input="form.phone=form.phone.replace(/[^\d+\-\s()]/g,''); delete formErrors.phone"
                   @blur="validateField('phone')"/>
@@ -633,9 +633,9 @@
                 </div>
               </div>
               <div>
-                <label class="nim-label">Mobile</label>
+                <label class="inv-lbl">Mobile</label>
                 <div style="display:flex;gap:0">
-                  <select v-model="form.mobile_code" class="nim-input" style="width:90px;border-right:none;border-radius:8px 0 0 8px;background:#f8f9fc;cursor:pointer;flex-shrink:0;padding:0 6px"
+                  <select v-model="form.mobile_code" class="inv-fi" style="width:90px;border-right:none;border-radius:8px 0 0 8px;background:#f8f9fc;cursor:pointer;flex-shrink:0;padding:0 6px"
                     @change="delete formErrors.mobile_no; if(form.mobile_no) validateField('mobile_no')">
                     <option value="+91">🇮🇳 +91</option>
                     <option value="+1">🇺🇸 +1</option>
@@ -656,7 +656,7 @@
                     <option value="+86">🇨🇳 +86</option>
                     <option value="+81">🇯🇵 +81</option>
                   </select>
-                  <input v-model="form.mobile_no" class="nim-input" style="border-radius:0 8px 8px 0;flex:1" placeholder="98765 43210"
+                  <input v-model="form.mobile_no" class="inv-fi" style="border-radius:0 8px 8px 0;flex:1" placeholder="98765 43210"
                     :style="formErrors.mobile_no?'border-color:#dc2626;background:#fff5f5':form.mobile_no&&!formErrors.mobile_no&&form.mobile_no.replace(/\D/g,'').length>6?'border-color:#2f9e44':''"
                     @input="form.mobile_no=form.mobile_no.replace(/\D/g,''); delete formErrors.mobile_no"
                     @blur="validateField('mobile_no')"/>
@@ -671,8 +671,8 @@
                 </div>
               </div>
               <div>
-                <label class="nim-label">Website</label>
-                <input v-model="form.website" class="nim-input" placeholder="https://company.com"
+                <label class="inv-lbl">Website</label>
+                <input v-model="form.website" class="inv-fi" placeholder="https://company.com"
                   :style="formErrors.website?'border-color:#dc2626;background:#fff5f5':form.website&&URL_REGEX.test(form.website)?'border-color:#2f9e44':''"
                   @input="delete formErrors.website"
                   @blur="validateField('website')"/>
@@ -689,25 +689,25 @@
 
             <div style="height:1px;background:#e8ecf0;margin-bottom:20px"></div>
 
-            <div class="cust-sec-label" style="margin-top:0">Billing Preferences</div>
+            <div class="inv-sec-lbl" style="margin-top:0">Billing Preferences</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px">
               <div>
-                <label class="nim-label">Currency</label>
-                <select v-model="form.default_currency" class="nim-input" style="cursor:pointer">
+                <label class="inv-lbl">Currency</label>
+                <select v-model="form.default_currency" class="inv-fi" style="cursor:pointer">
                   <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option><option>JPY</option><option>CAD</option><option>AUD</option>
                 </select>
               </div>
               <div>
-                <label class="nim-label">Payment Terms</label>
-                <select v-model="form.payment_terms" class="nim-input" style="cursor:pointer">
+                <label class="inv-lbl">Payment Terms</label>
+                <select v-model="form.payment_terms" class="inv-fi" style="cursor:pointer">
                   <option value="">— Select —</option>
                   <option>Net 7</option><option>Net 15</option><option>Net 30</option><option>Net 45</option><option>Net 60</option>
                   <option>Due on Receipt</option><option>End of Month</option>
                 </select>
               </div>
               <div>
-                <label class="nim-label">Credit Limit ({{ currencySymbol }})</label>
-                <input v-model.number="form.credit_limit" type="number" min="0" class="nim-input" placeholder="0 = unlimited"
+                <label class="inv-lbl">Credit Limit ({{ currencySymbol }})</label>
+                <input v-model.number="form.credit_limit" type="number" min="0" class="inv-fi" placeholder="0 = unlimited"
                   :style="formErrors.credit_limit?'border-color:#dc2626;background:#fff5f5':''"
                   @input="delete formErrors.credit_limit"
                   @blur="validateField('credit_limit')"/>
@@ -740,39 +740,39 @@
             </template>
             <!-- Add mode: use inline fields (AddressManager needs a saved partyName) -->
             <template v-else>
-            <div class="cust-sec-label" style="margin-top:0">Billing Address</div>
+            <div class="inv-sec-lbl" style="margin-top:0">Billing Address</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
               <div style="grid-column:span 2">
-                <label class="nim-label">Address Line 1</label>
-                <input v-model="form.address_line1" class="nim-input" placeholder="Street, building no., floor"/>
+                <label class="inv-lbl">Address Line 1</label>
+                <input v-model="form.address_line1" class="inv-fi" placeholder="Street, building no., floor"/>
               </div>
               <div style="grid-column:span 2">
-                <label class="nim-label">Address Line 2</label>
-                <input v-model="form.address_line2" class="nim-input" placeholder="Area, landmark, district"/>
+                <label class="inv-lbl">Address Line 2</label>
+                <input v-model="form.address_line2" class="inv-fi" placeholder="Area, landmark, district"/>
               </div>
               <div>
-                <label class="nim-label">City</label>
-                <input v-model="form.city" class="nim-input" placeholder="Mumbai"
+                <label class="inv-lbl">City</label>
+                <input v-model="form.city" class="inv-fi" placeholder="Mumbai"
                   @input="form.city=form.city.replace(/[^a-zA-Z\s]/g,'')"/>
               </div>
               <div>
-                <label class="nim-label">Country</label>
-                <select v-model="form.country" class="nim-input" style="cursor:pointer" @change="form.state=''; delete formErrors.pincode; if(form.pincode) validateField('pincode')">
+                <label class="inv-lbl">Country</label>
+                <select v-model="form.country" class="inv-fi" style="cursor:pointer" @change="form.state=''; delete formErrors.pincode; if(form.pincode) validateField('pincode')">
                   <option value="">— Select Country —</option>
                   <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
                 </select>
               </div>
               <div>
-                <label class="nim-label">State / Province</label>
-                <select v-if="statesFor(form.country).length" v-model="form.state" class="nim-input" style="cursor:pointer">
+                <label class="inv-lbl">State / Province</label>
+                <select v-if="statesFor(form.country).length" v-model="form.state" class="inv-fi" style="cursor:pointer">
                   <option value="">— Select State —</option>
                   <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{s}}</option>
                 </select>
-                <input v-else v-model="form.state" class="nim-input" placeholder="Enter state / province"/>
+                <input v-else v-model="form.state" class="inv-fi" placeholder="Enter state / province"/>
               </div>
               <div>
-                <label class="nim-label">Pincode</label>
-                <input v-model="form.pincode" class="nim-input"
+                <label class="inv-lbl">Pincode</label>
+                <input v-model="form.pincode" class="inv-fi"
                   :placeholder="pincodePlaceholder(form.country)"
                   :style="formErrors.pincode?'border-color:#dc2626;background:#fff5f5':form.pincode&&!formErrors.pincode?'border-color:#2f9e44':''"
                   @input="form.pincode=sanitizePincode(form.pincode, form.country); delete formErrors.pincode"
@@ -782,7 +782,7 @@
               </div>
             </div>
 
-            <div class="cust-sec-label">Shipping Address <span style="font-size:11px;font-weight:400;color:#9ca3af;margin-left:6px">— leave blank to use billing address</span></div>
+            <div class="inv-sec-lbl">Shipping Address <span style="font-size:11px;font-weight:400;color:#9ca3af;margin-left:6px">— leave blank to use billing address</span></div>
             <div style="margin-bottom:10px">
               <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
                 <input type="checkbox" v-model="shipSameAsBilling" @change="onShipSameChange" style="accent-color:#3B5BDB"/>
@@ -791,36 +791,36 @@
             </div>
             <div v-if="!shipSameAsBilling" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
               <div style="grid-column:span 2">
-                <label class="nim-label">Address Line 1</label>
-                <input v-model="form.ship_address_line1" class="nim-input" placeholder="Street, building no., floor"/>
+                <label class="inv-lbl">Address Line 1</label>
+                <input v-model="form.ship_address_line1" class="inv-fi" placeholder="Street, building no., floor"/>
               </div>
               <div style="grid-column:span 2">
-                <label class="nim-label">Address Line 2</label>
-                <input v-model="form.ship_address_line2" class="nim-input" placeholder="Area, landmark, district"/>
+                <label class="inv-lbl">Address Line 2</label>
+                <input v-model="form.ship_address_line2" class="inv-fi" placeholder="Area, landmark, district"/>
               </div>
               <div>
-                <label class="nim-label">City</label>
-                <input v-model="form.ship_city" class="nim-input" placeholder="Mumbai"
+                <label class="inv-lbl">City</label>
+                <input v-model="form.ship_city" class="inv-fi" placeholder="Mumbai"
                   @input="form.ship_city=form.ship_city.replace(/[^a-zA-Z\s]/g,'')"/>
               </div>
               <div>
-                <label class="nim-label">Country</label>
-                <select v-model="form.ship_country" class="nim-input" style="cursor:pointer" @change="form.ship_state=''; delete formErrors.ship_pincode; if(form.ship_pincode) validateField('ship_pincode')">
+                <label class="inv-lbl">Country</label>
+                <select v-model="form.ship_country" class="inv-fi" style="cursor:pointer" @change="form.ship_state=''; delete formErrors.ship_pincode; if(form.ship_pincode) validateField('ship_pincode')">
                   <option value="">— Select Country —</option>
                   <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
                 </select>
               </div>
               <div>
-                <label class="nim-label">State / Province</label>
-                <select v-if="statesFor(form.ship_country).length" v-model="form.ship_state" class="nim-input" style="cursor:pointer">
+                <label class="inv-lbl">State / Province</label>
+                <select v-if="statesFor(form.ship_country).length" v-model="form.ship_state" class="inv-fi" style="cursor:pointer">
                   <option value="">— Select State —</option>
                   <option v-for="s in statesFor(form.ship_country)" :key="s" :value="s">{{s}}</option>
                 </select>
-                <input v-else v-model="form.ship_state" class="nim-input" placeholder="Enter state / province"/>
+                <input v-else v-model="form.ship_state" class="inv-fi" placeholder="Enter state / province"/>
               </div>
               <div>
-                <label class="nim-label">Pincode</label>
-                <input v-model="form.ship_pincode" class="nim-input"
+                <label class="inv-lbl">Pincode</label>
+                <input v-model="form.ship_pincode" class="inv-fi"
                   :placeholder="pincodePlaceholder(form.ship_country)"
                   :style="formErrors.ship_pincode?'border-color:#dc2626;background:#fff5f5':form.ship_pincode&&!formErrors.ship_pincode?'border-color:#2f9e44':''"
                   @input="form.ship_pincode=sanitizePincode(form.ship_pincode, form.ship_country); delete formErrors.ship_pincode"
@@ -834,7 +834,7 @@
 
           <!-- Other Details Tab -->
           <template v-else-if="drawerTab==='other'">
-            <div class="cust-sec-label" style="margin-top:0">Tax &amp; Compliance</div>
+            <div class="inv-sec-lbl" style="margin-top:0">Tax &amp; Compliance</div>
 
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:10px 14px;border-radius:8px;border:1px solid #e8ecf0;background:#fafbfd">
               <span style="font-size:12px;color:#6b7280;font-weight:500">Current GST Treatment:</span>
@@ -849,11 +849,11 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
               <transition name="gst-field">
                 <div v-if="activeRule.showPlaceOfSupply">
-                  <label class="nim-label">
+                  <label class="inv-lbl">
                     Place of Supply
                     <span v-if="activeRule.requirePlaceOfSupply" class="nim-req">*</span>
                   </label>
-                  <select v-model="form.place_of_supply" class="nim-input" style="cursor:pointer"
+                  <select v-model="form.place_of_supply" class="inv-fi" style="cursor:pointer"
                     :style="formErrors.place_of_supply?'border-color:#dc2626;background:#fff5f5':''"
                     @change="delete formErrors.place_of_supply">
                     <option value="">— Select State —</option>
@@ -867,8 +867,8 @@
                 Place of Supply not applicable for <strong>{{form.gst_treatment}}</strong> customers.
               </div>
               <div>
-                <label class="nim-label">Customer Source</label>
-                <select v-model="form.source" class="nim-input" style="cursor:pointer">
+                <label class="inv-lbl">Customer Source</label>
+                <select v-model="form.source" class="inv-fi" style="cursor:pointer">
                   <option value="">— Select —</option>
                   <option>Cold Calling</option><option>Email</option><option>Existing Customer</option>
                   <option>Partner</option><option>Campaign</option><option>Website</option><option>Referral</option><option>Word of Mouth</option><option>Other</option>
@@ -876,11 +876,11 @@
               </div>
             </div>
 
-            <div class="cust-sec-label">Opening Balance</div>
+            <div class="inv-sec-lbl">Opening Balance</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
               <div>
-                <label class="nim-label">Opening Balance (₹)</label>
-                <input v-model.number="form.opening_balance" type="number" min="0" class="nim-input" placeholder="0.00"
+                <label class="inv-lbl">Opening Balance (₹)</label>
+                <input v-model.number="form.opening_balance" type="number" min="0" class="inv-fi" placeholder="0.00"
                   :style="formErrors.opening_balance?'border-color:#dc2626;background:#fff5f5':''"
                   @input="delete formErrors.opening_balance"
                   @blur="validateField('opening_balance')"/>
@@ -891,15 +891,15 @@
 
           <!-- Bank Tab -->
           <template v-else-if="drawerTab==='bank'">
-            <div class="cust-sec-label" style="margin-top:0">Bank Account</div>
+            <div class="inv-sec-lbl" style="margin-top:0">Bank Account</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
               <div style="grid-column:span 2">
-                <label class="nim-label">Bank Name</label>
-                <input v-model="form.bank_name" class="nim-input" placeholder="HDFC Bank, SBI, ICICI…"/>
+                <label class="inv-lbl">Bank Name</label>
+                <input v-model="form.bank_name" class="inv-fi" placeholder="HDFC Bank, SBI, ICICI…"/>
               </div>
               <div>
-                <label class="nim-label">Account Number <span style="font-size:11px;font-weight:400;color:#9ca3af">(9–18 digits)</span></label>
-                <input v-model="form.bank_account_no" class="nim-input" placeholder="XXXXXXXXXXXXXXXX" maxlength="18" style="font-family:var(--mono)"
+                <label class="inv-lbl">Account Number <span style="font-size:11px;font-weight:400;color:#9ca3af">(9–18 digits)</span></label>
+                <input v-model="form.bank_account_no" class="inv-fi" placeholder="XXXXXXXXXXXXXXXX" maxlength="18" style="font-family:var(--mono)"
                   :style="formErrors.bank_account_no?'border-color:#dc2626;background:#fff5f5':form.bank_account_no&&!formErrors.bank_account_no&&/^\d{9,18}$/.test(form.bank_account_no)?'border-color:#2f9e44':''"
                   @input="form.bank_account_no=form.bank_account_no.replace(/\D/g,''); delete formErrors.bank_account_no"
                   @blur="validateField('bank_account_no')"/>
@@ -907,8 +907,8 @@
                 <div v-else-if="form.bank_account_no&&/^\d{9,18}$/.test(form.bank_account_no)" style="margin-top:4px;font-size:12px;color:#2f9e44">Valid account number</div>
               </div>
               <div>
-                <label class="nim-label">IFSC Code <span style="font-size:11px;font-weight:400;color:#9ca3af">(AAAA0XXXXXX)</span></label>
-                <input v-model="form.bank_ifsc" class="nim-input" placeholder="HDFC0001234" maxlength="11" style="font-family:var(--mono)"
+                <label class="inv-lbl">IFSC Code <span style="font-size:11px;font-weight:400;color:#9ca3af">(AAAA0XXXXXX)</span></label>
+                <input v-model="form.bank_ifsc" class="inv-fi" placeholder="HDFC0001234" maxlength="11" style="font-family:var(--mono)"
                   :style="formErrors.bank_ifsc?'border-color:#dc2626;background:#fff5f5':form.bank_ifsc&&IFSC_REGEX.test(form.bank_ifsc)?'border-color:#2f9e44':''"
                   @input="form.bank_ifsc=form.bank_ifsc.toUpperCase().replace(/[^A-Z0-9]/g,''); delete formErrors.bank_ifsc"
                   @blur="validateField('bank_ifsc')"/>
@@ -920,16 +920,16 @@
 
           <!-- Remarks Tab -->
           <template v-else-if="drawerTab==='remarks'">
-            <div class="cust-sec-label" style="margin-top:0">Internal Notes</div>
-            <textarea v-model="form.notes" class="nim-input" rows="14" style="resize:vertical;line-height:1.6;min-height:280px" placeholder="Add any internal notes about this customer — payment behaviour, communication preferences, account history…"></textarea>
+            <div class="inv-sec-lbl" style="margin-top:0">Internal Notes</div>
+            <textarea v-model="form.notes" class="inv-fi" rows="14" style="resize:vertical;line-height:1.6;min-height:280px" placeholder="Add any internal notes about this customer — payment behaviour, communication preferences, account history…"></textarea>
           </template>
 
         </div>
 
         <!-- Footer -->
-        <div class="nim-footer" style="border-top:1px solid #e8ecf0;padding:14px 24px;background:#fafbfd">
-          <button class="nim-btn nim-btn-ghost" @click="showDrawer=false">Cancel</button>
-          <button class="nim-btn nim-btn-primary" @click="saveCustomer" :disabled="saving" style="background:#3B5BDB;border-color:#3B5BDB;min-width:140px;position:relative">
+        <div class="inv-dfooter" style="border-top:1px solid #e8ecf0;padding:14px 24px;background:#fafbfd">
+          <button class="form-btn form-btn-outline" @click="showDrawer=false">Cancel</button>
+          <button class="form-btn form-btn-primary" @click="saveCustomer" :disabled="saving" style="background:#3B5BDB;border-color:#3B5BDB;min-width:140px;position:relative">
             <span v-if="saving" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
             {{saving ? 'Saving…' : (drawerMode==='add' ? 'Create Customer' : 'Save Changes')}}
             <span v-if="Object.keys(formErrors).length && !saving"
@@ -962,8 +962,8 @@
             This action cannot be undone.
           </p>
         </div>
-        <div class="nim-footer">
-          <button class="nim-btn nim-btn-ghost" @click="showDelete=false">Cancel</button>
+        <div class="inv-dfooter">
+          <button class="form-btn form-btn-outline" @click="showDelete=false">Cancel</button>
           <button @click="doDelete" :disabled="deleting"
             style="height:37px;padding:0 18px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;border:none;background:#dc2626;color:#fff;display:inline-flex;align-items:center;gap:7px">
             <span v-if="deleting" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
@@ -1636,81 +1636,18 @@ onMounted(load);
 </script>
 
 <style scoped>
-/* ── KPI Cards (unchanged) ─────────────────────────────── */
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-@media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px)  { .kpi-grid { grid-template-columns: 1fr 1fr; } }
-
-.kpi-card  { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
-.kpi-icon  { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.kpi-label { font-size: 11px; color: #6b7280; letter-spacing: .06em; text-transform: uppercase; }
-.kpi-value { font-size: 19px; font-weight: 700; margin-top: 3px; letter-spacing: -.02em; color: #111827; }
-.kv-blue  { color: #2563eb; }
-.kv-green { color: #16a34a; }
-.kv-red   { color: #dc2626; }
-.kv-amber { color: #d97706; }
-
-/* ── Customer Table ─────────────────────────────────────── */
-.vt-table-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
+/* ── Drawer slide-in animation ──────────────────────────── */
+.inv-drawer-panel {
+  width: 680px;
+  max-width: 98vw;
+  transform: translateX(100%);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.inv-drawer-panel.open {
+  transform: translateX(0);
 }
 
-.vt-table-wrap {
-  overflow-x: auto;
-}
-
-.vt-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-/* Header */
-.vt-th {
-  padding: 10px 14px;
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
-  user-select: none;
-}
-.vt-th-actions { text-align: center; width: 88px; }
-
-/* Rows */
-.vt-row {
-  border-bottom: 1px solid #f3f4f6;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-.vt-row:last-child { border-bottom: none; }
-.vt-row:hover { background: #fafafa; }
-.vt-row:hover .vt-actions { opacity: 1; }
-.vt-row-disabled { opacity: 0.55; }
-
-.vt-row-shimmer td {
-  padding: 13px 14px;
-}
-
-/* Cells */
-.vt-td {
-  padding: 11px 14px;
-  vertical-align: middle;
-  color: #374151;
-  white-space: nowrap;
-}
-.vt-td-mono      { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
-.vt-td-secondary { color: #6b7280; font-size: 12.5px; }
-.vt-td-actions   { text-align: center; width: 88px; }
-
-/* Customer name cell */
+/* ── Customer avatar circle ─────────────────────────────── */
 .vt-vendor-cell {
   display: flex;
   align-items: center;
@@ -1743,7 +1680,42 @@ onMounted(load);
   margin-top: 1px;
 }
 
-/* Badges */
+/* ── Customer-specific column helpers ───────────────────── */
+.vt-th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  user-select: none;
+}
+.vt-th-actions { text-align: center; width: 88px; }
+.vt-td {
+  padding: 11px 14px;
+  vertical-align: middle;
+  color: #374151;
+  white-space: nowrap;
+}
+.vt-td-mono      { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
+.vt-td-secondary { color: #6b7280; font-size: 12.5px; }
+.vt-td-actions   { text-align: center; width: 88px; }
+.vt-row-shimmer td { padding: 13px 14px; }
+.vt-row-disabled   { opacity: 0.55; }
+.vt-actions {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.inv-row:hover .vt-actions { opacity: 1; }
+.vt-act-edit:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.vt-act-del:hover  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 .vt-badge {
   display: inline-flex;
   align-items: center;
@@ -1755,69 +1727,21 @@ onMounted(load);
   white-space: nowrap;
   line-height: 1.6;
 }
-.vt-badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.vt-badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .vt-badge-green             { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
 .vt-badge-green .vt-badge-dot { background: #22c55e; }
 .vt-badge-red               { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .vt-badge-red   .vt-badge-dot { background: #ef4444; }
 .vt-badge-blue  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .vt-badge-gray  { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
-
-/* Action buttons — visible only on row hover */
-.vt-actions {
-  display: flex;
-  gap: 3px;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-.vt-act-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  cursor: pointer;
-  color: #6b7280;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
-}
-.vt-act-edit:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-.vt-act-del:hover  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
-
-/* Empty state */
-.vt-empty {
-  padding: 52px 24px;
-  text-align: center;
-}
+.vt-empty { padding: 52px 24px; text-align: center; }
 .vt-empty-icon {
-  margin: 0 auto 14px;
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 0 auto 14px; width: 56px; height: 56px; border-radius: 14px;
+  background: #f9fafb; border: 1px solid #e5e7eb;
+  display: flex; align-items: center; justify-content: center;
 }
 .vt-empty-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 5px; }
 .vt-empty-sub   { font-size: 13px; color: #9ca3af; }
-
-/* Footer */
-.vt-footer {
-  padding: 9px 16px;
-  border-top: 1px solid #f3f4f6;
-  font-size: 12px;
-  color: #9ca3af;
-  background: #fafafa;
-}
+.vt-footer { padding: 9px 16px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; background: #fafafa; }
 .vt-footer strong { color: #6b7280; font-weight: 600; }
 </style>

@@ -107,135 +107,185 @@
     </div>
 
     <!-- ============================================================ CREATE / EDIT DRAWER -->
-    <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="onOverlayClose"></div>
-    <div class="inv-drawer-panel" :class="{open:drawerOpen}">
-      <div class="inv-dh" :class="editMode?'edit':''">
-        <div>
-          <div class="inv-dh-title">{{ editMode?'Edit Subscription':'New Recurring Subscription' }}</div>
-          <div class="inv-dh-sub">{{ editMode ? form._name : 'Schedule a document to repeat on a cadence' }}</div>
-        </div>
-        <button class="inv-dclose" @click="onOverlayClose"><span v-html="icon('x',16)"></span></button>
-      </div>
+    <Teleport to="body">
+      <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="!editMode ? null : onOverlayClose">
+        <div class="inv-drawer-panel" :class="{'is-add':!editMode}">
 
-      <div class="inv-dbody">
-        <!-- Intro/context card when a reference is selected -->
-        <div v-if="form.reference_document && referenceMeta.party" class="rec-ctx-card">
-          <div class="rec-ctx-ico"><span v-html="icon('folder',16)"></span></div>
-          <div style="flex:1;min-width:0">
-            <div class="rec-ctx-doctype">{{ form.reference_doctype }}</div>
-            <div class="rec-ctx-name">{{ form.reference_document }}</div>
-          </div>
-          <div class="rec-ctx-meta">
-            <div class="rec-ctx-party">{{ referenceMeta.party }}</div>
-            <div class="rec-ctx-amount mono-sm">{{ fmtCurrency(referenceMeta.amount) }}</div>
-          </div>
-        </div>
-
-        <!-- Section: Reference -->
-        <div class="rec-section">
-          <div class="inv-sec-lbl">Reference Document</div>
-          <div class="inv-fg inv-fg2">
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Document Type <span class="req">*</span></label>
-              <select v-model="form.reference_doctype" class="inv-fi" :disabled="editMode" @change="onTypeChange">
-                <option value="Sales Invoice">Sales Invoice</option>
-                <option value="Quotation">Quotation</option>
-              </select>
+          <!-- Header -->
+          <div class="inv-dh">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div class="inv-dh-title">{{ editMode ? 'Edit Subscription' : 'New Recurring Subscription' }}</div>
+              <span v-if="!editMode" class="add-status-badge">Draft</span>
+              <span v-if="!editMode" class="add-autosave-notice"><span class="add-autosave-dot"></span></span>
+              <span v-if="editMode" class="inv-dh-sub" style="margin-left:4px">{{ form._name }}</span>
             </div>
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Source Document <span class="req">*</span></label>
-              <SearchableSelect
-                v-model="form.reference_document"
-                :options="refDocs"
-                :disabled="editMode"
-                placeholder="Search a saved document…"
-                @search="fetchRefDocs"
-              />
-              <div class="rec-field-help" v-if="!form.reference_document">
-                Pick an existing {{ form.reference_doctype.toLowerCase() }} to use as the template.
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="inv-dclose" @click="onOverlayClose"><span v-html="icon('x',16)"></span></button>
+            </div>
+          </div>
+
+          <!-- Body -->
+          <div class="inv-content-row">
+          <div class="inv-dbody">
+
+            <!-- Intro/context card when a reference is selected -->
+            <div v-if="form.reference_document && referenceMeta.party" class="rec-ctx-card">
+              <div class="rec-ctx-ico"><span v-html="icon('folder',16)"></span></div>
+              <div style="flex:1;min-width:0">
+                <div class="rec-ctx-doctype">{{ form.reference_doctype }}</div>
+                <div class="rec-ctx-name">{{ form.reference_document }}</div>
+              </div>
+              <div class="rec-ctx-meta">
+                <div class="rec-ctx-party">{{ referenceMeta.party }}</div>
+                <div class="rec-ctx-amount mono-sm">{{ fmtCurrency(referenceMeta.amount) }}</div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Section: Schedule -->
-        <div class="rec-section">
-          <div class="inv-sec-lbl">Schedule</div>
-          <div class="inv-fg inv-fg2">
-            <div>
-              <label class="inv-lbl">Frequency <span class="req">*</span></label>
-              <select v-model="form.frequency" class="inv-fi">
-                <option value="Daily">Daily</option>
-                <option value="Weekly">Weekly</option>
-                <option value="Monthly">Monthly</option>
-                <option value="Quarterly">Quarterly</option>
-                <option value="Half-yearly">Half-yearly</option>
-                <option value="Yearly">Yearly</option>
-              </select>
+            <!-- Section: Reference -->
+            <div class="add-card">
+              <div class="add-card-header" @click="collapsed.reference=!collapsed.reference">
+                <div class="add-card-title">
+                  <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+                  Reference Document
+                </div>
+                <span class="add-card-chevron" :class="{collapsed:collapsed.reference}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+              <div class="add-card-body" :class="{collapsed:collapsed.reference}">
+                <div class="inv-fg inv-fg2">
+                  <div style="grid-column:1/-1">
+                    <label class="inv-lbl">Document Type <span class="inv-req">*</span></label>
+                    <select v-model="form.reference_doctype" class="inv-fi" :disabled="editMode" @change="onTypeChange">
+                      <option value="Sales Invoice">Sales Invoice</option>
+                      <option value="Quotation">Quotation</option>
+                    </select>
+                  </div>
+                  <div style="grid-column:1/-1">
+                    <label class="inv-lbl">Source Document <span class="inv-req">*</span></label>
+                    <SearchableSelect
+                      v-model="form.reference_document"
+                      :options="refDocs"
+                      :disabled="editMode"
+                      placeholder="Search a saved document…"
+                      @search="fetchRefDocs"
+                    />
+                    <div class="rec-field-help" v-if="!form.reference_document">
+                      Pick an existing {{ form.reference_doctype.toLowerCase() }} to use as the template.
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label class="inv-lbl">Submit on Creation</label>
-              <select v-model="form.submit_on_creation" class="inv-fi">
-                <option :value="1">Yes — auto-submit</option>
-                <option :value="0">No — save as draft</option>
-              </select>
-            </div>
-            <div>
-              <label class="inv-lbl">Start Date <span class="req">*</span></label>
-              <input v-model="form.start_date" type="date" class="inv-fi" :disabled="editMode" />
-            </div>
-            <div>
-              <label class="inv-lbl">End Date <span class="rec-hint">(optional)</span></label>
-              <input v-model="form.end_date" type="date" class="inv-fi" :min="form.start_date" />
-            </div>
-            <div v-if="planHint" class="rec-plan-hint" style="grid-column:1/-1">
-              <span v-html="icon('info',13)"></span>
-              <span>{{ planHint }}</span>
-            </div>
-          </div>
-        </div>
 
-        <!-- Section: Notification -->
-        <div class="rec-section">
-          <div class="inv-sec-lbl" style="display:flex;align-items:center">
-            Notification
-            <label class="rec-toggle" style="margin-left:auto">
-              <input type="checkbox" v-model="form._notify" />
-              <span class="rec-toggle-slider"></span>
-            </label>
-          </div>
-          <div v-if="!form._notify" class="rec-section-empty">
-            Email notifications are off. Toggle to email someone every time a document is generated.
-          </div>
-          <div v-else class="inv-fg inv-fg2">
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Recipients <span class="rec-hint">(comma separated)</span></label>
-              <input v-model="form.recipients" type="text" class="inv-fi" placeholder="finance@company.com, owner@company.com" />
+            <!-- Section: Schedule -->
+            <div class="add-card">
+              <div class="add-card-header" @click="collapsed.schedule=!collapsed.schedule">
+                <div class="add-card-title">
+                  <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+                  Schedule
+                </div>
+                <span class="add-card-chevron" :class="{collapsed:collapsed.schedule}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+              <div class="add-card-body" :class="{collapsed:collapsed.schedule}">
+                <div class="inv-fg inv-fg2">
+                  <div>
+                    <label class="inv-lbl">Frequency <span class="inv-req">*</span></label>
+                    <select v-model="form.frequency" class="inv-fi">
+                      <option value="Daily">Daily</option>
+                      <option value="Weekly">Weekly</option>
+                      <option value="Monthly">Monthly</option>
+                      <option value="Quarterly">Quarterly</option>
+                      <option value="Half-yearly">Half-yearly</option>
+                      <option value="Yearly">Yearly</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="inv-lbl">Submit on Creation</label>
+                    <select v-model="form.submit_on_creation" class="inv-fi">
+                      <option :value="1">Yes — auto-submit</option>
+                      <option :value="0">No — save as draft</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="inv-lbl">Start Date <span class="inv-req">*</span></label>
+                    <input v-model="form.start_date" type="date" class="inv-fi" :disabled="editMode" />
+                  </div>
+                  <div>
+                    <label class="inv-lbl">End Date <span class="rec-hint">(optional)</span></label>
+                    <input v-model="form.end_date" type="date" class="inv-fi" :min="form.start_date" />
+                  </div>
+                  <div v-if="planHint" class="rec-plan-hint" style="grid-column:1/-1">
+                    <span v-html="icon('info',13)"></span>
+                    <span>{{ planHint }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Email Subject</label>
-              <input v-model="form.subject" type="text" class="inv-fi" placeholder="Your recurring invoice is ready" />
+
+            <!-- Section: Notification -->
+            <div class="add-card">
+              <div class="add-card-header" @click="collapsed.notification=!collapsed.notification">
+                <div class="add-card-title">
+                  <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+                  Notification
+                </div>
+                <div style="display:flex;align-items:center;gap:10px" @click.stop>
+                  <label class="rec-toggle">
+                    <input type="checkbox" v-model="form._notify" />
+                    <span class="rec-toggle-slider"></span>
+                  </label>
+                  <span class="add-card-chevron" :class="{collapsed:collapsed.notification}" @click="collapsed.notification=!collapsed.notification">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                </div>
+              </div>
+              <div class="add-card-body" :class="{collapsed:collapsed.notification}">
+                <div v-if="!form._notify" class="rec-section-empty">
+                  Email notifications are off. Toggle to email someone every time a document is generated.
+                </div>
+                <div v-else class="inv-fg inv-fg2">
+                  <div style="grid-column:1/-1">
+                    <label class="inv-lbl">Recipients <span class="rec-hint">(comma separated)</span></label>
+                    <input v-model="form.recipients" type="text" class="inv-fi" placeholder="finance@company.com, owner@company.com" />
+                  </div>
+                  <div style="grid-column:1/-1">
+                    <label class="inv-lbl">Email Subject</label>
+                    <input v-model="form.subject" type="text" class="inv-fi" placeholder="Your recurring invoice is ready" />
+                  </div>
+                  <div style="grid-column:1/-1">
+                    <label class="inv-lbl">Email Message</label>
+                    <textarea v-model="form.message" class="inv-fi" rows="3" placeholder="Hello, please find your latest document attached…"></textarea>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Email Message</label>
-              <textarea v-model="form.message" class="inv-fi" rows="3" placeholder="Hello, please find your latest document attached…"></textarea>
+
+          </div><!-- /inv-dbody -->
+          </div><!-- /inv-content-row -->
+
+          <!-- Footer -->
+          <div class="inv-dfooter">
+            <div class="add-footer-status">{{ editMode ? 'Editing: ' + form._name : 'New subscription — unsaved changes' }}</div>
+            <div class="add-footer-actions">
+              <button class="add-btn-cancel" @click="onOverlayClose" :disabled="drawerSaving">Cancel</button>
+              <button class="add-btn-more" :disabled="drawerSaving" @click="saveRec">
+                <span v-html="icon('check',13)"></span>
+                {{ drawerSaving ? 'Saving…' : (editMode ? 'Save Changes' : 'Create Subscription') }}
+              </button>
             </div>
           </div>
+
         </div>
       </div>
-
-      <div class="inv-dfooter">
-        <button class="form-btn form-btn-outline" @click="onOverlayClose" :disabled="drawerSaving">Cancel</button>
-        <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="saveRec">
-          <span v-html="icon('check',13)"></span>
-          {{ drawerSaving?'Saving…':(editMode?'Save Changes':'Create Subscription') }}
-        </button>
-      </div>
-    </div>
+    </Teleport>
 
     <!-- ============================================================ VIEW DRAWER -->
-    <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
-    <div class="inv-drawer-panel rec-view-drawer" :class="{open:viewOpen}">
+    <Teleport to="body">
+      <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false">
+        <div class="inv-drawer-panel inv-drawer-wide inv-view-page rec-view-drawer">
       <template v-if="viewDoc">
         <!-- header -->
         <div class="inv-view-header rec-view-head" :class="viewDoc.ui_status==='Paused'?'paused':viewDoc.ui_status==='Completed'?'completed':''">
@@ -356,7 +406,9 @@
           </div>
         </div>
       </template>
-    </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -395,6 +447,7 @@ const drawerOpen = ref(false);
 const drawerSaving = ref(false);
 const editMode = ref(false);
 const refDocs = ref([]);
+const collapsed = reactive({ reference: false, schedule: false, notification: false });
 const referenceMeta = reactive({ party_label: "", party: "", amount: 0 });
 const form = reactive({
   _name: "",
@@ -828,12 +881,6 @@ function exportCSV() {
 </script>
 
 <style scoped>
-/* ── Drawer slide-in ── */
-.inv-drawer-panel { position:fixed;top:0;right:-560px;bottom:0;width:560px;background:#fff;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:8000;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1); }
-.inv-drawer-panel.open { right:0; }
-.rec-view-drawer { width:600px;right:-600px; }
-.rec-view-drawer.open { right:0; }
-
 /* ── Subscription-specific: view header states ── */
 .rec-view-head { background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%); }
 .rec-view-head.paused { background:linear-gradient(135deg,#fff7ed 0%,#fed7aa 100%); }

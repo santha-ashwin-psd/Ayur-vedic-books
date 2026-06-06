@@ -150,7 +150,7 @@
         </div>
         <button class="ew-dclose" @click="genOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
-      <div class="ew-dbody">
+      <div class="ew-dbody" style="gap:10px">
         <div class="ew-ctx-card">
           <div class="ew-ctx-ico"><span v-html="icon('invoices',16)"></span></div>
           <div style="flex:1;min-width:0">
@@ -164,55 +164,75 @@
         </div>
 
         <!-- Transporter -->
-        <div class="ew-section">
-          <div class="ew-section-hdr"><span v-html="icon('warehouse',13)"></span><span>Transporter Details</span></div>
-          <div class="ew-grid">
-            <div class="ew-field" style="grid-column:1/-1">
-              <label class="ew-flbl">Transporter <span class="req">*</span></label>
-              <input v-model="genForm.transporter" class="ew-input" placeholder="e.g. BlueDart Express, VRL Logistics" />
+        <div class="ew-gen-card">
+          <div class="ew-gen-card-header" @click="genCollapsed.transporter=!genCollapsed.transporter">
+            <div class="ew-gen-card-title">
+              <span class="ew-gen-card-title-icon"><span v-html="icon('warehouse',15)"></span></span>
+              Transporter Details
             </div>
-            <div class="ew-field">
-              <label class="ew-flbl">Vehicle Number <span class="req">*</span></label>
-              <input v-model="genForm.vehicle_no" class="ew-input" placeholder="e.g. MH12AB1234"
-                     @input="genForm.vehicle_no=genForm.vehicle_no.toUpperCase()" />
-            </div>
-            <div class="ew-field">
-              <label class="ew-flbl">Vehicle Type</label>
-              <select v-model="genForm.vehicle_type" class="ew-input">
-                <option value="Regular">Regular</option>
-                <option value="Over Dimensional Cargo">Over Dimensional Cargo</option>
-              </select>
+            <span class="ew-gen-card-chevron" :class="{collapsed:genCollapsed.transporter}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="ew-gen-card-body" :class="{collapsed:genCollapsed.transporter}">
+            <div class="ew-grid">
+              <div class="ew-field" style="grid-column:1/-1">
+                <label class="ew-flbl">Transporter <span class="req">*</span></label>
+                <input v-model="genForm.transporter" class="ew-input" placeholder="e.g. BlueDart Express, VRL Logistics" />
+              </div>
+              <div class="ew-field">
+                <label class="ew-flbl">Vehicle Number <span class="req">*</span></label>
+                <input v-model="genForm.vehicle_no" class="ew-input" placeholder="e.g. MH12AB1234"
+                       @input="genForm.vehicle_no=genForm.vehicle_no.toUpperCase()" />
+              </div>
+              <div class="ew-field">
+                <label class="ew-flbl">Vehicle Type</label>
+                <select v-model="genForm.vehicle_type" class="ew-input">
+                  <option value="Regular">Regular</option>
+                  <option value="Over Dimensional Cargo">Over Dimensional Cargo</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Movement -->
-        <div class="ew-section">
-          <div class="ew-section-hdr"><span v-html="icon('refresh',13)"></span><span>Movement Details</span></div>
-          <div class="ew-grid">
-            <div class="ew-field">
-              <label class="ew-flbl">Distance (km) <span class="req">*</span></label>
-              <input v-model.number="genForm.distance_km" type="number" min="0" step="1" class="ew-input" placeholder="e.g. 350" />
+        <div class="ew-gen-card">
+          <div class="ew-gen-card-header" @click="genCollapsed.movement=!genCollapsed.movement">
+            <div class="ew-gen-card-title">
+              <span class="ew-gen-card-title-icon"><span v-html="icon('refresh',15)"></span></span>
+              Movement Details
             </div>
-            <div class="ew-field">
-              <label class="ew-flbl">Supply Type</label>
-              <select v-model="genForm.supply_type" class="ew-input">
-                <option value="Outward">Outward</option>
-                <option value="Inward">Inward</option>
-              </select>
-            </div>
-            <div class="ew-field" style="grid-column:1/-1">
-              <label class="ew-flbl">Transaction Type</label>
-              <select v-model="genForm.transaction_type" class="ew-input">
-                <option value="Regular">Regular</option>
-                <option value="Bill To Ship To">Bill To Ship To</option>
-                <option value="Bill From Dispatch From">Bill From Dispatch From</option>
-                <option value="Combination">Combination</option>
-              </select>
-            </div>
-            <div class="ew-plan-hint" style="grid-column:1/-1" v-if="genForm.distance_km>0">
-              <span v-html="icon('info',13)"></span>
-              <span>Validity: <b>{{ validityDays }} day{{ validityDays!==1?'s':'' }}</b> ({{ genForm.vehicle_type==='Over Dimensional Cargo'?'1 day per 20 km':'1 day per 200 km' }})</span>
+            <span class="ew-gen-card-chevron" :class="{collapsed:genCollapsed.movement}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="ew-gen-card-body" :class="{collapsed:genCollapsed.movement}">
+            <div class="ew-grid">
+              <div class="ew-field">
+                <label class="ew-flbl">Distance (km) <span class="req">*</span></label>
+                <input v-model.number="genForm.distance_km" type="number" min="0" step="1" class="ew-input" placeholder="e.g. 350" />
+              </div>
+              <div class="ew-field">
+                <label class="ew-flbl">Supply Type</label>
+                <select v-model="genForm.supply_type" class="ew-input">
+                  <option value="Outward">Outward</option>
+                  <option value="Inward">Inward</option>
+                </select>
+              </div>
+              <div class="ew-field" style="grid-column:1/-1">
+                <label class="ew-flbl">Transaction Type</label>
+                <select v-model="genForm.transaction_type" class="ew-input">
+                  <option value="Regular">Regular</option>
+                  <option value="Bill To Ship To">Bill To Ship To</option>
+                  <option value="Bill From Dispatch From">Bill From Dispatch From</option>
+                  <option value="Combination">Combination</option>
+                </select>
+              </div>
+              <div class="ew-plan-hint" style="grid-column:1/-1" v-if="genForm.distance_km>0">
+                <span v-html="icon('info',13)"></span>
+                <span>Validity: <b>{{ validityDays }} day{{ validityDays!==1?'s':'' }}</b> ({{ genForm.vehicle_type==='Over Dimensional Cargo'?'1 day per 20 km':'1 day per 200 km' }})</span>
+              </div>
             </div>
           </div>
         </div>
@@ -517,6 +537,7 @@ async function openGenerateList() {
 // ----- generate drawer
 const genOpen = ref(false);
 const generating = ref(false);
+const genCollapsed = reactive({ transporter: false, movement: false });
 const genForm = reactive({
   invoice_no: "", customer_name: "", grand_total: 0,
   transporter: "", vehicle_no: "", vehicle_type: "Regular",
@@ -540,6 +561,7 @@ function startGenerate(p) {
     transporter: "", vehicle_no: "", vehicle_type: "Regular",
     distance_km: 0, supply_type: "Outward", transaction_type: "Regular",
   });
+  Object.assign(genCollapsed, { transporter: false, movement: false });
   genListOpen.value = false;
   genOpen.value = true;
 }
@@ -917,6 +939,14 @@ function exportCSV() {
 .ew-va-btn:disabled{opacity:.45;cursor:not-allowed;}
 .ew-va-danger{color:#dc2626;border-color:#fecaca;}.ew-va-danger:hover:not(:disabled){background:#fef2f2;}
 
-.ew-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.ew-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}
+/* Collapsible generate drawer cards */
+.ew-gen-card{background:#fff;border:1px solid #e3e8ef;border-radius:10px;}
+.ew-gen-card-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e8ecf0;cursor:pointer;user-select:none;}
+.ew-gen-card-header:hover{background:#f8fafc;}
+.ew-gen-card-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1a1a2e;letter-spacing:.01em;}
+.ew-gen-card-title-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:#2563eb;flex-shrink:0;}
+.ew-gen-card-chevron{color:#9ca3af;transition:transform .2s;display:inline-flex;}
+.ew-gen-card-chevron.collapsed{transform:rotate(-90deg);}
+.ew-gen-card-body{padding:16px;}
+.ew-gen-card-body.collapsed{display:none;}
 </style>

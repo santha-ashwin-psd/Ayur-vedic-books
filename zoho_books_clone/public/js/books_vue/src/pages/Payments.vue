@@ -91,6 +91,8 @@
     <!-- Create / Edit drawer -->
     <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false"></div>
     <div class="inv-drawer-panel pmt-edit-drawer" :class="{open:drawerOpen}">
+
+      <!-- Header -->
       <div class="pmt-dheader" :class="form.payment_type==='Pay'?'pay':'recv'">
         <div class="pmt-dheader-left">
           <div class="pmt-dheader-ico" :class="form.payment_type==='Pay'?'pay':'recv'">
@@ -107,135 +109,193 @@
       </div>
 
       <div class="inv-dbody pmt-dbody">
-        <!-- Section: Payment Type -->
-        <div class="pmt-section">
-          <div class="pmt-section-hdr-bar">
-            <span v-html="icon('refresh',13)"></span>
-            <span>Payment Type</span>
-          </div>
-          <div class="pmt-radio-group">
-            <label class="pmt-radio" :class="{checked:form.payment_type==='Receive'}" @click="setPaymentType('Receive')">
-              <span class="pmt-radio-dot" :class="{on:form.payment_type==='Receive'}"></span>
-              <div>
-                <div class="pmt-radio-title">Received</div>
-                <div class="pmt-radio-sub">from a customer</div>
-              </div>
-            </label>
-            <label class="pmt-radio" :class="{checked:form.payment_type==='Pay'}" @click="setPaymentType('Pay')">
-              <span class="pmt-radio-dot" :class="{on:form.payment_type==='Pay'}"></span>
-              <div>
-                <div class="pmt-radio-title">Paid Out</div>
-                <div class="pmt-radio-sub">to a vendor</div>
-              </div>
-            </label>
-          </div>
-        </div>
 
-        <!-- Section: Party & Amount -->
-        <div class="pmt-section">
-          <div class="pmt-section-hdr-bar">
-            <span v-html="icon('user',13)"></span>
-            <span>{{ form.payment_type==='Receive'?'Customer & Amount':'Vendor & Amount' }}</span>
-          </div>
-          <div class="inv-fg inv-fg2">
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">{{ form.payment_type==='Receive'?'Customer':'Vendor' }} <span class="req">*</span></label>
-              <SearchableSelect v-model="form.party" :options="partyOptions"
-                :placeholder="form.payment_type==='Receive'?'Select customer…':'Select vendor…'"
-                @search="fetchParties" @select="onPartySelect" />
+        <!-- ══ CARD 1: Payment Type ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="pmtCollapsed.type=!pmtCollapsed.type">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              </span>
+              Payment Type
             </div>
-            <div>
-              <label class="inv-lbl">Amount <span class="req">*</span></label>
-              <input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="inv-fi" placeholder="0.00" @input="syncUnallocated" />
-            </div>
-            <div>
-              <label class="inv-lbl">Mode of Payment</label>
-              <select v-model="form.mode_of_payment" class="inv-fi">
-                <option value="">— Select —</option>
-                <option v-for="m in paymentModes" :key="m" :value="m">{{ m }}</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section: Reference & Dates -->
-        <div class="pmt-section">
-          <div class="pmt-section-hdr-bar">
-            <span v-html="icon('hash',13)"></span>
-            <span>Reference & Dates</span>
-          </div>
-          <div class="inv-fg inv-fg2">
-            <div>
-              <label class="inv-lbl">Payment Date <span class="req">*</span></label>
-              <input v-model="form.payment_date" type="date" class="inv-fi" />
-            </div>
-            <div>
-              <label class="inv-lbl">Reference Date</label>
-              <input v-model="form.reference_date" type="date" class="inv-fi" />
-            </div>
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Reference / Cheque No</label>
-              <input v-model="form.reference_no" type="text" class="inv-fi" placeholder="e.g. CHQ-001, NEFT-78902" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Section: Accounts -->
-        <div class="pmt-section">
-          <div class="pmt-section-hdr-bar">
-            <span v-html="icon('ledger',13)"></span>
-            <span>Accounts</span>
-          </div>
-          <div class="inv-fg inv-fg2">
-            <div>
-              <label class="inv-lbl">Paid From</label>
-              <SearchableSelect v-model="form.paid_from" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
-            </div>
-            <div>
-              <label class="inv-lbl">Paid To</label>
-              <SearchableSelect v-model="form.paid_to" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Section: Allocation -->
-        <div class="pmt-section">
-          <div class="pmt-section-hdr-bar">
-            <span v-html="icon('check',13)"></span>
-            <span>Outstanding {{ form.payment_type==='Receive'?'Invoices':'Bills' }}</span>
-            <span class="pmt-unalloc" :class="unallocated<-0.01?'red':unallocated>0.01?'orange':''">
-              Unallocated: {{ fmtCur(unallocated) }}
+            <span class="add-card-chevron" :class="{collapsed:pmtCollapsed.type}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </span>
           </div>
-          <div v-if="!form.party" class="pmt-inv-empty">Select a party to load outstanding invoices</div>
-          <div v-else-if="invLoading" class="pmt-inv-empty"><span style="color:#9ca3af">Loading invoices…</span></div>
-          <div v-else-if="!outstandingInvoices.length" class="pmt-inv-empty">No outstanding {{ form.payment_type==='Receive'?'invoices':'bills' }} for this party</div>
-          <div v-else class="pmt-inv-table">
-            <div class="pmt-inv-head">
-              <div></div><div>Document</div><div>Date</div>
-              <div class="ta-r">Outstanding</div><div class="ta-r">Allocate</div>
+          <div class="add-card-body" :class="{collapsed:pmtCollapsed.type}">
+            <div class="pmt-radio-group">
+              <label class="pmt-radio" :class="{checked:form.payment_type==='Receive'}" @click="setPaymentType('Receive')">
+                <span class="pmt-radio-dot" :class="{on:form.payment_type==='Receive'}"></span>
+                <div>
+                  <div class="pmt-radio-title">Received</div>
+                  <div class="pmt-radio-sub">from a customer</div>
+                </div>
+              </label>
+              <label class="pmt-radio" :class="{checked:form.payment_type==='Pay'}" @click="setPaymentType('Pay')">
+                <span class="pmt-radio-dot" :class="{on:form.payment_type==='Pay'}"></span>
+                <div>
+                  <div class="pmt-radio-title">Paid Out</div>
+                  <div class="pmt-radio-sub">to a vendor</div>
+                </div>
+              </label>
             </div>
-            <div v-for="ref in invoiceRefs" :key="ref.reference_name" class="pmt-inv-row">
-              <div><input type="checkbox" v-model="ref.checked" @change="onRefCheck(ref)" /></div>
-              <div><span class="pmt-inv-name">{{ ref.reference_name }}</span></div>
-              <div class="mono-sm text-muted">{{ fmtDate(ref.due_date) }}</div>
-              <div class="ta-r mono-sm">{{ fmtCur(ref.outstanding_amount) }}</div>
+          </div>
+        </div>
+
+        <!-- ══ CARD 2: Party & Amount ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="pmtCollapsed.party=!pmtCollapsed.party">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              {{ form.payment_type==='Receive'?'Customer & Amount':'Vendor & Amount' }}
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:pmtCollapsed.party}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:pmtCollapsed.party}">
+            <div class="inv-fg inv-fg2">
+              <div style="grid-column:1/-1">
+                <label class="inv-lbl">{{ form.payment_type==='Receive'?'Customer':'Vendor' }} <span class="inv-req">*</span></label>
+                <SearchableSelect v-model="form.party" :options="partyOptions"
+                  :placeholder="form.payment_type==='Receive'?'Select customer…':'Select vendor…'"
+                  @search="fetchParties" @select="onPartySelect" />
+              </div>
               <div>
-                <input v-if="ref.checked" v-model.number="ref.allocated_amount" type="number" min="0" :max="ref.outstanding_amount" step="0.01" class="pmt-alloc-input" @input="syncUnallocated" />
-                <span v-else class="mono-sm text-muted">—</span>
+                <label class="inv-lbl">Amount <span class="inv-req">*</span></label>
+                <input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="inv-fi" placeholder="0.00" @input="syncUnallocated" />
+              </div>
+              <div>
+                <label class="inv-lbl">Mode of Payment</label>
+                <select v-model="form.mode_of_payment" class="inv-fi">
+                  <option value="">— Select —</option>
+                  <option v-for="m in paymentModes" :key="m" :value="m">{{ m }}</option>
+                </select>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Section: Notes -->
-        <div class="pmt-section">
-          <div class="pmt-section-hdr-bar">
-            <span v-html="icon('mail',13)"></span>
-            <span>Notes</span>
+        <!-- ══ CARD 3: Reference & Dates ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="pmtCollapsed.ref=!pmtCollapsed.ref">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+              </span>
+              Reference &amp; Dates
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:pmtCollapsed.ref}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
           </div>
-          <textarea v-model="form.remarks" rows="3" class="inv-fi" placeholder="Optional notes about this payment…"></textarea>
+          <div class="add-card-body" :class="{collapsed:pmtCollapsed.ref}">
+            <div class="inv-fg inv-fg2">
+              <div>
+                <label class="inv-lbl">Payment Date <span class="inv-req">*</span></label>
+                <input v-model="form.payment_date" type="date" class="inv-fi" />
+              </div>
+              <div>
+                <label class="inv-lbl">Reference Date</label>
+                <input v-model="form.reference_date" type="date" class="inv-fi" />
+              </div>
+              <div style="grid-column:1/-1">
+                <label class="inv-lbl">Reference / Cheque No</label>
+                <input v-model="form.reference_no" type="text" class="inv-fi" placeholder="e.g. CHQ-001, NEFT-78902" />
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- ══ CARD 4: Accounts ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="pmtCollapsed.accounts=!pmtCollapsed.accounts">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              </span>
+              Accounts
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:pmtCollapsed.accounts}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:pmtCollapsed.accounts}">
+            <div class="inv-fg inv-fg2">
+              <div>
+                <label class="inv-lbl">Paid From</label>
+                <SearchableSelect v-model="form.paid_from" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
+              </div>
+              <div>
+                <label class="inv-lbl">Paid To</label>
+                <SearchableSelect v-model="form.paid_to" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ CARD 5: Outstanding Invoices / Allocation ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="pmtCollapsed.alloc=!pmtCollapsed.alloc">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              </span>
+              Outstanding {{ form.payment_type==='Receive'?'Invoices':'Bills' }}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span v-if="form.party" class="pmt-unalloc-badge" :class="unallocated<-0.01?'red':unallocated>0.01?'orange':''">
+                Unallocated: {{ fmtCur(unallocated) }}
+              </span>
+              <span class="add-card-chevron" :class="{collapsed:pmtCollapsed.alloc}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
+          </div>
+          <div class="add-card-body" :class="{collapsed:pmtCollapsed.alloc}" style="padding:0">
+            <div v-if="!form.party" class="pmt-inv-empty" style="margin:16px">Select a party to load outstanding invoices</div>
+            <div v-else-if="invLoading" class="pmt-inv-empty" style="margin:16px"><span style="color:#9ca3af">Loading invoices…</span></div>
+            <div v-else-if="!outstandingInvoices.length" class="pmt-inv-empty" style="margin:16px">No outstanding {{ form.payment_type==='Receive'?'invoices':'bills' }} for this party</div>
+            <div v-else class="pmt-inv-table" style="border:none;border-radius:0">
+              <div class="pmt-inv-head">
+                <div></div><div>Document</div><div>Date</div>
+                <div class="ta-r">Outstanding</div><div class="ta-r">Allocate</div>
+              </div>
+              <div v-for="ref in invoiceRefs" :key="ref.reference_name" class="pmt-inv-row">
+                <div><input type="checkbox" v-model="ref.checked" @change="onRefCheck(ref)" /></div>
+                <div><span class="pmt-inv-name">{{ ref.reference_name }}</span></div>
+                <div class="mono-sm text-muted">{{ fmtDate(ref.due_date) }}</div>
+                <div class="ta-r mono-sm">{{ fmtCur(ref.outstanding_amount) }}</div>
+                <div>
+                  <input v-if="ref.checked" v-model.number="ref.allocated_amount" type="number" min="0" :max="ref.outstanding_amount" step="0.01" class="pmt-alloc-input" @input="syncUnallocated" />
+                  <span v-else class="mono-sm text-muted">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ CARD 6: Notes ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="pmtCollapsed.notes=!pmtCollapsed.notes">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              Notes
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:pmtCollapsed.notes}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:pmtCollapsed.notes}">
+            <textarea v-model="form.remarks" rows="3" class="inv-fi" placeholder="Optional notes about this payment…"></textarea>
+          </div>
+        </div>
+
       </div>
 
       <div class="inv-dfooter">
@@ -419,6 +479,7 @@ const tabs = [{key:"all",label:"All"},{key:"Receive",label:"Received"},{key:"Pay
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewPmt = ref(null);
+const pmtCollapsed = reactive({ type: false, party: false, ref: false, accounts: true, alloc: false, notes: true });
 const partyOptions = ref([]), accounts = ref([]);
 const paymentModes = ref(["Cash","Bank Transfer","Cheque","Credit Card","UPI","NEFT","RTGS"]);
 const sortCol = ref("payment_date"), sortDir = ref("desc");
@@ -502,6 +563,7 @@ function openNew() {
   form.party_type = form.payment_type === "Receive" ? "Customer" : "Supplier";
   outstandingInvoices.value = [];
   invoiceRefs.value = [];
+  Object.assign(pmtCollapsed, { type: false, party: false, ref: false, accounts: true, alloc: false, notes: true });
   fetchParties(""); fetchAccounts("");
   drawerOpen.value = true;
 }
@@ -516,6 +578,7 @@ async function openEdit(p) {
     paid_from: p.paid_from||"", paid_to: p.paid_to||"", remarks: p.remarks||"",
   });
   outstandingInvoices.value = []; invoiceRefs.value = [];
+  Object.assign(pmtCollapsed, { type: false, party: false, ref: false, accounts: true, alloc: false, notes: true });
   fetchParties(""); fetchAccounts("");
   drawerOpen.value = true;
   if (p.party) await fetchOutstandingInvoices(p.party, p.payment_type);
@@ -693,8 +756,65 @@ onMounted(async () => {
 .pmt-dclose-light:hover { background:rgba(0,0,0,.12); color:#111827; }
 
 /* ── Body: section card style ── */
-.pmt-dbody { background:#f8fafc; }
-.pmt-section { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 1px 2px rgba(15,23,42,.03); }
+.pmt-dbody { background:#f0f4f8; padding: 14px; display:flex; flex-direction:column; gap:0; }
+
+/* add-card inside pmt-dbody: white cards with spacing */
+.pmt-dbody .add-card {
+  background: #fff;
+  border: 1px solid #e3e8ef;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(15,23,42,.04);
+}
+.pmt-dbody .add-card:last-child { margin-bottom: 0; }
+
+.pmt-dbody .add-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e8ecf0;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 10px 10px 0 0;
+}
+.pmt-dbody .add-card-header:has(+ .add-card-body.collapsed) { border-bottom: none; border-radius: 10px; }
+.pmt-dbody .add-card-body.collapsed + * { display: none; }
+
+.pmt-dbody .add-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+.pmt-dbody .add-card-title-icon {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  color: #1565c0; flex-shrink: 0;
+}
+.pmt-dbody .add-card-chevron {
+  color: #9ca3af;
+  transition: transform .2s;
+  display: inline-flex;
+}
+.pmt-dbody .add-card-chevron.collapsed { transform: rotate(-90deg); }
+.pmt-dbody .add-card-body { padding: 16px; }
+.pmt-dbody .add-card-body.collapsed { display: none; }
+
+/* Unallocated badge inside card header */
+.pmt-unalloc-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 5px;
+  padding: 2px 8px;
+}
+.pmt-unalloc-badge.orange { color: #ea580c; background: #fff7ed; border-color: #fed7aa; }
+.pmt-unalloc-badge.red    { color: #dc2626; background: #fff1f2; border-color: #fecaca; }
 .pmt-section-hdr-bar { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#0f172a; }
 .pmt-section-hdr-bar .pmt-unalloc { margin-left:auto; text-transform:none; font-size:11.5px; font-weight:700; color:#16a34a; }
 .pmt-section-hdr-bar .pmt-unalloc.red { color:#dc2626; }

@@ -220,19 +220,23 @@
     <Teleport to="body">
 
       <!-- ── Create / Edit Drawer ── -->
-      <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false">
-        <div class="inv-drawer-panel">
+      <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="!editingName ? null : drawerOpen=false">
+        <div class="inv-drawer-panel" :class="{'is-add':!editingName}">
 
           <!-- Header -->
           <div class="inv-dh">
-            <div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <div class="inv-dh-title">{{ editingName ? 'Edit Sales Order' : 'New Sales Order' }}</div>
-              <div class="inv-dh-sub">{{ editingName || 'Fill in the details below' }}</div>
+              <span v-if="!editingName" class="add-status-badge">Draft</span>
+              <span v-if="!editingName" class="add-autosave-notice"><span class="add-autosave-dot"></span></span>
             </div>
-            <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
+            </div>
           </div>
 
           <!-- Body -->
+          <div class="inv-content-row">
           <div class="inv-dbody">
 
             <!-- Order Details Card -->
@@ -393,11 +397,12 @@
             </div>
 
           </div><!-- /inv-dbody -->
+          </div><!-- /inv-content-row -->
 
           <!-- Footer -->
           <div class="inv-dfooter">
-            <div style="font-size:12px;color:#9ca3af">{{ editingName ? 'Editing: '+editingName : 'New sales order' }}</div>
-            <div style="display:flex;gap:10px">
+            <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New sales order — unsaved changes' }}</div>
+            <div class="add-footer-actions">
               <button class="add-btn-cancel" @click="drawerOpen=false">Cancel</button>
               <button class="add-btn-draft" :disabled="drawerSaving" @click="saveSO('Draft')">
                 <span v-html="icon('save',13)"></span> Save Draft

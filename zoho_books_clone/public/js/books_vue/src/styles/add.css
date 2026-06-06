@@ -107,7 +107,6 @@
   cursor: pointer;
   user-select: none;
 }
-.add-card-header:hover { background: #fafbfc; }
 
 .add-card-title {
   display: flex;

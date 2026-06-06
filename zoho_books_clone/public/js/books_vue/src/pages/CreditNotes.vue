@@ -98,6 +98,8 @@
     <!-- ── Create / Edit Drawer ── -->
     <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false"></div>
     <div class="cn-drawer" :class="{open:drawerOpen}">
+
+      <!-- Header -->
       <div class="inv-dh">
         <div class="cn-dheader-left">
           <div class="cn-dheader-ico" :class="editingName?'edit':''">
@@ -113,70 +115,111 @@
         <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
 
-      <div class="inv-dbody">
-        <!-- Section: Customer & Date -->
-        <div class="cn-section">
-          <div class="cn-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
-          <div class="inv-fg inv-fg2">
-            <div class="cn-field" style="grid-column:1/-1">
-              <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
-              <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer…"
-                :createable="true" createDoctype="Customer"
-                @search="fetchCustomers" @select="onCustomerSelect" />
+      <div class="inv-dbody cn-dbody">
+
+        <!-- ══ CARD 1: Customer & Date ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="cnCollapsed.customer=!cnCollapsed.customer">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              Customer &amp; Date
             </div>
-            <div class="cn-field">
-              <label class="inv-lbl">Date <span class="inv-req">*</span></label>
-              <input v-model="form.posting_date" type="date" class="inv-fi" />
-            </div>
-            <div class="cn-field">
-              <label class="inv-lbl">Return Against Invoice</label>
-              <SearchableSelect v-model="form.return_against" :options="invoices"
-                placeholder="Select invoice (optional)…" @search="fetchInvoices" @select="onInvoiceSelect" />
-            </div>
-            <div class="cn-field" style="grid-column:1/-1">
-              <label class="inv-lbl">Reason</label>
-              <select v-model="form.reason" class="inv-fi">
-                <option>Price Adjustment</option>
-                <option>Goods Returned</option>
-                <option>Damaged Goods</option>
-                <option>Duplicate Invoice</option>
-                <option>Other</option>
-              </select>
+            <span class="add-card-chevron" :class="{collapsed:cnCollapsed.customer}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:cnCollapsed.customer}">
+            <div class="inv-fg inv-fg2">
+              <div class="cn-field" style="grid-column:1/-1">
+                <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
+                <SearchableSelect v-model="form.customer" :options="customers" placeholder="Select customer…"
+                  :createable="true" createDoctype="Customer"
+                  @search="fetchCustomers" @select="onCustomerSelect" />
+              </div>
+              <div class="cn-field">
+                <label class="inv-lbl">Date <span class="inv-req">*</span></label>
+                <input v-model="form.posting_date" type="date" class="inv-fi" />
+              </div>
+              <div class="cn-field">
+                <label class="inv-lbl">Return Against Invoice</label>
+                <SearchableSelect v-model="form.return_against" :options="invoices"
+                  placeholder="Select invoice (optional)…" @search="fetchInvoices" @select="onInvoiceSelect" />
+              </div>
+              <div class="cn-field" style="grid-column:1/-1">
+                <label class="inv-lbl">Reason</label>
+                <select v-model="form.reason" class="inv-fi">
+                  <option>Price Adjustment</option>
+                  <option>Goods Returned</option>
+                  <option>Damaged Goods</option>
+                  <option>Duplicate Invoice</option>
+                  <option>Other</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Section: Items -->
-        <div class="cn-section">
-          <div class="cn-section-hdr">
-            <span v-html="icon('box',13)"></span>
-            <span>Items to Credit</span>
-            <span style="margin-left:auto;font-size:11.5px;color:#6b7280;text-transform:none;letter-spacing:0">{{ lines.length }} line{{ lines.length!==1?'s':'' }}</span>
-          </div>
-          <div class="cn-items-table">
-            <div class="cn-items-head">
-              <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
+        <!-- ══ CARD 2: Items to Credit ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="cnCollapsed.items=!cnCollapsed.items">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              </span>
+              Items to Credit
             </div>
-            <div v-for="line in lines" :key="line.id" class="cn-items-row">
-              <div><SearchableSelect v-model="line.item_code" :options="items"
-                placeholder="Item…" :createable="true" createDoctype="Item"
-                @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
-              <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
-              <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-              <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-              <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
-              <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="cn-lines-badge">{{ lines.length }} line{{ lines.length!==1?'s':'' }}</span>
+              <span class="add-card-chevron" :class="{collapsed:cnCollapsed.items}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
             </div>
-            <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
           </div>
-          <div class="cn-total-row grand"><span>Total Credit</span><span style="color:#7f1d1d">{{ fmtCur(subtotal) }}</span></div>
+          <div class="add-card-body" :class="{collapsed:cnCollapsed.items}" style="padding:0">
+            <div class="cn-items-table" style="border:none;border-radius:0;border-bottom:1px solid #e5e7eb">
+              <div class="cn-items-head">
+                <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
+              </div>
+              <div v-for="line in lines" :key="line.id" class="cn-items-row">
+                <div><SearchableSelect v-model="line.item_code" :options="items"
+                  placeholder="Item…" :createable="true" createDoctype="Item"
+                  @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
+                <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
+                <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
+                <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
+                <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
+                <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
+              </div>
+            </div>
+            <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+              <div class="cn-total-row grand" style="padding:0;border:none;margin:0">
+                <span>Total Credit</span><span style="color:#7f1d1d">{{ fmtCur(subtotal) }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Section: Notes -->
-        <div class="cn-section">
-          <div class="cn-section-hdr"><span v-html="icon('mail',13)"></span><span>Notes</span></div>
-          <textarea v-model="form.notes" rows="3" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
+        <!-- ══ CARD 3: Notes ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="cnCollapsed.notes=!cnCollapsed.notes">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              Notes
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:cnCollapsed.notes}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:cnCollapsed.notes}">
+            <textarea v-model="form.notes" rows="3" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
+          </div>
         </div>
+
       </div>
 
       <div class="inv-dfooter">
@@ -394,6 +437,7 @@ const tabs = [
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
+const cnCollapsed = reactive({ customer: false, items: false, notes: true });
 const viewLoading = ref(false), viewItems = ref([]), viewApplications = ref([]), viewBalance = ref(0);
 const customers = ref([]), items = ref([]), invoices = ref([]), lines = ref([]);
 const sortCol = ref("posting_date"), sortDir = ref("desc");
@@ -517,6 +561,7 @@ function openNew() {
   editingName.value = "";
   Object.assign(form, { customer: "", posting_date: todayStr(), return_against: "", reason: "Price Adjustment", notes: "" });
   lines.value = [blankLine()];
+  Object.assign(cnCollapsed, { customer: false, items: false, notes: true });
   fetchCustomers(""); fetchItems(""); fetchInvoices("");
   drawerOpen.value = true;
 }
@@ -524,6 +569,7 @@ async function openEdit(c) {
   editingName.value = c.name;
   Object.assign(form, { customer: c.customer || "", posting_date: c.posting_date || todayStr(), return_against: c.return_against || "", reason: "Price Adjustment", notes: "" });
   lines.value = [blankLine()];
+  Object.assign(cnCollapsed, { customer: false, items: false, notes: true });
   fetchCustomers(""); fetchItems(""); fetchInvoices("");
   drawerOpen.value = true;
   try {
@@ -806,19 +852,48 @@ onMounted(async () => {
 .cn-view-drawer { width: 520px; right: -520px; }
 .cn-view-drawer.open { right: 0; }
 
-/* ── Section cards inside drawer body ── */
-.cn-section {
+/* ── Body tray for add-cards ── */
+.cn-dbody { background: #f0f4f8; padding: 14px; display: flex; flex-direction: column; gap: 0; }
+
+/* add-card inside cn-dbody */
+.cn-dbody .add-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e3e8ef;
   border-radius: 10px;
-  padding: 14px 16px;
-  display: flex; flex-direction: column; gap: 12px;
-  box-shadow: 0 1px 2px rgba(15,23,42,.03);
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(15,23,42,.04);
 }
-.cn-section-hdr {
+.cn-dbody .add-card:last-child { margin-bottom: 0; }
+
+.cn-dbody .add-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e8ecf0;
+  cursor: pointer; user-select: none;
+  border-radius: 10px 10px 0 0;
+}
+.cn-dbody .add-card-title {
   display: flex; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .04em; color: #0f172a;
+  font-size: 13px; font-weight: 700; color: #1a1a2e;
+}
+.cn-dbody .add-card-title-icon {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  color: #dc2626; flex-shrink: 0;
+}
+.cn-dbody .add-card-chevron {
+  color: #9ca3af; transition: transform .2s; display: inline-flex;
+}
+.cn-dbody .add-card-chevron.collapsed { transform: rotate(-90deg); }
+.cn-dbody .add-card-body { padding: 16px; }
+.cn-dbody .add-card-body.collapsed { display: none; }
+
+/* Line count badge in items card header */
+.cn-lines-badge {
+  font-size: 11.5px; font-weight: 600;
+  color: #374151; background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px; padding: 2px 8px;
 }
 .cn-dheader-left { display: flex; align-items: flex-start; gap: 12px; }
 .cn-dheader-ico {

@@ -97,193 +97,249 @@
   <Teleport to="body">
 
     <!-- VIEW DRAWER -->
-    <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
-    <div class="inv-drawer-panel dc-view-drawer" :class="{open:viewOpen}">
-      <template v-if="viewDoc">
-        <div class="inv-view-header">
-          <div>
-            <div class="inv-view-number">{{ viewDoc.name }}</div>
-            <div class="inv-view-subtitle">Delivery Challan · {{ viewDoc.posting_date }}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
-            <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-          </div>
-        </div>
-
-        <div class="dc-dbody">
-          <div class="dc-section">
-            <div class="dc-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
-            <div class="dc-meta-grid">
-              <div><div class="dc-meta-lbl">Customer</div><div class="dc-meta-value"><DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</DocLink></div></div>
-              <div><div class="dc-meta-lbl">Date</div><div class="dc-meta-value">{{ viewDoc.posting_date||'—' }}</div></div>
-              <div><div class="dc-meta-lbl">LR / Tracking #</div><div class="dc-meta-value">{{ viewDoc.lr_no||'—' }}</div></div>
-              <div><div class="dc-meta-lbl">Transporter</div><div class="dc-meta-value">{{ viewDoc.transporter_name||'—' }}</div></div>
-              <div v-if="viewDoc.sales_order" style="grid-column:1/-1"><div class="dc-meta-lbl">Sales Order</div><div class="dc-meta-value"><DocLink doctype="Sales Order" :name="viewDoc.sales_order" /></div></div>
-              <div v-if="viewDoc.shipping_address||viewDoc.customer_address" style="grid-column:1/-1"><div class="dc-meta-lbl">Delivery Address</div><div class="dc-meta-value">{{ viewDoc.shipping_address||viewDoc.customer_address }}</div></div>
-              <div v-if="viewDoc.remarks" style="grid-column:1/-1"><div class="dc-meta-lbl">Remarks</div><div class="dc-meta-value">{{ viewDoc.remarks }}</div></div>
+    <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false">
+      <div class="inv-drawer-panel inv-drawer-wide inv-view-page">
+        <template v-if="viewDoc">
+          <div class="inv-view-header">
+            <div>
+              <div class="inv-view-number">{{ viewDoc.name }}</div>
+              <div class="inv-view-subtitle">Delivery Challan · {{ viewDoc.posting_date }}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+              <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
             </div>
           </div>
 
-          <div class="dc-section">
-            <div class="dc-section-hdr">
-              <span v-html="icon('box',13)"></span><span>Items</span>
-              <span style="margin-left:auto;font-size:11.5px;color:#6b7280;text-transform:none;letter-spacing:0">
-                {{ (viewDoc.items||[]).length }} line{{ (viewDoc.items||[]).length!==1?'s':'' }}
-              </span>
+          <div class="inv-dbody">
+            <div class="dc-section">
+              <div class="dc-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
+              <div class="dc-meta-grid">
+                <div><div class="dc-meta-lbl">Customer</div><div class="dc-meta-value"><DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</DocLink></div></div>
+                <div><div class="dc-meta-lbl">Date</div><div class="dc-meta-value">{{ viewDoc.posting_date||'—' }}</div></div>
+                <div><div class="dc-meta-lbl">LR / Tracking #</div><div class="dc-meta-value">{{ viewDoc.lr_no||'—' }}</div></div>
+                <div><div class="dc-meta-lbl">Transporter</div><div class="dc-meta-value">{{ viewDoc.transporter_name||'—' }}</div></div>
+                <div v-if="viewDoc.sales_order" style="grid-column:1/-1"><div class="dc-meta-lbl">Sales Order</div><div class="dc-meta-value"><DocLink doctype="Sales Order" :name="viewDoc.sales_order" /></div></div>
+                <div v-if="viewDoc.shipping_address||viewDoc.customer_address" style="grid-column:1/-1"><div class="dc-meta-lbl">Delivery Address</div><div class="dc-meta-value">{{ viewDoc.shipping_address||viewDoc.customer_address }}</div></div>
+                <div v-if="viewDoc.remarks" style="grid-column:1/-1"><div class="dc-meta-lbl">Remarks</div><div class="dc-meta-value">{{ viewDoc.remarks }}</div></div>
+              </div>
             </div>
-            <table class="inv-table" style="font-size:12.5px">
-              <thead><tr><th>Item</th><th>Description</th><th class="ta-r">Qty</th><th>UOM</th></tr></thead>
-              <tbody>
-                <tr v-for="it in viewDoc.items||[]" :key="it.name||it.item_code" class="inv-row">
-                  <td class="dc-meta-value">{{ it.item_name||it.item_code }}</td>
-                  <td class="c-muted">{{ it.description||'—' }}</td>
-                  <td class="ta-r mono">{{ it.qty }}</td>
-                  <td class="c-muted">{{ it.uom||'Nos' }}</td>
-                </tr>
-                <tr v-if="!(viewDoc.items||[]).length"><td colspan="4" class="b-empty">No items</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
 
-        <div class="inv-dfooter">
-          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-          <button v-if="canEdit(viewDoc)" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
-            <span v-html="icon('edit',13)"></span> Edit
-          </button>
-          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitChallan" :disabled="submitting">
-            {{ submitting?'Submitting…':'Submit Challan' }}
-          </button>
-        </div>
-      </template>
+            <div class="dc-section">
+              <div class="dc-section-hdr">
+                <span v-html="icon('box',13)"></span><span>Items</span>
+                <span style="margin-left:auto;font-size:11.5px;color:#6b7280;text-transform:none;letter-spacing:0">
+                  {{ (viewDoc.items||[]).length }} line{{ (viewDoc.items||[]).length!==1?'s':'' }}
+                </span>
+              </div>
+              <table class="inv-table" style="font-size:12.5px">
+                <thead><tr><th>Item</th><th>Description</th><th class="ta-r">Qty</th><th>UOM</th></tr></thead>
+                <tbody>
+                  <tr v-for="it in viewDoc.items||[]" :key="it.name||it.item_code" class="inv-row">
+                    <td class="dc-meta-value">{{ it.item_name||it.item_code }}</td>
+                    <td class="c-muted">{{ it.description||'—' }}</td>
+                    <td class="ta-r mono">{{ it.qty }}</td>
+                    <td class="c-muted">{{ it.uom||'Nos' }}</td>
+                  </tr>
+                  <tr v-if="!(viewDoc.items||[]).length"><td colspan="4" class="b-empty">No items</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="inv-dfooter">
+            <div class="add-footer-status">{{ statusLabel(viewDoc) }}</div>
+            <div class="add-footer-actions">
+              <button class="add-btn-cancel" @click="viewOpen=false">Close</button>
+              <button v-if="canEdit(viewDoc)" class="add-btn-draft" @click="openEdit(viewDoc);viewOpen=false">
+                <span v-html="icon('edit',13)"></span> Edit
+              </button>
+              <button v-if="viewDoc.docstatus===0" class="add-btn-more" @click="submitChallan" :disabled="submitting">
+                {{ submitting?'Submitting…':'Submit Challan' }}
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- CREATE / EDIT DRAWER -->
-    <div v-if="formOpen" class="inv-drawer-bg" @click.self="formOpen=false"></div>
-    <div class="inv-drawer-panel" :class="{open:formOpen}">
-      <div class="inv-dh" :class="editingName?'edit':''">
-        <div>
-          <div class="inv-dh-title">{{ editingName ? 'Edit Challan' : 'New Delivery Challan' }}</div>
-          <div class="inv-dh-sub">{{ editingName ? editingName : 'Dispatch goods to a customer' }}</div>
-        </div>
-        <button class="inv-dclose" @click="formOpen=false"><span v-html="icon('x',16)"></span></button>
-      </div>
+    <div v-if="formOpen" class="inv-drawer-bg" @click.self="!editingName ? null : formOpen=false">
+      <div class="inv-drawer-panel" :class="{'is-add':!editingName}">
 
-      <div class="inv-dbody">
-
-        <!-- Customer & Date -->
-        <div class="dc-section">
-          <div class="dc-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
-          <div class="inv-fg inv-fg2">
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Customer <span class="req">*</span></label>
-              <SearchableSelect
-                v-model="form.customer"
-                :options="customers"
-                placeholder="Select customer…"
-                :createable="true"
-                createDoctype="Customer"
-                @search="fetchCustomers"
-                @select="onCustomerSelect"
-              />
-            </div>
-            <div>
-              <label class="inv-lbl">Date <span class="req">*</span></label>
-              <input class="inv-fi" type="date" v-model="form.posting_date"/>
-            </div>
-            <div>
-              <label class="inv-lbl">Sales Order (optional)</label>
-              <SearchableSelect
-                v-model="form.sales_order"
-                :options="salesOrders"
-                placeholder="Link to Sales Order…"
-                @search="fetchSalesOrders"
-                @select="onSOSelect"
-              />
-            </div>
+        <!-- Header -->
+        <div class="inv-dh">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="inv-dh-title">{{ editingName ? 'Edit Challan' : 'New Delivery Challan' }}</div>
+            <span v-if="!editingName" class="add-status-badge">Draft</span>
+            <span v-if="!editingName" class="add-autosave-notice"><span class="add-autosave-dot"></span></span>
+            <span v-if="editingName" class="inv-dh-sub" style="margin-left:4px">{{ editingName }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="inv-dclose" @click="formOpen=false"><span v-html="icon('x',16)"></span></button>
           </div>
         </div>
 
-        <!-- Transport -->
-        <div class="dc-section">
-          <div class="dc-section-hdr"><span v-html="icon('warehouse',13)"></span><span>Transport</span></div>
-          <div class="inv-fg inv-fg2">
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Dispatch Warehouse</label>
-              <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Ship stock from…" @search="fetchWarehouses" />
+        <!-- Body -->
+        <div class="inv-content-row">
+        <div class="inv-dbody">
+
+          <!-- Customer & Date Card -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.details=!collapsed.details">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><span v-html="icon('user',16)"></span></span>
+                Customer & Date
+              </div>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.details}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
             </div>
-            <div>
-              <label class="inv-lbl">LR / Tracking #</label>
-              <input class="inv-fi" v-model="form.lr_no" placeholder="e.g. LR12345"/>
-            </div>
-            <div>
-              <label class="inv-lbl">Transporter</label>
-              <input class="inv-fi" v-model="form.transporter_name" placeholder="e.g. BlueDart, VRL"/>
-            </div>
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Delivery Address</label>
-              <input class="inv-fi" v-model="form.shipping_address" :placeholder="addressLoading?'Loading…':'Shipping address'"/>
-            </div>
-            <div style="grid-column:1/-1">
-              <label class="inv-lbl">Remarks</label>
-              <input class="inv-fi" v-model="form.remarks" placeholder="Optional remarks"/>
+            <div class="add-card-body" :class="{collapsed:collapsed.details}">
+              <div class="inv-fg inv-fg2">
+                <div style="grid-column:1/-1">
+                  <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
+                  <SearchableSelect
+                    v-model="form.customer"
+                    :options="customers"
+                    placeholder="Select customer…"
+                    :createable="true"
+                    createDoctype="Customer"
+                    @search="fetchCustomers"
+                    @select="onCustomerSelect"
+                  />
+                </div>
+                <div>
+                  <label class="inv-lbl">Date <span class="inv-req">*</span></label>
+                  <input class="inv-fi" type="date" v-model="form.posting_date"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Sales Order (optional)</label>
+                  <SearchableSelect
+                    v-model="form.sales_order"
+                    :options="salesOrders"
+                    placeholder="Link to Sales Order…"
+                    @search="fetchSalesOrders"
+                    @select="onSOSelect"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Items -->
-        <div class="dc-section">
-          <div class="dc-section-hdr">
-            <span v-html="icon('box',13)"></span><span>Items <span class="req">*</span></span>
-            <span style="margin-left:auto;font-size:11.5px;color:#6b7280;text-transform:none;letter-spacing:0">
-              {{ form.items.length }} line{{ form.items.length!==1?'s':'' }}
-            </span>
-            <button class="inv-add-line-btn" style="margin-left:8px" @click="addItem">
-              <span v-html="icon('plus',11)" style="vertical-align:-1px;margin-right:3px"></span> Add Item
+          <!-- Transport Card -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.transport=!collapsed.transport">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><span v-html="icon('warehouse',16)"></span></span>
+                Transport
+              </div>
+              <span class="add-card-chevron" :class="{collapsed:collapsed.transport}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
+            <div class="add-card-body" :class="{collapsed:collapsed.transport}">
+              <div class="inv-fg inv-fg2">
+                <div style="grid-column:1/-1">
+                  <label class="inv-lbl">Dispatch Warehouse</label>
+                  <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Ship stock from…" @search="fetchWarehouses" />
+                </div>
+                <div>
+                  <label class="inv-lbl">LR / Tracking #</label>
+                  <input class="inv-fi" v-model="form.lr_no" placeholder="e.g. LR12345"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Transporter</label>
+                  <input class="inv-fi" v-model="form.transporter_name" placeholder="e.g. BlueDart, VRL"/>
+                </div>
+                <div style="grid-column:1/-1">
+                  <label class="inv-lbl">Delivery Address</label>
+                  <input class="inv-fi" v-model="form.shipping_address" :placeholder="addressLoading?'Loading…':'Shipping address'"/>
+                </div>
+                <div style="grid-column:1/-1">
+                  <label class="inv-lbl">Remarks</label>
+                  <input class="inv-fi" v-model="form.remarks" placeholder="Optional remarks"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Items Card -->
+          <div class="add-card">
+            <div class="add-card-header" @click="collapsed.items=!collapsed.items">
+              <div class="add-card-title">
+                <span class="add-card-title-icon"><span v-html="icon('box',16)"></span></span>
+                Items <span class="inv-req">*</span>
+                <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">
+                  &nbsp;· {{ form.items.length }} line{{ form.items.length!==1?'s':'' }}
+                </span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px" @click.stop>
+                <button class="add-lines-add-btn" @click="addItem">
+                  <span v-html="icon('plus',13)"></span> Add Item
+                </button>
+                <span class="add-card-chevron" :class="{collapsed:collapsed.items}" @click="collapsed.items=!collapsed.items">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
+            </div>
+            <div class="add-card-body" :class="{collapsed:collapsed.items}" style="padding:0">
+              <div class="dc-items-head">
+                <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div>UOM</div><div></div>
+              </div>
+              <div v-for="(it,i) in form.items" :key="i" class="dc-item-row" style="padding:6px 10px">
+                <div>
+                  <SearchableSelect
+                    v-model="it.item_code"
+                    :options="items"
+                    placeholder="Select item…"
+                    :createable="true"
+                    createDoctype="Item"
+                    @search="fetchItems"
+                    @select="opt => onItemSelect(it, opt)"
+                  />
+                </div>
+                <div>
+                  <input class="inv-fi" v-model="it.description" placeholder="Description"/>
+                </div>
+                <div>
+                  <input class="inv-fi ta-r" type="number" v-model.number="it.qty" placeholder="Qty" min="0.01" step="0.01"/>
+                </div>
+                <div>
+                  <input class="inv-fi" v-model="it.uom" placeholder="Nos"/>
+                </div>
+                <div>
+                  <button class="add-line-del" style="opacity:1" @click="removeItem(i)"><span v-html="icon('trash',12)"></span></button>
+                </div>
+              </div>
+              <div v-if="!form.items.length" style="padding:14px 10px">
+                <div class="dc-items-empty">No items yet — click Add Item</div>
+              </div>
+              <div class="add-new-line-row" style="padding:6px 14px;border-top:1px solid #f0f3f7">
+                <button class="add-new-line-btn" @click="addItem">
+                  <span v-html="icon('plus',12)"></span> Add new line
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /inv-dbody -->
+        </div><!-- /inv-content-row -->
+
+        <!-- Footer -->
+        <div class="inv-dfooter">
+          <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New challan — unsaved changes' }}</div>
+          <div class="add-footer-actions">
+            <button class="add-btn-cancel" @click="formOpen=false" :disabled="saving">Cancel</button>
+            <button class="add-btn-draft" @click="saveChallan(0)" :disabled="saving">
+              <span v-html="icon('save',13)"></span> {{ saving?'Saving…':'Save Draft' }}
+            </button>
+            <button class="add-btn-more" @click="saveChallan(1)" :disabled="saving">
+              <span v-html="icon('check',13)"></span> {{ saving?'Saving…':'Submit' }}
             </button>
           </div>
-          <div class="dc-items-head">
-            <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div>UOM</div><div></div>
-          </div>
-          <div v-for="(it,i) in form.items" :key="i" class="dc-item-row">
-            <div>
-              <SearchableSelect
-                v-model="it.item_code"
-                :options="items"
-                placeholder="Select item…"
-                :createable="true"
-                createDoctype="Item"
-                @search="fetchItems"
-                @select="opt => onItemSelect(it, opt)"
-              />
-            </div>
-            <div>
-              <input class="inv-fi" v-model="it.description" placeholder="Description"/>
-            </div>
-            <div>
-              <input class="inv-fi ta-r" type="number" v-model.number="it.qty" placeholder="Qty" min="0.01" step="0.01"/>
-            </div>
-            <div>
-              <input class="inv-fi" v-model="it.uom" placeholder="Nos"/>
-            </div>
-            <div>
-              <button class="inv-rm-line" @click="removeItem(i)"><span v-html="icon('trash',12)"></span></button>
-            </div>
-          </div>
-          <div v-if="!form.items.length" class="dc-items-empty">No items yet — click Add Item</div>
         </div>
 
-      </div>
-
-      <div class="inv-dfooter">
-        <button class="form-btn form-btn-outline" @click="formOpen=false" :disabled="saving">Cancel</button>
-        <button class="form-btn form-btn-success" @click="saveChallan(0)" :disabled="saving">
-          <span v-html="icon('save',13)"></span> {{ saving?'Saving…':'Save Draft' }}
-        </button>
-        <button class="form-btn form-btn-primary" @click="saveChallan(1)" :disabled="saving">
-          <span v-html="icon('check',13)"></span> {{ saving?'Saving…':'Submit' }}
-        </button>
       </div>
     </div>
 
@@ -363,6 +419,7 @@ const formOpen    = ref(false);
 const editingName = ref("");
 const saving      = ref(false);
 const addressLoading = ref(false);
+const collapsed   = reactive({ details: false, transport: false, items: false });
 
 // Dropdown option lists
 const customers  = ref([]);
@@ -949,15 +1006,9 @@ onMounted(async () => {
 @import '../styles/view.css';
 @import '../styles/edit.css';
 @import '../styles/add.css';
-/* ── Drawer slide-in ── */
-.inv-drawer-panel { position:fixed;top:0;right:-620px;bottom:0;width:620px;max-width:96vw;background:#fff;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:8000;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1); }
-.inv-drawer-panel.open { right:0; }
-.dc-view-drawer { width:560px;right:-560px; }
-.dc-view-drawer.open { right:0; }
 
-/* ── Section layout ── */
-.dc-dbody { flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc; }
-.dc-section { background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);margin-bottom: 20px; }
+/* ── Section layout (view drawer body) ── */
+.dc-section { background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;margin-bottom:16px; }
 .dc-section-hdr { display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a; }
 .dc-section-hdr svg { color:#2563eb; }
 

@@ -39,6 +39,96 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#f0f2f5}
 #books-app{height:100vh;width:100vw}
+
+/* ═══════════════════════════════════════════════════════════
+   INLINE RESPONSIVE — loads synchronously with the HTML.
+   Guaranteed to apply regardless of Vite build state.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Hamburger button ── */
+.bv-hamburger{display:none;align-items:center;justify-content:center;width:36px;height:36px;background:transparent;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;color:#374151;flex-shrink:0;transition:background .15s;font-family:inherit;}
+.bv-hamburger:hover{background:#f3f4f6;}
+.bv-ham-icon,.bv-ham-icon::before,.bv-ham-icon::after{display:block;width:16px;height:2px;background:currentColor;border-radius:2px;}
+.bv-ham-icon{position:relative;}
+.bv-ham-icon::before,.bv-ham-icon::after{content:'';position:absolute;left:0;}
+.bv-ham-icon::before{top:-5px;}
+.bv-ham-icon::after{top:5px;}
+.bv-mob-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);}
+.bv-sidebar-close-mob{display:none;align-items:center;justify-content:center;width:28px;height:28px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:6px;cursor:pointer;color:rgba(255,255,255,.75);flex-shrink:0;margin-left:auto;transition:background .15s;font-family:inherit;}
+.bv-sidebar-close-mob:hover{background:rgba(255,255,255,.22);color:#fff;}
+
+/* ── Mobile shell ≤768px ── */
+@media(max-width:768px){
+  .bv-app,.bv-app.bv-app-sidebar-collapsed{grid-template-columns:1fr!important;}
+  .bv-sidebar{position:fixed!important;top:0;left:0;bottom:0;width:220px!important;z-index:100;transform:translateX(-100%);transition:transform .25s ease,box-shadow .25s ease;box-shadow:none;}
+  .bv-mobile-open .bv-sidebar{transform:translateX(0)!important;box-shadow:4px 0 32px rgba(0,0,0,.35);}
+  .bv-hamburger{display:inline-flex!important;}
+  .bv-sidebar-collapse{display:none!important;}
+  .bv-sidebar-close-mob{display:inline-flex!important;}
+  .bv-topbar{padding:0 12px!important;gap:8px!important;}
+  .bv-topbar-title{font-size:15px!important;}
+  .bv-topbar-username{display:none!important;}
+  .bv-app-main{width:100%;min-width:0;}
+  .bv-ai-panel{width:100vw!important;}
+  .b-page,.cust-page,.page-banking{padding:14px 12px!important;}
+  .dashboard{padding:14px 12px!important;gap:12px!important;}
+}
+
+/* ── Invoice view — Details meta grid ── */
+/* ≤1023px: 2-column grid */
+@media(max-width:1023px){
+  .inv-details-meta{display:grid!important;grid-template-columns:1fr 1fr!important;border-radius:8px!important;}
+  .inv-details-meta-col{border-right:none!important;border-bottom:1px solid #e5e7eb!important;}
+  .inv-details-meta-col:nth-child(odd){border-right:1px solid #e5e7eb!important;}
+  .inv-details-meta-col:last-child{border-bottom:none!important;}
+}
+/* ≤767px: single column */
+@media(max-width:767px){
+  .inv-details-meta{display:grid!important;grid-template-columns:1fr!important;}
+  .inv-details-meta-col{border-right:none!important;border-bottom:1px solid #e5e7eb!important;}
+  .inv-details-meta-col:last-child{border-bottom:none!important;}
+  /* Also stop the view body horizontal scroll */
+  .inv-view-body{overflow-y:auto!important;overflow-x:hidden!important;}
+}
+/* ≤425px: compact padding */
+@media(max-width:425px){
+  .inv-view-header{padding:12px 10px 8px!important;}
+  .inv-view-number{font-size:16px!important;}
+  .inv-view-body{margin:0 8px 8px!important;}
+  .inv-tab-body{padding:10px!important;}
+  .inv-details-meta-col{padding:10px 12px!important;}
+  .inv-dmeta-date-val{font-size:14px!important;}
+  .inv-balance-val{font-size:16px!important;}
+  /* Timeline compact */
+  .inv-tl-wrap{padding:12px 10px!important;}
+  .inv-tl-dot{width:28px!important;height:28px!important;}
+  .inv-tl-label{font-size:10px!important;}
+  .inv-tl-date{display:none!important;}
+  /* Action bar icon-only */
+  .inv-ab-btn .ab-label{display:none!important;}
+  .inv-ab-btn{padding:7px 9px!important;}
+  .inv-ab-btn.inv-ab-danger .ab-label{display:inline!important;}
+  /* Download dropdown fix */
+  .inv-ab-btn.inv-ab-dropdown + div{right:auto!important;left:0!important;min-width:150px!important;max-width:calc(100vw - 32px)!important;}
+  /* Bottom grid */
+  .inv-bottom-grid{grid-template-columns:1fr!important;padding:0 10px 10px!important;}
+}
+/* ≤375px */
+@media(max-width:375px){
+  .inv-view-header{padding:10px 8px 6px!important;}
+  .inv-view-number{font-size:15px!important;}
+  .inv-view-body{margin:0 6px 6px!important;}
+  .inv-tab-body{padding:8px!important;}
+  .inv-details-meta-col{padding:8px 10px!important;}
+  .inv-dmeta-date-val{font-size:13px!important;}
+  .inv-tl-wrap{padding:10px 8px!important;}
+  .inv-tl-dot{width:26px!important;height:26px!important;}
+}
+
+@media(max-width:400px){
+  .bv-topbar{padding:0 10px!important;gap:6px!important;}
+  .bv-topbar-icon-btn,.bv-notif-trigger{width:30px!important;height:30px!important;}
+}
 </style>
 </head>
 <body>
@@ -72,6 +162,81 @@ window.__booksCompany = "";
     document.head.appendChild(css);
     appendScript("/assets/zoho_books_clone/js/books.js?v=4");
   }
+})();
+</script>
+
+<!-- Download dropdown fix — repositions using fixed coords on mobile -->
+<script>
+(function(){
+  if(typeof MutationObserver==='undefined')return;
+  var observer=new MutationObserver(function(mutations){
+    mutations.forEach(function(m){
+      m.addedNodes.forEach(function(node){
+        if(node.nodeType!==1)return;
+        // The dropdown is a div sibling after .inv-ab-dropdown
+        var btn=node.previousElementSibling;
+        if(btn&&btn.classList.contains('inv-ab-dropdown')&&window.innerWidth<=600){
+          var rect=btn.getBoundingClientRect();
+          node.style.setProperty('position','fixed','important');
+          node.style.setProperty('top',(rect.bottom+4)+'px','important');
+          node.style.setProperty('left',rect.left+'px','important');
+          node.style.setProperty('right','auto','important');
+          node.style.setProperty('z-index','99999','important');
+        }
+      });
+    });
+  });
+  // Start observing once body is ready
+  function startObs(){observer.observe(document.body,{childList:true,subtree:true});}
+  if(document.body)startObs();
+  else document.addEventListener('DOMContentLoaded',startObs);
+})();
+</script>
+
+<!-- Mobile hamburger — vanilla JS, no Vite rebuild needed -->
+<script>
+(function(){
+  'use strict';
+  var BREAK=768,isOpen=false,overlay=null,hamBtn=null,closeBtn=null;
+  function mobile(){return window.innerWidth<=BREAK;}
+  function openSidebar(){isOpen=true;var a=document.querySelector('.bv-app');if(a)a.classList.add('bv-mobile-open');if(overlay)overlay.style.display='block';document.body.style.overflow='hidden';}
+  function closeSidebar(){isOpen=false;var a=document.querySelector('.bv-app');if(a)a.classList.remove('bv-mobile-open');if(overlay)overlay.style.display='none';document.body.style.overflow='';}
+  function toggle(e){if(e)e.stopPropagation();if(isOpen)closeSidebar();else openSidebar();}
+  function init(){
+    var topbar=document.querySelector('.bv-topbar');
+    var sidebar=document.querySelector('.bv-sidebar');
+    var brand=document.querySelector('.bv-sidebar-brand');
+    if(!topbar||!sidebar||!brand)return false;
+    if(!document.querySelector('.bv-hamburger')){
+      hamBtn=document.createElement('button');
+      hamBtn.className='bv-hamburger';
+      hamBtn.setAttribute('aria-label','Toggle navigation');
+      hamBtn.setAttribute('type','button');
+      hamBtn.innerHTML='<span class="bv-ham-icon"></span>';
+      hamBtn.addEventListener('click',toggle);
+      topbar.insertBefore(hamBtn,topbar.firstChild);
+    }
+    if(!document.querySelector('.bv-sidebar-close-mob')){
+      closeBtn=document.createElement('button');
+      closeBtn.className='bv-sidebar-close-mob';
+      closeBtn.setAttribute('aria-label','Close menu');
+      closeBtn.setAttribute('type','button');
+      closeBtn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      closeBtn.addEventListener('click',function(e){e.stopPropagation();closeSidebar();});
+      brand.appendChild(closeBtn);
+    }
+    if(!overlay){
+      overlay=document.createElement('div');
+      overlay.className='bv-mob-overlay';
+      overlay.style.display='none';
+      overlay.addEventListener('click',closeSidebar);
+      document.querySelector('.bv-app').appendChild(overlay);
+    }
+    sidebar.addEventListener('click',function(e){var item=e.target.closest('.bv-sidebar-item,.bv-sidebar-logout,.bv-sidebar-user');if(item&&mobile())setTimeout(closeSidebar,80);});
+    window.addEventListener('resize',function(){if(!mobile()&&isOpen)closeSidebar();});
+    return true;
+  }
+  var tries=0,timer=setInterval(function(){tries++;if(init()||tries>=120)clearInterval(timer);},100);
 })();
 </script>
 </body>

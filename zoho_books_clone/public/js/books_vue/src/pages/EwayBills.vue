@@ -328,25 +328,61 @@
 
           <div class="ew-section">
             <div class="ew-section-hdr"><span v-html="icon('folder',13)"></span><span>Document Details</span></div>
-            <div class="ew-meta-grid">
-              <div><div class="ew-meta-lbl">Invoice</div><div><DocLink doctype="Sales Invoice" :name="viewDoc.invoice_no" /></div></div>
-              <div><div class="ew-meta-lbl">Invoice Date</div><div class="mono-sm">{{ fmtDate(viewDoc.invoice_date) }}</div></div>
-              <div><div class="ew-meta-lbl">Customer</div><div>{{ viewDoc.customer_name || viewDoc.customer }}</div></div>
-              <div><div class="ew-meta-lbl">Amount</div><div class="mono-sm">{{ fmtCur(viewDoc.grand_total) }}</div></div>
-              <div><div class="ew-meta-lbl">From GSTIN</div><div class="mono-sm">{{ viewDoc.from_gstin || 'Unregistered' }}</div></div>
-              <div><div class="ew-meta-lbl">To GSTIN</div><div class="mono-sm">{{ viewDoc.to_gstin || 'Unregistered' }}</div></div>
+            <div class="ew-kv-list">
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Invoice</span>
+                <span class="ew-kv-val"><DocLink doctype="Sales Invoice" :name="viewDoc.invoice_no" /></span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Invoice Date</span>
+                <span class="ew-kv-val mono-sm">{{ fmtDate(viewDoc.invoice_date) }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Customer</span>
+                <span class="ew-kv-val" style="font-weight:600;color:#111827">{{ viewDoc.customer_name || viewDoc.customer }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Amount</span>
+                <span class="ew-kv-val mono-sm" style="font-weight:700;color:#0f172a">{{ fmtCur(viewDoc.grand_total) }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">From GSTIN</span>
+                <span class="ew-kv-val mono-sm">{{ viewDoc.from_gstin || 'Unregistered' }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">To GSTIN</span>
+                <span class="ew-kv-val mono-sm">{{ viewDoc.to_gstin || 'Unregistered' }}</span>
+              </div>
             </div>
           </div>
 
           <div class="ew-section">
             <div class="ew-section-hdr"><span v-html="icon('warehouse',13)"></span><span>Movement</span></div>
-            <div class="ew-meta-grid">
-              <div><div class="ew-meta-lbl">Transporter</div><div>{{ viewDoc.transporter || '—' }}</div></div>
-              <div><div class="ew-meta-lbl">Vehicle No</div><div class="mono-sm">{{ viewDoc.vehicle_no || '—' }}</div></div>
-              <div><div class="ew-meta-lbl">Vehicle Type</div><div>{{ viewDoc.vehicle_type || 'Regular' }}</div></div>
-              <div><div class="ew-meta-lbl">Supply Type</div><div>{{ viewDoc.supply_type || 'Outward' }}</div></div>
-              <div><div class="ew-meta-lbl">Transaction</div><div>{{ viewDoc.transaction_type || 'Regular' }}</div></div>
-              <div><div class="ew-meta-lbl">Generated On</div><div class="mono-sm">{{ fmtDate(viewDoc.creation) }}</div></div>
+            <div class="ew-kv-list">
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Transporter</span>
+                <span class="ew-kv-val" style="font-weight:600;color:#111827">{{ viewDoc.transporter || '—' }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Vehicle No</span>
+                <span class="ew-kv-val mono-sm">{{ viewDoc.vehicle_no || '—' }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Vehicle Type</span>
+                <span class="ew-kv-val">{{ viewDoc.vehicle_type || 'Regular' }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Supply Type</span>
+                <span class="ew-kv-val">{{ viewDoc.supply_type || 'Outward' }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Transaction</span>
+                <span class="ew-kv-val">{{ viewDoc.transaction_type || 'Regular' }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Generated On</span>
+                <span class="ew-kv-val mono-sm">{{ fmtDate(viewDoc.creation) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -949,4 +985,10 @@ function exportCSV() {
 .ew-gen-card-chevron.collapsed{transform:rotate(-90deg);}
 .ew-gen-card-body{padding:16px;}
 .ew-gen-card-body.collapsed{display:none;}
+/* Key-value row layout for view sections */
+.ew-kv-list{display:flex;flex-direction:column;}
+.ew-kv-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f2f5;gap:12px;}
+.ew-kv-row:last-child{border-bottom:none;}
+.ew-kv-lbl{font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0;}
+.ew-kv-val{font-size:13px;color:#374151;text-align:right;}
 </style>

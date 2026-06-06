@@ -171,6 +171,14 @@
           <textarea v-model="form.billing_address" class="inv-fi" rows="2" style="resize:vertical;width:100%;box-sizing:border-box" placeholder="Auto-filled from vendor, or enter manually"></textarea>
         </div>
 
+        <div>
+          <label class="inv-lbl">Cost Center</label>
+          <select v-model="form.cost_center" class="inv-fi">
+            <option value="">— None —</option>
+            <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
+          </select>
+        </div>
+
         <div class="bill-section-row">
           <div class="inv-sec-lbl" style="border-top:none;padding-top:0;margin-top:0">Items</div>
           <button v-if="form.supplier" class="bill-copy-btn" @click="copyLastItems" :disabled="copyingLast">
@@ -390,10 +398,12 @@ const copyingLast = ref(false);
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const BILL_CURRENCIES = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
-const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "" });
+const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "" });
 const vendorBillingAddrs = ref([]);
 const warehouses = ref([]);
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name","parent_warehouse"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.parent_warehouse?`${x.parent_warehouse} / ${x.name}`:x.name,value:x.name}));}catch{warehouses.value=[];}}
+const costCenters = ref([]);
+async function fetchCostCenters(){try{const co=await resolveCompany();const r=await apiGET("frappe.client.get_list",{doctype:"Cost Center",fields:JSON.stringify(["name"]),filters:JSON.stringify([["disabled","=",0],["company","=",co],["is_group","=",0]]),order_by:"name asc",limit_page_length:100})||[];costCenters.value=r.map(c=>c.name);}catch{costCenters.value=[];}}
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function fmtCur(v) {
@@ -501,7 +511,7 @@ const timelineSteps = computed(() => {
 // ── Create/Edit ───────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "" });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "" });
   vendorBillingAddrs.value = [];
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
@@ -509,7 +519,7 @@ function openNew() {
 }
 async function openEdit(b) {
   editingName.value = b.name;
-  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "" });
+  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "" });
   vendorBillingAddrs.value = [];
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
@@ -529,6 +539,7 @@ async function openEdit(b) {
     if (doc?.update_stock !== undefined) form.update_stock = doc.update_stock ? 1 : 0;
     if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
     if (doc?.billing_address) form.billing_address = doc.billing_address;
+    if (doc?.cost_center) form.cost_center = doc.cost_center;
     // Load vendor addresses
     if (b.supplier) {
       try {
@@ -647,6 +658,7 @@ async function saveBill(submit) {
       bill_date: form.bill_date || null, remarks: form.remarks || "",
       update_stock: form.update_stock ? 1 : 0, set_warehouse: form.set_warehouse || "",
       billing_address: form.billing_address || "",
+      cost_center: form.cost_center || "",
       currency: form.currency || "INR",
       conversion_rate: form.currency === "INR" ? 1 : (form.exchange_rate || 1),
       items: lines.value.filter(l => l.item_code).map(l => ({
@@ -810,7 +822,7 @@ function exportCSV() {
   toast.success(`CSV exported — ${rows.length} bill(s)`);
 }
 
-onMounted(() => { load(); loadTaxAccount(); });
+onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 </script>
 
 <style scoped>

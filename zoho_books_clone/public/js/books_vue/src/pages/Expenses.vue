@@ -133,6 +133,13 @@
                 placeholder="Search bank / cash account…"
                 @search="fetchPaidThroughAccounts" @open="fetchPaidThroughAccounts('')" />
             </div>
+            <div style="grid-column:1/-1">
+              <label class="inv-lbl">Cost Center</label>
+              <select v-model="form.cost_center" class="inv-fi">
+                <option value="">— None —</option>
+                <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -266,7 +273,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGet, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -330,7 +337,9 @@ function onExpItemSelect(line, opt) {
   line.description = opt?.label || opt?.value || "";
   if (opt?.rate) line.amount = opt.rate;
 }
-const form=reactive({posting_date:new Date().toISOString().slice(0,10),employee_name:"",vendor_display:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:""});
+const form=reactive({posting_date:new Date().toISOString().slice(0,10),employee_name:"",vendor_display:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:"",cost_center:""});
+const costCenters=ref([]);
+async function fetchCostCenters(){try{const co=await resolveCompany();const r=await apiGET("frappe.client.get_list",{doctype:"Cost Center",fields:JSON.stringify(["name"]),filters:JSON.stringify([["disabled","=",0],["company","=",co],["is_group","=",0]]),order_by:"name asc",limit_page_length:100})||[];costCenters.value=r.map(c=>c.name);}catch{costCenters.value=[];}}
 
 async function load(){
   loading.value=true;
@@ -388,7 +397,7 @@ function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db
 const allChecked=computed(()=>sorted.value.length>0&&sorted.value.every(e=>selected.value.has(e.name)));
 function toggle(n){const s=new Set(selected.value);s.has(n)?s.delete(n):s.add(n);selected.value=s;}
 function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(x=>x.name)):new Set();}
-function openNew(){editingName.value="";receiptFile.value=null;Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",vendor_display:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:""});drawerOpen.value=true;}
+function openNew(){editingName.value="";receiptFile.value=null;Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",vendor_display:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:"",cost_center:""});drawerOpen.value=true;}
 async function openEdit(e){
   editingName.value=e.name;
   try{
@@ -398,6 +407,7 @@ async function openEdit(e){
       employee_name: doc.vendor||"",   // template uses "Employee Name" label, we map it to vendor
       expense_account: doc.expense_account||"",
       paid_through:    doc.paid_through||"",
+      cost_center:     doc.cost_center||"",
       expense_type: doc.expense_type||"",
       total_claimed_amount: flt(doc.total_amount||doc.amount),
       currency: "INR",
@@ -448,6 +458,7 @@ async function saveExpense(submit){
       vendor:form.employee_name||"",
       expense_account: form.expense_account,
       paid_through:    form.paid_through,
+      cost_center:     form.cost_center||"",
       notes:form.remark||"",
     };
     if(editingName.value) doc.name=editingName.value;
@@ -488,7 +499,7 @@ async function uploadAttachment(file, doctype, docname) {
   const data = await res.json();
   return data?.message?.file_url || data?.file_url || null;
 }
-onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseAccounts(""); fetchPaidThroughAccounts(""); });
+onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseAccounts(""); fetchPaidThroughAccounts(""); fetchCostCenters(); });
 </script>
 
 <style scoped>

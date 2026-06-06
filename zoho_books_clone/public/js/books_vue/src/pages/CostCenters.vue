@@ -289,14 +289,15 @@ async function load() {
   try {
     const ccs = await apiGET("frappe.client.get_list", {
       doctype: "Cost Center",
-      fields: JSON.stringify(["name", "cost_center_name", "cost_center_number", "parent_cost_center", "is_group", "disabled", "description", "budget"]),
+      fields: JSON.stringify(["name", "cost_center_name", "cost_center_number", "parent_cost_center", "is_group", "disabled", "description", "budget", "budget_period", "alert_pct", "budget_action", "cc_type", "color_tag"]),
       order_by: "name asc", limit_page_length: 200,
     }) || [];
     if (ccs.length) {
       allCC.value = ccs.map((c) => ({
         name: c.name, code: c.cost_center_number || "", parent: c.parent_cost_center || "",
-        type: "Department", color: "#3B5BDB", budget: Number(c.budget) || 0, budget_period: "Annual",
-        alert_pct: 80, budget_action: "Warn", is_group: c.is_group ? 1 : 0,
+        type: c.cc_type || "Department", color: c.color_tag || "#3B5BDB", budget: Number(c.budget) || 0,
+        budget_period: c.budget_period || "Annual", alert_pct: c.alert_pct || 80,
+        budget_action: c.budget_action || "Warn", is_group: c.is_group ? 1 : 0,
         status: c.disabled ? "Inactive" : "Active", desc: c.description || "", source: "frappe",
       }));
       fromFrappe.value = true;
@@ -366,7 +367,7 @@ async function saveCC() {
   const company = await resolveCompany();
   if (!company) { toast("No company configured. Please set a default company in Books Settings.", "error"); saving.value = false; return; }
   try {
-    const doc = { doctype: "Cost Center", cost_center_name: data.name, cost_center_number: data.code, parent_cost_center: data.parent || "", is_group: data.is_group, company, budget: data.budget, description: data.desc || "" };
+    const doc = { doctype: "Cost Center", cost_center_name: data.name, cost_center_number: data.code, parent_cost_center: data.parent || "", is_group: data.is_group, company, budget: data.budget, description: data.desc || "", cc_type: data.type, color_tag: data.color, budget_period: data.budget_period, alert_pct: Number(data.alert_pct) || 80, budget_action: data.budget_action };
     if (editing.value) { doc.name = editing.value; await apiPOST("frappe.client.save", { doc: JSON.stringify(doc) }); }
     else await apiPOST("frappe.client.insert", { doc: JSON.stringify(doc) });
     fromFrappe.value = true;

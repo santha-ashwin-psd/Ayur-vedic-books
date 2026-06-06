@@ -33,6 +33,7 @@ def post_sales_invoice(doc) -> None:
             "party":        doc.customer,
             "company":      doc.company,
             "fiscal_year":  doc.fiscal_year or "",
+            "cost_center":  doc.cost_center or "",
             "remarks":      f"Invoice {doc.name} — {doc.customer_name or doc.customer}",
         },
         {
@@ -44,6 +45,7 @@ def post_sales_invoice(doc) -> None:
             "posting_date": doc.posting_date,
             "company":      doc.company,
             "fiscal_year":  doc.fiscal_year or "",
+            "cost_center":  doc.cost_center or "",
             "remarks":      f"Income — Invoice {doc.name}",
         },
     ]
@@ -95,6 +97,7 @@ def post_purchase_invoice(doc) -> None:
             "posting_date": doc.posting_date,
             "company":      doc.company,
             "fiscal_year":  doc.fiscal_year or "",
+            "cost_center":  doc.cost_center or "",
             "remarks":      f"Purchase cost (net) — Bill {doc.name}",
         },
         # CR Payable for full amount owed to supplier
@@ -109,6 +112,7 @@ def post_purchase_invoice(doc) -> None:
             "party":        doc.supplier,
             "company":      doc.company,
             "fiscal_year":  doc.fiscal_year or "",
+            "cost_center":  doc.cost_center or "",
             "remarks":      f"Payable to {doc.supplier} — Bill {doc.name}",
         },
     ]

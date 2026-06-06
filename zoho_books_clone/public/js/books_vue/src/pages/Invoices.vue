@@ -334,6 +334,14 @@
                   </select>
                 </div>
               </div>
+              <!-- Cost Center -->
+              <div style="margin-top:14px">
+                <label class="inv-lbl">Cost Center</label>
+                <select v-model="form.cost_center" class="inv-fi">
+                  <option value="">— None —</option>
+                  <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
+                </select>
+              </div>
               <!-- Place of supply -->
               <div style="margin-top:14px">
                 <label class="inv-lbl">Place of Supply</label>
@@ -1145,7 +1153,8 @@ const form = reactive({
   terms:"", remarks:"", docstatus:0,
   currency:"INR", exchange_rate:1, gst_treatment:"",
   update_stock:1, set_warehouse:"",
-  logo:"",   // stores the Frappe file URL from logo_attach field
+  logo:"",
+  cost_center:"",
 });
 const customerBillingAddrs  = ref([]);
 const customerShippingAddrs = ref([]);
@@ -1153,6 +1162,8 @@ const sameAsBillingAddr     = ref(false);
 const lines   = ref([]);
 const warehouses = ref([]);
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name","parent_warehouse"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.parent_warehouse?`${x.parent_warehouse} / ${x.name}`:x.name,value:x.name}));}catch{warehouses.value=[];}}
+const costCenters = ref([]);
+async function fetchCostCenters(){try{const co=await resolveCompany();const r=await apiGET("frappe.client.get_list",{doctype:"Cost Center",fields:JSON.stringify(["name"]),filters:JSON.stringify([["disabled","=",0],["company","=",co],["is_group","=",0]]),order_by:"name asc",limit_page_length:100})||[];costCenters.value=r.map(c=>c.name);}catch{costCenters.value=[];}}
 const taxRows = ref([]);
 
 // ── View drawer ────────────────────────────────────────────────────────
@@ -1363,7 +1374,7 @@ function onDocClickForDownloadMenu(e) {
     showDownloadMenu.value = false;
   }
 }
-onMounted(() => document.addEventListener('click', onDocClickForDownloadMenu));
+onMounted(() => { document.addEventListener('click', onDocClickForDownloadMenu); fetchCostCenters(); });
 onUnmounted(() => document.removeEventListener('click', onDocClickForDownloadMenu));
 
 // ── New date / format helpers ───────────────────────────────────────────
@@ -1602,7 +1613,7 @@ function openAdd() {
   Object.assign(collapsed,{branding:false,details:false,billing:true,lines:false,notes:true});
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
   taxRows.value=[];
-  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:"",logo:""});
+  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:"",logo:"",cost_center:""});
   customerBillingAddrs.value=[]; customerShippingAddrs.value=[]; sameAsBillingAddr.value=false;
   fetchWarehouses("");
   drawerOpen.value=true;
@@ -1632,6 +1643,7 @@ async function openEdit(inv) {
       currency:doc.currency||"INR",exchange_rate:doc.exchange_rate||1,gst_treatment:doc.gst_category||"",
       update_stock:doc.update_stock||0,set_warehouse:doc.set_warehouse||"",
       logo:doc.logo||"",
+      cost_center:doc.cost_center||"",
     });
     lines.value=(doc.items||[]).map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:it.hsn_code||"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:it.uom||"Nos",discount_percentage:flt(it.discount_percentage)||0,discount_amount:flt(it.discount_amount)||0,amount:flt(it.amount)||0}));
     taxRows.value=(doc.taxes||[]).map((tx,i)=>({id:Date.now()+100+i,description:tx.description||"",rate:flt(tx.rate)||0,account_head:tx.account_head||taxAccountHead.value,amount:flt(tx.tax_amount)||0}));
@@ -1665,7 +1677,7 @@ async function saveInvoice(docstatus) {
     const pendingDataUrl = (form.logo||"").startsWith("data:") ? form.logo : "";
     const resolvedLogoPath = pendingDataUrl ? "" : (form.logo || "");
 
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",shipping_address:shipAddr,place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:form.update_stock?1:0,set_warehouse:form.set_warehouse||"",logo:resolvedLogoPath};
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",shipping_address:shipAddr,place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:form.update_stock?1:0,set_warehouse:form.set_warehouse||"",logo:resolvedLogoPath,cost_center:form.cost_center||""};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
 

@@ -339,6 +339,19 @@
       "unique": 0
     },
     {
+      "fieldname": "cost_center",
+      "fieldtype": "Link",
+      "label": "Cost Center",
+      "options": "Cost Center",
+      "creation": "2026-06-06 00:00:00.000000",
+      "modified": "2026-06-06 00:00:00.000000",
+      "modified_by": "Administrator",
+      "owner": "Administrator",
+      "docstatus": 0,
+      "idx": 0,
+      "permlevel": 0
+    },
+    {
       "fieldname": "status",
       "fieldtype": "Select",
       "label": "Status",

@@ -265,6 +265,38 @@
    "fieldname": "budget",
    "fieldtype": "Currency",
    "label": "Annual Budget"
+  },
+  {
+   "fieldname": "budget_period",
+   "fieldtype": "Select",
+   "label": "Budget Period",
+   "options": "Annual\nQuarterly\nMonthly",
+   "default": "Annual"
+  },
+  {
+   "fieldname": "alert_pct",
+   "fieldtype": "Int",
+   "label": "Alert At (%)",
+   "default": "80"
+  },
+  {
+   "fieldname": "budget_action",
+   "fieldtype": "Select",
+   "label": "Budget Action",
+   "options": "Warn\nStop\nNone",
+   "default": "Warn"
+  },
+  {
+   "fieldname": "cc_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Department\nProject\nProduct\nRegion\nGroup",
+   "default": "Department"
+  },
+  {
+   "fieldname": "color_tag",
+   "fieldtype": "Data",
+   "label": "Colour Tag"
   }
  ],
  "permissions": [

@@ -97,69 +97,137 @@
     <!-- ── Create/Edit Drawer ── -->
     <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false"></div>
     <div class="dn-drawer" :class="{open:drawerOpen}">
+
+      <!-- Header -->
       <div class="inv-dh">
-        <div class="inv-dh-title">{{ editingName ? 'Edit Debit Note' : 'New Debit Note' }}</div>
+        <div class="dn-dheader-left">
+          <div class="dn-dheader-ico" :class="editingName?'edit':''">
+            <span v-html="icon(editingName?'edit':'debitnote',18)"></span>
+          </div>
+          <div>
+            <div class="inv-dh-title">{{ editingName ? 'Edit Debit Note' : 'New Debit Note' }}</div>
+            <div class="inv-dh-sub">
+              {{ editingName ? editingName : 'Issue a debit against a vendor bill' }}
+            </div>
+          </div>
+        </div>
         <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
-      <div class="inv-dbody">
-        <div class="inv-fg inv-fg2">
-          <div class="dn-field" style="grid-column:1/-1">
-            <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
-            <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…"
-              :createable="true" createDoctype="Supplier"
-              @search="fetchVendors" @select="onVendorSelect" />
+
+      <div class="inv-dbody dn-dbody">
+
+        <!-- ══ CARD 1: Vendor & Date ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="dnCollapsed.vendor=!dnCollapsed.vendor">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              Vendor &amp; Date
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:dnCollapsed.vendor}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
           </div>
-          <div class="dn-field">
-            <label class="inv-lbl">Date <span class="inv-req">*</span></label>
-            <input v-model="form.posting_date" type="date" class="inv-fi" />
-          </div>
-          <div class="dn-field">
-            <label class="inv-lbl">Return Against Bill</label>
-            <SearchableSelect v-model="form.return_against" :options="bills"
-              placeholder="Select bill (optional)…" @search="fetchBills" @select="onBillSelect" />
-          </div>
-          <div class="dn-field" style="grid-column:1/-1">
-            <label class="inv-lbl">Reason</label>
-            <select v-model="form.reason" class="inv-fi">
-              <option>Vendor Overcharge</option>
-              <option>Goods Returned</option>
-              <option>Damaged Goods</option>
-              <option>Short Delivery</option>
-              <option>Duplicate Invoice</option>
-              <option>Other</option>
-            </select>
+          <div class="add-card-body" :class="{collapsed:dnCollapsed.vendor}">
+            <div class="inv-fg inv-fg2">
+              <div class="dn-field" style="grid-column:1/-1">
+                <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
+                <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…"
+                  :createable="true" createDoctype="Supplier"
+                  @search="fetchVendors" @select="onVendorSelect" />
+              </div>
+              <div class="dn-field">
+                <label class="inv-lbl">Date <span class="inv-req">*</span></label>
+                <input v-model="form.posting_date" type="date" class="inv-fi" />
+              </div>
+              <div class="dn-field">
+                <label class="inv-lbl">Return Against Bill</label>
+                <SearchableSelect v-model="form.return_against" :options="bills"
+                  placeholder="Select bill (optional)…" @search="fetchBills" @select="onBillSelect" />
+              </div>
+              <div class="dn-field" style="grid-column:1/-1">
+                <label class="inv-lbl">Reason</label>
+                <select v-model="form.reason" class="inv-fi">
+                  <option>Vendor Overcharge</option>
+                  <option>Goods Returned</option>
+                  <option>Damaged Goods</option>
+                  <option>Short Delivery</option>
+                  <option>Duplicate Invoice</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="inv-sec-lbl">Items to Debit</div>
-        <div class="dn-items-table">
-          <div class="dn-items-head">
-            <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
+        <!-- ══ CARD 2: Items to Debit ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="dnCollapsed.items=!dnCollapsed.items">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              </span>
+              Items to Debit
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="dn-lines-badge">{{ lines.length }} line{{ lines.length!==1?'s':'' }}</span>
+              <span class="add-card-chevron" :class="{collapsed:dnCollapsed.items}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
           </div>
-          <div v-for="line in lines" :key="line.id" class="dn-items-row">
-            <div><SearchableSelect v-model="line.item_code" :options="items"
-              placeholder="Item…" :createable="true" createDoctype="Item"
-              @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
-            <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
-            <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-            <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-            <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
-            <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
+          <div class="add-card-body" :class="{collapsed:dnCollapsed.items}" style="padding:0">
+            <div class="dn-items-table" style="border:none;border-radius:0;border-bottom:1px solid #e5e7eb">
+              <div class="dn-items-head">
+                <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
+              </div>
+              <div v-for="line in lines" :key="line.id" class="dn-items-row">
+                <div><SearchableSelect v-model="line.item_code" :options="items"
+                  placeholder="Item…" :createable="true" createDoctype="Item"
+                  @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
+                <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
+                <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
+                <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
+                <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
+                <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
+              </div>
+            </div>
+            <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+              <div class="dn-total-row grand" style="padding:0;border:none;margin:0">
+                <span>Total Debit</span><span style="color:#7c2d12">{{ fmtCur(subtotal) }}</span>
+              </div>
+            </div>
           </div>
-          <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
         </div>
 
-        <div class="dn-total-row grand"><span>Total Debit</span><span style="color:#7c2d12">{{ fmtCur(subtotal) }}</span></div>
-
-        <div class="dn-field">
-          <label class="inv-lbl">Notes</label>
-          <textarea v-model="form.notes" rows="2" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
+        <!-- ══ CARD 3: Notes ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="dnCollapsed.notes=!dnCollapsed.notes">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              Notes
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:dnCollapsed.notes}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:dnCollapsed.notes}">
+            <textarea v-model="form.notes" rows="3" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
+          </div>
         </div>
+
       </div>
+
       <div class="inv-dfooter">
-        <button class="form-btn form-btn-outline" @click="drawerOpen=false">Cancel</button>
-        <button class="form-btn form-btn-success" :disabled="drawerSaving" @click="saveDN(0)"><span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}</button>
-        <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="saveDN(1)"><span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}</button>
+        <button class="form-btn form-btn-outline" @click="drawerOpen=false" :disabled="drawerSaving">Cancel</button>
+        <div>
+          <button class="form-btn form-btn-success" style="margin-right:5px" :disabled="drawerSaving" @click="saveDN(0)"><span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}</button>
+          <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="saveDN(1)"><span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}</button>
+        </div>
       </div>
     </div>
 
@@ -168,18 +236,20 @@
     <div class="dn-drawer dn-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
         <div class="inv-view-header">
-          <div>
-            <div class="inv-view-number">{{ viewDoc.name }}</div>
-            <div class="inv-view-subtitle">{{ viewDoc.supplier_name||viewDoc.supplier }}</div>
-          </div>
-          <div style="text-align:right">
-            <div class="dn-view-amount">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div>
-            <span class="inv-hdr-badge" :class="statusCls(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+          <div class="dn-view-head-body">
+            <div class="dn-view-head-left">
+              <div class="inv-view-number">{{ viewDoc.name }}</div>
+              <div class="inv-view-subtitle">{{ viewDoc.supplier_name||viewDoc.supplier }}</div>
+            </div>
+            <div class="dn-view-head-right">
+              <div class="dn-view-amount">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div>
+              <span class="inv-hdr-badge" :class="statusCls(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+            </div>
           </div>
           <button class="inv-dclose dn-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
 
-        <TimelineStepper :steps="timelineSteps" />
+        <div class="dn-stepper-wrap"><TimelineStepper :steps="timelineSteps" /></div>
 
         <div class="inv-view-tabs">
           <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
@@ -341,6 +411,7 @@ function balanceFor(name) { return flt(_balances.value[name] || 0); }
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const form = reactive({ supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", notes: "" });
+const dnCollapsed = reactive({ vendor: false, items: false, notes: true });
 
 // Apply-to-bill modal
 const applyModal = reactive({ open: false, saving: false, dnName: "", balance: 0, bill: "", amount: 0, openBills: [] });
@@ -703,8 +774,8 @@ onMounted(load);
 /* ── Drawer slide-in transition ── */
 .dn-drawer {
   position: fixed;
-  top: 0; right: -580px; bottom: 0;
-  width: 580px; max-width: 96vw;
+  top: 0; right: -720px; bottom: 0;
+  width: 720px; max-width: 96vw;
   background: #fff;
   border-left: 1px solid #e5e7eb;
   box-shadow: -8px 0 24px rgba(0,0,0,.08);
@@ -716,13 +787,55 @@ onMounted(load);
 .dn-view-drawer { width: 520px; right: -520px; }
 .dn-view-drawer.open { right: 0; }
 
+/* ── Drawer add/edit body ── */
+.dn-dbody .add-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e8ecf0;
+  cursor: pointer; user-select: none;
+  border-radius: 10px 10px 0 0;
+}
+.dn-dbody .add-card-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 700; color: #1a1a2e;
+}
+.dn-dbody .add-card-title-icon {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  color: #ea580c; flex-shrink: 0;
+}
+.dn-dbody .add-card-chevron {
+  color: #9ca3af; transition: transform .2s; display: inline-flex;
+}
+.dn-dbody .add-card-chevron.collapsed { transform: rotate(-90deg); }
+.dn-dbody .add-card-body { padding: 16px; }
+.dn-dbody .add-card-body.collapsed { display: none; }
+
+/* Line count badge in items card header */
+.dn-lines-badge {
+  font-size: 11.5px; font-weight: 600;
+  color: #374151; background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px; padding: 2px 8px;
+}
+
+/* ── Drawer header icon ── */
+.dn-dheader-left { display: flex; align-items: flex-start; gap: 12px; }
+.dn-dheader-ico {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: #fff; border: 1px solid rgba(234,88,12,.22);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #ea580c; flex-shrink: 0;
+}
+.dn-dheader-ico.edit { color: #ca8a04; border-color: rgba(202,138,4,.25); }
+
 /* ── Field helpers ── */
 .dn-field { display: flex; flex-direction: column; gap: 4px; }
 
 /* ── Items line table ── */
 .dn-items-table {
   display: flex; flex-direction: column;
-  border: 1px solid #e5e7eb; border-radius: 8px;
+  border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
 }
 .dn-items-head {
   display: grid;
@@ -740,8 +853,11 @@ onMounted(load);
 .dn-total-row.grand { font-weight: 700; font-size: 15px; color: #111827; border-top: 2px solid #e5e7eb; padding-top: 10px; }
 
 /* ── View panel header ── */
-.dn-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #1a1a2e; }
-.dn-vclose { position: absolute; top: 12px; right: 12px; }
+.dn-view-head-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.dn-view-head-left { display: flex; flex-direction: column; gap: 2px; }
+.dn-view-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.dn-view-amount { font-size: 22px; font-weight: 800; color: #1a1a2e; line-height: 1; }
+.dn-vclose { align-self: flex-end; margin-left: auto; margin-bottom: 4px; }
 
 /* ── Meta/detail 2-col grid ── */
 .dn-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -777,7 +893,6 @@ onMounted(load);
 
 /* ── Row action button variants ── */
 .dn-act-cell { display: flex; gap: 4px; justify-content: flex-end; cursor: default !important; }
-/* Debit note apply button — amber/orange tint (distinct from CN red) */
 .dn-act-apply { background: #fff7ed; border-color: #ea580c; color: #ea580c; }
 .dn-act-apply:hover { background: #ffedd5; color: #c2410c; }
 .dn-act-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
@@ -790,4 +905,7 @@ onMounted(load);
   border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2);
   z-index: 9100; display: flex; flex-direction: column; overflow: hidden;
 }
+
+/* ── Timeline stepper wrapper ── */
+.dn-stepper-wrap { background: #fff; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
 </style>

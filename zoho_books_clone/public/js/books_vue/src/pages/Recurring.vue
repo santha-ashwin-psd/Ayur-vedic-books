@@ -116,7 +116,6 @@
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <div class="inv-dh-title">{{ editMode ? 'Edit Subscription' : 'New Recurring Subscription' }}</div>
               <span v-if="!editMode" class="add-status-badge">Draft</span>
-              <span v-if="!editMode" class="add-autosave-notice"><span class="add-autosave-dot"></span></span>
               <span v-if="editMode" class="inv-dh-sub" style="margin-left:4px">{{ form._name }}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">

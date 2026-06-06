@@ -130,7 +130,7 @@
   --shadow:      0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
   --shadow-lg:   0 10px 30px rgba(0,0,0,.1);
   --font:        'Inter', system-ui, sans-serif;
-  --mono:        'JetBrains Mono', monospace;
+  --mono:        'Inter', system-ui, sans-serif;
   --ease:        cubic-bezier(.4,0,.2,1);
 }
 

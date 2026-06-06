@@ -53,7 +53,7 @@
         <div>
           <label class="nim-label">Parent Group</label>
           <select class="nim-input" v-model="form.parent_item_group">
-            <option value="">— None (Root) —</option>
+            <option value="">— (Root) —</option>
             <option v-for="g in allGroups" :key="g.name" :value="g.name">{{g.name}}</option>
           </select>
         </div>

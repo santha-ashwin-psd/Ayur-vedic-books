@@ -270,7 +270,7 @@
           <div class="nim-mb">
             <label class="nim-label">Parent Warehouse</label>
             <SearchableSelect v-model="form.parent_warehouse" :options="parentOptions"
-              value-key="name" label-key="label" placeholder="— None (top-level) —"/>
+              value-key="name" label-key="label" placeholder="— (top-level) —"/>
           </div>
           <div class="nim-section-label">Address</div>
           <div class="nim-grid-2 nim-mb">

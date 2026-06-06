@@ -188,7 +188,7 @@
               <div class="coa-field">
                 <label class="coa-label">Parent Account</label>
                 <select class="coa-select" v-model="form.parent_account">
-                  <option value="">— None (Root) —</option>
+                  <option value="">— (Root) —</option>
                   <option v-for="a in groupAccounts" :key="a.name" :value="a.name">{{ a.account_name }}</option>
                 </select>
               </div>

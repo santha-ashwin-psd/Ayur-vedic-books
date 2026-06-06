@@ -76,7 +76,7 @@
               <td @click="openView(o)" class="ta-r mono-sm">{{ fmtCur(o.grand_total) }}</td>
               <td class="po-act-cell">
                 <button class="inv-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="o.docstatus !== 1" class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button class="inv-act-btn po-act-conv" v-if="canBill(o)" @click="openBillModal(o)" title="Bill"><span v-html="icon('arrow-right',13)"></span></button>
                 <button class="inv-act-btn po-act-del" @click="deletePO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
@@ -95,83 +95,160 @@
     <!-- ── Create / Edit Drawer ── -->
     <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false"></div>
     <div class="inv-drawer-panel" :class="{open:drawerOpen}">
+
+      <!-- Header -->
       <div class="inv-dh">
-        <div class="inv-dh-title">{{ editingName ? 'Edit Purchase Order' : 'New Purchase Order' }}</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="inv-dh-title">{{ editingName ? 'Edit Purchase Order' : 'New Purchase Order' }}</div>
+          <span v-if="!editingName" class="po-draft-badge">Draft</span>
+        </div>
         <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
+
       <div class="inv-dbody">
-        <div class="inv-fg inv-fg2">
-          <div style="grid-column:1/-1">
-            <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
-            <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…"
-              :createable="true" createDoctype="Supplier"
-              @search="fetchVendors" />
+
+        <!-- ══ CARD 1: Order Details ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="poCollapsed.details=!poCollapsed.details">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              </span>
+              Order Details
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:poCollapsed.details}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
           </div>
-          <div>
-            <label class="inv-lbl">Order Date <span class="inv-req">*</span></label>
-            <input v-model="form.transaction_date" type="date" class="inv-fi" />
-          </div>
-          <div>
-            <label class="inv-lbl">Expected Delivery</label>
-            <input v-model="form.expected_delivery_date" type="date" class="inv-fi" />
-          </div>
-          <div>
-            <label class="inv-lbl">Billing Address</label>
-            <input v-model="form.billing_address" type="text" class="inv-fi" placeholder="Optional" />
-          </div>
-          <div>
-            <label class="inv-lbl">Delivery Address</label>
-            <input v-model="form.delivery_address" type="text" class="inv-fi" placeholder="Optional" />
-          </div>
-          <div style="grid-column:1/-1">
-            <label class="inv-lbl">Receiving Warehouse <span class="inv-req">*</span></label>
-            <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…" @search="fetchWarehouses" />
+          <div class="add-card-body" :class="{collapsed:poCollapsed.details}">
+            <div class="add-details-grid">
+              <div style="grid-column:1/-1">
+                <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
+                <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…"
+                  :createable="true" createDoctype="Supplier" @search="fetchVendors" />
+              </div>
+              <div>
+                <label class="inv-lbl">Order Date <span class="inv-req">*</span></label>
+                <input v-model="form.transaction_date" type="date" class="inv-fi" />
+              </div>
+              <div>
+                <label class="inv-lbl">Expected Delivery</label>
+                <input v-model="form.expected_delivery_date" type="date" class="inv-fi" />
+              </div>
+              <div style="grid-column:1/-1">
+                <label class="inv-lbl">Receiving Warehouse <span class="inv-req">*</span></label>
+                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…" @search="fetchWarehouses" />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="inv-sec-lbl">Items</div>
-        <div class="po-items-table">
-          <div class="po-items-head">
-            <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
+        <!-- ══ CARD 2: Addresses ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="poCollapsed.address=!poCollapsed.address">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </span>
+              Addresses
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:poCollapsed.address}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
           </div>
-          <div v-for="line in lines" :key="line.id" class="po-items-row">
-            <div><SearchableSelect v-model="line.item_code" :options="items"
-              placeholder="Item…" :createable="true" createDoctype="Item"
-              @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
-            <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
-            <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-            <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-            <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
-            <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
-          </div>
-          <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
-        </div>
-
-        <div class="po-totals">
-          <div style="max-width:160px">
-            <label class="inv-lbl">Tax Rate %</label>
-            <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="inv-fi" />
-          </div>
-          <div class="po-totals-right">
-            <div class="po-total-row"><span>Subtotal</span><span>{{ fmtCur(subtotal) }}</span></div>
-            <div class="po-total-row"><span>Tax ({{ form.tax_rate||0 }}%)</span><span>{{ fmtCur(taxAmount) }}</span></div>
-            <div class="po-total-row grand"><span>Total</span><span>{{ fmtCur(subtotal+taxAmount) }}</span></div>
+          <div class="add-card-body" :class="{collapsed:poCollapsed.address}">
+            <div class="inv-fg inv-fg2">
+              <div>
+                <label class="inv-lbl">Billing Address</label>
+                <input v-model="form.billing_address" type="text" class="inv-fi" placeholder="Optional" />
+              </div>
+              <div>
+                <label class="inv-lbl">Delivery Address</label>
+                <input v-model="form.delivery_address" type="text" class="inv-fi" placeholder="Optional" />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div>
-          <label class="inv-lbl">Terms & Conditions</label>
-          <textarea v-model="form.terms" rows="3" class="inv-fi" placeholder="Optional"></textarea>
+        <!-- ══ CARD 3: Line Items ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="poCollapsed.lines=!poCollapsed.lines">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              </span>
+              Line Items
+              <span class="po-item-count">{{ lines.length }} item{{ lines.length !== 1 ? 's' : '' }}</span>
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:poCollapsed.lines}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:poCollapsed.lines}">
+            <div class="po-items-table">
+              <div class="po-items-head">
+                <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
+              </div>
+              <div v-for="line in lines" :key="line.id" class="po-items-row">
+                <div><SearchableSelect v-model="line.item_code" :options="items"
+                  placeholder="Item…" :createable="true" createDoctype="Item"
+                  @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
+                <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
+                <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
+                <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
+                <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
+                <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
+              </div>
+            </div>
+            <button class="inv-add-line-btn" style="margin-top:10px" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+
+            <!-- Totals -->
+            <div class="po-totals" style="margin-top:16px">
+              <div style="max-width:160px">
+                <label class="inv-lbl">Tax Rate %</label>
+                <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="inv-fi" />
+              </div>
+              <div class="po-totals-right">
+                <div class="po-total-row"><span>Subtotal</span><span>{{ fmtCur(subtotal) }}</span></div>
+                <div class="po-total-row"><span>Tax ({{ form.tax_rate||0 }}%)</span><span>{{ fmtCur(taxAmount) }}</span></div>
+                <div class="po-total-row grand"><span>Total</span><span>{{ fmtCur(subtotal+taxAmount) }}</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <!-- ══ CARD 4: Terms & Conditions ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="poCollapsed.terms=!poCollapsed.terms">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </span>
+              Terms &amp; Conditions
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:poCollapsed.terms}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:poCollapsed.terms}">
+            <textarea v-model="form.terms" rows="4" class="inv-fi" placeholder="Payment terms, delivery conditions, special notes…"></textarea>
+          </div>
+        </div>
+
+      </div><!-- /inv-dbody -->
+
+      <!-- Footer -->
       <div class="inv-dfooter">
-        <button class="form-btn form-btn-outline" @click="drawerOpen=false">Cancel</button>
-        <button class="form-btn form-btn-success" :disabled="drawerSaving" @click="savePO('Draft')">
-          <span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}
-        </button>
-        <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="savePO('To Receive')">
-          <span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Issue PO' }}
-        </button>
+        <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New purchase order — unsaved' }}</div>
+        <div class="add-footer-actions">
+          <button class="add-btn-cancel" @click="drawerOpen=false">Cancel</button>
+          <button class="add-btn-draft" :disabled="drawerSaving" @click="savePO('Draft')">
+            <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
+          </button>
+          <button class="add-btn-primary" :disabled="drawerSaving" @click="savePO('To Receive')">
+            <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Issue PO' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -379,6 +456,7 @@ const tabs = [
 
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
+const poCollapsed = reactive({ details: false, address: true, lines: false, terms: true });
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const viewLoading = ref(false), viewItems = ref([]);
 const fulfill = reactive({ lines: [], computed_status: "" });
@@ -889,4 +967,34 @@ onMounted(() => { load(); loadTaxAccount(); });
 .po-inv-row { display: grid; grid-template-columns: 2fr 80px 90px 110px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
 .po-inv-row.warn { background: #fef3c7; }
 .po-warn { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px; padding: 10px 12px; font-size: 12.5px; color: #92400e; }
+
+/* ── Drawer add/edit cards (matches Invoice) ── */
+.add-card { border: 1px solid #e8ecf0; border-radius: 10px; overflow: hidden; background: #fff; margin-bottom: 12px; }
+.add-card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; background: #f8fafc; }
+.add-card-header:hover { background: #f1f4f8; }
+.add-card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #1a1a2e; }
+.add-card-title-icon { width: 28px; height: 28px; border-radius: 7px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.add-card-chevron { color: #9ca3af; transition: transform .2s; display: flex; }
+.add-card-chevron.collapsed { transform: rotate(-90deg); }
+.add-card-body { padding: 16px; border-top: 1px solid #e8ecf0; }
+.add-card-body.collapsed { display: none; }
+.add-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* ── Item count badge in card title ── */
+.po-item-count { font-size: 11px; font-weight: 600; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1px 8px; margin-left: 4px; }
+
+/* ── Draft badge in drawer header ── */
+.po-draft-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,.15); color: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.25); }
+
+/* ── Footer action buttons (matches Invoice add-btn-*) ── */
+.add-footer-status { font-size: 12px; color: #9ca3af; }
+.add-footer-actions { display: flex; align-items: center; gap: 8px; }
+.add-btn-cancel { background: none; border: 1px solid #e8ecf0; border-radius: 7px; padding: 7px 16px; font-size: 13px; font-weight: 600; color: #6b7280; cursor: pointer; }
+.add-btn-cancel:hover { border-color: #374151; color: #374151; }
+.add-btn-draft { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e8ecf0; border-radius: 7px; padding: 7px 16px; font-size: 13px; font-weight: 600; color: #374151; cursor: pointer; }
+.add-btn-draft:hover { border-color: #374151; }
+.add-btn-draft:disabled { opacity: .5; cursor: not-allowed; }
+.add-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #1a6ef7; color: #fff; border: none; border-radius: 7px; padding: 7px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.add-btn-primary:hover { background: #155fd4; }
+.add-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
 </style>

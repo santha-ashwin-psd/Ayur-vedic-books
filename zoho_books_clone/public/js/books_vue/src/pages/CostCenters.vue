@@ -268,7 +268,7 @@ const showDrawer   = ref(false);
 const showDelModal = ref(false);
 const saving       = ref(false);
 
-const fForm = reactive({ name: "", code: "", parent: "", type: "Department", color: CC_COLORS[0], budget: "", budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "" });
+const fForm = reactive({ name: "", code: "", parent: "", type: "Department", color: CC_COLORS[0], budget: "", budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "", modified: "" });
 
 function r2(v) { return Math.round(Number(v || 0) * 100) / 100; }
 function fmtINR(v) { const n = Number(v || 0); if (n === 0) return "₹0"; return "₹" + Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 0 }); }
@@ -279,7 +279,7 @@ async function load() {
   try {
     const ccs = await apiGET("frappe.client.get_list", {
       doctype: "Cost Center",
-      fields: JSON.stringify(["name", "cost_center_name", "cost_center_number", "parent_cost_center", "is_group", "disabled", "description", "budget", "budget_period", "alert_pct", "budget_action", "cc_type", "color_tag"]),
+      fields: JSON.stringify(["name", "cost_center_name", "cost_center_number", "parent_cost_center", "is_group", "disabled", "description", "budget", "budget_period", "alert_pct", "budget_action", "cc_type", "color_tag", "modified"]),
       order_by: "name asc", limit_page_length: 200,
     }) || [];
     allCC.value = ccs.map((c) => ({
@@ -287,7 +287,7 @@ async function load() {
       type: c.cc_type || "Department", color: c.color_tag || "#3B5BDB", budget: Number(c.budget) || 0,
       budget_period: c.budget_period || "Annual", alert_pct: c.alert_pct || 80,
       budget_action: c.budget_action || "Warn", is_group: c.is_group ? 1 : 0,
-      status: c.disabled ? "Inactive" : "Active", desc: c.description || "",
+      status: c.disabled ? "Inactive" : "Active", desc: c.description || "", modified: c.modified || "",
     }));
     // Real actual spend per cost center, summed from posted GL entries.
     try {
@@ -331,14 +331,24 @@ const ccChildren = computed(() => selectedCC.value ? allCC.value.filter((c) => c
 
 function openAdd(parentName) {
   editing.value = null;
-  Object.assign(fForm, { name: "", code: "", parent: parentName || "", type: "Department", color: CC_COLORS[0], budget: "", budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "" });
+  Object.assign(fForm, { name: "", code: "", parent: parentName || "", type: "Department", color: CC_COLORS[0], budget: "", budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "", modified: "" });
   showDrawer.value = true;
 }
 function openEdit(name) {
   const cc = allCC.value.find((c) => c.name === name);
   if (!cc) return;
   editing.value = name;
-  Object.assign(fForm, { ...cc, budget: cc.budget || "" });
+  // Only assign the fields we explicitly use — never spread the full cc object,
+  // as it may contain Frappe system fields (creation, owner, etc.) that would
+  // leak into the save payload and cause "Value cannot be changed" errors.
+  Object.assign(fForm, {
+    name: cc.name, code: cc.code || "", parent: cc.parent || "",
+    type: cc.type || "Department", color: cc.color || CC_COLORS[0],
+    budget: cc.budget || "", budget_period: cc.budget_period || "Annual",
+    alert_pct: cc.alert_pct || 80, budget_action: cc.budget_action || "Warn",
+    is_group: cc.is_group || 0, status: cc.status || "Active",
+    desc: cc.desc || "", modified: cc.modified || "",
+  });
   showDrawer.value = true;
 }
 function closeDrawer() { showDrawer.value = false; editing.value = null; }
@@ -350,9 +360,48 @@ async function saveCC() {
   const company = await resolveCompany();
   if (!company) { toast("No company configured. Please set a default company in Books Settings.", "error"); saving.value = false; return; }
   try {
-    const doc = { doctype: "Cost Center", cost_center_name: data.name, cost_center_number: data.code, parent_cost_center: data.parent || "", is_group: data.is_group, company, budget: data.budget, description: data.desc || "", cc_type: data.type, color_tag: data.color, budget_period: data.budget_period, alert_pct: Number(data.alert_pct) || 80, budget_action: data.budget_action };
-    if (editing.value) { doc.name = editing.value; await apiPOST("frappe.client.save", { doc: JSON.stringify(doc) }); }
-    else await apiPOST("frappe.client.insert", { doc: JSON.stringify(doc) });
+    if (editing.value) {
+      // Use set_value instead of save — save does an internal get+merge which
+      // can trip the "Value cannot be changed for Created On" guard when Frappe
+      // compares the incoming payload against the stored doc. set_value only
+      // updates the fields we explicitly pass, never touching system fields.
+      await apiPOST("frappe.client.set_value", {
+        doctype: "Cost Center",
+        name: editing.value,
+        fieldname: JSON.stringify({
+          cost_center_number: data.code || "",
+          parent_cost_center: data.parent || "",
+          is_group: data.is_group,
+          budget: data.budget,
+          description: data.desc || "",
+          cc_type: data.type,
+          color_tag: data.color,
+          budget_period: data.budget_period,
+          alert_pct: Number(data.alert_pct) || 80,
+          budget_action: data.budget_action,
+          disabled: data.status === "Inactive" ? 1 : 0,
+        }),
+      });
+    } else {
+      await apiPOST("frappe.client.insert", {
+        doc: JSON.stringify({
+          doctype: "Cost Center",
+          cost_center_name: data.name,
+          cost_center_number: data.code || "",
+          parent_cost_center: data.parent || "",
+          is_group: data.is_group,
+          company,
+          budget: data.budget,
+          description: data.desc || "",
+          cc_type: data.type,
+          color_tag: data.color,
+          budget_period: data.budget_period,
+          alert_pct: Number(data.alert_pct) || 80,
+          budget_action: data.budget_action,
+          disabled: data.status === "Inactive" ? 1 : 0,
+        }),
+      });
+    }
     await load();
     toast(editing.value ? "Cost center updated" : "Cost center created");
     saving.value = false;

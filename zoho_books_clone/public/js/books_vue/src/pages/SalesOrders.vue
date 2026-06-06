@@ -228,7 +228,6 @@
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
               <div class="inv-dh-title">{{ editingName ? 'Edit Sales Order' : 'New Sales Order' }}</div>
               <span v-if="!editingName" class="add-status-badge">Draft</span>
-              <span v-if="!editingName" class="add-autosave-notice"><span class="add-autosave-dot"></span></span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>

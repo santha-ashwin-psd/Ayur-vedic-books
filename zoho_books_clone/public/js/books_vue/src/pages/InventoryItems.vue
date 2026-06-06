@@ -151,7 +151,7 @@
               <div>
                 <label class="nim-label">Tax Template</label>
                 <select class="nim-input" v-model="form.tax_code">
-                  <option value="">— None —</option>
+                  <option value="">— Select —</option>
                   <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.label }}</option>
                 </select>
               </div>

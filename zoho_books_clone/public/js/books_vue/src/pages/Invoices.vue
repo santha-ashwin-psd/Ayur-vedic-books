@@ -200,9 +200,7 @@
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div class="inv-dh-title">{{ editingName ? 'Edit Invoice' : 'New Invoice' }}</div>
             <span v-if="!editingName" class="add-status-badge">Draft</span>
-            <span v-if="!editingName" class="add-autosave-notice">
-              <span class="add-autosave-dot"></span>
-            </span>
+
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <button class="inv-preview-toggle" @click="showPreview=!showPreview" :title="showPreview?'Hide preview':'Live preview'">
@@ -338,7 +336,7 @@
               <div style="margin-top:14px">
                 <label class="inv-lbl">Cost Center</label>
                 <select v-model="form.cost_center" class="inv-fi">
-                  <option value="">— None —</option>
+                  <option value="">— Select —</option>
                   <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
                 </select>
               </div>

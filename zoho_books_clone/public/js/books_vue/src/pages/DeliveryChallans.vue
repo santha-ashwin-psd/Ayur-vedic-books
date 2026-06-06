@@ -172,7 +172,6 @@
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div class="inv-dh-title">{{ editingName ? 'Edit Challan' : 'New Delivery Challan' }}</div>
             <span v-if="!editingName" class="add-status-badge">Draft</span>
-            <span v-if="!editingName" class="add-autosave-notice"><span class="add-autosave-dot"></span></span>
             <span v-if="editingName" class="inv-dh-sub" style="margin-left:4px">{{ editingName }}</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">

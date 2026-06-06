@@ -11,7 +11,7 @@
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
-        <button class="sales-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Payment</button>
+        <button class="sales-btn-primary" @click="openNew"><span ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg></span> New Payment</button>
       </div>
     </div>
 
@@ -226,12 +226,12 @@
           <div class="add-card-body" :class="{collapsed:pmtCollapsed.accounts}">
             <div class="inv-fg inv-fg2">
               <div>
-                <label class="inv-lbl">Paid From</label>
-                <SearchableSelect v-model="form.paid_from" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
+                <label class="inv-lbl">Paid From <span style="font-weight:400;color:#9ca3af;font-size:10.5px">({{ form.payment_type==='Receive'?'Receivable':'Bank / Cash' }})</span></label>
+                <SearchableSelect v-model="form.paid_from" :options="paidFromAccounts" placeholder="Select account…" @search="fetchPaidFromAccounts" @open="fetchPaidFromAccounts('')" />
               </div>
               <div>
-                <label class="inv-lbl">Paid To</label>
-                <SearchableSelect v-model="form.paid_to" :options="accounts" placeholder="Select account…" @search="fetchAccounts" />
+                <label class="inv-lbl">Paid To <span style="font-weight:400;color:#9ca3af;font-size:10.5px">({{ form.payment_type==='Receive'?'Bank / Cash':'Payable' }})</span></label>
+                <SearchableSelect v-model="form.paid_to" :options="paidToAccounts" placeholder="Select account…" @search="fetchPaidToAccounts" @open="fetchPaidToAccounts('')" />
               </div>
             </div>
           </div>
@@ -300,12 +300,14 @@
 
       <div class="inv-dfooter">
         <button class="form-btn form-btn-outline" @click="drawerOpen=false" :disabled="drawerSaving">Cancel</button>
-        <button class="form-btn form-btn-success" :disabled="drawerSaving" @click="savePayment(0)">
+        <div>
+        <button class="add-btn-draft" style="margin-right:5px" :disabled="drawerSaving" @click="savePayment(0)">
           <span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}
         </button>
-        <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="savePayment(1)">
+        <button class="add-btn-more" :disabled="drawerSaving" @click="savePayment(1)">
           <span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}
         </button>
+        </div>
       </div>
     </div>
 
@@ -480,7 +482,7 @@ const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewPmt = ref(null);
 const pmtCollapsed = reactive({ type: false, party: false, ref: false, accounts: true, alloc: false, notes: true });
-const partyOptions = ref([]), accounts = ref([]);
+const partyOptions = ref([]), paidFromAccounts = ref([]), paidToAccounts = ref([]);
 const paymentModes = ref(["Cash","Bank Transfer","Cheque","Credit Card","UPI","NEFT","RTGS"]);
 const sortCol = ref("payment_date"), sortDir = ref("desc");
 
@@ -564,7 +566,7 @@ function openNew() {
   outstandingInvoices.value = [];
   invoiceRefs.value = [];
   Object.assign(pmtCollapsed, { type: false, party: false, ref: false, accounts: true, alloc: false, notes: true });
-  fetchParties(""); fetchAccounts("");
+  fetchParties(""); fetchPaidFromAccounts(""); fetchPaidToAccounts("");
   drawerOpen.value = true;
 }
 
@@ -579,7 +581,7 @@ async function openEdit(p) {
   });
   outstandingInvoices.value = []; invoiceRefs.value = [];
   Object.assign(pmtCollapsed, { type: false, party: false, ref: false, accounts: true, alloc: false, notes: true });
-  fetchParties(""); fetchAccounts("");
+  fetchParties(""); fetchPaidFromAccounts(""); fetchPaidToAccounts("");
   drawerOpen.value = true;
   if (p.party) await fetchOutstandingInvoices(p.party, p.payment_type);
 }
@@ -597,9 +599,10 @@ async function openView(p) {
 function setPaymentType(type) {
   form.payment_type = type;
   form.party_type = type === "Receive" ? "Customer" : "Supplier";
-  form.party = "";
+  form.party = ""; form.paid_from = ""; form.paid_to = "";
   outstandingInvoices.value = []; invoiceRefs.value = [];
   fetchParties("");
+  fetchPaidFromAccounts(""); fetchPaidToAccounts("");
 }
 
 async function fetchParties(q = "") {
@@ -670,16 +673,34 @@ function onRefCheck(ref) {
 
 function syncUnallocated() {} // triggers computed
 
-async function fetchAccounts(q = "") {
+async function fetchPaidFromAccounts(q = "") {
   try {
     const company = await resolveCompany();
+    // Receive: party pays us → Paid From is their Receivable account
+    // Pay: we pay vendor → Paid From is our Bank/Cash account
+    const types = form.payment_type === "Receive" ? ["Receivable"] : ["Bank","Cash"];
     const rows = await apiList("Account", {
       fields: ["name","account_type"],
-      filters: [["is_group","=",0],["company","=",company],...(q?[["name","like",`%${q}%`]]:[])],
-      limit: 20,
+      filters: [["is_group","=",0],["company","=",company],["account_type","in",types],...(q?[["name","like",`%${q}%`]]:[])],
+      limit: 30,
     });
-    accounts.value = rows.map(r=>({label:r.name,value:r.name}));
-  } catch { accounts.value = []; }
+    paidFromAccounts.value = rows.map(r=>({label:r.name,value:r.name}));
+  } catch { paidFromAccounts.value = []; }
+}
+
+async function fetchPaidToAccounts(q = "") {
+  try {
+    const company = await resolveCompany();
+    // Receive: customer pays us → Paid To is our Bank/Cash account
+    // Pay: we pay vendor → Paid To is their Payable account
+    const types = form.payment_type === "Receive" ? ["Bank","Cash"] : ["Payable"];
+    const rows = await apiList("Account", {
+      fields: ["name","account_type"],
+      filters: [["is_group","=",0],["company","=",company],["account_type","in",types],...(q?[["name","like",`%${q}%`]]:[])],
+      limit: 30,
+    });
+    paidToAccounts.value = rows.map(r=>({label:r.name,value:r.name}));
+  } catch { paidToAccounts.value = []; }
 }
 
 async function savePayment(submit) {

@@ -100,133 +100,231 @@
     <!-- ── Create / Edit drawer ── -->
     <div v-if="drawerOpen" class="inv-drawer-bg" @click.self="drawerOpen=false"></div>
     <div class="inv-drawer-panel bill-edit-drawer" :class="{open:drawerOpen}">
+
+      <!-- Header -->
       <div class="inv-dh">
-        <div class="inv-dh-title">{{ editingName ? 'Edit Bill' : 'New Bill' }}</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="inv-dh-title">{{ editingName ? 'Edit Bill' : 'New Bill' }}</div>
+          <span v-if="!editingName" class="add-status-badge">Draft</span>
+        </div>
         <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
       </div>
+
       <div class="inv-dbody">
-        <div class="inv-fg inv-fg2">
-          <div style="grid-column:1/-1">
-            <label class="inv-lbl">Vendor <span class="req">*</span></label>
-            <SearchableSelect v-model="form.supplier" :options="vendors"
-              placeholder="Select vendor…" :createable="true" createDoctype="Supplier"
-              @search="fetchVendors" @select="onVendorSelect" />
+
+        <!-- ══ CARD 1: Bill Details ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="billCollapsed.details=!billCollapsed.details">
+            <div class="add-card-title">
+              <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+              Bill Details
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:billCollapsed.details}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
           </div>
-          <div>
-            <label class="inv-lbl">Bill Date <span class="req">*</span></label>
-            <input v-model="form.posting_date" type="date" class="inv-fi" />
-          </div>
-          <div>
-            <label class="inv-lbl">Due Date</label>
-            <input v-model="form.due_date" type="date" class="inv-fi" />
-          </div>
-          <div>
-            <label class="inv-lbl">Vendor Bill #</label>
-            <input v-model="form.bill_no" type="text" class="inv-fi" placeholder="Vendor's invoice number" />
-          </div>
-          <div>
-            <label class="inv-lbl">Vendor Bill Date</label>
-            <input v-model="form.bill_date" type="date" class="inv-fi" />
-          </div>
-          <div style="grid-column:1/-1">
-            <div class="inv-inv-block" :class="form.update_stock ? 'inv-on' : 'inv-off'">
-              <div class="inv-inv-toggle-row">
-                <div class="inv-inv-icon" v-html="icon('box', 16)"></div>
-                <div class="inv-inv-text">
-                  <div class="inv-inv-title">Update Inventory on Submit</div>
-                  <div class="inv-inv-sub">Stock increases in the selected warehouse when this bill is submitted</div>
-                </div>
-                <label class="inv-inv-switch">
-                  <input type="checkbox" v-model="form.update_stock" :true-value="1" :false-value="0" />
-                  <span class="inv-inv-slider"></span>
-                </label>
+          <div class="add-card-body" :class="{collapsed:billCollapsed.details}">
+            <div>
+              <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
+              <SearchableSelect v-model="form.supplier" :options="vendors"
+                placeholder="Select vendor…" :createable="true" createDoctype="Supplier"
+                @search="fetchVendors" @select="onVendorSelect" />
+            </div>
+            <div class="add-details-grid" style="margin-top:14px">
+              <div>
+                <label class="inv-lbl">Bill Date <span class="inv-req">*</span></label>
+                <input v-model="form.posting_date" type="date" class="inv-fi" />
               </div>
-              <div v-if="form.update_stock" class="inv-inv-wh-row">
-                <label class="inv-lbl" style="margin-bottom:6px">Receiving Warehouse <span style="color:#dc2626">*</span></label>
-                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where stock will be received…" @search="fetchWarehouses" />
+              <div>
+                <label class="inv-lbl">Due Date</label>
+                <input v-model="form.due_date" type="date" class="inv-fi" />
+              </div>
+              <div>
+                <label class="inv-lbl">Vendor Bill #</label>
+                <input v-model="form.bill_no" type="text" class="inv-fi" placeholder="Vendor's invoice number" />
+              </div>
+              <div>
+                <label class="inv-lbl">Vendor Bill Date</label>
+                <input v-model="form.bill_date" type="date" class="inv-fi" />
+              </div>
+              <div>
+                <label class="inv-lbl">Currency</label>
+                <select v-model="form.currency" class="inv-fi" @change="form.exchange_rate=form.currency==='INR'?1:form.exchange_rate">
+                  <option v-for="(sym,code) in BILL_CURRENCIES" :key="code" :value="code">{{ code }} {{ sym }}</option>
+                </select>
+              </div>
+              <div v-if="form.currency !== 'INR'">
+                <label class="inv-lbl">Exchange Rate</label>
+                <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi"/>
+              </div>
+              <div>
+                <label class="inv-lbl">Cost Center</label>
+                <select v-model="form.cost_center" class="inv-fi">
+                  <option value="">— Select —</option>
+                  <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Inventory toggle -->
+            <div style="margin-top:14px">
+              <div class="inv-inv-block" :class="form.update_stock ? 'inv-on' : 'inv-off'">
+                <div class="inv-inv-toggle-row">
+                  <div class="inv-inv-icon" v-html="icon('box', 16)"></div>
+                  <div class="inv-inv-text">
+                    <div class="inv-inv-title">Update Inventory on Submit</div>
+                    <div class="inv-inv-sub">Stock increases in the selected warehouse when this bill is submitted</div>
+                  </div>
+                  <label class="inv-inv-switch">
+                    <input type="checkbox" v-model="form.update_stock" :true-value="1" :false-value="0" />
+                    <span class="inv-inv-slider"></span>
+                  </label>
+                </div>
+                <div v-if="form.update_stock" class="inv-inv-wh-row">
+                  <label class="inv-lbl" style="margin-bottom:6px">Receiving Warehouse <span style="color:#dc2626">*</span></label>
+                  <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where stock will be received…" @search="fetchWarehouses" />
+                </div>
               </div>
             </div>
           </div>
-          <div>
-            <label class="inv-lbl">Currency</label>
-            <select v-model="form.currency" class="inv-fi" @change="form.exchange_rate=form.currency==='INR'?1:form.exchange_rate">
-              <option v-for="(sym,code) in BILL_CURRENCIES" :key="code" :value="code">{{ code }} {{ sym }}</option>
-            </select>
+        </div>
+
+        <!-- ══ CARD 2: Billing Address ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="billCollapsed.billing=!billCollapsed.billing">
+            <div class="add-card-title">
+              <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+              Billing Address
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:billCollapsed.billing}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
           </div>
-          <div v-if="form.currency !== 'INR'">
-            <label class="inv-lbl">Exchange Rate</label>
-            <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi"/>
+          <div class="add-card-body" :class="{collapsed:billCollapsed.billing}">
+            <div v-if="vendorBillingAddrs.length > 1" style="margin-bottom:8px">
+              <label class="inv-lbl">Select Address</label>
+              <select v-model="form.selected_billing_addr_name" class="inv-fi" @change="applyVendorBillingAddr">
+                <option value="">— Select address —</option>
+                <option v-for="a in vendorBillingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="inv-lbl">Address <span style="color:#9ca3af;font-weight:400">(auto-filled from vendor)</span></label>
+              <textarea v-model="form.billing_address" class="inv-fi" rows="3" style="resize:vertical;width:100%;box-sizing:border-box" placeholder="Auto-filled from vendor, or enter manually"></textarea>
+            </div>
           </div>
         </div>
 
-        <!-- Billing Address -->
-        <div style="margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Billing Address</div>
-          <div v-if="vendorBillingAddrs.length > 1" style="margin-bottom:8px">
-            <select v-model="form.selected_billing_addr_name" class="inv-fi" @change="applyVendorBillingAddr">
-              <option value="">— Select address —</option>
-              <option v-for="a in vendorBillingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
-            </select>
+        <!-- ══ CARD 3: Line Items ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="billCollapsed.lines=!billCollapsed.lines">
+            <div class="add-card-title">
+              <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+              Line Items
+            </div>
+            <div style="display:flex;align-items:center;gap:8px" @click.stop>
+              <button v-if="form.supplier" class="inv-add-line-btn inv-copy-btn" @click="copyLastItems" :disabled="copyingLast">
+                <span v-html="icon('copy',12)"></span> {{ copyingLast ? 'Loading…' : 'Copy Last' }}
+              </button>
+              <button class="add-lines-add-btn" @click="addLine">
+                <span v-html="icon('plus',13)"></span> Add Item
+              </button>
+              <span class="add-card-chevron" :class="{collapsed:billCollapsed.lines}" @click.stop="billCollapsed.lines=!billCollapsed.lines">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
           </div>
-          <textarea v-model="form.billing_address" class="inv-fi" rows="2" style="resize:vertical;width:100%;box-sizing:border-box" placeholder="Auto-filled from vendor, or enter manually"></textarea>
+          <div class="add-card-body" :class="{collapsed:billCollapsed.lines}" style="padding:0">
+            <div style="overflow-x:auto">
+              <table class="inv-lines-tbl">
+                <thead>
+                  <tr>
+                    <th style="width:28px">#</th>
+                    <th style="min-width:150px">Item</th>
+                    <th style="min-width:120px">Description</th>
+                    <th style="min-width:70px;text-align:right">Qty</th>
+                    <th style="min-width:90px;text-align:right">Rate (₹)</th>
+                    <th style="min-width:90px;text-align:right">Amount (₹)</th>
+                    <th style="width:32px"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(line, idx) in lines" :key="line.id">
+                    <td><span class="add-line-num">{{ idx+1 }}</span></td>
+                    <td>
+                      <SearchableSelect v-model="line.item_code" :options="items"
+                        placeholder="Select item…" :compact="true" :createable="true" createDoctype="Item"
+                        @search="fetchItems" @select="v=>onItemSelect(line,v)" />
+                    </td>
+                    <td><input v-model="line.description" class="inv-ci" placeholder="Description" /></td>
+                    <td><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-ci inv-ci-r" @input="calcLine(line)" /></td>
+                    <td><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-ci inv-ci-r" @input="calcLine(line)" /></td>
+                    <td class="add-line-amount">{{ fmtCur(line.amount) }}</td>
+                    <td style="padding:4px 6px">
+                      <button @click="removeLine(line.id)" class="add-line-del"><span v-html="icon('trash',12)"></span></button>
+                    </td>
+                  </tr>
+                  <tr class="add-new-line-row">
+                    <td colspan="7" style="padding:6px 14px;border-bottom:none">
+                      <button class="add-new-line-btn" @click="addLine">
+                        <span v-html="icon('plus',12)"></span> Add new line
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="!lines.length">
+                    <td colspan="7" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
+                      No line items — click "+ Add Item" to get started
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- Totals -->
+            <div class="inv-totals-wrap">
+              <div style="max-width:160px">
+                <label class="inv-lbl">Tax Rate %</label>
+                <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="inv-fi" />
+              </div>
+              <div class="inv-totals">
+                <div class="inv-total-row"><span>Subtotal</span><span class="inv-total-amt">{{ fmtCur(subtotal) }}</span></div>
+                <div class="inv-total-row" style="color:#6b7280;font-size:12px"><span>Tax ({{ form.tax_rate||0 }}%)</span><span class="inv-total-amt">{{ fmtCur(taxAmount) }}</span></div>
+                <div class="inv-total-row inv-grand-total"><span>Grand Total</span><span class="inv-total-amt" style="font-size:16px;color:#1565c0">{{ fmtCur(subtotal+taxAmount) }}</span></div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label class="inv-lbl">Cost Center</label>
-          <select v-model="form.cost_center" class="inv-fi">
-            <option value="">— None —</option>
-            <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
-          </select>
+        <!-- ══ CARD 4: Remarks ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="billCollapsed.remarks=!billCollapsed.remarks">
+            <div class="add-card-title">
+              <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+              Remarks
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:billCollapsed.remarks}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:billCollapsed.remarks}">
+            <label class="inv-lbl">Internal Remarks <span style="color:#9ca3af;font-weight:400">(not printed)</span></label>
+            <textarea v-model="form.remarks" rows="3" class="inv-fi" placeholder="Internal notes for your team…"></textarea>
+          </div>
         </div>
 
-        <div class="bill-section-row">
-          <div class="inv-sec-lbl" style="border-top:none;padding-top:0;margin-top:0">Items</div>
-          <button v-if="form.supplier" class="bill-copy-btn" @click="copyLastItems" :disabled="copyingLast">
-            <span v-html="icon('copy',12)"></span> {{ copyingLast ? 'Loading…' : 'Copy Last' }}
+      </div><!-- /inv-dbody -->
+
+      <!-- Footer -->
+      <div class="inv-dfooter">
+        <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New bill — unsaved changes' }}</div>
+        <div class="add-footer-actions">
+          <button class="add-btn-cancel" @click="drawerOpen=false">Cancel</button>
+          <button class="add-btn-draft" :disabled="drawerSaving" @click="saveBill(0)">
+            <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
+          </button>
+          <button class="add-btn-submit" :disabled="drawerSaving" @click="saveBill(1)">
+            <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Submit' }}
           </button>
         </div>
-        <div class="bill-items-table">
-          <div class="bill-items-head">
-            <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
-          </div>
-          <div v-for="line in lines" :key="line.id" class="bill-items-row">
-            <div><SearchableSelect v-model="line.item_code" :options="items"
-              placeholder="Select item…" :createable="true" createDoctype="Item"
-              @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
-            <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
-            <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-            <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-            <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
-            <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
-          </div>
-          <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
-        </div>
-
-        <div class="bill-totals">
-          <div style="max-width:160px">
-            <label class="inv-lbl">Tax Rate %</label>
-            <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="inv-fi" />
-          </div>
-          <div class="bill-totals-right">
-            <div class="bill-total-row"><span>Subtotal</span><span>{{ fmtCur(subtotal) }}</span></div>
-            <div class="bill-total-row"><span>Tax ({{ form.tax_rate||0 }}%)</span><span>{{ fmtCur(taxAmount) }}</span></div>
-            <div class="bill-total-row grand"><span>Total</span><span>{{ fmtCur(subtotal+taxAmount) }}</span></div>
-          </div>
-        </div>
-
-        <div>
-          <label class="inv-lbl">Remarks</label>
-          <textarea v-model="form.remarks" rows="2" class="inv-fi" placeholder="Optional…"></textarea>
-        </div>
-      </div>
-      <div class="inv-dfooter">
-        <button class="form-btn form-btn-outline" @click="drawerOpen=false">Cancel</button>
-        <button class="form-btn form-btn-success" :disabled="drawerSaving" @click="saveBill(0)">
-          <span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}
-        </button>
-        <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="saveBill(1)">
-          <span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}
-        </button>
       </div>
     </div>
 
@@ -234,105 +332,220 @@
     <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
     <div class="inv-drawer-panel bill-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
-        <div class="inv-view-header bill-view-head">
-          <div>
-            <div class="inv-view-number">{{ viewDoc.name }}</div>
-            <div class="inv-view-subtitle">{{ viewDoc.supplier_name||viewDoc.supplier }}</div>
+
+        <!-- Top header: bill number + badge | Pay CTA -->
+        <div class="inv-view-header bill-view-page-header">
+          <div class="inv-view-header-left">
+            <div class="inv-view-title-row">
+              <span class="inv-view-number">{{ viewDoc.name }}</span>
+              <span class="inv-hdr-badge" :class="statusCls(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+            </div>
+            <div class="inv-view-subtitle">
+              {{ viewDoc.supplier_name || viewDoc.supplier }}
+              <span v-if="viewDoc.due_date"> · Due {{ fmtDate(viewDoc.due_date) }}
+                <span v-if="isOverdue(viewDoc)" style="color:#dc2626">(overdue)</span>
+              </span>
+            </div>
           </div>
-          <div style="text-align:right">
-            <div class="bill-view-amount">{{ fmtCur(viewDoc.grand_total) }}</div>
-            <span class="inv-hdr-badge" :class="statusCls(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1"
+                    class="inv-view-cta"
+                    @click="payBill(viewDoc)">
+              <span v-html="icon('indianrupee',15)"></span> Record Payment
+            </button>
+            <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
+              <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
+            </button>
           </div>
-          <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
 
-        <TimelineStepper :steps="timelineSteps" />
+        <!-- Main white card -->
+        <div class="inv-view-body">
 
-        <div class="inv-view-tabs">
-          <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
-          <button class="inv-vtab" :class="{active:viewTab==='payments'}" @click="viewTab='payments'">
-            Payments<span v-if="viewPayments.length" class="inv-vtab-count">{{ viewPayments.length }}</span>
-          </button>
-        </div>
+          <!-- Status timeline -->
+          <div class="inv-tl-wrap">
+            <div class="inv-tl">
+              <div class="inv-tl-progress" :style="{ width: billTlProgressWidth }"></div>
+              <template v-for="(step, i) in timelineSteps" :key="i">
+                <div class="inv-tl-step"
+                     :class="{ 'tl-done': step.done && !step.danger, 'tl-danger': step.danger, 'tl-success': step.success, 'tl-pending': !step.done && !step.danger }">
+                  <div class="inv-tl-dot">
+                    <span v-if="step.done && !step.danger" v-html="icon('check',14)"></span>
+                    <span v-else-if="step.danger" style="font-size:11px;font-weight:800">!</span>
+                    <span v-else v-html="icon(step.icon||'circle',14)"></span>
+                  </div>
+                  <div class="inv-tl-label">{{ step.label }}</div>
+                  <div class="inv-tl-date">{{ step.date ? fmtDate(step.date) : '—' }}</div>
+                </div>
+              </template>
+            </div>
+          </div>
 
-        <div class="inv-dbody">
+          <!-- Action buttons bar -->
+          <div class="inv-action-bar">
+            <button v-if="viewDoc.docstatus===0" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
+              <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
+            </button>
+            <button class="inv-ab-btn" @click="printBILL(viewDoc)">
+              <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
+            </button>
+            <button v-if="viewDoc.docstatus===1" class="inv-ab-btn" @click="emailBill(viewDoc)">
+              <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
+            </button>
+            <button v-if="viewDoc.docstatus===1" class="inv-ab-btn" @click="issueDebitNote(viewDoc)">
+              <span v-html="icon('arrow-left',13)"></span> <span class="ab-label">Debit Note</span>
+            </button>
+            <button v-if="viewDoc.docstatus===1" class="inv-ab-btn" @click="makeRecurringBill(viewDoc)">
+              <span v-html="icon('repeat',13)"></span> <span class="ab-label">Make Recurring</span>
+            </button>
+            <button v-if="viewDoc.docstatus===1" class="inv-ab-btn inv-ab-danger" @click="cancelBill(viewDoc)">
+              Cancel
+            </button>
+            <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="inv-ab-btn inv-ab-danger" @click="deleteBill(viewDoc)">
+              <span v-html="icon('trash',13)"></span> <span class="ab-label">Delete</span>
+            </button>
+          </div>
+
+          <!-- Tabs -->
+          <div class="inv-view-tabs">
+            <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
+            <button class="inv-vtab" :class="{active:viewTab==='payments'}" @click="viewTab='payments'">
+              Payments<span v-if="viewPayments.length" class="inv-vtab-count">{{ viewPayments.length }}</span>
+            </button>
+          </div>
+
+          <!-- ── Details tab ── -->
           <template v-if="viewTab==='details'">
-            <div class="bill-meta-grid">
-              <div><div class="bill-meta-lbl">Bill Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}</div></div>
-              <div><div class="bill-meta-lbl">Due Date</div>
-                <div class="mono-sm" :class="isOverdue(viewDoc)?'text-danger':''">{{ fmtDate(viewDoc.due_date)||'—' }}</div>
-              </div>
-              <div><div class="bill-meta-lbl">Vendor Bill #</div><div class="mono-sm">{{ viewDoc.bill_no||'—' }}</div></div>
-              <div><div class="bill-meta-lbl">Outstanding</div><div class="mono-sm" :class="flt(viewDoc.outstanding_amount)>0?'text-danger':'text-success'">{{ fmtCur(viewDoc.outstanding_amount) }}</div></div>
-            </div>
+            <div class="inv-tab-body">
 
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading details…</div>
-            <template v-else>
-              <div v-if="viewItems.length" class="bill-meta-lbl" style="margin-top:12px">Line Items</div>
-              <div v-if="viewItems.length" class="bill-view-items">
-                <div class="bill-view-items-head">
-                  <span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span>
+              <!-- Meta row -->
+              <div class="inv-details-meta" style="grid-template-columns:repeat(3,1fr)">
+                <div class="inv-details-meta-col">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('user',13)"></span>
+                    <span class="inv-dmeta-lbl">Vendor</span>
+                  </div>
+                  <div class="inv-dmeta-primary">{{ viewDoc.supplier_name||viewDoc.supplier }}</div>
+                  <div v-if="viewDoc.bill_no" class="inv-dmeta-secondary">Vendor Bill # {{ viewDoc.bill_no }}</div>
                 </div>
-                <div v-for="it in viewItems" :key="it.name" class="bill-view-items-row">
-                  <span><strong>{{ it.item_name||it.item_code }}</strong>
-                    <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div></span>
-                  <span class="ta-r mono-sm">{{ it.qty }}</span>
-                  <span class="ta-r mono-sm">{{ fmtCur(it.rate) }}</span>
-                  <span class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(it.amount) }}</span>
+                <div class="inv-details-meta-col">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
+                    <span class="inv-dmeta-lbl">Bill Date</span>
+                  </div>
+                  <div class="inv-dmeta-date-val">{{ fmtDate(viewDoc.posting_date) }}</div>
+                </div>
+                <div class="inv-details-meta-col col-balance">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('indianrupee',13)"></span>
+                    <span class="inv-dmeta-lbl">Balance Due</span>
+                  </div>
+                  <div class="inv-balance-val"
+                       :class="{'is-paid': flt(viewDoc.outstanding_amount)===0, 'is-zero': flt(viewDoc.outstanding_amount)===0}">
+                    {{ fmtCur(viewDoc.outstanding_amount) }}
+                  </div>
+                  <button v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1"
+                          class="inv-rec-pay-btn"
+                          @click="payBill(viewDoc)">
+                    Record Payment
+                  </button>
                 </div>
               </div>
-            </template>
+
+              <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading details…</div>
+
+              <template v-else>
+                <!-- Line items table -->
+                <div v-if="viewItems.length" class="inv-items-wrap">
+                  <table class="inv-items-table">
+                    <thead>
+                      <tr>
+                        <th style="width:36px">#</th>
+                        <th>Item &amp; Description</th>
+                        <th class="th-r">Qty</th>
+                        <th class="th-r">Rate (₹)</th>
+                        <th class="th-r">Amount (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(it,i) in viewItems" :key="i">
+                        <td class="inv-item-num">{{ i+1 }}</td>
+                        <td>
+                          <div class="inv-item-name">{{ it.item_name||it.item_code }}</div>
+                          <div v-if="it.description" class="inv-item-desc">{{ it.description }}</div>
+                        </td>
+                        <td class="td-r">{{ flt(it.qty) }}</td>
+                        <td class="td-r">{{ fmtCur(it.rate) }}</td>
+                        <td class="td-r" style="font-weight:600">{{ fmtCur(it.amount) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <!-- Totals -->
+                  <div class="inv-totals-section">
+                    <div class="inv-totals-inner">
+                      <div class="inv-total-line">
+                        <span class="t-lbl">Subtotal</span>
+                        <span class="t-amt">{{ fmtCur((viewDoc.grand_total||0)-(viewDoc.total_taxes_and_charges||0)) }}</span>
+                      </div>
+                      <template v-if="viewDoc.taxes&&viewDoc.taxes.length">
+                        <div v-for="(tx,i) in viewDoc.taxes" :key="i" class="inv-total-line">
+                          <span class="t-lbl">{{ tx.description||tx.account_head }}</span>
+                          <span class="t-amt">{{ fmtCur(tx.tax_amount||tx.amount||0) }}</span>
+                        </div>
+                      </template>
+                      <div v-else class="inv-total-line">
+                        <span class="t-lbl">Tax (0%)</span>
+                        <span class="t-amt">{{ fmtCur(0) }}</span>
+                      </div>
+                      <div class="inv-grand-total-line">
+                        <span class="inv-grand-lbl">Grand Total</span>
+                        <span class="inv-grand-amt">{{ fmtCur(viewDoc.grand_total) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No item details available.</div>
+              </template>
+            </div>
           </template>
 
+          <!-- ── Payments tab ── -->
           <template v-if="viewTab==='payments'">
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading payments…</div>
-            <div v-else-if="viewPayments.length">
-              <div class="bill-pay-head">
-                <span>Date</span><span>Mode</span><span>Reference</span><span class="ta-r">Amount</span>
+            <div class="inv-tab-body">
+              <div v-if="viewLoading" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">Loading payments…</div>
+              <div v-else-if="viewPayments.length" class="inv-items-wrap">
+                <table class="inv-items-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Mode</th>
+                      <th>Reference</th>
+                      <th class="th-r">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="p in viewPayments" :key="p.name">
+                      <td class="mono-sm">{{ fmtDate(p.payment_date) }}</td>
+                      <td>{{ p.mode_of_payment || '—' }}</td>
+                      <td class="mono-sm text-muted">{{ p.reference_no || '—' }}</td>
+                      <td class="td-r" style="font-weight:600;color:#059669">{{ fmtCur(p.paid_amount) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div v-for="p in viewPayments" :key="p.name" class="bill-pay-row">
-                <span class="mono-sm">{{ fmtDate(p.payment_date) }}</span>
-                <span>{{ p.mode_of_payment || '—' }}</span>
-                <span class="mono-sm text-muted">{{ p.reference_no || '—' }}</span>
-                <span class="ta-r mono-sm" style="font-weight:600;color:#059669">{{ fmtCur(p.paid_amount) }}</span>
-              </div>
-            </div>
-            <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
-              No payments recorded yet.
-              <div v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1" style="margin-top:8px">
-                <button class="form-btn form-btn-primary" @click="payBill(viewDoc)" style="font-size:12px;padding:6px 12px">₹ Record Payment</button>
+              <div v-else style="text-align:center;padding:40px 24px;color:#9ca3af;font-size:13px">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3" style="margin-bottom:10px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <div>No payments recorded yet.</div>
+                <div v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1" style="margin-top:12px">
+                  <button class="inv-view-cta" @click="payBill(viewDoc)" style="font-size:12px;padding:7px 14px">₹ Record Payment</button>
+                </div>
               </div>
             </div>
           </template>
-        </div>
 
-        <div class="inv-dfooter">
-          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-success" @click="openEdit(viewDoc);viewOpen=false">
-            <span v-html="icon('edit',13)"></span> Edit
-          </button>
-          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" @click="emailBill(viewDoc)">
-            <span v-html="icon('mail',13)"></span> Email
-          </button>
-          <button class="form-btn form-btn-outline" @click="printBILL(viewDoc)" title="Print preview">
-            🖨 Print
-          </button>
-          <button v-if="viewDoc.docstatus===1 && flt(viewDoc.outstanding_amount)>0" class="form-btn form-btn-primary" @click="payBill(viewDoc)">
-            ₹ Record Payment
-          </button>
-          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="issueDebitNote(viewDoc)">
-            <span v-html="icon('arrow-left',13)"></span> Issue Debit Note
-          </button>
-          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" @click="makeRecurringBill(viewDoc)">
-            <span v-html="icon('repeat',13)"></span> Make Recurring
-          </button>
-          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="cancelBill(viewDoc)">
-            Cancel
-          </button>
-          <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="form-btn form-btn-danger" @click="deleteBill(viewDoc)">
-            Delete
-          </button>
-        </div>
+        </div><!-- /inv-view-body -->
+
       </template>
     </div>
 
@@ -390,6 +603,7 @@ const tabs = [
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
+const billCollapsed = reactive({ details: false, billing: true, lines: false, remarks: true });
 const viewLoading = ref(false), viewItems = ref([]), viewPayments = ref([]);
 const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref("");
 const sortCol = ref("posting_date"), sortDir = ref("desc");
@@ -508,12 +722,20 @@ const timelineSteps = computed(() => {
   ];
 });
 
-// ── Create/Edit ───────────────────────────────────────────────────────────
+const billTlProgressWidth = computed(() => {
+  const steps = timelineSteps.value;
+  if (!steps.length) return "0%";
+  const doneIdx = steps.reduce((last, s, i) => (s.done || s.danger) ? i : last, -1);
+  if (doneIdx < 0) return "0%";
+  const pct = (doneIdx / (steps.length - 1)) * 100;
+  return pct + "%";
+});
 function openNew() {
   editingName.value = "";
   Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "" });
   vendorBillingAddrs.value = [];
   lines.value = [blankLine()];
+  Object.assign(billCollapsed, { details: false, billing: true, lines: false, remarks: true });
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
 }
@@ -826,54 +1048,145 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 </script>
 
 <style scoped>
-/* ── Edit drawer: narrower than default 720px ── */
-.bill-edit-drawer { width: 600px; right: -600px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; }
+@import '../styles/list.css';
+@import '../styles/view.css';
+@import '../styles/edit.css';
+@import '../styles/add.css';
+
+/* ── Edit drawer ── */
+.bill-edit-drawer { width: 680px; right: -680px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; }
 .bill-edit-drawer.open { right: 0; }
 
-/* ── View drawer: even narrower ── */
-.bill-view-drawer { width: 540px; right: -540px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; }
+/* ── View drawer ── */
+.bill-view-drawer { width: 680px; right: -680px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; background: #f5f6f8; display: flex; flex-direction: column; overflow-y: auto; }
 .bill-view-drawer.open { right: 0; }
 
-/* ── View header: flat (no status-based background) ── */
-.bill-view-head {
-  position: relative;
+/* ── View page header ── */
+.bill-view-page-header {
+  padding: 16px 20px 10px;
   flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #fff;
   border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc !important;
-  padding: 20px;
 }
-.bill-view-head .inv-view-number { color: #1a1a2e; }
-.bill-view-head .inv-view-subtitle { color: #6b7280; }
-.bill-view-amount { font-size: 22px; font-weight: 800; font-family: monospace; color: #1a1a2e; }
+.inv-view-header-left { flex: 1; min-width: 0; }
+.inv-view-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.inv-view-number { font-size: 18px; font-weight: 800; color: #1a1a2e; }
+.inv-view-subtitle { font-size: 13px; color: #6b7280; }
+.inv-hdr-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
 
-/* ── Meta grid in view ── */
-.bill-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.bill-meta-lbl { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+/* ── View CTA button ── */
+.inv-view-cta { display: inline-flex; align-items: center; gap: 6px; background: #1a6ef7; color: #fff; border: none; border-radius: 7px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.inv-view-cta:hover { background: #155fd4; }
 
-/* ── Line items table (edit drawer) ── */
-.bill-section-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.bill-copy-btn { background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; padding: 4px 10px; border-radius: 6px; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
-.bill-copy-btn:hover { background: #dcfce7; }
-.bill-copy-btn:disabled { opacity: .5; cursor: not-allowed; }
-.bill-items-table { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 8px; }
-.bill-items-head { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11.5px; font-weight: 600; color: #374151; }
-.bill-items-row { display: grid; grid-template-columns: 2fr 2fr 80px 100px 100px 32px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; }
+/* ── inv-view-body wraps everything below header ── */
+.inv-view-body { margin: 12px 16px 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
 
-/* ── Totals block ── */
-.bill-totals { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.bill-totals-right { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
-.bill-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 3px 0; }
-.bill-total-row.grand { font-weight: 700; font-size: 14px; color: #111827; border-top: 1px solid #e5e7eb; padding-top: 6px; margin-top: 2px; }
+/* ── Status timeline ── */
+.inv-tl-wrap { padding: 20px 24px 4px; border-bottom: 1px solid #f0f2f5; }
+.inv-tl { position: relative; display: flex; align-items: flex-start; justify-content: space-between; }
+.inv-tl-progress { position: absolute; top: 18px; left: 0; height: 3px; background: #1a6ef7; border-radius: 2px; transition: width .4s ease; z-index: 0; }
+.inv-tl-step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; position: relative; z-index: 1; }
+.inv-tl-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid #e5e7eb; background: #fff; }
+.tl-done .inv-tl-dot   { background: #1a6ef7; border-color: #1a6ef7; color: #fff; }
+.tl-danger .inv-tl-dot { background: #dc2626; border-color: #dc2626; color: #fff; }
+.tl-success .inv-tl-dot{ background: #16a34a; border-color: #16a34a; color: #fff; }
+.tl-pending .inv-tl-dot { background: #f9fafb; border-color: #d1d5db; color: #9ca3af; }
+.inv-tl-label { font-size: 11.5px; font-weight: 600; color: #374151; }
+.tl-danger .inv-tl-label { color: #dc2626; }
+.tl-pending .inv-tl-label { color: #9ca3af; }
+.inv-tl-date { font-size: 10.5px; color: #9ca3af; }
 
-/* ── View: line items grid ── */
-.bill-view-items { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.bill-view-items-head { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-.bill-view-items-row { display: grid; grid-template-columns: 2.5fr 70px 90px 100px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
+/* ── Action button bar ── */
+.inv-action-bar { display: flex; align-items: center; gap: 6px; padding: 12px 16px; flex-wrap: wrap; border-bottom: 1px solid #f0f2f5; background: #fafafa; }
+.inv-ab-btn { display: inline-flex; align-items: center; gap: 5px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; color: #374151; cursor: pointer; white-space: nowrap; font-family: inherit; }
+.inv-ab-btn:hover { border-color: #94a3b8; background: #f8fafc; }
+.inv-ab-danger { color: #dc2626; border-color: #fca5a5; }
+.inv-ab-danger:hover { background: #fee2e2; border-color: #dc2626; }
+.ab-label { display: inline; }
 
-/* ── View: payments grid ── */
-.bill-pay-head { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; border-radius: 6px 6px 0 0; border: 1px solid #e5e7eb; border-bottom: none; }
-.bill-pay-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; align-items: center; font-size: 12.5px; }
-.bill-pay-row:last-child { border-bottom: 1px solid #e5e7eb; border-radius: 0 0 6px 6px; }
+/* ── Tabs ── */
+.inv-view-tabs { display: flex; gap: 2px; padding: 0 16px; border-bottom: 1px solid #e5e7eb; background: #fff; }
+.inv-vtab { background: none; border: none; border-bottom: 2px solid transparent; padding: 10px 14px; font-size: 13px; font-weight: 600; color: #6b7280; cursor: pointer; font-family: inherit; }
+.inv-vtab.active { color: #1a6ef7; border-bottom-color: #1a6ef7; }
+.inv-vtab-count { background: #eff6ff; color: #1a6ef7; border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 4px; }
+
+/* ── Tab body ── */
+.inv-tab-body { padding: 16px; }
+
+/* ── Details meta row ── */
+.inv-details-meta { display: grid; gap: 0; border-bottom: 1px solid #f0f2f5; }
+.inv-details-meta-col { padding: 16px; border-right: 1px solid #f0f2f5; }
+.inv-details-meta-col:last-child { border-right: none; }
+.inv-dmeta-icon-row { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+.inv-dmeta-icon { color: #9ca3af; }
+.inv-dmeta-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+.inv-dmeta-primary { font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 2px; }
+.inv-dmeta-secondary { font-size: 12px; color: #6b7280; }
+.inv-dmeta-date-val { font-size: 14px; font-weight: 600; color: #111827; }
+.inv-dmeta-date-val.is-overdue { color: #dc2626; }
+.col-balance { background: #f8fafc; }
+.inv-balance-val { font-size: 20px; font-weight: 800; color: #dc2626; font-family: monospace; }
+.inv-balance-val.is-zero, .inv-balance-val.is-paid { color: #16a34a; }
+.inv-rec-pay-btn { margin-top: 8px; background: #1a6ef7; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.inv-rec-pay-btn:hover { background: #155fd4; }
+
+/* ── Line items table ── */
+.inv-items-wrap { margin-top: 16px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+.inv-items-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.inv-items-table th { padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9ca3af; text-align: left; }
+.inv-items-table td { padding: 10px 12px; border-bottom: 1px solid #f0f2f5; }
+.inv-items-table tbody tr:last-child td { border-bottom: none; }
+.th-r { text-align: right; }
+.td-r { text-align: right; }
+.inv-item-num { color: #9ca3af; font-size: 12px; text-align: center; }
+.inv-item-name { font-weight: 600; color: #111827; }
+.inv-item-desc { font-size: 11.5px; color: #6b7280; margin-top: 2px; }
+
+/* ── Totals section (view) ── */
+.inv-totals-section { border-top: 1px solid #e5e7eb; background: #f8fafc; padding: 12px 16px; display: flex; justify-content: flex-end; }
+.inv-totals-inner { min-width: 240px; display: flex; flex-direction: column; gap: 5px; }
+.inv-total-line { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #374151; padding: 2px 0; }
+.t-lbl { color: #6b7280; }
+.t-amt { font-weight: 600; }
+.inv-grand-total-line { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 4px; }
+.inv-grand-lbl { font-size: 14px; font-weight: 700; color: #111827; }
+.inv-grand-amt { font-size: 18px; font-weight: 800; color: #1a6ef7; font-family: monospace; }
+
+/* ── Edit drawer: add-card styles ── */
+.add-card { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin-bottom: 12px; background: #fff; }
+.add-card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
+.add-card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #374151; }
+.add-card-title-icon { color: #6b7280; display: flex; }
+.add-card-chevron { color: #9ca3af; display: flex; transition: transform .2s; }
+.add-card-chevron.collapsed { transform: rotate(-90deg); }
+.add-card-body { padding: 16px; transition: all .18s ease; }
+.add-card-body.collapsed { display: none; }
+.add-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.add-line-num { display: inline-block; width: 20px; text-align: center; color: #9ca3af; font-size: 12px; }
+.add-line-amount { text-align: right; font-size: 12.5px; font-weight: 600; padding: 4px 8px; color: #374151; }
+.add-line-del { background: none; border: 1px solid rgba(220,38,38,.3); border-radius: 4px; padding: 3px 5px; cursor: pointer; color: #dc2626; display: inline-flex; align-items: center; }
+.add-new-line-row { }
+.add-new-line-btn { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: #1a6ef7; font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 4px 0; }
+.add-new-line-btn:hover { text-decoration: underline; }
+.add-lines-add-btn { display: inline-flex; align-items: center; gap: 4px; background: #eaf1ff; border: 1px solid rgba(26,110,247,.3); color: #1a6ef7; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.add-status-badge { display: inline-block; background: #f1f5f9; color: #475569; border-radius: 6px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+
+/* ── Footer ── */
+.add-footer-status { font-size: 12px; color: #9ca3af; }
+.add-footer-actions { display: flex; gap: 8px; align-items: center; }
+.add-btn-cancel { background: none; border: 1px solid #e5e7eb; border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 600; color: #6b7280; cursor: pointer; font-family: inherit; }
+.add-btn-cancel:hover { border-color: #94a3b8; }
+.add-btn-draft { display: inline-flex; align-items: center; gap: 5px; background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; border-radius: 7px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.add-btn-draft:hover { background: #dcfce7; }
+.add-btn-draft:disabled { opacity: .5; cursor: not-allowed; }
+.add-btn-submit { display: inline-flex; align-items: center; gap: 5px; background: #1a6ef7; color: #fff; border: none; border-radius: 7px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.add-btn-submit:hover { background: #155fd4; }
+.add-btn-submit:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ── Row actions cell ── */
 .bill-act-cell { display: flex; gap: 4px; justify-content: flex-end; cursor: default !important; }

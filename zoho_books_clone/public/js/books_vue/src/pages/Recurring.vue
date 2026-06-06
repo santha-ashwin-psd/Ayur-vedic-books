@@ -303,20 +303,20 @@
           <div v-if="viewTab==='details'">
             <div class="rec-meta-grid">
               <div><div class="rec-meta-lbl">Reference</div><div><DocLink :doctype="viewDoc.reference_doctype" :name="viewDoc.reference_document" /></div></div>
-              <div><div class="rec-meta-lbl">{{ viewDoc.party_label||'Party' }}</div><div>{{ viewDoc.party||'—' }}</div></div>
-              <div><div class="rec-meta-lbl">Frequency</div><div>{{ freqLabel(viewDoc.frequency) }}</div></div>
-              <div><div class="rec-meta-lbl">Template Amount</div><div class="mono-sm">{{ fmtCurrency(viewDoc.template_amount) }}</div></div>
-              <div><div class="rec-meta-lbl">Start Date</div><div class="mono-sm">{{ fmtDate(viewDoc.start_date) }}</div></div>
-              <div><div class="rec-meta-lbl">End Date</div><div class="mono-sm">{{ fmtDate(viewDoc.end_date)||'Open-ended' }}</div></div>
-              <div><div class="rec-meta-lbl">Submit on Creation</div><div>{{ viewDoc.submit_on_creation?'Yes':'No (Draft)' }}</div></div>
-              <div><div class="rec-meta-lbl">Notify by Email</div><div>{{ viewDoc.notify_by_email?'Yes':'No' }}</div></div>
+              <div><div class="rec-meta-lbl">{{ viewDoc.party_label||'Party' }}</div><div class="rec-meta-value">{{ viewDoc.party||'—' }}</div></div>
+              <div><div class="rec-meta-lbl">Frequency</div><div class="rec-meta-value">{{ freqLabel(viewDoc.frequency) }}</div></div>
+              <div><div class="rec-meta-lbl">Template Amount</div><div class="rec-meta-value">{{ fmtCurrency(viewDoc.template_amount) }}</div></div>
+              <div><div class="rec-meta-lbl">Start Date</div><div class="rec-meta-value">{{ fmtDate(viewDoc.start_date) }}</div></div>
+              <div><div class="rec-meta-lbl">End Date</div><div class="rec-meta-value">{{ fmtDate(viewDoc.end_date)||'Open-ended' }}</div></div>
+              <div><div class="rec-meta-lbl">Submit on Creation</div><div class="rec-meta-value">{{ viewDoc.submit_on_creation?'Yes':'No (Draft)' }}</div></div>
+              <div><div class="rec-meta-lbl">Notify by Email</div><div class="rec-meta-value">{{ viewDoc.notify_by_email?'Yes':'No' }}</div></div>
               <div v-if="viewDoc.notify_by_email" style="grid-column:1/-1">
                 <div class="rec-meta-lbl">Recipients</div>
-                <div class="mono-sm" style="word-break:break-all">{{ viewDoc.recipients||'—' }}</div>
+                <div class="rec-meta-value" style="word-break:break-all">{{ viewDoc.recipients||'—' }}</div>
               </div>
               <div v-if="viewDoc.subject" style="grid-column:1/-1">
                 <div class="rec-meta-lbl">Email Subject</div>
-                <div>{{ viewDoc.subject }}</div>
+                <div class="rec-meta-value">{{ viewDoc.subject }}</div>
               </div>
             </div>
           </div>
@@ -896,7 +896,7 @@ function exportCSV() {
 
 /* ── Meta grid in details tab ── */
 .rec-meta-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
-.rec-meta-lbl { font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600; }
+.rec-meta-lbl { font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600; }
 
 /* ── Generated / Upcoming tabs ── */
 .rec-table-inner { font-size:12.5px; }

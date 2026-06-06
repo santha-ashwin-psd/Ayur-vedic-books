@@ -271,6 +271,8 @@
           <button class="inv-dclose pmt-dclose-light" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
         <div class="inv-dbody pmt-dbody">
+          <div class="section-card">
+            <div class="pmt-section-hdr" style="margin-bottom:8px">Payment Details</div>
           <div class="pmt-meta-grid">
             <div><div class="pmt-meta-lbl">Payment Date</div><div>{{ fmtDate(viewPmt.payment_date) }}</div></div>
             <div><div class="pmt-meta-lbl">Mode</div><div>{{ viewPmt.mode_of_payment||'—' }}</div></div>
@@ -279,8 +281,9 @@
             <div><div class="pmt-meta-lbl">Paid From</div><div>{{ viewPmt.paid_from||'—' }}</div></div>
             <div><div class="pmt-meta-lbl">Paid To</div><div>{{ viewPmt.paid_to||'—' }}</div></div>
           </div>
+        </div>
           <!-- Linked references -->
-          <div v-if="viewPmt.references&&viewPmt.references.length">
+          <div class="space-top section-card" v-if="viewPmt.references&&viewPmt.references.length">
             <div class="pmt-section-hdr" style="margin-bottom:8px">Linked Documents</div>
             <div class="pmt-inv-table">
               <div class="pmt-inv-head"><div></div><div>Document</div><div class="ta-r">Outstanding</div><div class="ta-r">Allocated</div></div>
@@ -292,7 +295,7 @@
               </div>
             </div>
           </div>
-          <div v-if="viewPmt.remarks" style="grid-column:1/-1">
+          <div class="space-top section-card" v-if="viewPmt.remarks" style="grid-column:1/-1">
             <div class="pmt-meta-lbl">Remarks</div><div>{{ viewPmt.remarks }}</div>
           </div>
         </div>
@@ -665,6 +668,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.space-top { margin-top: 16px; }
+.section-card{ background: #fff; padding: 10px; border-radius: 15px; box-shadow: 0 1px 2px #0f172a08; }
 /* ── Edit drawer width override ── */
 .pmt-edit-drawer { width: 580px; right: -580px; transition: right .24s cubic-bezier(.32,.72,0,1); position: fixed; top: 0; bottom: 0; }
 .pmt-edit-drawer.open { right: 0; }
@@ -716,16 +721,15 @@ onMounted(async () => {
 
 /* ── Meta grid ── */
 .pmt-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-.pmt-meta-lbl { font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
+.pmt-meta-lbl { font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px;    font-weight: 600; }
 
 /* ── Invoice allocation table ── */
-.pmt-section-hdr { display:flex; align-items:center; justify-content:space-between; font-size:12px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
+.pmt-section-hdr { display:flex; align-items:center; justify-content:space-between; font-size:12px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; }
 .pmt-unalloc { font-size:12px; font-weight:600; color:#6b7280; }
 .pmt-inv-empty { font-size:12.5px; color:#9ca3af; padding:18px 0; text-align:center; background:#f9fafb; border:1px dashed #e5e7eb; border-radius:8px; }
 .pmt-inv-table { border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; font-size:12.5px; background:#fff; }
 .pmt-inv-head { display:grid; grid-template-columns:24px 1fr 90px 90px 90px; gap:8px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; }
 .pmt-inv-row { display:grid; grid-template-columns:24px 1fr 90px 90px 90px; gap:8px; padding:8px 10px; border-top:1px solid #f3f4f6; align-items:center; }
-.pmt-inv-row:hover { background:#f9fafb; }
 .pmt-inv-name {color:#2563eb; font-weight:600; }
 .pmt-alloc-input { width:80px; border:1px solid #e2e8f0; border-radius:6px; padding:4px 8px; font:inherit; font-size:12px; text-align:right; outline:none; }
 .pmt-alloc-input:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.10); }

@@ -115,13 +115,13 @@
           <div class="dc-section">
             <div class="dc-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
             <div class="dc-meta-grid">
-              <div><div class="dc-meta-lbl">Customer</div><div><DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</DocLink></div></div>
-              <div><div class="dc-meta-lbl">Date</div><div>{{ viewDoc.posting_date||'—' }}</div></div>
-              <div><div class="dc-meta-lbl">LR / Tracking #</div><div class="mono">{{ viewDoc.lr_no||'—' }}</div></div>
-              <div><div class="dc-meta-lbl">Transporter</div><div>{{ viewDoc.transporter_name||'—' }}</div></div>
-              <div v-if="viewDoc.sales_order" style="grid-column:1/-1"><div class="dc-meta-lbl">Sales Order</div><div><DocLink doctype="Sales Order" :name="viewDoc.sales_order" /></div></div>
-              <div v-if="viewDoc.shipping_address||viewDoc.customer_address" style="grid-column:1/-1"><div class="dc-meta-lbl">Delivery Address</div><div>{{ viewDoc.shipping_address||viewDoc.customer_address }}</div></div>
-              <div v-if="viewDoc.remarks" style="grid-column:1/-1"><div class="dc-meta-lbl">Remarks</div><div>{{ viewDoc.remarks }}</div></div>
+              <div><div class="dc-meta-lbl">Customer</div><div class="dc-meta-value"><DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</DocLink></div></div>
+              <div><div class="dc-meta-lbl">Date</div><div class="dc-meta-value">{{ viewDoc.posting_date||'—' }}</div></div>
+              <div><div class="dc-meta-lbl">LR / Tracking #</div><div class="dc-meta-value">{{ viewDoc.lr_no||'—' }}</div></div>
+              <div><div class="dc-meta-lbl">Transporter</div><div class="dc-meta-value">{{ viewDoc.transporter_name||'—' }}</div></div>
+              <div v-if="viewDoc.sales_order" style="grid-column:1/-1"><div class="dc-meta-lbl">Sales Order</div><div class="dc-meta-value"><DocLink doctype="Sales Order" :name="viewDoc.sales_order" /></div></div>
+              <div v-if="viewDoc.shipping_address||viewDoc.customer_address" style="grid-column:1/-1"><div class="dc-meta-lbl">Delivery Address</div><div class="dc-meta-value">{{ viewDoc.shipping_address||viewDoc.customer_address }}</div></div>
+              <div v-if="viewDoc.remarks" style="grid-column:1/-1"><div class="dc-meta-lbl">Remarks</div><div class="dc-meta-value">{{ viewDoc.remarks }}</div></div>
             </div>
           </div>
 
@@ -136,7 +136,7 @@
               <thead><tr><th>Item</th><th>Description</th><th class="ta-r">Qty</th><th>UOM</th></tr></thead>
               <tbody>
                 <tr v-for="it in viewDoc.items||[]" :key="it.name||it.item_code" class="inv-row">
-                  <td>{{ it.item_name||it.item_code }}</td>
+                  <td class="dc-meta-value">{{ it.item_name||it.item_code }}</td>
                   <td class="c-muted">{{ it.description||'—' }}</td>
                   <td class="ta-r mono">{{ it.qty }}</td>
                   <td class="c-muted">{{ it.uom||'Nos' }}</td>
@@ -968,8 +968,8 @@ onMounted(async () => {
 
 /* ── Meta grid in view ── */
 .dc-meta-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
-.dc-meta-lbl { font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;font-weight:600; }
-
+.dc-meta-lbl { font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;font-weight:600; }
+.dc-meta-value { font-size:13px;color:#374151 ; }
 /* ── Confirm dialog ── */
 .dc-confirm { position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center; }
 .dc-confirm-icon { width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px; }

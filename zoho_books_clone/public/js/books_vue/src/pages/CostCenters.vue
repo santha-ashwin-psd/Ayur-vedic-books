@@ -253,13 +253,6 @@ const { toast } = useToast();
 
 const CC_COLORS = ["#3B5BDB","#0C8599","#2F9E44","#E67700","#C92A2A","#2563eb","#D4537E","#1098AD","#495057"];
 const CC_TYPE_ICONS = { Department: "🏢", Project: "📄", Product: "📦", Region: "🌍", Group: "📁" };
-const CC_DEFAULTS = [
-  { name: "Main",        code: "MAIN", parent: "",     type: "Group",      color: "#495057", budget: 0,       budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 1, status: "Active", desc: "Root cost center" },
-  { name: "Engineering", code: "ENG",  parent: "Main", type: "Department", color: "#3B5BDB", budget: 5000000, budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "Product engineering team" },
-  { name: "Sales",       code: "SLS",  parent: "Main", type: "Department", color: "#2F9E44", budget: 3000000, budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "Sales and business development" },
-  { name: "Marketing",   code: "MKT",  parent: "Main", type: "Department", color: "#E67700", budget: 2000000, budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "Brand and demand generation" },
-  { name: "Operations",  code: "OPS",  parent: "Main", type: "Department", color: "#0C8599", budget: 1500000, budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "Infrastructure and ops" },
-];
 // Real actual-spend per cost center, summed from posted GL entries (keyed by
 // the cost center's document name). Loaded from the backend on mount.
 const spend = ref({});
@@ -274,15 +267,12 @@ const ccSearch     = ref("");
 const showDrawer   = ref(false);
 const showDelModal = ref(false);
 const saving       = ref(false);
-const fromFrappe   = ref(false);
 
 const fForm = reactive({ name: "", code: "", parent: "", type: "Department", color: CC_COLORS[0], budget: "", budget_period: "Annual", alert_pct: 80, budget_action: "Warn", is_group: 0, status: "Active", desc: "" });
 
 function r2(v) { return Math.round(Number(v || 0) * 100) / 100; }
 function fmtINR(v) { const n = Number(v || 0); if (n === 0) return "₹0"; return "₹" + Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 0 }); }
 function pct(spent, budget) { if (!budget) return 0; return Math.min(100, Math.round(spent / budget * 100)); }
-function saveLocal() { try { localStorage.setItem("books_cost_centers", JSON.stringify(allCC.value)); } catch {} }
-function loadLocal() { try { return JSON.parse(localStorage.getItem("books_cost_centers") || "null"); } catch { return null; } }
 
 async function load() {
   loading.value = true;
@@ -292,27 +282,20 @@ async function load() {
       fields: JSON.stringify(["name", "cost_center_name", "cost_center_number", "parent_cost_center", "is_group", "disabled", "description", "budget", "budget_period", "alert_pct", "budget_action", "cc_type", "color_tag"]),
       order_by: "name asc", limit_page_length: 200,
     }) || [];
-    if (ccs.length) {
-      allCC.value = ccs.map((c) => ({
-        name: c.name, code: c.cost_center_number || "", parent: c.parent_cost_center || "",
-        type: c.cc_type || "Department", color: c.color_tag || "#3B5BDB", budget: Number(c.budget) || 0,
-        budget_period: c.budget_period || "Annual", alert_pct: c.alert_pct || 80,
-        budget_action: c.budget_action || "Warn", is_group: c.is_group ? 1 : 0,
-        status: c.disabled ? "Inactive" : "Active", desc: c.description || "", source: "frappe",
-      }));
-      fromFrappe.value = true;
-      // Real actual spend per cost center, summed from posted GL entries.
-      try {
-        const company = await resolveCompany();
-        const map = await apiGET("zoho_books_clone.api.books_data.get_cost_center_spend", { company });
-        spend.value = map && typeof map === "object" ? map : {};
-      } catch { spend.value = {}; }
-    } else throw new Error("none");
-  } catch {
-    const saved = loadLocal();
-    allCC.value = saved || CC_DEFAULTS.map((c) => ({ ...c, source: "local" }));
-    if (!saved) saveLocal();
-  }
+    allCC.value = ccs.map((c) => ({
+      name: c.name, code: c.cost_center_number || "", parent: c.parent_cost_center || "",
+      type: c.cc_type || "Department", color: c.color_tag || "#3B5BDB", budget: Number(c.budget) || 0,
+      budget_period: c.budget_period || "Annual", alert_pct: c.alert_pct || 80,
+      budget_action: c.budget_action || "Warn", is_group: c.is_group ? 1 : 0,
+      status: c.disabled ? "Inactive" : "Active", desc: c.description || "",
+    }));
+    // Real actual spend per cost center, summed from posted GL entries.
+    try {
+      const company = await resolveCompany();
+      const map = await apiGET("zoho_books_clone.api.books_data.get_cost_center_spend", { company });
+      spend.value = map && typeof map === "object" ? map : {};
+    } catch { spend.value = {}; }
+  } catch { allCC.value = []; }
   allCC.value.filter((c) => c.is_group).forEach((c) => { if (!expandedCC.value.includes(c.name)) expandedCC.value.push(c.name); });
   loading.value = false;
 }
@@ -370,7 +353,6 @@ async function saveCC() {
     const doc = { doctype: "Cost Center", cost_center_name: data.name, cost_center_number: data.code, parent_cost_center: data.parent || "", is_group: data.is_group, company, budget: data.budget, description: data.desc || "", cc_type: data.type, color_tag: data.color, budget_period: data.budget_period, alert_pct: Number(data.alert_pct) || 80, budget_action: data.budget_action };
     if (editing.value) { doc.name = editing.value; await apiPOST("frappe.client.save", { doc: JSON.stringify(doc) }); }
     else await apiPOST("frappe.client.insert", { doc: JSON.stringify(doc) });
-    fromFrappe.value = true;
     await load();
     toast(editing.value ? "Cost center updated" : "Cost center created");
     saving.value = false;
@@ -387,15 +369,8 @@ function closeDelModal() { showDelModal.value = false; deleteTarget.value = null
 async function doDelete() {
   const name = deleteTarget.value;
   if (!name) return;
-  if (fromFrappe.value) {
-    try { await apiPOST("frappe.client.delete", { doctype: "Cost Center", name }); await load(); toast("Deleted"); }
-    catch (e) { toast("Frappe error: " + e.message, "error"); }
-  } else {
-    allCC.value = allCC.value.filter((c) => c.name !== name);
-    saveLocal();
-    if (selected.value === name) selected.value = null;
-    toast("Deleted");
-  }
+  try { await apiPOST("frappe.client.delete", { doctype: "Cost Center", name }); await load(); toast("Deleted"); }
+  catch (e) { toast("Frappe error: " + e.message, "error"); }
   closeDelModal();
 }
 

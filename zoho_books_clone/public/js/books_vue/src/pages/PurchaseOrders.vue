@@ -245,7 +245,7 @@
           <button class="add-btn-draft" :disabled="drawerSaving" @click="savePO('Draft')">
             <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
           </button>
-          <button class="add-btn-primary" :disabled="drawerSaving" @click="savePO('To Receive')">
+          <button class="add-btn-more" :disabled="drawerSaving" @click="savePO('To Receive')">
             <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Issue PO' }}
           </button>
         </div>
@@ -991,8 +991,7 @@ onMounted(() => { load(); loadTaxAccount(); });
 .add-footer-actions { display: flex; align-items: center; gap: 8px; }
 .add-btn-cancel { background: none; border: 1px solid #e8ecf0; border-radius: 7px; padding: 7px 16px; font-size: 13px; font-weight: 600; color: #6b7280; cursor: pointer; }
 .add-btn-cancel:hover { border-color: #374151; color: #374151; }
-.add-btn-draft { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e8ecf0; border-radius: 7px; padding: 7px 16px; font-size: 13px; font-weight: 600; color: #374151; cursor: pointer; }
-.add-btn-draft:hover { border-color: #374151; }
+
 .add-btn-draft:disabled { opacity: .5; cursor: not-allowed; }
 .add-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #1a6ef7; color: #fff; border: none; border-radius: 7px; padding: 7px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .add-btn-primary:hover { background: #155fd4; }

@@ -207,10 +207,10 @@
       <div class="inv-dfooter">
         <button class="form-btn form-btn-outline" @click="drawerOpen=false">Cancel</button>
         <div style="display:flex;gap:8px">
-          <button class="form-btn form-btn-success" :disabled="drawerSaving" @click="saveExpense(0)">
+          <button class="add-btn-draft" :disabled="drawerSaving" @click="saveExpense(0)">
             <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
           </button>
-          <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="saveExpense(1)">
+          <button class="add-btn-more" :disabled="drawerSaving" @click="saveExpense(1)">
             <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Submit' }}
           </button>
         </div>

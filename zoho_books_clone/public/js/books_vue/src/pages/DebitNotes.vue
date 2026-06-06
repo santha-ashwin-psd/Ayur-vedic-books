@@ -225,8 +225,8 @@
       <div class="inv-dfooter">
         <button class="form-btn form-btn-outline" @click="drawerOpen=false" :disabled="drawerSaving">Cancel</button>
         <div>
-          <button class="form-btn form-btn-success" style="margin-right:5px" :disabled="drawerSaving" @click="saveDN(0)"><span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}</button>
-          <button class="form-btn form-btn-primary" :disabled="drawerSaving" @click="saveDN(1)"><span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}</button>
+          <button class="add-btn-draft" style="margin-right:5px" :disabled="drawerSaving" @click="saveDN(0)"><span v-html="icon('save',13)"></span> {{ drawerSaving?'Saving…':'Save Draft' }}</button>
+          <button class="add-btn-more" :disabled="drawerSaving" @click="saveDN(1)"><span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}</button>
         </div>
       </div>
     </div>
@@ -298,7 +298,7 @@
             <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
               No applications yet.
               <div v-if="viewBalance>0 && viewDoc.docstatus===1" style="margin-top:8px">
-                <button class="form-btn form-btn-primary" @click="applyDN(viewDoc)" style="font-size:12px;padding:6px 12px">↳ Apply to Bill</button>
+                <button class="add-btn-draft" @click="applyDN(viewDoc)" style="font-size:12px;padding:6px 12px">↳ Apply to Bill</button>
               </div>
             </div>
           </template>
@@ -315,7 +315,7 @@
           <button class="form-btn form-btn-outline" @click="printDN(viewDoc)" title="Print preview">
             🖨 Print
           </button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-primary" @click="applyDN(viewDoc)">↳ Apply to Bill</button>
+          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="add-btn-draft" @click="applyDN(viewDoc)">↳ Apply to Bill</button>
           <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="cancelDN(viewDoc)">Cancel</button>
           <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="form-btn form-btn-danger" @click="deleteDN(viewDoc)">Delete</button>
         </div>

@@ -321,7 +321,7 @@
           <button class="add-btn-draft" :disabled="drawerSaving" @click="saveBill(0)">
             <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
           </button>
-          <button class="add-btn-submit" :disabled="drawerSaving" @click="saveBill(1)">
+          <button class="add-btn-more" :disabled="drawerSaving" @click="saveBill(1)">
             <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Submit' }}
           </button>
         </div>
@@ -1181,9 +1181,7 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .add-footer-actions { display: flex; gap: 8px; align-items: center; }
 .add-btn-cancel { background: none; border: 1px solid #e5e7eb; border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 600; color: #6b7280; cursor: pointer; font-family: inherit; }
 .add-btn-cancel:hover { border-color: #94a3b8; }
-.add-btn-draft { display: inline-flex; align-items: center; gap: 5px; background: #f0fdf4; border: 1px solid #16a34a; color: #16a34a; border-radius: 7px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
-.add-btn-draft:hover { background: #dcfce7; }
-.add-btn-draft:disabled { opacity: .5; cursor: not-allowed; }
+
 .add-btn-submit { display: inline-flex; align-items: center; gap: 5px; background: #1a6ef7; color: #fff; border: none; border-radius: 7px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
 .add-btn-submit:hover { background: #155fd4; }
 .add-btn-submit:disabled { opacity: .5; cursor: not-allowed; }

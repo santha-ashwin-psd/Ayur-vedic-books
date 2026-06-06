@@ -74,11 +74,11 @@
               <td><span class="ew-irn mono-sm">{{ r.ewb_no || '—' }}</span></td>
               <td @click.stop><DocLink doctype="Sales Invoice" :name="r.invoice_no" /></td>
               <td class="mono-sm text-muted">{{ fmtDate(r.invoice_date) }}</td>
-              <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.customer_name || r.customer }}</td>
+              <td style="color:#374151;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.customer_name || r.customer }}</td>
               <td class="text-muted">{{ r.transporter || '—' }}</td>
               <td class="mono-sm text-muted">{{ r.vehicle_no || '—' }}</td>
               <td class="mono-sm" :class="validClass(r)">{{ fmtDate(r.valid_upto) || '—' }}</td>
-              <td class="ta-r mono-sm">{{ fmtCur(r.grand_total) }}</td>
+              <td class="ta-r mono-sm" style="color:#374151;">{{ fmtCur(r.grand_total) }}</td>
               <td><span class="ew-badge" :class="statusClass(r.ui_status)">{{ r.ui_status }}</span></td>
               <td @click.stop style="text-align:right">
                 <div class="ew-actions-row">
@@ -824,7 +824,7 @@ function exportCSV() {
 .ew-row:last-child td{border-bottom:none;}.ew-row:hover td{background:#f9fafb;}
 .ew-code{font-size:13px;color:#2563eb;font-weight:600;}
 .ew-irn{background:#dbeafe;padding:2px 8px;border-radius:6px;color:#1d4ed8;font-size:11.5px;font-weight:600;}
-.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
+.mono-sm{font-size:13px;}.text-muted{color:#374151;}
 .ew-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .ew-badge-lg{padding:4px 12px;font-size:12.5px;}
 .badge-green{background:#dcfce7;color:#16a34a;}

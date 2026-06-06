@@ -354,7 +354,7 @@ onMounted(async()=>{await load();if(route.query.from){openNew();form.from_accoun
 .btr-dh-top .btr-badge{margin-left:auto;}
 .btr-dh-amount{margin-top:16px;}
 .btr-dh-amt-lbl{font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
-.btr-dh-amt-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.01em;margin-top:2px;color:#0f172a;}
+.btr-dh-amt-val{font-size:26px;font-weight:800;letter-spacing:-.01em;margin-top:2px;color:#0f172a;}
 .btr-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;}
 .btr-section-hdr{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;margin-top:4px;}
 .btr-section-hdr span{color:#2563eb;display:inline-flex;}

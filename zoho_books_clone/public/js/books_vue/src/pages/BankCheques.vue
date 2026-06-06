@@ -325,7 +325,7 @@ onMounted(load);
 .chq-dh-top .chq-badge{margin-left:auto;}
 .chq-dh-amount{margin-top:16px;}
 .chq-dh-amt-lbl{font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
-.chq-dh-amt-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.01em;margin-top:2px;}
+.chq-dh-amt-val{font-size:26px;font-weight:800;letter-spacing:-.01em;margin-top:2px;}
 .chq-dh-amt-val.pos{color:#16a34a;}.chq-dh-amt-val.neg{color:#dc2626;}
 .chq-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;}
 .chq-section-hdr{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;margin-top:4px;}

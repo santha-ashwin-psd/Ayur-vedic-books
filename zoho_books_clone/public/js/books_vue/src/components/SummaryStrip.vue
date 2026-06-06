@@ -76,7 +76,6 @@ const gridStyle = computed(() => {
   font-size: 22px;
   font-weight: 700;
   color: #111827;
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   line-height: 1.2;
   margin-top: 2px;
 }

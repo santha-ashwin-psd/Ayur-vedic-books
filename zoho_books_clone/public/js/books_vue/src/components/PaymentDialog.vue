@@ -194,7 +194,7 @@ function onCancel() {
 }
 .pmd-party-name { font-size: 13.5px; font-weight: 700; color: #0c4a6e; }
 .pmd-balance { font-size: 12px; color: #0c4a6e; margin-top: 2px; }
-.pmd-balance strong { font-family: monospace; }
+.pmd-balance strong { font-size:12px }
 .pmd-body { padding: 14px 18px; flex: 1; overflow-y: auto; }
 .pmd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pmd-field { display: flex; flex-direction: column; gap: 4px; }
@@ -207,13 +207,13 @@ function onCancel() {
   font-size: 13px; outline: none; font-family: inherit; background: #fff;
 }
 .pmd-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
-.pmd-money { font-family: monospace; font-weight: 600; }
+.pmd-money {  font-weight: 600; }
 .pmd-summary {
   margin-top: 12px; background: #f8fafc; border-radius: 8px; padding: 12px;
   display: flex; flex-direction: column; gap: 6px; font-size: 13px;
 }
 .pmd-summary > div { display: flex; justify-content: space-between; color: #374151; }
-.pmd-summary strong { font-family: monospace; }
+.pmd-summary strong { font-size:13px; }
 .pmd-after { border-top: 1px solid #e5e7eb; padding-top: 6px; font-weight: 700; }
 .pmd-footer {
   display: flex; justify-content: flex-end; gap: 8px;

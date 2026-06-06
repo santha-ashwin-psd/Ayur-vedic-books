@@ -285,7 +285,7 @@ input { font-family: inherit; }
   display: flex; align-items: center; justify-content: center;
 }
 .b-kpi-label { font-size: 12px; font-weight: 600; color: var(--text-3); margin-bottom: 4px; }
-.b-kpi-value { font-family: var(--mono); font-size: 26px; font-weight: 600; color: var(--text); letter-spacing: -.03em; line-height: 1; margin-bottom: 10px; }
+.b-kpi-value {font-size: 26px; font-weight: 600; color: var(--text); letter-spacing: -.03em; line-height: 1; margin-bottom: 10px; }
 .b-kpi-trend { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
 .b-kpi-trend-up   { color: var(--green-text); }
 .b-kpi-trend-down { color: var(--red-text); }
@@ -364,7 +364,7 @@ input { font-family: inherit; }
 .b-aging-rows { display: flex; flex-direction: column; gap: 14px; }
 .b-aging-row  { display: flex; justify-content: space-between; align-items: center; }
 .b-aging-lbl  { font-size: 13px; color: var(--text-2); font-weight: 500; min-width: 80px; }
-.b-aging-amt  { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); }
+.b-aging-amt  {font-size: 13px; font-weight: 600; color: var(--text); }
 
 /* ── Filter bar ── */
 .b-action-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -407,7 +407,7 @@ input[type=date].b-input { color-scheme: light; }
 .b-bs-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
 .b-bs-block { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px; }
 .b-bs-lbl   { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
-.b-bs-amt   { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+.b-bs-amt   {font-size: 20px; font-weight: 600; }
 
 /* ── Bank ── */
 .b-bank-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 12px; }
@@ -420,10 +420,10 @@ input[type=date].b-input { color-scheme: light; }
 .b-bank-card.selected { border-color: var(--accent); background: var(--accent-soft); }
 .b-bank-name    { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
 .b-bank-sub     { font-size: 12px; color: var(--text-3); margin-bottom: 12px; }
-.b-bank-balance { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--green-text); }
+.b-bank-balance { font-size: 20px; font-weight: 700; color: var(--green-text); }
 
 /* ── Utils ── */
-.mono   { font-family: var(--mono); }
+.mono   {font-family: var(--font); }
 .ta-r   { text-align: right; }
 .c-green { color: var(--green-text); }
 .c-red   { color: var(--red-text); }

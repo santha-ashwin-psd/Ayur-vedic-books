@@ -718,7 +718,7 @@
               <input v-model="invModal.dueDate" type="date" class="inv-fi" style="max-width:200px"/>
             </div>
             <div style="text-align:right;font-size:13px;color:#6b7280;margin-top:12px">
-              Invoice Total: <strong style="color:#1a6ef7;font-size:15px;font-family:monospace">{{ fmtCur(invModalTotal) }}</strong>
+              Invoice Total: <strong style="color:#1a6ef7;font-size:15px;">{{ fmtCur(invModalTotal) }}</strong>
             </div>
           </div>
           <div class="rp-footer">

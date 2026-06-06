@@ -14,7 +14,7 @@
 .fw-700   { font-weight: 700; }
 .ta-r     { text-align: right; }
 .c-muted  { color: #868E96; }
-.mono     { font-family: var(--mono, 'JetBrains Mono', monospace); }
+.mono     { font-family: var(--font); }
 .clickable { cursor: pointer; transition: background .12s; }
 .clickable:hover { background: #F8F9FC; }
 

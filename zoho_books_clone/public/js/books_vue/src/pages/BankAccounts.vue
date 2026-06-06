@@ -536,7 +536,7 @@ onMounted(load);
 .ba-card-num{font-size:12px;color:#475569;letter-spacing:.06em;margin-bottom:10px;}
 .ba-balance-block{padding:9px 0;border-top:1px dashed #e5e7eb;}
 .ba-balance-lbl{font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:1px;}
-.ba-balance-val{font-size:18px;font-weight:800;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.01em;}
+.ba-balance-val{font-size:18px;font-weight:800;letter-spacing:-.01em;}
 .ba-balance-val.pos{color:#0f172a;}.ba-balance-val.neg{color:#dc2626;}
 .ba-card-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;padding-top:9px;border-top:1px solid #f1f5f9;}
 .ba-recon{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;}
@@ -560,7 +560,7 @@ onMounted(load);
 .ba-empty-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:36px;text-align:center;min-width:320px;}
 .ba-shimmer{background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.text-muted{color:#64748b;}.mono-sm{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;}
+.text-muted{color:#64748b;}.mono-sm{font-family:var(--font);}
 
 /* ── Drawers ───────────────────────────────────────────── */
 .ba-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:40;}
@@ -602,10 +602,10 @@ onMounted(load);
 .ba-view-sub{font-size:12.5px;color:#475569;margin-top:1px;}
 .ba-view-balance{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-top:16px;}
 .ba-vb-lbl{font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
-.ba-vb-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.01em;margin-top:2px;}
+.ba-vb-val{font-size:26px;font-weight:800;letter-spacing:-.01em;margin-top:2px;}
 .ba-vb-val.pos{color:#0f172a;}.ba-vb-val.neg{color:#dc2626;}
 .ba-vb-recon{text-align:right;}
-.ba-vb-pct{font-size:18px;font-weight:800;color:#16a34a;font-family:'JetBrains Mono',ui-monospace,monospace;}
+.ba-vb-pct{font-size:18px;font-weight:800;color:#16a34a;}
 .ba-vb-txn{font-size:11px;color:#64748b;margin-top:1px;}
 
 .ba-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}

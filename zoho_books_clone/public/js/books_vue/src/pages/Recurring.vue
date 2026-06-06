@@ -915,7 +915,7 @@ function exportCSV() {
 .rec-empty-title { font-size:15px;font-weight:600;color:#374151; }
 .rec-empty-sub { font-size:12.5px;max-width:380px;text-align:center; }
 .rec-hint { font-weight:400;color:#9ca3af;font-size:11px; }
-.text-muted { color:#6b7280; }
+.text-muted { color:#374151; }
 .text-accent { color:#2563eb;font-weight:600; }
 .mono-sm {font-size:13px; }
 .req { color:#dc2626; }

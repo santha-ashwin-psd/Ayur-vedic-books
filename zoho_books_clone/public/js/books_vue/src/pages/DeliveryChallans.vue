@@ -71,10 +71,10 @@
           <td @click.stop><input v-if="r._source==='dn'" type="checkbox" :checked="selected.has(r.name)" @change="toggle(r.name)" /></td>
           <td><span class="inv-link">{{r.name}}</span></td>
           <td class="fw-600">{{r.customer_name||r.customer||'—'}}</td>
-          <td class="c-muted" style="font-size:12.5px">{{r.posting_date||'—'}}</td>
-          <td class="c-muted mono" style="font-size:12px">{{r.sales_order||r.name||'—'}}</td>
+          <td class="c-muted" style="font-size:13px">{{r.posting_date||'—'}}</td>
+          <td class="c-muted mono" style="font-size:13px">{{r.sales_order||r.name||'—'}}</td>
           <td><span class="inv-status-badge" :class="statusClass(r)">{{statusLabel(r)}}</span></td>
-          <td class="ta-r c-muted" style="font-size:12.5px">{{r.total_qty||'—'}}</td>
+          <td class="ta-r c-muted" style="font-size:13px">{{r.total_qty||'—'}}</td>
           <td @click.stop>
             <div class="dc-actions-row">
               <button class="inv-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>

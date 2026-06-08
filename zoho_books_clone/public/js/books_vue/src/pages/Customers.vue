@@ -729,17 +729,7 @@
 
           <!-- Address Tab -->
           <template v-else-if="drawerTab==='address'">
-            <!-- Edit mode: use AddressManager for full multi-address management -->
-            <template v-if="drawerMode==='edit' && form.name">
-              <AddressManager
-                :partyDoctype="'Customer'"
-                :partyName="form.name"
-                @addressSaved="load"
-                @addressDeleted="load"
-              />
-            </template>
-            <!-- Add mode: use inline fields (AddressManager needs a saved partyName) -->
-            <template v-else>
+            <!-- Billing address: always shown inline for both add and edit -->
             <div class="inv-sec-lbl" style="margin-top:0">Billing Address</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
               <div style="grid-column:span 2">
@@ -782,54 +772,65 @@
               </div>
             </div>
 
-            <div class="inv-sec-lbl">Shipping Address <span style="font-size:11px;font-weight:400;color:#9ca3af;margin-left:6px">— leave blank to use billing address</span></div>
-            <div style="margin-bottom:10px">
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-                <input type="checkbox" v-model="shipSameAsBilling" @change="onShipSameChange" style="accent-color:#3B5BDB"/>
-                Use same address as billing
-              </label>
-            </div>
-            <div v-if="!shipSameAsBilling" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-              <div style="grid-column:span 2">
-                <label class="inv-lbl">Address Line 1</label>
-                <input v-model="form.ship_address_line1" class="inv-fi" placeholder="Street, building no., floor"/>
+            <!-- Shipping: AddressManager for edit (needs saved partyName), inline for add -->
+            <template v-if="drawerMode==='edit' && form.name">
+              <div class="inv-sec-lbl" style="margin-top:4px">Shipping Addresses</div>
+              <AddressManager
+                :partyDoctype="'Customer'"
+                :partyName="form.name"
+                @addressSaved="load"
+                @addressDeleted="load"
+              />
+            </template>
+            <template v-else>
+              <div class="inv-sec-lbl">Shipping Address <span style="font-size:11px;font-weight:400;color:#9ca3af;margin-left:6px">— leave blank to use billing address</span></div>
+              <div style="margin-bottom:10px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+                  <input type="checkbox" v-model="shipSameAsBilling" @change="onShipSameChange" style="accent-color:#3B5BDB"/>
+                  Use same address as billing
+                </label>
               </div>
-              <div style="grid-column:span 2">
-                <label class="inv-lbl">Address Line 2</label>
-                <input v-model="form.ship_address_line2" class="inv-fi" placeholder="Area, landmark, district"/>
+              <div v-if="!shipSameAsBilling" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div style="grid-column:span 2">
+                  <label class="inv-lbl">Address Line 1</label>
+                  <input v-model="form.ship_address_line1" class="inv-fi" placeholder="Street, building no., floor"/>
+                </div>
+                <div style="grid-column:span 2">
+                  <label class="inv-lbl">Address Line 2</label>
+                  <input v-model="form.ship_address_line2" class="inv-fi" placeholder="Area, landmark, district"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">City</label>
+                  <input v-model="form.ship_city" class="inv-fi" placeholder="Mumbai"
+                    @input="form.ship_city=form.ship_city.replace(/[^a-zA-Z\s]/g,'')"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Country</label>
+                  <select v-model="form.ship_country" class="inv-fi" style="cursor:pointer" @change="form.ship_state=''; delete formErrors.ship_pincode; if(form.ship_pincode) validateField('ship_pincode')">
+                    <option value="">— Select Country —</option>
+                    <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="inv-lbl">State / Province</label>
+                  <select v-if="statesFor(form.ship_country).length" v-model="form.ship_state" class="inv-fi" style="cursor:pointer">
+                    <option value="">— Select State —</option>
+                    <option v-for="s in statesFor(form.ship_country)" :key="s" :value="s">{{s}}</option>
+                  </select>
+                  <input v-else v-model="form.ship_state" class="inv-fi" placeholder="Enter state / province"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Pincode</label>
+                  <input v-model="form.ship_pincode" class="inv-fi"
+                    :placeholder="pincodePlaceholder(form.ship_country)"
+                    :style="formErrors.ship_pincode?'border-color:#dc2626;background:#fff5f5':form.ship_pincode&&!formErrors.ship_pincode?'border-color:#2f9e44':''"
+                    @input="form.ship_pincode=sanitizePincode(form.ship_pincode, form.ship_country); delete formErrors.ship_pincode"
+                    @blur="validateField('ship_pincode')"/>
+                  <div v-if="formErrors.ship_pincode" style="margin-top:4px;font-size:12px;color:#dc2626">{{formErrors.ship_pincode}}</div>
+                  <div v-else-if="form.ship_pincode&&!formErrors.ship_pincode" style="margin-top:4px;font-size:11px;color:#9ca3af">{{pincodeHint(form.ship_country)}}</div>
+                </div>
               </div>
-              <div>
-                <label class="inv-lbl">City</label>
-                <input v-model="form.ship_city" class="inv-fi" placeholder="Mumbai"
-                  @input="form.ship_city=form.ship_city.replace(/[^a-zA-Z\s]/g,'')"/>
-              </div>
-              <div>
-                <label class="inv-lbl">Country</label>
-                <select v-model="form.ship_country" class="inv-fi" style="cursor:pointer" @change="form.ship_state=''; delete formErrors.ship_pincode; if(form.ship_pincode) validateField('ship_pincode')">
-                  <option value="">— Select Country —</option>
-                  <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
-                </select>
-              </div>
-              <div>
-                <label class="inv-lbl">State / Province</label>
-                <select v-if="statesFor(form.ship_country).length" v-model="form.ship_state" class="inv-fi" style="cursor:pointer">
-                  <option value="">— Select State —</option>
-                  <option v-for="s in statesFor(form.ship_country)" :key="s" :value="s">{{s}}</option>
-                </select>
-                <input v-else v-model="form.ship_state" class="inv-fi" placeholder="Enter state / province"/>
-              </div>
-              <div>
-                <label class="inv-lbl">Pincode</label>
-                <input v-model="form.ship_pincode" class="inv-fi"
-                  :placeholder="pincodePlaceholder(form.ship_country)"
-                  :style="formErrors.ship_pincode?'border-color:#dc2626;background:#fff5f5':form.ship_pincode&&!formErrors.ship_pincode?'border-color:#2f9e44':''"
-                  @input="form.ship_pincode=sanitizePincode(form.ship_pincode, form.ship_country); delete formErrors.ship_pincode"
-                  @blur="validateField('ship_pincode')"/>
-                <div v-if="formErrors.ship_pincode" style="margin-top:4px;font-size:12px;color:#dc2626">{{formErrors.ship_pincode}}</div>
-                <div v-else-if="form.ship_pincode&&!formErrors.ship_pincode" style="margin-top:4px;font-size:11px;color:#9ca3af">{{pincodeHint(form.ship_country)}}</div>
-              </div>
-            </div>
-            </template><!-- end add-mode address fields -->
+            </template>
           </template>
 
           <!-- Other Details Tab -->

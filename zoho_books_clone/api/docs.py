@@ -262,7 +262,7 @@ def save_doc(doc):
         # Auto-supply naming_series for doctypes that use autoname="naming_series:"
         # but where the SPA doesn't expose the series picker.
         _NAMING_DEFAULTS = {
-            "Journal Entry":    "JV-.YYYY.-.#####",
+            "Journal Entry":    "JV-.YYYY.-",
             "Payment Entry":    "PAY-.YYYY.-.#####",
             "Sales Invoice":    "INV-.YYYY.-.#####",
             "Purchase Invoice": "PINV-.YYYY.-.#####",

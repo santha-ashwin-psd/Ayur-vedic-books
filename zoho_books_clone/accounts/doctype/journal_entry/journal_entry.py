@@ -21,6 +21,8 @@ class JournalEntry(Document):
                 frappe.bold(f"₹{total_debit:,.2f}"),
                 frappe.bold(f"₹{total_credit:,.2f}"),
             ))
+        self.total_debit  = round(total_debit,  2)
+        self.total_credit = round(total_credit, 2)
 
     def on_submit(self):
         post_journal_entry(self)

@@ -262,32 +262,65 @@
           <button class="coa-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
         <div class="coa-dbody">
-          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">
-            <div>
-              <div style="font-size:11px;color:#868e96;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Status</div>
-              <span class="b-badge" :class="JE_STATUS_COLOR[viewEntry.status]||'je-s-draft'">{{viewEntry.status}}</span>
+          <!-- Meta row -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">
+            <div class="jen-view-meta-card">
+              <div class="jen-view-meta-lbl">Status</div>
+              <span class="b-badge" :class="JE_STATUS_COLOR[viewEntry.status]||'je-s-draft'" style="margin-top:2px">{{viewEntry.status}}</span>
             </div>
-            <div>
-              <div style="font-size:11px;color:#868e96;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Narration</div>
-              <div style="font-size:13px;max-width:500px">{{viewEntry.narration||'—'}}</div>
+            <div class="jen-view-meta-card">
+              <div class="jen-view-meta-lbl">Date</div>
+              <div class="jen-view-meta-val">{{fmtDateLocal(viewEntry.date)}}</div>
+            </div>
+            <div class="jen-view-meta-card">
+              <div class="jen-view-meta-lbl">Type</div>
+              <span class="b-badge" :class="JE_TYPE_COLOR[viewEntry.type]||'je-type-info'" style="margin-top:2px">{{viewEntry.type||'Journal Entry'}}</span>
             </div>
           </div>
-          <div style="display:flex;gap:24px;margin-bottom:20px;font-size:13px">
-            <div><span style="color:#868e96">Total Debit:</span> <strong style="color:#c92a2a;font-family:monospace">{{fmtINR(viewEntry.total_debit)}}</strong></div>
-            <div><span style="color:#868e96">Total Credit:</span> <strong style="color:#2f9e44;font-family:monospace">{{fmtINR(viewEntry.total_credit)}}</strong></div>
+
+          <!-- Narration -->
+          <div style="background:#f8f9fc;border:1px solid #e8ecf0;border-radius:8px;padding:12px 14px;margin-bottom:18px">
+            <div class="jen-view-meta-lbl" style="margin-bottom:6px">Narration</div>
+            <div style="font-size:13.5px;line-height:1.55;color:#1a1d23">{{viewEntry.narration||'—'}}</div>
           </div>
-          <div v-if="(viewEntry.lines||[]).length" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-            <div style="display:grid;grid-template-columns:1fr 120px 120px;gap:8px;padding:8px 14px;background:#f8f9fc;border-bottom:1px solid #e2e8f0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#868e96">
+
+          <!-- Totals -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+            <div style="background:#fff4f4;border:1px solid #ffcdd2;border-radius:8px;padding:12px 16px;text-align:center">
+              <div style="font-size:10.5px;color:#c92a2a;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total Debit (Dr)</div>
+              <div style="font-size:20px;font-weight:700;color:#c92a2a;font-family:monospace">{{fmtINR(viewEntry.total_debit)}}</div>
+            </div>
+            <div style="background:#f0fff4;border:1px solid #b2f2bb;border-radius:8px;padding:12px 16px;text-align:center">
+              <div style="font-size:10.5px;color:#2f9e44;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total Credit (Cr)</div>
+              <div style="font-size:20px;font-weight:700;color:#2f9e44;font-family:monospace">{{fmtINR(viewEntry.total_credit)}}</div>
+            </div>
+          </div>
+
+          <!-- Lines -->
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#868e96;margin-bottom:8px">Account Lines</div>
+          <div v-if="viewLoading" style="border:1px solid #e2e8f0;border-radius:8px;padding:24px;text-align:center;color:#868e96;font-size:13px">
+            <div class="b-shimmer" style="height:12px;margin-bottom:8px"></div>
+            <div class="b-shimmer" style="height:12px;margin-bottom:8px"></div>
+            <div class="b-shimmer" style="height:12px"></div>
+          </div>
+          <div v-else-if="(viewEntry.lines||[]).length" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1fr 130px 130px;padding:9px 14px;background:#f8f9fc;border-bottom:1px solid #e2e8f0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b7db3">
               <div>Account</div><div style="text-align:right">Debit (Dr)</div><div style="text-align:right">Credit (Cr)</div>
             </div>
             <div v-for="(l,i) in viewEntry.lines" :key="i"
-              style="display:grid;grid-template-columns:1fr 120px 120px;gap:8px;padding:9px 14px;border-bottom:1px solid #f1f3f5;font-size:13px">
-              <div>{{l.account}}<span v-if="l.party" style="color:#868e96;font-size:11px;margin-left:6px">{{l.party}}</span></div>
-              <div style="text-align:right;font-family:monospace;color:#c92a2a">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
-              <div style="text-align:right;font-family:monospace;color:#2f9e44">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
+              :style="'display:grid;grid-template-columns:1fr 130px 130px;padding:10px 14px;font-size:13px;border-bottom:1px solid #f1f3f5;background:'+(i%2===1?'#fafafa':'#fff')">
+              <div style="font-weight:500;color:#1a1d23">
+                {{l.account}}
+                <span v-if="l.party" style="color:#868e96;font-size:11px;margin-left:6px">· {{l.party}}</span>
+              </div>
+              <div style="text-align:right;font-family:monospace;font-weight:600;color:#c92a2a">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
+              <div style="text-align:right;font-family:monospace;font-weight:600;color:#2f9e44">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
             </div>
           </div>
-          <div v-else style="color:#868e96;font-size:13px;margin-top:16px">No line detail available for this entry.</div>
+          <div v-else style="border:1px dashed #e2e8f0;border-radius:8px;padding:24px;text-align:center;color:#adb5bd;font-size:13px">
+            <div style="font-size:24px;margin-bottom:6px">📋</div>
+            No account lines found for this entry.
+          </div>
         </div>
         <div class="coa-dfooter" style="justify-content:space-between">
           <div style="font-size:12px;color:#868e96">{{viewEntry.source==='frappe'?'From Frappe':'Local record'}}</div>
@@ -319,7 +352,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, apiDelete, apiSubmit, apiPOST, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiSave, apiDelete, apiSubmit, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt } from "../utils/format.js";
@@ -360,8 +393,9 @@ const selectedTpl  = ref("");
 const form = reactive({ date: "", type: "Journal Entry", ref: "", cheque_date: "", narration: "", cost_center: "", status: "Draft" });
 const lines = ref([]);
 
-const viewOpen   = ref(false);
-const viewEntry  = ref(null);
+const viewOpen    = ref(false);
+const viewEntry   = ref(null);
+const viewLoading = ref(false);
 const showConf   = ref(false);
 const confTarget = ref(null);
 const confType   = ref("");
@@ -465,9 +499,30 @@ function openEdit(name) {
   drawerOpen.value = true;
 }
 
-function openView(name) {
-  viewEntry.value = allEntries.value.find((x) => x.name === name) || null;
+async function openView(name) {
+  const stub = allEntries.value.find((x) => x.name === name) || { name, lines: [], status: "Draft" };
+  viewEntry.value = stub;
   viewOpen.value = true;
+  viewLoading.value = true;
+  try {
+    const doc = await apiGet("Journal Entry", name);
+    if (doc) {
+      viewEntry.value = {
+        name: doc.name,
+        date: doc.posting_date,
+        type: doc.voucher_type || "Journal Entry",
+        narration: doc.remark || "",
+        total_debit: doc.total_debit || 0,
+        total_credit: doc.total_credit || 0,
+        status: doc.docstatus === 1 ? "Submitted" : doc.docstatus === 2 ? "Cancelled" : "Draft",
+        source: "frappe",
+        lines: (doc.accounts || []).map((a) => ({
+          account: a.account, party: a.party || "", dr: a.debit || 0, cr: a.credit || 0,
+        })),
+      };
+    }
+  } catch {}
+  viewLoading.value = false;
 }
 
 function applyTemplate(tplId) {
@@ -514,7 +569,7 @@ async function saveEntry(status) {
         credit: flt(l.cr),
       })),
     };
-    const frappeDoc = { doctype: "Journal Entry", naming_series: "JV-.YYYY.-.#####", company, ...payload };
+    const frappeDoc = { doctype: "Journal Entry", naming_series: "JV-.YYYY.-", company, ...payload };
     if (editingName.value) frappeDoc.name = editingName.value;
     const saved = await apiSave(frappeDoc);
     if (status === "Submitted" && saved?.name) {

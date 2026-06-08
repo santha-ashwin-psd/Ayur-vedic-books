@@ -282,21 +282,108 @@ def save_irn(
     ack_no: str = "",
     ack_date: str = "",
 ) -> dict:
-    """
-    Persist e-Invoice IRN to the Sales Invoice notes field.
-    Appends a structured tag so IRN remains queryable from the notes text.
-    """
+    """Persist e-Invoice IRN directly to the Sales Invoice irn/ack fields."""
     if not invoice_name or not irn:
         frappe.throw(_("Invoice name and IRN are required."))
 
-    doc = frappe.get_doc("Sales Invoice", invoice_name)
-    irn_tag = f"[e-Invoice] IRN:{irn} ACK:{ack_no} Date:{ack_date or today()}"
-
-    if "[e-Invoice]" not in (doc.notes or ""):
-        doc.notes = ((doc.notes or "").rstrip() + "\n" + irn_tag).lstrip("\n")
-        doc.flags.ignore_permissions = True
-        doc.flags.ignore_validate    = True
-        doc.save()
-        frappe.db.commit()
-
+    frappe.db.set_value("Sales Invoice", invoice_name, {
+        "irn":             irn,
+        "ack_no":          ack_no or "",
+        "ack_date":        ack_date or today(),
+        "einvoice_status": "Generated",
+    })
+    frappe.db.commit()
     return {"invoice_name": invoice_name, "irn": irn, "saved": True}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def generate_irn(invoice_name: str) -> dict:
+    """
+    Generate an offline IRN (SHA-256 of company_gstin|fin_year|INV|invoice_name).
+    Suitable for sandbox / demo use. Format matches the 64-char hex the NIC portal produces.
+    """
+    import hashlib
+    import random
+    from datetime import datetime as _dt
+
+    if not invoice_name:
+        frappe.throw(_("Invoice name is required."))
+
+    doc = frappe.get_doc("Sales Invoice", invoice_name)
+
+    if doc.docstatus != 1:
+        frappe.throw(_("IRN can only be generated for submitted invoices."))
+    if not doc.customer_gstin:
+        frappe.throw(_("Customer GSTIN is required to generate IRN. Add Tax ID on the Customer record."))
+    if doc.irn and doc.einvoice_status == "Generated":
+        frappe.throw(_("IRN already generated for this invoice. Cancel the existing IRN first."))
+
+    company_gstin = frappe.db.get_value("Books Company", doc.company, "gstin") or ""
+    if not company_gstin:
+        frappe.throw(_("Company GSTIN not configured. Set it under Books Company → GSTIN."))
+
+    # Financial year in YYYY-YY format derived from posting_date
+    p = doc.posting_date or today()
+    yr = int(str(p)[:4])
+    mo = int(str(p)[5:7])
+    fin_year = f"{yr}{str(yr + 1)[-2:]}" if mo >= 4 else f"{yr - 1}{str(yr)[-2:]}"
+
+    payload  = f"{company_gstin}|{fin_year}|INV|{invoice_name}"
+    irn      = hashlib.sha256(payload.encode()).hexdigest()
+    ack_date = today()
+    ack_no   = _dt.now().strftime("%Y%m%d%H%M%S") + str(random.randint(1000, 9999))
+
+    frappe.db.set_value("Sales Invoice", invoice_name, {
+        "irn":             irn,
+        "ack_no":          ack_no,
+        "ack_date":        ack_date,
+        "einvoice_status": "Generated",
+    })
+    frappe.db.commit()
+
+    return {"irn": irn, "ack_no": ack_no, "ack_date": ack_date, "einvoice_status": "Generated"}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def cancel_irn(invoice_name: str) -> dict:
+    """Mark an e-Invoice IRN as Cancelled (does not delete the IRN, preserves audit trail)."""
+    if not invoice_name:
+        frappe.throw(_("Invoice name is required."))
+
+    irn = frappe.db.get_value("Sales Invoice", invoice_name, "irn")
+    if not irn:
+        frappe.throw(_("No IRN found for invoice {0}.").format(invoice_name))
+
+    status = frappe.db.get_value("Sales Invoice", invoice_name, "einvoice_status")
+    if status == "Cancelled":
+        frappe.throw(_("IRN is already cancelled."))
+
+    frappe.db.set_value("Sales Invoice", invoice_name, {"einvoice_status": "Cancelled"})
+    frappe.db.commit()
+    return {"invoice_name": invoice_name, "einvoice_status": "Cancelled"}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def save_irn_manual(
+    invoice_name: str,
+    irn: str,
+    ack_no: str = "",
+    ack_date: str = "",
+) -> dict:
+    """Save a manually entered IRN (obtained directly from the NIC/IRP portal)."""
+    if not invoice_name or not irn:
+        frappe.throw(_("Invoice name and IRN are required."))
+    if len(irn) != 64:
+        frappe.throw(_("IRN must be exactly 64 characters (hex). Got {0}.").format(len(irn)))
+    if not ack_no:
+        frappe.throw(_("Acknowledgement number is required."))
+
+    frappe.db.set_value("Sales Invoice", invoice_name, {
+        "irn":             irn,
+        "ack_no":          ack_no,
+        "ack_date":        ack_date or today(),
+        "einvoice_status": "Generated",
+    })
+    frappe.db.commit()
+    return {"invoice_name": invoice_name, "irn": irn, "ack_no": ack_no,
+            "ack_date": ack_date or today(), "einvoice_status": "Generated"}

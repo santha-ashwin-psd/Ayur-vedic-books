@@ -43,7 +43,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { apiGET } from "../api/client.js";
+import { apiGET, resolveCompany, apiGet } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import SummaryStrip from "../components/SummaryStrip.vue";
@@ -52,6 +52,7 @@ const { toast } = useToast();
 const router = useRouter();
 const loading = ref(true);
 const smtpEnabled = ref(false);
+const companyGstin = ref("");
 
 const STATUS_LABEL = { active: "Active", available: "Available", not_configured: "Not Configured", coming_soon: "Coming Soon" };
 
@@ -76,8 +77,10 @@ const integrations = computed(() => [
     ico: "gstfile", bg: "#fff7ed", fg: "#ea580c", status: "active",
     action: { label: "Open GSTR-3B", go: () => router.push({ name: "gstr-3b" }).catch(()=>{}) } },
   { group: "GST & E-Invoicing", key: "einvoice", name: "E-Invoice (IRP)", desc: "Generate IRN + QR for B2B invoices.",
-    ico: "qr", bg: "#fef2f2", fg: "#dc2626", status: "available",
-    note: "Module present; live IRP credentials configured per company." },
+    ico: "qr", bg: "#fef2f2", fg: "#dc2626",
+    status: companyGstin.value ? "active" : "available",
+    note: companyGstin.value ? `GSTIN: ${companyGstin.value}` : "Set company GSTIN to activate e-Invoice generation.",
+    action: { label: "Open e-Invoice", go: () => router.push({ name: "einvoice" }).catch(() => {}) } },
   { group: "GST & E-Invoicing", key: "eway", name: "E-Way Bills", desc: "EWB generation for shipments.",
     ico: "truck", bg: "#eff6ff", fg: "#2563eb", status: "active",
     action: { label: "Open E-Way Bills", go: () => router.push({ name: "eway-bills" }).catch(()=>{}) } },
@@ -125,9 +128,13 @@ function byStatus(s) { return integrations.value.filter(x => x.status === s).len
 async function load() {
   loading.value = true;
   try {
-    const smtp = await apiGET("zoho_books_clone.api.admin.get_company_smtp").catch(() => null);
+    const [smtp, company] = await Promise.all([
+      apiGET("zoho_books_clone.api.admin.get_company_smtp").catch(() => null),
+      resolveCompany().then(name => apiGet("Books Company", name)).catch(() => null),
+    ]);
     const v = smtp?.smtp_enabled ?? smtp?.message?.smtp_enabled;
     smtpEnabled.value = !!(v && Number(v));
+    companyGstin.value = company?.gstin || "";
   } catch (e) { toast.error(e.message || "Failed to load integrations"); }
   finally { loading.value = false; }
 }

@@ -146,6 +146,11 @@
             <td @click="openView(inv)" :class="isOverdue(inv)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(inv.due_date) }}</td>
             <td @click="openView(inv)">
               <span class="inv-status-badge" :class="statusCls(inv)">{{ statusLabel(inv) }}</span>
+              <span v-if="inv.docstatus===1 && inv.customer_gstin && !inv.is_return"
+                class="ei-status-dot"
+                :class="inv.irn && inv.einvoice_status!=='Cancelled' ? 'ei-dot-green' : inv.einvoice_status==='Cancelled' ? 'ei-dot-grey' : 'ei-dot-orange'"
+                :title="inv.irn && inv.einvoice_status!=='Cancelled' ? 'e-Invoice: IRN Generated' : inv.einvoice_status==='Cancelled' ? 'e-Invoice: Cancelled' : 'e-Invoice: IRN Pending'">
+              </span>
             </td>
             <td class="ta-r mono-sm" @click="openView(inv)">{{ fmtAmt(inv.grand_total) }}</td>
             <td class="ta-r mono-sm" @click="openView(inv)" :class="inv.outstanding_amount>0?'text-danger':'text-success'">
@@ -760,6 +765,11 @@
           <button class="inv-vtab" :class="{ active: viewTab==='payments' }" @click="viewTab='payments';loadPayments(viewInv.name)">
             Payments <span v-if="viewPayments.length" class="inv-vtab-count">{{ viewPayments.length }}</span>
           </button>
+          <button v-if="viewInv.docstatus===1 && !viewInv.is_return" class="inv-vtab" :class="{ active: viewTab==='einvoice' }" @click="viewTab='einvoice'">
+            e-Invoice
+            <span v-if="viewInv.irn && viewInv.einvoice_status!=='Cancelled'" class="inv-vtab-count" style="background:#dcfce7;color:#16a34a">✓</span>
+            <span v-else-if="viewInv.customer_gstin && !viewInv.irn" class="inv-vtab-count" style="background:#fff7ed;color:#ea580c">!</span>
+          </button>
         </div>
 
         <!-- ── Details tab ── -->
@@ -1009,6 +1019,97 @@
           </div>
         </template>
 
+        <!-- ── e-Invoice tab ── -->
+        <template v-else-if="viewTab==='einvoice'">
+          <div class="inv-tab-body" style="display:flex;flex-direction:column;gap:0;padding:16px 20px">
+
+            <!-- Status row -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="font-size:13px;font-weight:600;color:#374151">e-Invoice Status</div>
+              <span class="ei-inline-badge" :class="viewInv.irn && viewInv.einvoice_status!=='Cancelled' ? 'badge-green' : viewInv.einvoice_status==='Cancelled' ? 'badge-grey' : 'badge-orange'">
+                {{ viewInv.irn && viewInv.einvoice_status!=='Cancelled' ? 'IRN Generated' : viewInv.einvoice_status==='Cancelled' ? 'Cancelled' : 'Pending IRN' }}
+              </span>
+            </div>
+
+            <!-- No GSTIN warning -->
+            <div v-if="!viewInv.customer_gstin" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#92400e;line-height:1.5;margin-bottom:12px">
+              Customer has no GSTIN. Add Tax ID on the Customer record to enable e-Invoice generation.
+            </div>
+
+            <!-- IRN details when generated -->
+            <template v-if="viewInv.irn">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:6px">IRN</div>
+              <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:8px;margin-bottom:10px">
+                <div style="font-family:monospace;font-size:10.5px;color:#1e40af;word-break:break-all;line-height:1.7;flex:1">{{ viewInv.irn }}</div>
+                <button @click="copyViewIRN" style="background:none;border:1px solid #dbeafe;border-radius:6px;padding:4px 8px;cursor:pointer;color:#2563eb;font-size:12px;flex-shrink:0">
+                  {{ eiCopied ? '✓ Copied' : 'Copy' }}
+                </button>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+                <div style="background:#f8f9fc;border:1px solid #e8ecf0;border-radius:8px;padding:10px 12px">
+                  <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#868e96">Ack No.</div>
+                  <div style="font-size:12.5px;font-weight:600;color:#1a1d23;margin-top:3px;font-family:monospace">{{ viewInv.ack_no || '—' }}</div>
+                </div>
+                <div style="background:#f8f9fc;border:1px solid #e8ecf0;border-radius:8px;padding:10px 12px">
+                  <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#868e96">Ack Date</div>
+                  <div style="font-size:12.5px;font-weight:600;color:#1a1d23;margin-top:3px">{{ fmtDate(viewInv.ack_date) || '—' }}</div>
+                </div>
+              </div>
+              <!-- QR Code -->
+              <div v-if="viewInv.einvoice_status !== 'Cancelled'" style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:14px">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280">QR Code</div>
+                <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px;display:inline-flex">
+                  <IrnQrCode :irn="viewInv.irn" :size="160" />
+                </div>
+              </div>
+              <!-- Cancel button -->
+              <div v-if="viewInv.einvoice_status !== 'Cancelled'" style="display:flex;justify-content:flex-end">
+                <button class="ei-action-btn danger" :disabled="eiCancelling" @click="cancelInvIRN">
+                  {{ eiCancelling ? 'Cancelling…' : 'Cancel IRN' }}
+                </button>
+              </div>
+            </template>
+
+            <!-- Pending — generate or manual -->
+            <template v-else-if="viewInv.customer_gstin">
+              <div v-if="!eiManualMode" style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px 0">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                <div style="font-size:13px;color:#6b7280;text-align:center">No IRN generated yet for this invoice</div>
+                <div style="display:flex;gap:8px">
+                  <button class="ei-action-btn primary" :disabled="eiGenerating" @click="generateInvIRN">
+                    <span v-if="eiGenerating" style="display:inline-block;animation:spin 1s linear infinite">↻</span>
+                    {{ eiGenerating ? 'Generating…' : 'Generate IRN' }}
+                  </button>
+                  <button class="ei-action-btn outline" @click="eiManualMode=true">Enter Manually</button>
+                </div>
+              </div>
+              <!-- Manual entry form -->
+              <div v-else style="display:flex;flex-direction:column;gap:10px">
+                <div style="font-size:13px;font-weight:600;color:#374151">Enter IRN Manually</div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:600;color:#374151;display:block;margin-bottom:4px">IRN (64-char hex) *</label>
+                  <input v-model="eiManualIrn" class="ei-input" placeholder="64-character hex from NIC portal" maxlength="64" style="font-family:monospace;font-size:11.5px" />
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Ack No. *</label>
+                  <input v-model="eiManualAckNo" class="ei-input" placeholder="Acknowledgement number" />
+                </div>
+                <div>
+                  <label style="font-size:11.5px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Ack Date</label>
+                  <input v-model="eiManualAckDate" type="date" class="ei-input" />
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+                  <button class="ei-action-btn outline" @click="eiManualMode=false">Cancel</button>
+                  <button class="ei-action-btn primary" :disabled="eiManualSaving" @click="saveInvManualIRN">
+                    {{ eiManualSaving ? 'Saving…' : 'Save IRN' }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+          </div>
+        </template>
+
         </div><!-- /inv-view-body -->
     </div><!-- /inv-drawer-panel inv-view-page -->
     </div><!-- /inv-drawer-bg -->
@@ -1067,9 +1168,73 @@ import { useReturnNote } from "../composables/useReturnNote.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import IrnQrCode from "../components/IrnQrCode.vue";
 
 const { toast } = useToast();
 const route = useRoute();
+
+// ── e-Invoice state ────────────────────────────────────────────────────
+const eiGenerating   = ref(false);
+const eiCancelling   = ref(false);
+const eiCopied       = ref(false);
+const eiManualMode   = ref(false);
+const eiManualSaving = ref(false);
+const eiManualIrn    = ref("");
+const eiManualAckNo  = ref("");
+const eiManualAckDate = ref(new Date().toISOString().slice(0, 10));
+
+async function generateInvIRN() {
+  eiGenerating.value = true;
+  try {
+    const res = await apiPOST("zoho_books_clone.api.gst.generate_irn", { invoice_name: viewInv.value.name });
+    Object.assign(viewInv.value, res);
+    const idx = list.value.findIndex(i => i.name === viewInv.value.name);
+    if (idx >= 0) Object.assign(list.value[idx], res);
+    toast.success("IRN generated successfully");
+  } catch (e) { toast.error(e.message || "Failed to generate IRN"); }
+  finally { eiGenerating.value = false; }
+}
+
+async function cancelInvIRN() {
+  eiCancelling.value = true;
+  try {
+    await apiPOST("zoho_books_clone.api.gst.cancel_irn", { invoice_name: viewInv.value.name });
+    viewInv.value.einvoice_status = "Cancelled";
+    const idx = list.value.findIndex(i => i.name === viewInv.value.name);
+    if (idx >= 0) list.value[idx].einvoice_status = "Cancelled";
+    toast.success("IRN cancelled");
+  } catch (e) { toast.error(e.message || "Failed to cancel IRN"); }
+  finally { eiCancelling.value = false; }
+}
+
+async function saveInvManualIRN() {
+  if (!eiManualIrn.value || eiManualIrn.value.length !== 64) return toast.error("IRN must be exactly 64 characters");
+  if (!eiManualAckNo.value) return toast.error("Ack No. is required");
+  eiManualSaving.value = true;
+  try {
+    const res = await apiPOST("zoho_books_clone.api.gst.save_irn_manual", {
+      invoice_name: viewInv.value.name,
+      irn:      eiManualIrn.value,
+      ack_no:   eiManualAckNo.value,
+      ack_date: eiManualAckDate.value,
+    });
+    Object.assign(viewInv.value, res);
+    const idx = list.value.findIndex(i => i.name === viewInv.value.name);
+    if (idx >= 0) Object.assign(list.value[idx], res);
+    eiManualMode.value = false;
+    toast.success("IRN saved");
+  } catch (e) { toast.error(e.message || "Failed to save IRN"); }
+  finally { eiManualSaving.value = false; }
+}
+
+async function copyViewIRN() {
+  if (!viewInv.value?.irn) return;
+  try {
+    await navigator.clipboard.writeText(viewInv.value.irn);
+    eiCopied.value = true;
+    setTimeout(() => { eiCopied.value = false; }, 1800);
+  } catch { toast.error("Copy failed"); }
+}
 
 // ── Constants ─────────────────────────────────────────────────────────
 const PAY_MODES = ["Cash","Cheque","Bank Transfer","UPI","NEFT","RTGS","IMPS","Credit Card","Debit Card","DD"];
@@ -1410,7 +1575,8 @@ async function load() {
     // Exclude credit notes (is_return=1) — those live on /credit-notes.
     list.value=await apiList("Sales Invoice",{
       fields:["name","customer","customer_name","posting_date","due_date",
-              "grand_total","outstanding_amount","status","docstatus","po_no"],
+              "grand_total","outstanding_amount","status","docstatus","po_no",
+              "customer_gstin","irn","einvoice_status","ack_no","ack_date"],
       filters:[["is_return","=",0]],
       limit:500, order:"posting_date desc",
     })||[];
@@ -2641,4 +2807,28 @@ watch(() => route.query, (q) => {
     display:block !important; white-space:normal !important; overflow:visible !important;
   }
 }
+
+/* ── e-Invoice status dot (list row) ── */
+.ei-status-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-left:6px; vertical-align:middle; flex-shrink:0; }
+.ei-dot-green  { background:#16a34a; }
+.ei-dot-orange { background:#f59e0b; }
+.ei-dot-grey   { background:#9ca3af; }
+
+/* ── e-Invoice tab styles ── */
+.ei-inline-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:10px; font-size:12px; font-weight:600; }
+.badge-green  { background:#dcfce7; color:#16a34a; }
+.badge-orange { background:#fff7ed; color:#ea580c; }
+.badge-grey   { background:#f3f4f6; color:#6b7280; }
+.ei-action-btn { display:inline-flex; align-items:center; gap:5px; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; border:none; }
+.ei-action-btn.primary  { background:#2563eb; color:#fff; }
+.ei-action-btn.primary:hover  { background:#1d4ed8; }
+.ei-action-btn.primary:disabled { opacity:.6; cursor:not-allowed; }
+.ei-action-btn.outline  { background:#fff; border:1.5px solid #2563eb; color:#2563eb; }
+.ei-action-btn.outline:hover  { background:#eff6ff; }
+.ei-action-btn.danger   { background:#fff; border:1.5px solid #dc2626; color:#dc2626; }
+.ei-action-btn.danger:hover   { background:#fef2f2; }
+.ei-action-btn.danger:disabled { opacity:.6; cursor:not-allowed; }
+.ei-input { width:100%; border:1px solid #e5e7eb; border-radius:7px; padding:8px 10px; font:inherit; font-size:13px; outline:none; color:#111827; background:#fff; box-sizing:border-box; }
+.ei-input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.08); }
+@keyframes spin { to { transform:rotate(360deg); } }
 </style>

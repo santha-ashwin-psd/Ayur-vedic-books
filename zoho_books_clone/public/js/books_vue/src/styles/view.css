@@ -977,3 +977,133 @@
   .inv-bottom-grid   { page-break-inside: avoid; }
   .inv-view-footer   { padding: 6px 0 0; }
 }
+
+/* ── Mobile ≤ 475px — Invoice detail view inside drawer ── */
+@media (max-width: 475px) {
+
+  /* Drawer fills full screen */
+  .inv-drawer-panel,
+  .inv-drawer-wide { width: 100vw !important; max-width: 100vw !important; }
+
+  /* Header */
+  .inv-view-header  { padding: 12px 12px 8px !important; flex-wrap: wrap; gap: 8px; }
+  .inv-view-number  { font-size: 15px !important; }
+  .inv-view-subtitle { font-size: 12px !important; }
+  .inv-hdr-badge    { font-size: 10px !important; padding: 2px 8px !important; }
+  .inv-view-cta     { width: 100% !important; justify-content: center !important; font-size: 13px !important; padding: 8px !important; }
+
+  /* Body & tabs */
+  .inv-view-body    { margin: 0 8px 8px !important; border-radius: 8px !important; }
+  .inv-tab-body     { padding: 10px !important; gap: 10px !important; }
+  .inv-view-tabs    { padding: 0 8px !important; }
+  .inv-vtab         { padding: 10px 10px !important; font-size: 12px !important; }
+
+  /* Action bar */
+  .inv-action-bar   { padding: 8px 10px !important; gap: 6px !important; flex-wrap: wrap; }
+  .inv-ab-btn       { padding: 6px 8px !important; font-size: 12px !important; }
+  .inv-ab-btn .ab-label { display: none !important; }
+  .inv-ab-btn.inv-ab-danger .ab-label { display: inline !important; }
+
+  /* Details meta — single column */
+  .inv-details-meta { flex-direction: column !important; }
+  .inv-details-meta-col {
+    flex: 1 1 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+  .inv-details-meta-col:last-child { border-bottom: none !important; }
+  .inv-balance-val  { font-size: 17px !important; }
+
+  /* ── Items table: remove min-width so it fits the drawer ── */
+  .inv-items-wrap {
+    overflow-x: hidden !important;       /* no horizontal scroll */
+    border-radius: 6px !important;
+  }
+  .inv-items-table {
+    display: table !important;
+    min-width: 0 !important;             /* override the 560px min-width */
+    width: 100% !important;
+    table-layout: fixed !important;      /* columns respect defined widths */
+    font-size: 12px !important;
+  }
+  .inv-items-table thead {
+    display: table-header-group !important;
+  }
+  .inv-items-table tbody {
+    display: table-row-group !important;
+  }
+  .inv-items-table tbody tr {
+    display: table-row !important;
+    padding: 0 !important;
+  }
+  .inv-items-table tbody td {
+    display: table-cell !important;
+    margin: 0 !important;
+    flex: none !important;
+    vertical-align: top !important;
+  }
+
+  /* Compress column widths to fit ~370px */
+  .inv-items-table th,
+  .inv-items-table td { padding: 8px 6px !important; }
+
+  /* Column width hints via nth-child:
+     col1 = # (narrow), col2 = item+desc (flex), col3–6 = numeric (narrow) */
+  .inv-items-table th:nth-child(1),
+  .inv-items-table td:nth-child(1) {
+    width: 28px !important;
+    text-align: center !important;
+  }
+
+  .inv-items-table th:nth-child(2),
+  .inv-items-table td:nth-child(2) {
+    width: auto !important;
+    text-align: left !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: normal !important;
+  }
+  .inv-item-name,
+  .inv-item-desc { text-align: left !important; }
+
+  /* HSN / Qty / Rate — hide on very small screens, keep Amount */
+  .inv-items-table th:nth-child(3),
+  .inv-items-table td:nth-child(3),
+  .inv-items-table th:nth-child(4),
+  .inv-items-table td:nth-child(4),
+  .inv-items-table th:nth-child(5),
+  .inv-items-table td:nth-child(5) {
+    display: none !important;            /* hide HSN / Qty / Rate */
+  }
+
+  /* Discount */
+  .inv-items-table th:nth-child(6),
+  .inv-items-table td:nth-child(6) { display: none !important; }
+
+  /* Amount (last visible column) */
+  .inv-items-table th:nth-child(7),
+  .inv-items-table td:nth-child(7) {
+    width: 104px !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+    padding-right: 10px !important;
+  }
+
+  /* Totals section */
+  .inv-totals-section { justify-content: stretch !important; padding: 10px 0 !important; }
+  .inv-totals-inner   {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 0 10px 0 34px !important;
+  }
+  .inv-total-line     { font-size: 12.5px !important; gap: 12px !important; }
+  .inv-total-line .t-lbl,
+  .inv-grand-lbl     { text-align: left !important; }
+  .inv-total-line .t-amt,
+  .inv-grand-amt     { min-width: 104px !important; text-align: right !important; }
+  .inv-grand-lbl      { font-size: 14px !important; }
+  .inv-grand-amt      { font-size: 15px !important; }
+
+  /* Bottom grid */
+  .inv-bottom-grid    { grid-template-columns: 1fr !important; padding: 0 8px 8px !important; }
+}

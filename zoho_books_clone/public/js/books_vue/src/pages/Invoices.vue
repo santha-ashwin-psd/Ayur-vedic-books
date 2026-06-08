@@ -90,11 +90,11 @@
     </div>
   </div>
   <!-- Secondary stats -->
-  <div class="bk-stat-grid">
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ invThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Revenue</div><div class="bk-stat-value" style="font-size:16px">{{ fmtAmt(invThisMonth.revenue) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div></div>
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Total Receivable</div><div class="bk-stat-value bk-kpi-amber" style="font-size:16px">{{ fmtAmt(summary.totalDue) }}</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div></div></div>
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg Invoice Value</div><div class="bk-stat-value" style="font-size:16px">{{ fmtAmt(invAvg) }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
+  <div class="bk-stat-grid inv-mobile-summary">
+    <div class="bk-stat-card inv-stat-count"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ invThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+    <div class="bk-stat-card inv-stat-revenue"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Revenue</div><div class="bk-stat-value" style="font-size:16px">{{ fmtAmt(invThisMonth.revenue) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div></div>
+    <div class="bk-stat-card inv-stat-receivable"><div class="bk-stat-content"><div><div class="bk-stat-label">Total Receivable</div><div class="bk-stat-value bk-kpi-amber" style="font-size:16px">{{ fmtAmt(summary.totalDue) }}</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div></div></div>
+    <div class="bk-stat-card inv-stat-average"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg Invoice Value</div><div class="bk-stat-value" style="font-size:16px">{{ fmtAmt(invAvg) }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
   </div>
 
   <!-- ── Bulk actions bar ── -->
@@ -152,7 +152,7 @@
               {{ fmtAmt(inv.outstanding_amount) }}
             </td>
             <td style="text-align:center" @click.stop>
-              <div style="display:flex;gap:4px;justify-content:center">
+              <div class="inv-row-actions" style="display:flex;gap:4px;justify-content:center">
                 <button class="inv-act-btn" @click="openView(inv)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="inv.docstatus===0" class="inv-act-btn" @click="openEdit(inv)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button v-if="inv.docstatus===0||inv.docstatus===2" class="inv-act-btn" style="color:#dc2626" @click.stop="confirmAction('delete',inv)" title="Delete"><span v-html="icon('trash',13)"></span></button>
@@ -200,7 +200,9 @@
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div class="inv-dh-title">{{ editingName ? 'Edit Invoice' : 'New Invoice' }}</div>
             <span v-if="!editingName" class="add-status-badge">Draft</span>
-
+            <span v-if="!editingName" class="add-autosave-notice">
+              <span class="add-autosave-dot"></span>
+            </span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <button class="inv-preview-toggle" @click="showPreview=!showPreview" :title="showPreview?'Hide preview':'Live preview'">
@@ -2385,27 +2387,258 @@ watch(() => route.query, (q) => {
 .inv-preview-toolbar { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#fff; border-bottom:1px solid #e8ecf0; flex-shrink:0; }
 .inv-preview-iframe { flex:1; border:none; width:100%; min-height:0; background:#fff; }
 /* ── Invoice view drawer overrides ── */
-.inv-view-page {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  background: #f5f6f8;
-}
-.inv-view-page .inv-view-header {
-  padding: 16px 20px 10px;
-  flex-shrink: 0;
-}
-.inv-view-page .inv-view-body {
-  margin: 0 16px 16px;
-}
-.inv-view-page .inv-bottom-grid {
-  padding: 0 0 4px;
-}
-.inv-view-page .inv-tab-body {
-  padding: 16px;
-}
+.inv-view-page { display:flex; flex-direction:column; overflow-y:auto; background:#f5f6f8; }
+.inv-view-page .inv-view-header { padding:16px 20px 10px; flex-shrink:0; }
+.inv-view-page .inv-view-body { margin:0 16px 16px; }
+.inv-view-page .inv-bottom-grid { padding:0 0 4px; }
+.inv-view-page .inv-tab-body { padding:16px; }
 
 /* ── Download dropdown menu ── */
 .inv-dl-menu-item { display:flex; align-items:center; gap:8px; width:100%; padding:8px 14px; font-size:13px; font-family:inherit; background:none; border:none; cursor:pointer; color:#111827; white-space:nowrap; text-align:left; }
 .inv-dl-menu-item:hover { background:#f3f4f6; }
+
+/* ── Mobile invoice cards ── */
+@media(max-width:475px) {
+  .inv-page {
+    padding:12px 10px 20px !important;
+    gap:14px !important;
+    box-sizing:border-box !important;
+    background:#fff !important;
+  }
+
+  /* The phone design uses the three financial summaries, not the desktop KPI set. */
+  .inv-page > .bk-kpi-grid { display:none !important; }
+  .inv-page > .inv-mobile-summary {
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:10px !important;
+  }
+  .inv-mobile-summary .inv-stat-count { display:none !important; }
+  .inv-mobile-summary .bk-stat-card {
+    min-height:90px !important;
+    border:none !important;
+    border-radius:18px !important;
+    padding:16px 18px !important;
+    box-shadow:none !important;
+  }
+  .inv-mobile-summary .inv-stat-revenue {
+    background:linear-gradient(105deg,#e6f8ec 0%,#d9f4e3 100%) !important;
+  }
+  .inv-mobile-summary .inv-stat-receivable {
+    background:linear-gradient(105deg,#fff8dd 0%,#fff1bf 100%) !important;
+  }
+  .inv-mobile-summary .inv-stat-average {
+    background:linear-gradient(105deg,#e8f5ff 0%,#d9edfb 100%) !important;
+  }
+  .inv-mobile-summary .bk-stat-content {
+    display:block !important;
+  }
+  .inv-mobile-summary .bk-stat-icon { display:none !important; }
+  .inv-mobile-summary .bk-stat-label {
+    margin-bottom:6px !important;
+    color:#111827 !important;
+    font-size:12.5px !important;
+    font-weight:500 !important;
+    letter-spacing:.01em !important;
+  }
+  .inv-mobile-summary .bk-stat-value,
+  .inv-mobile-summary .bk-stat-value[style] {
+    color:#070b12 !important;
+    font-size:25px !important;
+    font-weight:800 !important;
+    line-height:1.05 !important;
+  }
+
+  /* Keep the filters available but visually compact above the summaries. */
+  .inv-page .sales-toolbar {
+    margin-bottom:0 !important;
+    background:#f7f8fa !important;
+  }
+
+  .inv-table-wrap {
+    border:none !important;
+    background:transparent !important;
+    overflow:visible !important;
+    box-shadow:none !important;
+  }
+  .inv-table {
+    display:block !important;
+    width:100% !important;
+    min-width:0 !important;
+  }
+  .inv-table thead { display:none !important; }
+  .inv-table tbody {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:14px !important;
+  }
+
+  .inv-table tbody tr.inv-row {
+    position:relative !important;
+    display:grid !important;
+    grid-template-columns:56% 44% !important;
+    grid-template-rows:auto auto 1fr auto !important;
+    min-height:194px !important;
+    background:#fff !important;
+    border:1.5px solid #d1d5db !important;
+    border-radius:16px !important;
+    padding:17px 16px 14px !important;
+    box-shadow:none !important;
+    box-sizing:border-box !important;
+    gap:0 !important;
+    overflow:hidden !important;
+  }
+  .inv-table tbody tr.inv-row::after {
+    content:"" !important;
+    position:absolute !important;
+    top:16px !important;
+    bottom:16px !important;
+    left:56% !important;
+    width:1px !important;
+    background:#d7dbe1 !important;
+    pointer-events:none !important;
+  }
+
+  .inv-table tbody tr.inv-row td {
+    border:none !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    box-sizing:border-box !important;
+  }
+
+  .inv-table tbody td:nth-child(1),
+  .inv-table tbody td:nth-child(5),
+  .inv-table tbody td:nth-child(8) { display:none !important; }
+
+  /* Invoice number */
+  .inv-table tbody td:nth-child(3) {
+    grid-column:1 !important;
+    grid-row:1 !important;
+    display:block !important;
+    width:auto !important;
+    padding:0 14px 7px 0 !important;
+    font-size:16px !important;
+    font-weight:700 !important;
+    color:#0b0f17 !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+  .inv-table tbody td:nth-child(3) .inv-link { color:inherit !important; }
+
+  /* Status */
+  .inv-table tbody td:nth-child(6) {
+    grid-column:2 !important;
+    grid-row:2 !important;
+    display:flex !important;
+    justify-content:flex-end !important;
+    align-items:center !important;
+    align-self:start !important;
+    width:auto !important;
+    padding:3px 0 0 18px !important;
+  }
+  .inv-table tbody td:nth-child(6) .inv-status-badge {
+    margin:0 !important;
+    float:none !important;
+    border-radius:999px !important;
+    padding:5px 12px !important;
+    font-size:11.5px !important;
+    letter-spacing:0 !important;
+    text-transform:capitalize !important;
+  }
+
+  /* Customer */
+  .inv-table tbody td:nth-child(4) {
+    grid-column:1 !important;
+    grid-row:2 !important;
+    display:block !important;
+    width:auto !important;
+    padding:0 14px 7px 0 !important;
+    font-size:14px !important;
+    font-weight:600 !important;
+    color:#111827 !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  /* Posting date */
+  .inv-table tbody td:nth-child(2) {
+    grid-column:1 !important;
+    grid-row:3 !important;
+    display:block !important;
+    align-self:start !important;
+    width:auto !important;
+    padding:0 14px 12px 0 !important;
+    font-size:12.5px !important;
+    color:#111827 !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+  .inv-table tbody td:nth-child(2)::before {
+    content:"Date: " !important;
+    display:inline !important;
+    color:#111827 !important;
+    font-size:12.5px !important;
+    font-weight:500 !important;
+    text-transform:none !important;
+    letter-spacing:0 !important;
+  }
+
+  /* Amount */
+  .inv-table tbody td:nth-child(7) {
+    grid-column:2 !important;
+    grid-row:1 !important;
+    display:block !important;
+    width:auto !important;
+    padding:0 0 8px 18px !important;
+    text-align:right !important;
+    font-size:19px !important;
+    font-weight:800 !important;
+    color:#070b12 !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+  .inv-table tbody td:nth-child(7)::before { display:none !important; content:none !important; }
+
+  /* Actions */
+  .inv-table tbody td:nth-child(9) {
+    grid-column:1 !important;
+    grid-row:4 !important;
+    display:block !important;
+    align-self:end !important;
+    width:auto !important;
+    padding:6px 14px 0 0 !important;
+    border:none !important;
+    overflow:visible !important;
+    white-space:normal !important;
+  }
+  .inv-table tbody .inv-row-actions {
+    display:flex !important;
+    justify-content:flex-start !important;
+    gap:8px !important;
+  }
+  .inv-table tbody .inv-act-btn {
+    border:none !important;
+    background:transparent !important;
+    width:30px !important;
+    height:30px !important;
+    padding:5px !important;
+    justify-content:center !important;
+    color:#30343b !important;
+  }
+  .inv-table tbody .inv-act-btn:hover {
+    color:#374151 !important;
+    background:#f3f4f6 !important;
+    border-radius:6px !important;
+  }
+
+  .inv-table tbody tr:not(.inv-row) { display:block !important; }
+  .inv-table tbody tr:not(.inv-row) td {
+    display:block !important; white-space:normal !important; overflow:visible !important;
+  }
+}
 </style>

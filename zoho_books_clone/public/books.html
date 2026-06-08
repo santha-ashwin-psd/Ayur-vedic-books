@@ -125,6 +125,88 @@ html,body{height:100%;overflow:hidden;background:#f0f2f5}
   .inv-tl-dot{width:26px!important;height:26px!important;}
 }
 
+/* ══ Invoice Items Table → Card layout (375px & 425px) ══ */
+@media(max-width:425px){
+  /* Container: no horizontal scroll needed */
+  .inv-items-wrap { overflow:visible!important; }
+  .inv-items-table { display:block!important; }
+  .inv-items-table thead { display:none!important; }
+  .inv-items-table tbody { display:block!important; }
+
+  /* Each row = flex card */
+  .inv-items-table tbody tr {
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:flex-start!important;
+    gap:0!important;
+    padding:12px 14px!important;
+    border-bottom:1px solid #f0f2f5!important;
+  }
+  .inv-items-table tbody tr:last-child { border-bottom:none!important; }
+
+  /* Reset all cells */
+  .inv-items-table tbody td {
+    padding:0!important;
+    border:none!important;
+  }
+
+  /* Cell 1 — # row number */
+  .inv-items-table tbody td:nth-child(1) {
+    order:1!important;
+    flex:0 0 20px!important;
+    font-size:10px!important;
+    color:#9ca3af!important;
+    font-weight:700!important;
+    padding-top:3px!important;
+  }
+
+  /* Cell 2 — Item name + description, takes remaining space */
+  .inv-items-table tbody td:nth-child(2) {
+    order:2!important;
+    flex:1 1 0%!important;
+    min-width:0!important;
+  }
+
+  /* Cell 7 — Amount, right-aligned on same row as item */
+  .inv-items-table tbody td:nth-child(7) {
+    order:3!important;
+    flex:0 0 auto!important;
+    font-size:14px!important;
+    font-weight:700!important;
+    color:#1a1a2e!important;
+    align-self:flex-start!important;
+    padding-left:10px!important;
+    white-space:nowrap!important;
+    text-align:right!important;
+  }
+
+  /* Cells 3,4,5 — HSN · Qty · Rate meta line (wrap to row 2) */
+  .inv-items-table tbody td:nth-child(3),
+  .inv-items-table tbody td:nth-child(4),
+  .inv-items-table tbody td:nth-child(5) {
+    order:4!important;
+    flex:0 0 auto!important;
+    font-size:11px!important;
+    color:#6b7280!important;
+    margin-top:5px!important;
+  }
+  /* Indent meta line to align with item name */
+  .inv-items-table tbody td:nth-child(3) { margin-left:20px!important; }
+  .inv-items-table tbody td:nth-child(3)::before { content:'HSN\00a0'!important; color:#9ca3af!important; font-size:10.5px!important; }
+  .inv-items-table tbody td:nth-child(4)::before { content:'\00a0\00b7\00a0Qty\00a0'!important; color:#9ca3af!important; }
+  .inv-items-table tbody td:nth-child(5)::before { content:'\00a0\00b7\00a0\20B9'!important; color:#9ca3af!important; }
+
+  /* Cell 6 — Discount: hide */
+  .inv-items-table tbody td:nth-child(6) { display:none!important; order:5!important; }
+
+  /* Totals section: full width, no min-width overflow */
+  .inv-totals-section { justify-content:stretch!important; }
+  .inv-totals-inner   { min-width:0!important; width:100%!important; padding-right:0!important; }
+  .inv-total-line     { font-size:13px!important; }
+  .inv-grand-lbl      { font-size:14px!important; }
+  .inv-grand-amt      { font-size:16px!important; }
+}
+
 @media(max-width:400px){
   .bv-topbar{padding:0 10px!important;gap:6px!important;}
   .bv-topbar-icon-btn,.bv-notif-trigger{width:30px!important;height:30px!important;}

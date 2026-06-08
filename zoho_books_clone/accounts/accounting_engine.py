@@ -60,6 +60,7 @@ def post_sales_invoice(doc) -> None:
                 "posting_date": doc.posting_date,
                 "company":      doc.company,
                 "fiscal_year":  doc.fiscal_year or "",
+                "cost_center":  doc.cost_center or "",
                 "remarks":      f"{tax.description} — Invoice {doc.name}",
             })
     make_gl_entries(gl_map)
@@ -138,6 +139,7 @@ def post_purchase_invoice(doc) -> None:
             "posting_date": doc.posting_date,
             "company":      doc.company,
             "fiscal_year":  doc.fiscal_year or "",
+            "cost_center":  doc.cost_center or "",
             "remarks":      f"ITC — {tax.tax_type or tax.description or 'Tax'} — Bill {doc.name}",
         })
         tax_lines_posted += tax_amount

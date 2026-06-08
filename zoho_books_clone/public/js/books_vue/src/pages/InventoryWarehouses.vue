@@ -476,7 +476,8 @@ async function load() {
   loading.value = true;
   try {
     list.value = await apiList("Warehouse", {
-      fields: ["name","warehouse_name","warehouse_type","parent_warehouse","city","is_group","disabled"],
+      fields: ["name","warehouse_name","warehouse_type","parent_warehouse",
+               "city","state","address_line1","pincode","is_group","disabled"],
       limit: 500,
     }) || [];
     list.value.filter((w) => w.is_group && !w.parent_warehouse).forEach((w) => {
@@ -580,18 +581,41 @@ async function saveWarehouse() {
   saving.value = true;
   try {
     const company = await resolveCompany();
-    const doc = {
+    const newName = form.warehouse_name.trim();
+    const oldName = form.name;
+
+    // autoname=field:warehouse_name means name===warehouse_name.
+    // Changing the name requires an explicit rename_doc call — save alone won't update the PK.
+    let activeName = oldName;
+    if (drawerMode.value === "edit" && newName !== oldName) {
+      await apiPOST("frappe.client.rename_doc", {
+        doctype: "Warehouse",
+        old_name: oldName,
+        new_name: newName,
+        merge: JSON.stringify(false),
+      });
+      activeName = newName;
+    }
+
+    const changes = {
       doctype: "Warehouse",
-      warehouse_name: form.warehouse_name,
+      name: activeName,
+      warehouse_name: newName,
       warehouse_type: form.warehouse_type,
       parent_warehouse: form.parent_warehouse || "",
-      city: form.city, state: form.state,
-      address_line1: form.address_line1, pincode: form.pincode,
+      city: form.city.trim(),
+      state: form.state.trim(),
+      address_line1: form.address_line1.trim(),
+      pincode: form.pincode.trim(),
       is_group: form.is_group ? 1 : 0,
       disabled: form.disabled ? 1 : 0,
       company,
     };
-    if (drawerMode.value === "edit") doc.name = form.name;
+    let doc = changes;
+    if (drawerMode.value === "edit") {
+      const fresh = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Warehouse", name: activeName });
+      doc = { ...fresh, ...changes };
+    }
     const saved = await apiSave(doc);
     await load();
 
@@ -600,6 +624,17 @@ async function saveWarehouse() {
     // splice it in so the UI reflects the user's action.
     if (saved && !list.value.some((w) => w.name === saved.name)) {
       list.value = [saved, ...list.value];
+    }
+
+    // After edit, update the right-panel selection to the saved record.
+    // warehouse_name changes also change the Frappe document name, so we
+    // must look up by saved.name rather than the original form.name.
+    if (drawerMode.value === "edit" && saved) {
+      const updated = list.value.find((w) => w.name === saved.name);
+      if (updated) {
+        selectedWH.value = updated;
+        loadStockForWarehouse(updated.name);
+      }
     }
 
     toast(drawerMode.value === "edit" ? "Warehouse updated" : "Warehouse created");

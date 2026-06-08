@@ -979,7 +979,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from "vue";
-import { apiList, apiGET, apiSave, apiDelete, apiPOST } from "../api/client.js";
+import { apiList, apiGET, apiSave, apiDelete, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import AddressManager from "../components/AddressManager.vue";
 import { fmt, fmtDate } from "../utils/format.js";
@@ -1403,9 +1403,11 @@ async function saveCustomer() {
   }
   saving.value = true;
   try {
+    const booksCompany = await resolveCompany();
     const doc = {
       doctype: "Customer",
       ...(drawerMode.value === "edit" ? { name: form.name } : { naming_series: "CUST-.YYYY.-.#####" }),
+      books_company: booksCompany,
       customer_name: form.customer_name.trim(),
       customer_type: form.customer_type,
       salutation: form.salutation,

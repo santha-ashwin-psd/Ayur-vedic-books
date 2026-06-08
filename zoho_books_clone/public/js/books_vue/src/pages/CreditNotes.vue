@@ -545,16 +545,17 @@ const timelineSteps = computed(() => {
   if (!c) return [];
   if (c.docstatus === 2) {
     return [
-      { key: "draft", label: "Draft", done: true },
-      { key: "issued", label: "Issued", done: true },
+      { key: "draft",     label: "Draft",     done: true },
+      { key: "issued",    label: "Issued",    done: true },
       { key: "cancelled", label: "Cancelled", danger: true, current: true },
     ];
   }
+  const isDraft = c.docstatus === 0;
   const fullyApplied = c.docstatus === 1 && viewBalance.value <= 0;
   return [
-    { key: "draft",  label: "Draft",  done: true },
-    { key: "issued", label: "Issued", done: c.docstatus >= 1, current: c.docstatus === 1 && !fullyApplied },
-    { key: "closed", label: "Closed", done: fullyApplied, current: fullyApplied },
+    { key: "draft",  label: "Draft",  done: !isDraft, current: isDraft },
+    { key: "issued", label: "Issued", done: fullyApplied, current: c.docstatus === 1 && !fullyApplied },
+    { key: "closed", label: "Closed", done: fullyApplied, current: false },
   ];
 });
 
@@ -661,7 +662,10 @@ async function saveCN(submit) {
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
   drawerSaving.value = true;
   try {
-    if (!editingName.value) {
+    const company = await resolveCompany();
+
+    if (!editingName.value && submit === 1) {
+      // New + submit → use the backend API which wires GL accounts and naming
       const itemsPayload = lines.value
         .filter(l => l.item_code)
         .map(l => ({ item_code: l.item_code, item_name: l.item_code, description: l.description, qty: flt(l.qty), rate: flt(l.rate) }));
@@ -674,14 +678,16 @@ async function saveCN(submit) {
         items: JSON.stringify(itemsPayload),
         taxes: "[]",
       });
-      toast.success(`Credit Note ${r?.credit_note || ""} ${submit ? "submitted" : "issued"}`);
+      toast.success(`Credit Note ${r?.credit_note || ""} submitted`);
     } else {
-      const company = await resolveCompany();
+      // Draft (new or edit) or edit+submit → apiSave keeps docstatus=0
       const doc = {
-        doctype: "Sales Invoice", name: editingName.value,
-        company, customer: form.customer,
+        doctype: "Sales Invoice",
+        company,
+        customer: form.customer,
         posting_date: form.posting_date,
-        is_return: 1, return_against: form.return_against || null,
+        is_return: 1,
+        return_against: form.return_against || null,
         remarks: (form.reason || "") + (form.notes ? " — " + form.notes : ""),
         items: lines.value.filter(l => l.item_code).map(l => ({
           doctype: "Sales Invoice Item",
@@ -692,9 +698,10 @@ async function saveCN(submit) {
           amount: -Math.abs(flt(l.amount)),
         })),
       };
+      if (editingName.value) doc.name = editingName.value;
       const saved = await apiSave(doc);
       if (submit) await apiSubmit("Sales Invoice", saved.name);
-      toast.success(`Credit Note ${saved?.name || ""} ${submit ? "submitted" : "saved"}`);
+      toast.success(`Credit Note ${saved?.name || ""} ${submit ? "submitted" : "saved as draft"}`);
     }
     drawerOpen.value = false;
     await load();

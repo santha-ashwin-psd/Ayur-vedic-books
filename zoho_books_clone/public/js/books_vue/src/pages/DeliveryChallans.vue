@@ -100,6 +100,8 @@
     <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false">
       <div class="inv-drawer-panel inv-drawer-wide inv-view-page">
         <template v-if="viewDoc">
+
+          <!-- Header -->
           <div class="inv-view-header">
             <div>
               <div class="inv-view-number">{{ viewDoc.name }}</div>
@@ -111,54 +113,116 @@
             </div>
           </div>
 
+          <!-- Action bar -->
+          <div class="inv-action-bar">
+            <button v-if="canEdit(viewDoc)" class="inv-ab-btn" @click="openEdit(viewDoc);viewOpen=false">
+              <span v-html="icon('edit',13)"></span> Edit
+            </button>
+            <button v-if="viewDoc.docstatus===0" class="inv-ab-btn inv-ab-primary" @click="submitChallan" :disabled="submitting">
+              <span v-html="icon('send',13)"></span> {{ submitting ? 'Submitting…' : 'Submit Challan' }}
+            </button>
+          </div>
+
+          <!-- Body -->
           <div class="inv-dbody">
-            <div class="dc-section">
-              <div class="dc-section-hdr"><span v-html="icon('user',13)"></span><span>Customer & Date</span></div>
-              <div class="dc-meta-grid">
-                <div><div class="dc-meta-lbl">Customer</div><div class="dc-meta-value"><DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</DocLink></div></div>
-                <div><div class="dc-meta-lbl">Date</div><div class="dc-meta-value">{{ viewDoc.posting_date||'—' }}</div></div>
-                <div><div class="dc-meta-lbl">LR / Tracking #</div><div class="dc-meta-value">{{ viewDoc.lr_no||'—' }}</div></div>
-                <div><div class="dc-meta-lbl">Transporter</div><div class="dc-meta-value">{{ viewDoc.transporter_name||'—' }}</div></div>
-                <div v-if="viewDoc.sales_order" style="grid-column:1/-1"><div class="dc-meta-lbl">Sales Order</div><div class="dc-meta-value"><DocLink doctype="Sales Order" :name="viewDoc.sales_order" /></div></div>
-                <div v-if="viewDoc.shipping_address||viewDoc.customer_address" style="grid-column:1/-1"><div class="dc-meta-lbl">Delivery Address</div><div class="dc-meta-value">{{ viewDoc.shipping_address||viewDoc.customer_address }}</div></div>
-                <div v-if="viewDoc.remarks" style="grid-column:1/-1"><div class="dc-meta-lbl">Remarks</div><div class="dc-meta-value">{{ viewDoc.remarks }}</div></div>
+
+            <!-- Customer & logistics -->
+            <div class="dc-view-card">
+              <div class="dc-view-card-hdr">Customer & Delivery Details</div>
+              <div class="dc-info-grid">
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">Customer</div>
+                  <div class="dc-info-val dc-info-link">
+                    <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</DocLink>
+                  </div>
+                </div>
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">Date</div>
+                  <div class="dc-info-val">{{ viewDoc.posting_date||'—' }}</div>
+                </div>
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">Dispatch Warehouse</div>
+                  <div class="dc-info-val" :class="viewDoc.set_warehouse?'':'dc-info-empty'">{{ viewDoc.set_warehouse||'—' }}</div>
+                </div>
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">Total Qty</div>
+                  <div class="dc-info-val" style="font-weight:600">{{ (viewDoc.items||[]).reduce((s,i)=>s+flt(i.qty),0)||'—' }}</div>
+                </div>
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">LR / Tracking #</div>
+                  <div class="dc-info-val" :class="viewDoc.lr_no?'':'dc-info-empty'">{{ viewDoc.lr_no||'—' }}</div>
+                </div>
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">Transporter</div>
+                  <div class="dc-info-val" :class="viewDoc.transporter_name?'':'dc-info-empty'">{{ viewDoc.transporter_name||'—' }}</div>
+                </div>
+                <div v-if="viewDoc.sales_order" class="dc-info-item dc-info-full">
+                  <div class="dc-info-lbl">Sales Order</div>
+                  <div class="dc-info-val dc-info-link"><DocLink doctype="Sales Order" :name="viewDoc.sales_order" /></div>
+                </div>
+                <div class="dc-info-item dc-info-full">
+                  <div class="dc-info-lbl">Delivery Address</div>
+                  <div class="dc-info-val" style="white-space:pre-line" :class="(viewDoc.shipping_address||viewDoc.customer_address)?'':'dc-info-empty'">
+                    {{ viewDoc.shipping_address||viewDoc.customer_address||'—' }}
+                  </div>
+                </div>
+                <div v-if="viewDoc.remarks" class="dc-info-item dc-info-full">
+                  <div class="dc-info-lbl">Remarks</div>
+                  <div class="dc-info-val" style="color:#6b7280">{{ viewDoc.remarks }}</div>
+                </div>
               </div>
             </div>
 
-            <div class="dc-section">
-              <div class="dc-section-hdr">
-                <span v-html="icon('box',13)"></span><span>Items</span>
-                <span style="margin-left:auto;font-size:11.5px;color:#6b7280;text-transform:none;letter-spacing:0">
-                  {{ (viewDoc.items||[]).length }} line{{ (viewDoc.items||[]).length!==1?'s':'' }}
-                </span>
+            <!-- Items -->
+            <div class="dc-view-card">
+              <div class="dc-view-card-hdr">
+                Items
+                <span class="dc-item-count">{{ (viewDoc.items||[]).length }} line{{ (viewDoc.items||[]).length!==1?'s':'' }}</span>
               </div>
-              <table class="inv-table" style="font-size:12.5px">
-                <thead><tr><th>Item</th><th>Description</th><th class="ta-r">Qty</th><th>UOM</th></tr></thead>
-                <tbody>
-                  <tr v-for="it in viewDoc.items||[]" :key="it.name||it.item_code" class="inv-row">
-                    <td class="dc-meta-value">{{ it.item_name||it.item_code }}</td>
-                    <td class="c-muted">{{ it.description||'—' }}</td>
-                    <td class="ta-r mono">{{ it.qty }}</td>
-                    <td class="c-muted">{{ it.uom||'Nos' }}</td>
+              <table class="inv-table dc-items-tbl">
+                <thead>
+                  <tr>
+                    <th style="width:32px">#</th>
+                    <th>Item</th>
+                    <th>Description</th>
+                    <th class="ta-r" style="width:64px">Qty</th>
+                    <th style="width:56px">UOM</th>
+                    <th v-if="(viewDoc.items||[]).some(i=>i.warehouse)" style="width:110px">Warehouse</th>
                   </tr>
-                  <tr v-if="!(viewDoc.items||[]).length"><td colspan="4" class="b-empty">No items</td></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(it,i) in viewDoc.items||[]" :key="it.name||it.item_code" class="inv-row">
+                    <td class="dc-row-num">{{ i+1 }}</td>
+                    <td>
+                      <div style="font-weight:500;color:#111827">{{ it.item_name||it.item_code }}</div>
+                      <div v-if="it.item_code&&it.item_name&&it.item_code!==it.item_name" style="font-size:11px;color:#9ca3af">{{ it.item_code }}</div>
+                    </td>
+                    <td style="color:#6b7280;font-size:12px">{{ it.description||'—' }}</td>
+                    <td class="ta-r" style="font-weight:600;font-variant-numeric:tabular-nums">{{ it.qty }}</td>
+                    <td style="color:#6b7280">{{ it.uom||'Nos' }}</td>
+                    <td v-if="(viewDoc.items||[]).some(i=>i.warehouse)" style="color:#6b7280;font-size:12px">{{ it.warehouse||viewDoc.set_warehouse||'—' }}</td>
+                  </tr>
+                  <tr v-if="!(viewDoc.items||[]).length">
+                    <td colspan="6" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">No items</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
+
           </div>
 
+          <!-- Footer -->
           <div class="inv-dfooter">
-            <div class="add-footer-status">{{ statusLabel(viewDoc) }}</div>
-            <div class="add-footer-actions">
-              <button class="add-btn-cancel" @click="viewOpen=false">Close</button>
-              <button v-if="canEdit(viewDoc)" class="add-btn-draft" @click="openEdit(viewDoc);viewOpen=false">
-                <span v-html="icon('edit',13)"></span> Edit
-              </button>
-              <button v-if="viewDoc.docstatus===0" class="add-btn-more" @click="submitChallan" :disabled="submitting">
-                {{ submitting?'Submitting…':'Submit Challan' }}
-              </button>
-            </div>
+            <span class="inv-hdr-badge" :class="statusClass(viewDoc)" style="margin-right:auto">{{ statusLabel(viewDoc) }}</span>
+            <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
+            <button v-if="canEdit(viewDoc)" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
+              <span v-html="icon('edit',13)"></span> Edit
+            </button>
+            <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitChallan" :disabled="submitting">
+              {{ submitting ? 'Submitting…' : 'Submit Challan' }}
+            </button>
           </div>
+
         </template>
       </div>
     </div>
@@ -606,7 +670,16 @@ async function openView(r) {
     if (r._source === "dn") {
       // Real Delivery Note — fetch full doc
       const doc = await apiGet("Delivery Note", r.name);
-      viewDoc.value = { ...r, items: doc?.items || [], remarks: doc?.remarks || r.remarks || "" };
+      viewDoc.value = {
+        ...r,
+        items:            doc?.items || [],
+        remarks:          doc?.remarks || r.remarks || "",
+        set_warehouse:    doc?.set_warehouse || "",
+        shipping_address: doc?.shipping_address || doc?.customer_address || "",
+        contact_display:  doc?.contact_display || "",
+        vehicle_no:       doc?.vehicle_no || "",
+        lr_date:          doc?.lr_date || "",
+      };
     } else {
       // Sales Order — fetch delivered lines
       const lines = await apiGET("zoho_books_clone.api.docs.get_delivery_challan_lines", { sales_order: r.name }).catch(() => []);
@@ -778,7 +851,11 @@ async function openEdit(r) {
         qty:         flt(it.qty) || 1,
         uom:         it.uom || "Nos",
       }));
-      if (doc?.remarks) form.remarks = doc.remarks;
+      if (doc?.remarks)          form.remarks = doc.remarks;
+      if (doc?.set_warehouse)    form.set_warehouse = doc.set_warehouse;
+      if (doc?.shipping_address) form.shipping_address = doc.shipping_address;
+      if (doc?.lr_no)            form.lr_no = doc.lr_no;
+      if (doc?.transporter_name) form.transporter_name = doc.transporter_name;
     } catch {}
   } else if (r._source === "so") {
     try {
@@ -1006,20 +1083,33 @@ onMounted(async () => {
 @import '../styles/edit.css';
 @import '../styles/add.css';
 
-/* ── Section layout (view drawer body) ── */
-.dc-section { background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;margin-bottom:16px; }
-.dc-section-hdr { display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a; }
-.dc-section-hdr svg { color:#2563eb; }
+/* ── Action bar primary button ── */
+.inv-ab-primary { background:#2563eb;border-color:#2563eb;color:#fff; }
+.inv-ab-primary:hover { background:#1d4ed8;border-color:#1d4ed8; }
 
-/* ── Items table column grid ── */
+/* ── View cards ── */
+.dc-view-card { background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:14px; }
+.dc-view-card-hdr { display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#f8fafc;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:700;color:#374151;letter-spacing:.02em; }
+.dc-item-count { font-size:11.5px;font-weight:500;color:#6b7280;letter-spacing:0; }
+
+/* ── Info grid (Customer & Date card) ── */
+.dc-info-grid { display:grid;grid-template-columns:1fr 1fr;gap:0; }
+.dc-info-item { padding:10px 16px;border-bottom:1px solid #f1f5f9; }
+.dc-info-item:nth-child(odd) { border-right:1px solid #f1f5f9; }
+.dc-info-full { grid-column:1/-1; }
+.dc-info-lbl { font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px; }
+.dc-info-val { font-size:13px;color:#111827;line-height:1.4; }
+.dc-info-empty { color:#9ca3af !important; }
+.dc-info-link a, .dc-info-link span { color:#2563eb;font-weight:500; }
+
+/* ── Items table ── */
+.dc-items-tbl { font-size:12.5px; }
+.dc-row-num { color:#9ca3af;font-size:11.5px;font-weight:600;text-align:center; }
+
+/* ── Items column grid (edit drawer) ── */
 .dc-items-head { display:grid;grid-template-columns:2fr 2fr 80px 80px 32px;gap:8px;background:#f9fafb;padding:6px 10px;border-radius:6px 6px 0 0;font-size:11.5px;font-weight:600;color:#374151;border:1px solid #e5e7eb;border-bottom:none; }
 .dc-item-row { display:grid;grid-template-columns:2fr 2fr 80px 80px 32px;gap:8px;padding:6px 0;border-top:1px solid #f3f4f6;align-items:center; }
 .dc-items-empty { font-size:12px;color:#868E96;text-align:center;padding:14px;background:#f9fafb;border:1px dashed #e5e7eb;border-radius:8px; }
-
-/* ── Meta grid in view ── */
-.dc-meta-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
-.dc-meta-lbl { font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;font-weight:600; }
-.dc-meta-value { font-size:13px;color:#374151 ; }
 /* ── Confirm dialog ── */
 .dc-confirm { position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(15,23,42,.18);z-index:61;width:340px;max-width:92vw;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center; }
 .dc-confirm-icon { width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px; }

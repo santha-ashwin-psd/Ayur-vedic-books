@@ -729,108 +729,13 @@
 
           <!-- Address Tab -->
           <template v-else-if="drawerTab==='address'">
-            <!-- Billing address: always shown inline for both add and edit -->
-            <div class="inv-sec-lbl" style="margin-top:0">Billing Address</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
-              <div style="grid-column:span 2">
-                <label class="inv-lbl">Address Line 1</label>
-                <input v-model="form.address_line1" class="inv-fi" placeholder="Street, building no., floor"/>
-              </div>
-              <div style="grid-column:span 2">
-                <label class="inv-lbl">Address Line 2</label>
-                <input v-model="form.address_line2" class="inv-fi" placeholder="Area, landmark, district"/>
-              </div>
-              <div>
-                <label class="inv-lbl">City</label>
-                <input v-model="form.city" class="inv-fi" placeholder="Mumbai"
-                  @input="form.city=form.city.replace(/[^a-zA-Z\s]/g,'')"/>
-              </div>
-              <div>
-                <label class="inv-lbl">Country</label>
-                <select v-model="form.country" class="inv-fi" style="cursor:pointer" @change="form.state=''; delete formErrors.pincode; if(form.pincode) validateField('pincode')">
-                  <option value="">— Select Country —</option>
-                  <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
-                </select>
-              </div>
-              <div>
-                <label class="inv-lbl">State / Province</label>
-                <select v-if="statesFor(form.country).length" v-model="form.state" class="inv-fi" style="cursor:pointer">
-                  <option value="">— Select State —</option>
-                  <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{s}}</option>
-                </select>
-                <input v-else v-model="form.state" class="inv-fi" placeholder="Enter state / province"/>
-              </div>
-              <div>
-                <label class="inv-lbl">Pincode</label>
-                <input v-model="form.pincode" class="inv-fi"
-                  :placeholder="pincodePlaceholder(form.country)"
-                  :style="formErrors.pincode?'border-color:#dc2626;background:#fff5f5':form.pincode&&!formErrors.pincode?'border-color:#2f9e44':''"
-                  @input="form.pincode=sanitizePincode(form.pincode, form.country); delete formErrors.pincode"
-                  @blur="validateField('pincode')"/>
-                <div v-if="formErrors.pincode" style="margin-top:4px;font-size:12px;color:#dc2626">{{formErrors.pincode}}</div>
-                <div v-else-if="form.pincode&&!formErrors.pincode" style="margin-top:4px;font-size:11px;color:#9ca3af">{{pincodeHint(form.country)}}</div>
-              </div>
-            </div>
-
-            <!-- Shipping: AddressManager for edit (needs saved partyName), inline for add -->
-            <template v-if="drawerMode==='edit' && form.name">
-              <div class="inv-sec-lbl" style="margin-top:4px">Shipping Addresses</div>
-              <AddressManager
-                :partyDoctype="'Customer'"
-                :partyName="form.name"
-                @addressSaved="load"
-                @addressDeleted="load"
-              />
-            </template>
-            <template v-else>
-              <div class="inv-sec-lbl">Shipping Address <span style="font-size:11px;font-weight:400;color:#9ca3af;margin-left:6px">— leave blank to use billing address</span></div>
-              <div style="margin-bottom:10px">
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-                  <input type="checkbox" v-model="shipSameAsBilling" @change="onShipSameChange" style="accent-color:#3B5BDB"/>
-                  Use same address as billing
-                </label>
-              </div>
-              <div v-if="!shipSameAsBilling" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-                <div style="grid-column:span 2">
-                  <label class="inv-lbl">Address Line 1</label>
-                  <input v-model="form.ship_address_line1" class="inv-fi" placeholder="Street, building no., floor"/>
-                </div>
-                <div style="grid-column:span 2">
-                  <label class="inv-lbl">Address Line 2</label>
-                  <input v-model="form.ship_address_line2" class="inv-fi" placeholder="Area, landmark, district"/>
-                </div>
-                <div>
-                  <label class="inv-lbl">City</label>
-                  <input v-model="form.ship_city" class="inv-fi" placeholder="Mumbai"
-                    @input="form.ship_city=form.ship_city.replace(/[^a-zA-Z\s]/g,'')"/>
-                </div>
-                <div>
-                  <label class="inv-lbl">Country</label>
-                  <select v-model="form.ship_country" class="inv-fi" style="cursor:pointer" @change="form.ship_state=''; delete formErrors.ship_pincode; if(form.ship_pincode) validateField('ship_pincode')">
-                    <option value="">— Select Country —</option>
-                    <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="inv-lbl">State / Province</label>
-                  <select v-if="statesFor(form.ship_country).length" v-model="form.ship_state" class="inv-fi" style="cursor:pointer">
-                    <option value="">— Select State —</option>
-                    <option v-for="s in statesFor(form.ship_country)" :key="s" :value="s">{{s}}</option>
-                  </select>
-                  <input v-else v-model="form.ship_state" class="inv-fi" placeholder="Enter state / province"/>
-                </div>
-                <div>
-                  <label class="inv-lbl">Pincode</label>
-                  <input v-model="form.ship_pincode" class="inv-fi"
-                    :placeholder="pincodePlaceholder(form.ship_country)"
-                    :style="formErrors.ship_pincode?'border-color:#dc2626;background:#fff5f5':form.ship_pincode&&!formErrors.ship_pincode?'border-color:#2f9e44':''"
-                    @input="form.ship_pincode=sanitizePincode(form.ship_pincode, form.ship_country); delete formErrors.ship_pincode"
-                    @blur="validateField('ship_pincode')"/>
-                  <div v-if="formErrors.ship_pincode" style="margin-top:4px;font-size:12px;color:#dc2626">{{formErrors.ship_pincode}}</div>
-                  <div v-else-if="form.ship_pincode&&!formErrors.ship_pincode" style="margin-top:4px;font-size:11px;color:#9ca3af">{{pincodeHint(form.ship_country)}}</div>
-                </div>
-              </div>
-            </template>
+            <AddressManager
+              partyDoctype="Customer"
+              :partyName="drawerMode==='edit' ? form.name : ''"
+              v-model="pendingAddresses"
+              @addressSaved="load"
+              @addressDeleted="load"
+            />
           </template>
 
           <!-- Other Details Tab -->
@@ -1029,6 +934,7 @@ const deleting = ref(false);
 const drawerTab = ref("overview");
 const formErrors = reactive({});
 const shipSameAsBilling = ref(false);
+const pendingAddresses = ref([]);
 
 // ── GST Treatment rules ──
 const GST_RULES = {
@@ -1303,6 +1209,7 @@ async function load() {
 function resetForm() {
   drawerTab.value = "overview";
   shipSameAsBilling.value = false;
+  pendingAddresses.value = [];
   Object.keys(formErrors).forEach((k) => delete formErrors[k]);
   Object.assign(form, {
     name: "", customer_name: "", customer_type: "Company", salutation: "",
@@ -1423,18 +1330,6 @@ async function saveCustomer() {
       mobile_no: form.mobile_no.trim() ? (form.mobile_code + " " + form.mobile_no.trim()) : "",
       phone: form.phone.trim(),
       website: form.website.trim(),
-      address_line1: form.address_line1.trim(),
-      address_line2: form.address_line2.trim(),
-      city: form.city.trim(),
-      state: form.state.trim(),
-      pincode: form.pincode.trim(),
-      country: form.country.trim() || "India",
-      ship_address_line1: form.ship_address_line1.trim(),
-      ship_address_line2: form.ship_address_line2.trim(),
-      ship_city: form.ship_city.trim(),
-      ship_state: form.ship_state.trim(),
-      ship_pincode: form.ship_pincode.trim(),
-      ship_country: form.ship_country.trim() || "India",
       payment_terms: form.payment_terms,
       place_of_supply: form.place_of_supply,
       source: form.source,
@@ -1452,47 +1347,40 @@ async function saveCustomer() {
       doc_to_save = { ...fresh, ...doc };
     }
     const savedDoc = await apiSave(doc_to_save);
-    const savedName = savedDoc?.name || form.name || doc.naming_series;
-    // Sync billing address to Address doctype (enables multi-address later)
-    if (savedName && form.address_line1.trim()) {
-      try {
-        const existing = await apiList("Address", {
-          filters: [["Dynamic Link","link_name","=",savedName],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Billing"]],
-          fields: ["name"], limit: 1, order: "modified desc",
-        });
-        await apiSave({
-          doctype: "Address",
-          ...(existing[0] ? { name: existing[0].name } : {}),
-          address_title: `${savedName} - Billing`,
-          address_type: "Billing",
-          address_line1: form.address_line1.trim(),
-          address_line2: form.address_line2.trim(),
-          city: form.city.trim(), state: form.state.trim(),
-          pincode: form.pincode.trim(), country: form.country.trim() || "India",
-          links: [{ link_doctype: "Customer", link_name: savedName }],
-        });
-      } catch {}
+    const savedName = savedDoc?.name || form.name;
+
+    // Flush pending addresses (add mode) → Address doctype
+    if (drawerMode.value === "add" && savedName && pendingAddresses.value.length) {
+      for (const addr of pendingAddresses.value) {
+        try {
+          await apiSave({
+            doctype: "Address",
+            address_title: `${savedName} - ${addr.address_type}`,
+            address_type: addr.address_type,
+            address_line1: addr.address_line1,
+            address_line2: addr.address_line2 || "",
+            city: addr.city || "", state: addr.state || "",
+            pincode: addr.pincode || "", country: addr.country || "India",
+            phone: addr.phone || "",
+            links: [{ link_doctype: "Customer", link_name: savedName }],
+          });
+        } catch {}
+      }
+      // Sync first billing address fields onto the Customer doctype for the detail view
+      const firstBilling = pendingAddresses.value.find(a => a.address_type === "Billing");
+      if (firstBilling) {
+        try {
+          await apiSave({
+            doctype: "Customer", name: savedName,
+            address_line1: firstBilling.address_line1,
+            address_line2: firstBilling.address_line2 || "",
+            city: firstBilling.city || "", state: firstBilling.state || "",
+            pincode: firstBilling.pincode || "", country: firstBilling.country || "India",
+          });
+        } catch {}
+      }
     }
-    // Sync shipping address (skip if same-as-billing or blank)
-    if (savedName && !shipSameAsBilling.value && form.ship_address_line1.trim()) {
-      try {
-        const existing = await apiList("Address", {
-          filters: [["Dynamic Link","link_name","=",savedName],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Shipping"]],
-          fields: ["name"], limit: 1, order: "modified desc",
-        });
-        await apiSave({
-          doctype: "Address",
-          ...(existing[0] ? { name: existing[0].name } : {}),
-          address_title: `${savedName} - Shipping`,
-          address_type: "Shipping",
-          address_line1: form.ship_address_line1.trim(),
-          address_line2: form.ship_address_line2.trim(),
-          city: form.ship_city.trim(), state: form.ship_state.trim(),
-          pincode: form.ship_pincode.trim(), country: form.ship_country.trim() || "India",
-          links: [{ link_doctype: "Customer", link_name: savedName }],
-        });
-      } catch {}
-    }
+
     toast(drawerMode.value === "edit" ? "Customer updated!" : "Customer created!");
     showDrawer.value = false;
     await load();

@@ -7,7 +7,7 @@
         <button v-if="!readonly" class="am-btn-add" @click="openNew('Billing')">+ Add</button>
       </div>
       <div v-if="!byType('Billing').length" class="am-empty">No billing address on file</div>
-      <div v-for="addr in byType('Billing')" :key="addr.name" class="am-card">
+      <div v-for="addr in byType('Billing')" :key="addr.name || addr._tempId" class="am-card">
         <div class="am-card-body">
           <div v-if="addr.address_line1">{{ addr.address_line1 }}</div>
           <div v-if="addr.address_line2">{{ addr.address_line2 }}</div>
@@ -34,7 +34,7 @@
       </label>
       <template v-if="!sameAsBilling">
         <div v-if="!byType('Shipping').length" class="am-empty">No shipping address on file</div>
-        <div v-for="addr in byType('Shipping')" :key="addr.name" class="am-card">
+        <div v-for="addr in byType('Shipping')" :key="addr.name || addr._tempId" class="am-card">
           <div class="am-card-body">
             <div v-if="addr.address_line1">{{ addr.address_line1 }}</div>
             <div v-if="addr.address_line2">{{ addr.address_line2 }}</div>
@@ -110,16 +110,20 @@ import { apiList, apiSave, apiDelete } from "../api/client.js";
 
 const props = defineProps({
   partyDoctype: { type: String, required: true },
-  partyName:    { type: String, required: true },
+  partyName:    { type: String, default: "" },
   readonly:     { type: Boolean, default: false },
+  modelValue:   { type: Array, default: () => [] }, // pending addresses for add mode
 });
-const emit = defineEmits(["addressSaved", "addressDeleted"]);
+const emit = defineEmits(["addressSaved", "addressDeleted", "update:modelValue"]);
+
+const isPending = computed(() => !props.partyName);
 
 const addresses    = ref([]);
 const showForm     = ref(false);
 const editingAddr  = ref(null);
 const saving       = ref(false);
 const sameAsBilling = ref(false);
+let _tempCounter = 0;
 
 const form = reactive({
   address_type: "Billing",
@@ -128,6 +132,14 @@ const form = reactive({
 });
 
 const byType = (type) => addresses.value.filter(a => a.address_type === type);
+
+// Sync modelValue → local addresses in pending mode
+watch(() => props.modelValue, (v) => {
+  if (isPending.value) addresses.value = [...(v || [])];
+}, { immediate: true });
+
+// When partyName becomes available (edit mode), load from Frappe
+watch(() => props.partyName, (v) => { if (v) loadAddresses(); });
 
 async function loadAddresses() {
   if (!props.partyName) return;
@@ -177,6 +189,30 @@ function closeForm() {
 
 async function save() {
   if (!form.address_line1.trim()) return;
+
+  // Pending mode — store locally, emit update
+  if (isPending.value) {
+    const addr = {
+      _tempId: editingAddr.value?._tempId || ("_t" + (++_tempCounter)),
+      address_type:  form.address_type,
+      address_line1: form.address_line1.trim(),
+      address_line2: form.address_line2.trim(),
+      city:    form.city.trim(),
+      state:   form.state.trim(),
+      pincode: form.pincode.trim(),
+      country: form.country.trim() || "India",
+      phone:   form.phone.trim(),
+    };
+    const updated = editingAddr.value
+      ? addresses.value.map(a => a._tempId === addr._tempId ? addr : a)
+      : [...addresses.value, addr];
+    addresses.value = updated;
+    emit("update:modelValue", updated);
+    closeForm();
+    return;
+  }
+
+  // Frappe mode — save to Address doctype
   saving.value = true;
   try {
     const doc = {
@@ -206,6 +242,16 @@ async function save() {
 
 async function confirmDelete(addr) {
   if (!confirm(`Delete this ${addr.address_type} address?`)) return;
+
+  // Pending mode
+  if (isPending.value) {
+    const updated = addresses.value.filter(a => a._tempId !== addr._tempId);
+    addresses.value = updated;
+    emit("update:modelValue", updated);
+    return;
+  }
+
+  // Frappe mode
   try {
     await apiDelete("Address", addr.name);
     await loadAddresses();
@@ -215,8 +261,7 @@ async function confirmDelete(addr) {
   }
 }
 
-watch(() => props.partyName, (v) => { if (v) loadAddresses(); });
-onMounted(() => loadAddresses());
+onMounted(() => { if (!isPending.value) loadAddresses(); });
 </script>
 
 <style scoped>

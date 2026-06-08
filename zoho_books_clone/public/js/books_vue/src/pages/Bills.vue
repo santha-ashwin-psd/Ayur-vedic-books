@@ -492,10 +492,10 @@
                         <span class="t-lbl">Subtotal</span>
                         <span class="t-amt">{{ fmtCur((viewDoc.grand_total||0)-(viewDoc.total_taxes_and_charges||0)) }}</span>
                       </div>
-                      <template v-if="viewDoc.taxes&&viewDoc.taxes.length">
-                        <div v-for="(tx,i) in viewDoc.taxes" :key="i" class="inv-total-line">
+                      <template v-if="viewTaxes.length">
+                        <div v-for="(tx,i) in viewTaxes" :key="i" class="inv-total-line">
                           <span class="t-lbl">{{ tx.description||tx.account_head }}</span>
-                          <span class="t-amt">{{ fmtCur(tx.tax_amount||tx.amount||0) }}</span>
+                          <span class="t-amt" :style="Number(tx.rate)<0?'color:#dc2626':''">{{ fmtCur(tx.tax_amount||tx.amount||0) }}</span>
                         </div>
                       </template>
                       <div v-else class="inv-total-line">
@@ -610,7 +610,7 @@ const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const billCollapsed = reactive({ details: false, billing: true, lines: false, remarks: true });
-const viewLoading = ref(false), viewItems = ref([]), viewPayments = ref([]);
+const viewLoading = ref(false), viewItems = ref([]), viewPayments = ref([]), viewTaxes = ref([]);
 const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref("");
 const sortCol = ref("posting_date"), sortDir = ref("desc");
 const copyingLast = ref(false);
@@ -762,8 +762,20 @@ async function openEdit(b) {
     }
     if (doc?.currency) form.currency = doc.currency;
     if (doc?.conversion_rate) form.exchange_rate = doc.conversion_rate;
-    if (doc?.taxes?.[0]?.rate) form.tax_rate = doc.taxes[0].rate;
-    if (doc?.taxes?.[0]?.account_head) taxAccountHead.value = doc.taxes[0].account_head;
+    // Separate TDS line from GST line so we don't accidentally use TDS rate as tax_rate
+    const _TDS_RE = /tds|194[a-z]?|with.?hold|195/i;
+    const tdsTax = (doc.taxes || []).find(t =>
+      _TDS_RE.test(t.description || "") || _TDS_RE.test(t.tax_type || "") || Number(t.rate) < 0
+    );
+    const gstTax = (doc.taxes || []).find(t => t !== tdsTax);
+    if (gstTax?.rate) form.tax_rate = gstTax.rate;
+    if (gstTax?.account_head) taxAccountHead.value = gstTax.account_head;
+    if (tdsTax) {
+      form.tds_applicable = true;
+      const secMatch = (tdsTax.description || tdsTax.tax_type || "").match(/194[A-Z]?|192|195/i);
+      form.tds_section = secMatch ? secMatch[0].toUpperCase() : (form.tds_section || "");
+      form.tds_rate = Math.abs(Number(tdsTax.rate) || 0) || (TDS_RATES[form.tds_section] ?? 10);
+    }
     if (doc?.update_stock !== undefined) form.update_stock = doc.update_stock ? 1 : 0;
     if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
     if (doc?.billing_address) form.billing_address = doc.billing_address;
@@ -793,12 +805,14 @@ async function openView(b) {
   viewLoading.value = true;
   viewItems.value = [];
   viewPayments.value = [];
+  viewTaxes.value = [];
   try {
     const [doc, payments] = await Promise.all([
       apiGet("Purchase Invoice", b.name),
       b.docstatus === 1 ? apiGET("zoho_books_clone.api.docs.get_bill_payments", { bill_name: b.name }) : Promise.resolve([]),
     ]);
     viewItems.value = doc?.items || [];
+    viewTaxes.value = doc?.taxes || [];
     viewPayments.value = (payments || []).filter(p => p.docstatus === 1);
   } catch (e) { /* keep dialog open */ }
   viewLoading.value = false;

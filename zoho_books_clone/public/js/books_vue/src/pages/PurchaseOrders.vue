@@ -76,9 +76,9 @@
               <td @click="openView(o)" class="ta-r mono-sm">{{ fmtCur(o.grand_total) }}</td>
               <td class="po-act-cell">
                 <button class="inv-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button v-if="o.docstatus !== 1" class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="canEdit(o)" class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button class="inv-act-btn po-act-conv" v-if="canBill(o)" @click="openBillModal(o)" title="Bill"><span v-html="icon('arrow-right',13)"></span></button>
-                <button class="inv-act-btn po-act-del" @click="deletePO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                <button v-if="canDelete(o)" class="inv-act-btn po-act-del" @click="deletePO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
             <tr v-if="!sorted.length"><td colspan="8" class="po-empty">No purchase orders match</td></tr>
@@ -352,7 +352,7 @@
 
         <div class="inv-dfooter">
           <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-          <button class="form-btn form-btn-success" @click="openEdit(viewDoc);viewOpen=false">
+          <button v-if="canEdit(viewDoc)" class="form-btn form-btn-success" @click="openEdit(viewDoc);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
           <button class="form-btn form-btn-outline" @click="emailPO(viewDoc)">
@@ -362,8 +362,8 @@
             🖨 Print
           </button>
           <button v-if="canBill(viewDoc)" class="form-btn form-btn-primary" @click="openBillModal(viewDoc)">→ Bill</button>
-          <button class="form-btn form-btn-danger" @click="cancelPO(viewDoc)">Cancel</button>
-          <button class="form-btn form-btn-danger" @click="deletePO(viewDoc)">Delete</button>
+          <button v-if="canCancel(viewDoc)" class="form-btn form-btn-danger" @click="cancelPO(viewDoc)">Cancel</button>
+          <button v-if="canDelete(viewDoc)" class="form-btn form-btn-danger" @click="deletePO(viewDoc)">Delete</button>
         </div>
       </template>
     </div>
@@ -516,6 +516,18 @@ function headerBg(o) {
 function canBill(o) {
   const s = (o?.status||"").toLowerCase();
   return s !== "cancelled" && s !== "closed" && s !== "billed";
+}
+function canEdit(o) {
+  const s = (o?.status||"").toLowerCase();
+  return s === "draft" || s === "";
+}
+function canCancel(o) {
+  const s = (o?.status||"").toLowerCase();
+  return s !== "cancelled" && s !== "closed" && s !== "billed";
+}
+function canDelete(o) {
+  const s = (o?.status||"").toLowerCase();
+  return s === "draft" || s === "" || s === "cancelled";
 }
 
 async function load() {

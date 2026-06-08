@@ -141,17 +141,12 @@ def post_purchase_invoice(doc) -> None:
         if _is_tds_line(tax):
             tds_total += abs(flt(tax.tax_amount))
 
-    # If TDS withheld: reduce AP credit, route TDS amount to TDS Payable
+    # grand_total already reflects TDS deduction (vendor receives net).
+    # Balance: CR AP (grand_total) + CR TDS Payable (tds_total) = DR Expense + DR ITC.
     if tds_total > 0:
         tds_payable_acct = _get_tds_payable(doc.company)
         if tds_payable_acct:
-            # Reduce AP credit — vendor receives net (grand_total − TDS)
-            for entry in gl_map:
-                if entry["account"] == doc.credit_to:
-                    entry["credit"] = round(grand_total - tds_total, 2)
-                    entry["remarks"] = f"Payable to {doc.supplier} (net after TDS) — Bill {doc.name}"
-                    break
-            # CR TDS Payable for withheld amount
+            # CR TDS Payable — withheld amount goes to government; AP stays at grand_total (net)
             gl_map.append({
                 "account":      tds_payable_acct,
                 "debit":        0,
@@ -164,6 +159,12 @@ def post_purchase_invoice(doc) -> None:
                 "cost_center":  doc.cost_center or "",
                 "remarks":      f"TDS withheld — Bill {doc.name}",
             })
+        else:
+            # No TDS Payable account — gross up AP so GL stays balanced
+            for entry in gl_map:
+                if entry["account"] == doc.credit_to:
+                    entry["credit"] = round(grand_total + tds_total, 2)
+                    break
 
     # DR individual ITC accounts per tax line (CGST, SGST, IGST, etc.) — skip TDS lines
     tax_lines_posted = flt(0)
@@ -197,7 +198,7 @@ def post_purchase_invoice(doc) -> None:
     # If no tax lines had account_heads, the tax was already included in the
     # expense debit via grand_total fallback. We need to adjust: swap net_total
     # debit back to grand_total so the entry remains balanced.
-    non_tds_tax = total_tax - tds_total
+    non_tds_tax = total_tax + tds_total  # total_tax already has TDS as negative; add back abs to get non-TDS portion
     if not tax_lines_posted and non_tds_tax:
         for entry in gl_map:
             if entry["account"] == doc.expense_account:

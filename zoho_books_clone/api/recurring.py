@@ -343,6 +343,17 @@ def make_recurring_from_doc(reference_doctype, reference_document, frequency,
     Used by 'Make Recurring' button on Invoice/PO/etc. drawers."""
     if not frappe.db.exists(reference_doctype, reference_document):
         frappe.throw(_("Reference document does not exist"))
+
+    docstatus = frappe.db.get_value(reference_doctype, reference_document, "docstatus")
+    if docstatus != 1:
+        status_label = {0: "Draft", 2: "Cancelled"}.get(docstatus, f"status {docstatus}")
+        frappe.throw(
+            _(
+                "Cannot create a recurring subscription for a {0} document. "
+                "Please submit {1} first, then create the subscription."
+            ).format(status_label, reference_document)
+        )
+
     existing = frappe.db.exists("Auto Repeat", {
         "reference_doctype": reference_doctype,
         "reference_document": reference_document,

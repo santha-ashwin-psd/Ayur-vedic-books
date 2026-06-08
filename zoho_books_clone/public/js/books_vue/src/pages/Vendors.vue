@@ -341,7 +341,7 @@
                 </div>
                 <div v-if="selectedVendor.tax_id" style="display:flex;justify-content:space-between;font-size:12.5px">
                   <span style="color:#6B7280">GSTIN / Tax ID</span>
-                  <span style="font-weight:600;color:#111827;font-family:monospace">{{selectedVendor.tax_id}}</span>
+                  <span style="font-weight:600;color:#111827;">{{selectedVendor.tax_id}}</span>
                 </div>
               </div>
             </div>
@@ -378,8 +378,8 @@
                 <tbody>
                   <tr>
                     <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px">{{ selectedVendor.default_currency || "INR" }}</td>
-                    <td style="font-size:13px;font-weight:600;color:#E67700;text-align:right;padding:10px 12px;font-family:monospace">{{ fmtCur(vendorSummary.outstanding || 0) }}</td>
-                    <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;font-family:monospace">{{ fmtCur(vendorSummary.dn_credit || 0) }}</td>
+                    <td style="font-size:13px;font-weight:600;color:#E67700;text-align:right;padding:10px 12px;">{{ fmtCur(vendorSummary.outstanding || 0) }}</td>
+                    <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;">{{ fmtCur(vendorSummary.dn_credit || 0) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -415,9 +415,9 @@
                 background: t.type==='Bill' ? '#FEF3C7' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
                 color: t.type==='Bill' ? '#92400E' : t.type==='Payment' ? '#059669' : '#991B1B'
               }">{{t.type}}</span>
-              <span style="font-family:monospace;color:#2563EB;font-weight:600">{{t.name}}</span>
-              <span style="font-family:monospace;color:#6B7280">{{fmtDate(t.date)}}</span>
-              <span style="text-align:right;font-family:monospace;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmtCur(Math.abs(t.amount))}}</span>
+              <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
+              <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
+              <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmtCur(Math.abs(t.amount))}}</span>
               <span style="text-align:right;font-family:monospace" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):'—'}}</span>
               <span style="font-size:11.5px;color:#6B7280">{{t.status||(t.docstatus===2?'Cancelled':'Submitted')}}</span>
             </div>
@@ -443,7 +443,7 @@
             </div>
             <div v-if="!vendorStatement.rows?.length" style="padding:24px;text-align:center;color:#9CA3AF;font-size:13px">No statement rows for this period.</div>
             <div v-for="(r,i) in (vendorStatement.rows || [])" :key="r.ref+'-'+i"
-              style="display:grid;grid-template-columns:110px 1fr 100px 110px 110px 130px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;font-family:monospace;align-items:center">
+              style="display:grid;grid-template-columns:110px 1fr 100px 110px 110px 130px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
               <span style="color:#6B7280">{{fmtDate(r.date)}}</span>
               <span style="color:#2563EB;font-weight:600">{{r.ref}}</span>
               <span style="font-size:11px;color:#6B7280">{{r.type}}</span>
@@ -452,10 +452,10 @@
               <span style="text-align:right;font-weight:700;color:#111827">{{fmtCur(r.balance)}}</span>
             </div>
             <div v-if="vendorStatement.rows?.length" style="background:#F9FAFB;padding:12px 14px;border-top:2px solid #E5E7EB;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;font-size:12.5px">
-              <div><span style="color:#6B7280">Billed:</span> <strong style="font-family:monospace;color:#E67700">{{fmtCur(vendorStatement.totals?.billed || 0)}}</strong></div>
-              <div><span style="color:#6B7280">Paid:</span> <strong style="font-family:monospace;color:#059669">{{fmtCur(vendorStatement.totals?.paid || 0)}}</strong></div>
-              <div><span style="color:#6B7280">Debit Notes:</span> <strong style="font-family:monospace;color:#059669">{{fmtCur(vendorStatement.totals?.debit_notes || 0)}}</strong></div>
-              <div style="text-align:right"><span style="color:#6B7280">Closing Balance:</span> <strong style="font-family:monospace;color:#111827">{{fmtCur(vendorStatement.totals?.closing_balance || 0)}}</strong></div>
+              <div><span style="color:#6B7280">Billed:</span> <strong style="color:#E67700">{{fmtCur(vendorStatement.totals?.billed || 0)}}</strong></div>
+              <div><span style="color:#6B7280">Paid:</span> <strong style="color:#059669">{{fmtCur(vendorStatement.totals?.paid || 0)}}</strong></div>
+              <div><span style="color:#6B7280">Debit Notes:</span> <strong style="color:#059669">{{fmtCur(vendorStatement.totals?.debit_notes || 0)}}</strong></div>
+              <div style="text-align:right"><span style="color:#6B7280">Closing Balance:</span> <strong style="color:#111827">{{fmtCur(vendorStatement.totals?.closing_balance || 0)}}</strong></div>
             </div>
           </div>
         </div>
@@ -1296,7 +1296,7 @@ onMounted(async () => {
 }
 .vt-td-check  { padding-left: 16px; width: 36px; }
 .vt-td-num    { text-align: right; }
-.vt-td-mono   { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
+.vt-td-mono   { font-size: 13px; color: #374151; }
 .vt-td-secondary { color: #6b7280; font-size: 12.5px; }
 .vt-td-actions { text-align: center; width: 88px; }
 .vt-checkbox { width: 15px; height: 15px; accent-color: #E67700; cursor: pointer; border-radius: 3px; }
@@ -1313,7 +1313,7 @@ onMounted(async () => {
 .inv-row:hover .vt-actions { opacity: 1; }
 .vt-act-edit:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
 .vt-act-del:hover  { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
-.vt-amount-due { font-weight: 600; color: #E67700; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12.5px; }
+.vt-amount-due { font-weight: 600; color: #E67700; font-size: 13px; }
 .vt-amount-nil { color: #d1d5db; }
 .vt-badge {
   display: inline-flex;

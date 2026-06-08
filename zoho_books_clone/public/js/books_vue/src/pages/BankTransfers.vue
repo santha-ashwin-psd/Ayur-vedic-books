@@ -328,8 +328,8 @@ onMounted(async()=>{await load();if(route.query.from){openNew();form.from_accoun
 .ta-r{text-align:right!important;}
 .btr-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;cursor:pointer;}
 .btr-row:last-child td{border-bottom:none;}.btr-row:hover td{background:#f9fafb;}
-.btr-num{font-family:monospace;font-size:12px;color:#2563eb;font-weight:600;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.btr-num{font-size:13px;color:#2563eb;font-weight:600;}
+.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
 .btr-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .badge-green{background:#dcfce7;color:#16a34a;}.badge-orange{background:#fff7ed;color:#ea580c;}.badge-grey{background:#f3f4f6;color:#6b7280;}
 .btr-act-btn{background:transparent;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;}

@@ -283,8 +283,8 @@ onMounted(()=>{load();loadAccounts();});
 .ta-r{text-align:right!important;}
 .cash-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer;}
 .cash-row:last-child td{border-bottom:none;}.cash-row:hover td{background:#f9fafb;}
-.cash-num{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.cash-num{font-size:13px;color:#2563eb;font-weight:600;}
+.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
 .cash-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .badge-green{background:#dcfce7;color:#16a34a;}.badge-red{background:#fee2e2;color:#dc2626;}
 .cash-empty{text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important;}

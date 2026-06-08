@@ -157,7 +157,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between">
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{c.customer_name}}</div>
-              <div style="font-size:12px;margin-top:2px;font-family:monospace" :style="{color: c.outstanding>0 ? '#dc2626' : '#6B7280'}">{{ c.outstanding > 0 ? fmt(c.outstanding) : '₹0.00' }}</div>
+              <div style="font-size:12px;margin-top:2px;" :style="{color: c.outstanding>0 ? '#dc2626' : '#6B7280'}">{{ c.outstanding > 0 ? fmt(c.outstanding) : '₹0.00' }}</div>
             </div>
             <span class="b-badge" :class="c.disabled?'b-badge-red':'b-badge-green'" style="font-size:10px">{{c.disabled?'Disabled':'Active'}}</span>
           </div>
@@ -289,8 +289,8 @@
               <tbody>
                 <tr>
                   <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 0">{{ selectedCustomer.default_currency || 'INR' }}</td>
-                  <td style="text-align:right;font-size:13px;font-weight:700;color:#2563EB;padding:10px 0;font-family:monospace">{{fmt(selectedCustomer.credit_limit||0)}}</td>
-                  <td style="text-align:right;font-size:13px;font-weight:700;padding:10px 0;font-family:monospace" :style="{color: selectedCustomer.outstanding>0?'#dc2626':'#111827'}">{{ fmt(selectedCustomer.outstanding||0) }}</td>
+                  <td style="text-align:right;font-size:13px;font-weight:700;color:#2563EB;padding:10px 0;">{{fmt(selectedCustomer.credit_limit||0)}}</td>
+                  <td style="text-align:right;font-size:13px;font-weight:700;padding:10px 0;" :style="{color: selectedCustomer.outstanding>0?'#dc2626':'#111827'}">{{ fmt(selectedCustomer.outstanding||0) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -337,15 +337,15 @@
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
             <div style="background:#FFF5F5;border:1px solid #FFC9C9;border-radius:10px;padding:14px 16px">
               <div style="font-size:11px;color:#C92A2A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Total Outstanding</div>
-              <div style="font-size:20px;font-weight:700;font-family:monospace;color:#C92A2A">₹{{fmtStmt(stmt.total_outstanding)}}</div>
+              <div style="font-size:20px;font-weight:700;color:#C92A2A">₹{{fmtStmt(stmt.total_outstanding)}}</div>
             </div>
             <div style="background:#FFF9DB;border:1px solid #FFD43B;border-radius:10px;padding:14px 16px">
               <div style="font-size:11px;color:#E67700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Overdue</div>
-              <div style="font-size:20px;font-weight:700;font-family:monospace;color:#E67700">₹{{fmtStmt(stmt.overdue_amount)}}</div>
+              <div style="font-size:20px;font-weight:700;color:#E67700">₹{{fmtStmt(stmt.overdue_amount)}}</div>
             </div>
             <div style="background:#F3F4F6;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
               <div style="font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Open Invoices</div>
-              <div style="font-size:20px;font-weight:700;font-family:monospace;color:#111827">{{stmt.invoices.length}}</div>
+              <div style="font-size:20px;font-weight:700;color:#111827">{{stmt.invoices.length}}</div>
             </div>
           </div>
 
@@ -364,10 +364,10 @@
               </thead>
               <tbody>
                 <tr v-for="inv in stmt.invoices" :key="inv.name" style="border-bottom:1px solid #F3F4F6">
-                  <td style="padding:8px 12px;font-family:monospace;color:#3B5BDB;font-size:12px">{{inv.name}}</td>
+                  <td style="padding:8px 12px;color:#3B5BDB;font-size:12px">{{inv.name}}</td>
                   <td style="padding:8px 12px;color:#6B7280">{{inv.posting_date}}</td>
                   <td style="padding:8px 12px;color:#6B7280">{{inv.due_date}}</td>
-                  <td style="padding:8px 12px;text-align:right;font-family:monospace;font-weight:600">₹{{fmtStmt(inv.outstanding_amount)}}</td>
+                  <td style="padding:8px 12px;text-align:right;font-weight:600">₹{{fmtStmt(inv.outstanding_amount)}}</td>
                   <td style="padding:8px 12px;text-align:center">
                     <span :style="'padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;'+(inv.is_overdue?'background:#FFF5F5;color:#C92A2A':'background:#EBFBEE;color:#2F9E44')">
                       {{inv.is_overdue ? 'Overdue' : 'Due'}}
@@ -393,10 +393,10 @@
               </thead>
               <tbody>
                 <tr v-for="p in stmt.payments" :key="p.name" style="border-bottom:1px solid #F3F4F6">
-                  <td style="padding:8px 12px;font-family:monospace;color:#3B5BDB;font-size:12px">{{p.name}}</td>
+                  <td style="padding:8px 12px;color:#3B5BDB;font-size:12px">{{p.name}}</td>
                   <td style="padding:8px 12px;color:#6B7280">{{p.payment_date}}</td>
                   <td style="padding:8px 12px;color:#6B7280">{{p.mode_of_payment||'—'}}</td>
-                  <td style="padding:8px 12px;text-align:right;font-family:monospace;font-weight:600;color:#2F9E44">₹{{fmtStmt(p.paid_amount)}}</td>
+                  <td style="padding:8px 12px;text-align:right;font-weight:600;color:#2F9E44">₹{{fmtStmt(p.paid_amount)}}</td>
                 </tr>
               </tbody>
             </table>
@@ -426,10 +426,10 @@
               background: t.type==='Invoice' ? '#DBEAFE' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
               color: t.type==='Invoice' ? '#1E40AF' : t.type==='Payment' ? '#059669' : '#991B1B'
             }">{{t.type}}</span>
-            <span style="font-family:monospace;color:#2563EB;font-weight:600">{{t.name}}</span>
-            <span style="font-family:monospace;color:#6B7280">{{fmtDate(t.date)}}</span>
-            <span style="text-align:right;font-family:monospace;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmt(Math.abs(t.amount))}}</span>
-            <span style="text-align:right;font-family:monospace" :style="{color: t.outstanding>0 ? '#dc2626' : '#9CA3AF'}">{{t.outstanding>0?fmt(t.outstanding):'—'}}</span>
+            <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
+            <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
+            <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmt(Math.abs(t.amount))}}</span>
+            <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#dc2626' : '#9CA3AF'}">{{t.outstanding>0?fmt(t.outstanding):'—'}}</span>
             <span style="font-size:11.5px;color:#6B7280">{{t.status||(t.docstatus===2?'Cancelled':'Submitted')}}</span>
           </div>
         </div>
@@ -1592,7 +1592,7 @@ onMounted(load);
   color: #374151;
   white-space: nowrap;
 }
-.vt-td-mono      { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #374151; }
+.vt-td-mono      {font-size: 12px; color: #374151; }
 .vt-td-secondary { color: #6b7280; font-size: 12.5px; }
 .vt-td-actions   { text-align: center; width: 88px; }
 .vt-row-shimmer td { padding: 13px 14px; }

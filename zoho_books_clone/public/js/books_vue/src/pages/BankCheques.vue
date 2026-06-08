@@ -301,8 +301,8 @@ onMounted(load);
 .ta-r{text-align:right!important;}
 .chq-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer;}
 .chq-row:last-child td{border-bottom:none;}.chq-row:hover td{background:#f9fafb;}
-.chq-num{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.chq-num{font-size:12.5px;color:#2563eb;font-weight:600;}
+.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
 .chq-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .badge-green{background:#dcfce7;color:#16a34a;}.badge-red{background:#fee2e2;color:#dc2626;}
 .badge-blue{background:#dbeafe;color:#1d4ed8;}.badge-grey{background:#f3f4f6;color:#6b7280;}

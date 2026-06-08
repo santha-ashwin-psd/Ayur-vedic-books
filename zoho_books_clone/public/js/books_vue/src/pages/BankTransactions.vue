@@ -218,7 +218,7 @@ onMounted(()=>{if(route.query.account)selectedAccount.value=String(route.query.a
 .ta-r{text-align:right!important;}
 .bt-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:middle;cursor:pointer;}
 .bt-row:last-child td{border-bottom:none;}.bt-row:hover td{background:#f9fafb;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
 .bt-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .badge-green{background:#dcfce7;color:#16a34a;}.badge-orange{background:#fff7ed;color:#ea580c;}.badge-grey{background:#f3f4f6;color:#6b7280;}
 .bt-empty{text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important;}

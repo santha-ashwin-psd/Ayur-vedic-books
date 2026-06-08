@@ -69,9 +69,9 @@
             <td style="padding:9px 14px">
               <span class="b-badge" :style="'background:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).bg+';color:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).color">{{row.root_type}}</span>
             </td>
-            <td style="padding:9px 14px;font-family:monospace;font-size:12px;color:#868e96">{{row.code||'—'}}</td>
-            <td class="ta-r" style="padding:9px 14px;font-family:monospace;font-weight:600" :class="row.opening>0?(row.bal_type==='Debit'?'coa-dr':'coa-cr'):'c-muted'">{{fmtINR(row.opening)}}</td>
-            <td class="ta-r" style="padding:9px 14px;font-family:monospace;font-weight:600" :class="(balances[row.name]||0) > 0 ? 'coa-dr' : (balances[row.name]||0) < 0 ? 'coa-cr' : 'c-muted'">
+            <td style="padding:9px 14px;font-size:12px;color:#868e96">{{row.code||'—'}}</td>
+            <td class="ta-r" style="padding:9px 14px;font-weight:600" :class="row.opening>0?(row.bal_type==='Debit'?'coa-dr':'coa-cr'):'c-muted'">{{fmtINR(row.opening)}}</td>
+            <td class="ta-r" style="padding:9px 14px;font-weight:600" :class="(balances[row.name]||0) > 0 ? 'coa-dr' : (balances[row.name]||0) < 0 ? 'coa-cr' : 'c-muted'">
               <span v-if="row.is_group">—</span>
               <span v-else-if="balancesLoading && balances[row.name] === undefined" style="color:#9ca3af;font-size:11px">…</span>
               <span v-else>{{ fmtBal(balances[row.name]) }}</span>
@@ -163,7 +163,7 @@
           <div class="coa-fg coa-fg2">
             <div>
               <label class="coa-lbl">Opening Balance (₹)</label>
-              <input v-model="form.opening" type="number" min="0" step="0.01" class="coa-fi" placeholder="0.00" style="font-family:monospace"/>
+              <input v-model="form.opening" type="number" min="0" step="0.01" class="coa-fi" placeholder="0.00" />
             </div>
             <div>
               <label class="coa-lbl">Balance Type</label>
@@ -239,13 +239,13 @@
             <tbody>
               <tr v-for="r in ledgerDrawer.rows" :key="(r.name||r.voucher_no)+'-'+r.posting_date"
                 style="border-top:1px solid #f3f4f6">
-                <td style="padding:8px 10px;font-family:monospace;color:#6b7280">{{ r.posting_date }}</td>
-                <td style="padding:8px 10px;font-family:monospace;color:#2563eb;font-weight:600">{{ r.voucher_no }}</td>
+                <td style="padding:8px 10px;color:#6b7280">{{ r.posting_date }}</td>
+                <td style="padding:8px 10px;color:#2563eb;font-weight:600">{{ r.voucher_no }}</td>
                 <td style="padding:8px 10px;color:#6b7280">{{ r.voucher_type }}</td>
                 <td style="padding:8px 10px;color:#374151" :title="r.party || ''">{{ r.party_name || r.party || '—' }}</td>
-                <td style="padding:8px 10px;text-align:right;font-family:monospace;color:#16a34a">{{ Number(r.debit||0) > 0 ? "₹"+Number(r.debit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
-                <td style="padding:8px 10px;text-align:right;font-family:monospace;color:#dc2626">{{ Number(r.credit||0) > 0 ? "₹"+Number(r.credit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
-                <td style="padding:8px 10px;text-align:right;font-family:monospace;font-weight:700" :style="{color: r.balance > 0 ? '#16a34a' : r.balance < 0 ? '#dc2626' : '#374151'}">
+                <td style="padding:8px 10px;text-align:right;color:#16a34a">{{ Number(r.debit||0) > 0 ? "₹"+Number(r.debit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
+                <td style="padding:8px 10px;text-align:right;color:#dc2626">{{ Number(r.credit||0) > 0 ? "₹"+Number(r.credit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
+                <td style="padding:8px 10px;text-align:right;font-weight:700" :style="{color: r.balance > 0 ? '#16a34a' : r.balance < 0 ? '#dc2626' : '#374151'}">
                   ₹{{ Number(r.balance).toLocaleString("en-IN",{minimumFractionDigits:2}) }}
                 </td>
               </tr>
@@ -254,7 +254,7 @@
               <tr style="background:#f9fafb;border-top:2px solid #e5e7eb">
                 <td colspan="4" style="padding:10px;font-weight:700;color:#374151">Closing Balance</td>
                 <td colspan="2"></td>
-                <td style="padding:10px;text-align:right;font-family:monospace;font-weight:800;font-size:14px" :style="{color: ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance > 0 ? '#16a34a' : '#dc2626'}">
+                <td style="padding:10px;text-align:right;font-weight:800;font-size:14px" :style="{color: ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance > 0 ? '#16a34a' : '#dc2626'}">
                   ₹{{ Number(ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance).toLocaleString("en-IN",{minimumFractionDigits:2}) }}
                 </td>
               </tr>

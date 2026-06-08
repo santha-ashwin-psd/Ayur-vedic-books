@@ -344,6 +344,8 @@ def make_recurring_from_doc(reference_doctype, reference_document, frequency,
     if not frappe.db.exists(reference_doctype, reference_document):
         frappe.throw(_("Reference document does not exist"))
 
+    # Frappe's Auto Repeat controller requires the source doc to be Submitted (docstatus=1).
+    # Catching this here gives a clean user-facing message instead of an OperationalError.
     docstatus = frappe.db.get_value(reference_doctype, reference_document, "docstatus")
     if docstatus != 1:
         status_label = {0: "Draft", 2: "Cancelled"}.get(docstatus, f"status {docstatus}")
@@ -362,6 +364,30 @@ def make_recurring_from_doc(reference_doctype, reference_document, frequency,
     if existing:
         frappe.throw(_("An active subscription already exists for this document: {0}").format(existing))
 
+    # Pre-flight: ensure the reference doctype has the `auto_repeat` column that
+    # Frappe's Auto Repeat validator (update_auto_repeat_id) will SELECT.
+    # This column is added by bench migrate / frappe.reload_doctype; if it's absent
+    # the insert explodes with OperationalError: (1054, "Unknown column 'auto_repeat'").
+    table = f"tab{reference_doctype}"
+    col_exists = frappe.db.sql(
+        f"SELECT 1 FROM information_schema.COLUMNS "
+        f"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = 'auto_repeat'",
+        (table,),
+    )
+    if not col_exists:
+        # Attempt to add the column automatically, then re-validate.
+        try:
+            frappe.db.sql(f"ALTER TABLE `{table}` ADD COLUMN `auto_repeat` VARCHAR(140) DEFAULT NULL")
+            frappe.db.commit()
+        except Exception as col_err:
+            frappe.log_error(f"make_recurring_from_doc: could not add auto_repeat column to {table}: {col_err}")
+            frappe.throw(
+                _(
+                    "The '{0}' doctype is missing the 'auto_repeat' database column required by "
+                    "Frappe's recurring engine. Please run 'bench migrate' on your site and try again."
+                ).format(reference_doctype)
+            )
+
     doc = frappe.get_doc({
         "doctype": "Auto Repeat",
         "reference_doctype": reference_doctype,
@@ -375,6 +401,17 @@ def make_recurring_from_doc(reference_doctype, reference_document, frequency,
         "subject": subject or "",
         "message": message or "",
     })
-    doc.insert(ignore_permissions=False)
+    try:
+        doc.insert(ignore_permissions=False)
+    except Exception as e:
+        err_str = str(e)
+        if "Unknown column 'auto_repeat'" in err_str:
+            frappe.throw(
+                _(
+                    "Database schema is out of date — the 'auto_repeat' column is missing. "
+                    "Please run 'bench migrate' on your site and try again."
+                )
+            )
+        raise
     frappe.db.commit()
     return {"ok": True, "name": doc.name}

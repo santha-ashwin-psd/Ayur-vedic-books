@@ -3,7 +3,6 @@ from frappe import _
 from frappe.utils import flt, nowdate
 from frappe.model.document import Document
 from zoho_books_clone.accounts.accounting_engine import post_payment_entry, reverse_voucher
-from zoho_books_clone.accounts.doctype.general_ledger_entry.general_ledger_entry import recompute_outstanding_from_gl
 from zoho_books_clone.db.validators import validate_account_company, validate_account_type
 
 
@@ -67,21 +66,10 @@ class PaymentEntry(Document):
         for ref in (self.references or []):
             dt  = ref.reference_doctype
             dn  = ref.reference_name
-
-            # P2/Issue 4 — recompute from GL so the value is always consistent
-            # with actual ledger entries rather than accumulated arithmetic.
-            try:
-                new_amt = recompute_outstanding_from_gl(dt, dn)
-            except Exception:
-                # Fallback to arithmetic update if GL recompute fails
-                # (e.g. during first-time setup before GL entries are committed)
-                amt = flt(ref.allocated_amount)
-                current = flt(frappe.db.get_value(dt, dn, "outstanding_amount"))
-                new_amt = (current + amt) if cancel else (current - amt)
-                new_amt = max(0.0, new_amt)
-                frappe.db.set_value(dt, dn, "outstanding_amount", new_amt,
-                                    update_modified=False)
-
+            amt = flt(ref.allocated_amount)
+            current = flt(frappe.db.get_value(dt, dn, "outstanding_amount"))
+            new_amt = max(0.0, (current + amt) if cancel else (current - amt))
+            frappe.db.set_value(dt, dn, "outstanding_amount", new_amt, update_modified=False)
             _refresh_invoice_status(dt, dn, new_amt)
 
 

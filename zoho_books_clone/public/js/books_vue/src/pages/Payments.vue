@@ -172,9 +172,8 @@
                 <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12.5px;display:flex;align-items:center;gap:8px">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   <span style="color:#92400e">
-                    <strong>TDS Deduction u/s {{ vendorTdsInfo.section }}</strong> ({{ vendorTdsInfo.rate }}%):
-                    <strong style="color:#dc2626">₹{{ tdsDeduction.toFixed(2) }}</strong> withheld —
-                    Vendor receives: <strong>₹{{ form.paid_amount.toFixed ? form.paid_amount.toFixed(2) : form.paid_amount }}</strong>
+                    <strong>TDS u/s {{ vendorTdsInfo.section }}</strong> already deducted at billing (est. ₹{{ tdsDeduction.toFixed(2) }}) —
+                    Outstanding amount shown is the <strong>net payable to vendor</strong>. Pay exactly the outstanding amount.
                   </span>
                 </div>
               </div>
@@ -524,20 +523,35 @@ const unallocated = computed(() => {
   return flt(form.paid_amount) - alloc;
 });
 
+// outstanding_amount on each bill is already NET of TDS (TDS was deducted at bill creation).
+// tdsDeduction is purely informational — DO NOT subtract it again from paid_amount.
 const tdsDeduction = computed(() => {
   if (!vendorTdsInfo.value?.applicable || !vendorTdsInfo.value.rate) return 0;
-  const gross = invoiceRefs.value.filter(r => r.checked).reduce((s, r) => s + flt(r.outstanding_amount), 0);
-  return Math.round(gross * vendorTdsInfo.value.rate / 100 * 100) / 100;
+  // Estimate: outstanding already has TDS removed, so gross ≈ outstanding / (1 - rate/100)
+  const net = invoiceRefs.value.filter(r => r.checked).reduce((s, r) => s + flt(r.outstanding_amount), 0);
+  if (!net) return 0;
+  const rate = vendorTdsInfo.value.rate;
+  const gross = Math.round(net / (1 - rate / 100) * 100) / 100;
+  return Math.round((gross - net) * 100) / 100;
 });
 
-// Auto-set paid_amount to net (gross − TDS) when vendor TDS applies and bills are checked
+// When bills are checked/unchecked: set paid_amount AND allocated_amount together.
+// onRefCheck runs before the watch (Vue timing), so it can't safely read paid_amount yet.
+// All allocation logic lives here so values are consistent when savePayment reads them.
 watch(() => invoiceRefs.value.map(r => r.checked), () => {
-  if (!vendorTdsInfo.value?.applicable) return;
-  const gross = invoiceRefs.value.filter(r => r.checked).reduce((s, r) => s + flt(r.outstanding_amount), 0);
-  if (gross > 0) {
-    const net = Math.round((gross - tdsDeduction.value) * 100) / 100;
+  const checkedRefs = invoiceRefs.value.filter(r => r.checked);
+  const net = checkedRefs.reduce((s, r) => s + flt(r.outstanding_amount), 0);
+  if (net > 0) {
     form.paid_amount = net;
+    let remaining = net;
+    for (const ref of checkedRefs) {
+      const alloc = Math.min(flt(ref.outstanding_amount), remaining);
+      ref.allocated_amount = alloc;
+      remaining = Math.max(0, remaining - alloc);
+    }
   }
+  // Clear any unchecked refs
+  invoiceRefs.value.filter(r => !r.checked).forEach(r => { r.allocated_amount = 0; });
 }, { deep: true });
 
 async function load() {
@@ -708,13 +722,8 @@ async function fetchOutstandingInvoices(party, pmtType) {
   finally { invLoading.value = false; }
 }
 
-function onRefCheck(ref) {
-  if (ref.checked && ref.allocated_amount === 0) {
-    // Auto-fill with min(outstanding, remaining unallocated)
-    const used = invoiceRefs.value.filter(r => r.checked && r !== ref).reduce((s,r) => s+flt(r.allocated_amount), 0);
-    const remaining = flt(form.paid_amount) - used;
-    ref.allocated_amount = Math.min(flt(ref.outstanding_amount), Math.max(0, remaining));
-  }
+function onRefCheck(_ref) {
+  // Allocation is fully managed by the watcher above — nothing to do here.
 }
 
 function syncUnallocated() {} // triggers computed

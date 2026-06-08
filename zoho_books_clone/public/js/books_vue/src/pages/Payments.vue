@@ -168,6 +168,21 @@
                 <label class="inv-lbl">Amount <span class="inv-req">*</span></label>
                 <input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="inv-fi" placeholder="0.00" @input="syncUnallocated" />
               </div>
+              <div v-if="vendorTdsInfo?.applicable && tdsDeduction > 0" style="grid-column:1/-1">
+                <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12.5px;display:flex;align-items:center;gap:8px">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span style="color:#92400e">
+                    <strong>TDS Deduction u/s {{ vendorTdsInfo.section }}</strong> ({{ vendorTdsInfo.rate }}%):
+                    <strong style="color:#dc2626">₹{{ tdsDeduction.toFixed(2) }}</strong> withheld —
+                    Vendor receives: <strong>₹{{ form.paid_amount.toFixed ? form.paid_amount.toFixed(2) : form.paid_amount }}</strong>
+                  </span>
+                </div>
+              </div>
+              <div v-if="vendorTdsInfo?.applicable && !tdsDeduction" style="grid-column:1/-1">
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;font-size:12px;color:#1d4ed8">
+                  TDS applicable u/s {{ vendorTdsInfo.section }} — select bills above to see the deduction amount
+                </div>
+              </div>
               <div>
                 <label class="inv-lbl">Mode of Payment</label>
                 <select v-model="form.mode_of_payment" class="inv-fi">
@@ -491,6 +506,9 @@ const outstandingInvoices = ref([]);
 const invoiceRefs = ref([]);
 const invLoading = ref(false);
 
+// TDS deduction tracking
+const vendorTdsInfo = ref(null); // { applicable, section, rate } from Supplier doc
+
 const blankForm = () => ({
   doctype: "Payment Entry",
   payment_type: defaultTab === "Receive" ? "Receive" : "Pay",
@@ -505,6 +523,22 @@ const unallocated = computed(() => {
   const alloc = invoiceRefs.value.filter(r => r.checked).reduce((s, r) => s + flt(r.allocated_amount), 0);
   return flt(form.paid_amount) - alloc;
 });
+
+const tdsDeduction = computed(() => {
+  if (!vendorTdsInfo.value?.applicable || !vendorTdsInfo.value.rate) return 0;
+  const gross = invoiceRefs.value.filter(r => r.checked).reduce((s, r) => s + flt(r.outstanding_amount), 0);
+  return Math.round(gross * vendorTdsInfo.value.rate / 100 * 100) / 100;
+});
+
+// Auto-set paid_amount to net (gross − TDS) when vendor TDS applies and bills are checked
+watch(() => invoiceRefs.value.map(r => r.checked), () => {
+  if (!vendorTdsInfo.value?.applicable) return;
+  const gross = invoiceRefs.value.filter(r => r.checked).reduce((s, r) => s + flt(r.outstanding_amount), 0);
+  if (gross > 0) {
+    const net = Math.round((gross - tdsDeduction.value) * 100) / 100;
+    form.paid_amount = net;
+  }
+}, { deep: true });
 
 async function load() {
   loading.value = true;
@@ -631,10 +665,22 @@ watch(() => [form.party, form.payment_type], async ([p, t], [oldP, oldT]) => {
   if (!p) {
     outstandingInvoices.value = [];
     invoiceRefs.value = [];
+    vendorTdsInfo.value = null;
     return;
   }
   if (p === oldP && t === oldT) return;
   await fetchOutstandingInvoices(p, t);
+  // Fetch TDS info for vendor payments only
+  if (t === "Pay") {
+    try {
+      const doc = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Supplier", name: p });
+      vendorTdsInfo.value = doc?.tds_applicable
+        ? { applicable: true, section: doc.tds_section || "", rate: Number(doc.tds_section ? { "194C":1,"194J":10,"194A":10,"194H":5,"194I":10,"192":0,"195":20 }[doc.tds_section] ?? 10 : 0) }
+        : null;
+    } catch { vendorTdsInfo.value = null; }
+  } else {
+    vendorTdsInfo.value = null;
+  }
 });
 
 async function fetchOutstandingInvoices(party, pmtType) {

@@ -6,12 +6,29 @@ Central module that owns all GL map construction logic.
 Every financial DocType calls into this module on submit/cancel instead of
 building its own GL maps, ensuring a single place to audit and change posting rules.
 """
+import re
 import frappe
 from frappe import _
 from frappe.utils import flt
 from zoho_books_clone.accounts.doctype.general_ledger_entry.general_ledger_entry import (
     make_gl_entries,
 )
+
+_TDS_PATTERN = re.compile(r"TDS|194[A-Z]?|WITHHOLD|195|WITH.?HOLD", re.IGNORECASE)
+
+
+def _is_tds_line(tax) -> bool:
+    desc = (getattr(tax, "description", "") or "").strip()
+    ttype = (getattr(tax, "tax_type", "") or getattr(tax, "charge_type", "") or "").strip()
+    return bool(_TDS_PATTERN.search(desc) or _TDS_PATTERN.search(ttype))
+
+
+def _get_tds_payable(company: str) -> str | None:
+    acct = (
+        frappe.db.get_value("Account", {"account_name": ["like", "%TDS Payable%"], "company": company, "is_group": 0}, "name")
+        or frappe.db.get_value("Account", {"account_type": "Tax", "account_name": ["like", "%TDS%"], "company": company, "is_group": 0}, "name")
+    )
+    return acct
 
 
 # ─── Sales Invoice ─────────────────────────────────────────────────────────────
@@ -118,9 +135,42 @@ def post_purchase_invoice(doc) -> None:
         },
     ]
 
-    # DR individual ITC accounts per tax line (CGST, SGST, IGST, etc.)
+    # Separate TDS (deduction) lines from ITC (addition) lines
+    tds_total = flt(0)
+    for tax in (doc.taxes or []):
+        if _is_tds_line(tax):
+            tds_total += abs(flt(tax.tax_amount))
+
+    # If TDS withheld: reduce AP credit, route TDS amount to TDS Payable
+    if tds_total > 0:
+        tds_payable_acct = _get_tds_payable(doc.company)
+        if tds_payable_acct:
+            # Reduce AP credit — vendor receives net (grand_total − TDS)
+            for entry in gl_map:
+                if entry["account"] == doc.credit_to:
+                    entry["credit"] = round(grand_total - tds_total, 2)
+                    entry["remarks"] = f"Payable to {doc.supplier} (net after TDS) — Bill {doc.name}"
+                    break
+            # CR TDS Payable for withheld amount
+            gl_map.append({
+                "account":      tds_payable_acct,
+                "debit":        0,
+                "credit":       tds_total,
+                "voucher_type": doc.doctype,
+                "voucher_no":   doc.name,
+                "posting_date": doc.posting_date,
+                "company":      doc.company,
+                "fiscal_year":  doc.fiscal_year or "",
+                "cost_center":  doc.cost_center or "",
+                "remarks":      f"TDS withheld — Bill {doc.name}",
+            })
+
+    # DR individual ITC accounts per tax line (CGST, SGST, IGST, etc.) — skip TDS lines
     tax_lines_posted = flt(0)
     for tax in (doc.taxes or []):
+        if _is_tds_line(tax):
+            continue  # TDS handled above via TDS Payable, not as ITC debit
+
         tax_amount = flt(tax.tax_amount)
         if not tax_amount:
             continue
@@ -147,10 +197,11 @@ def post_purchase_invoice(doc) -> None:
     # If no tax lines had account_heads, the tax was already included in the
     # expense debit via grand_total fallback. We need to adjust: swap net_total
     # debit back to grand_total so the entry remains balanced.
-    if not tax_lines_posted and total_tax:
+    non_tds_tax = total_tax - tds_total
+    if not tax_lines_posted and non_tds_tax:
         for entry in gl_map:
             if entry["account"] == doc.expense_account:
-                entry["debit"] = grand_total
+                entry["debit"] = net_total + non_tds_tax
                 entry["remarks"] = f"Purchase cost (gross, no ITC accounts) — Bill {doc.name}"
                 break
 

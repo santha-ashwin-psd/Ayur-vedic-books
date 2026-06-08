@@ -180,6 +180,101 @@ def create_tds_entry(
     }
 
 
+@frappe.whitelist(allow_guest=False)
+def get_tds_entries(
+    company: str,
+    from_date: str = None,
+    to_date: str = None,
+) -> list:
+    """Return TDS Entry records saved to Frappe DB (not from PI tax lines)."""
+    filters = [["company", "=", company]]
+    if from_date:
+        filters.append(["date", ">=", from_date])
+    if to_date:
+        filters.append(["date", "<=", to_date])
+    return frappe.get_list(
+        "TDS Entry",
+        filters=filters,
+        fields=["name", "date", "section", "party", "pan", "amount",
+                "tds_total", "status", "voucher_no", "challan_no", "challan_date"],
+        order_by="date desc",
+        limit=500,
+    )
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def save_tds_entry(data: str) -> dict:
+    """
+    Save a TDS Entry document to Frappe DB.
+    If expense_account is provided, also posts GL entries via create_tds_entry().
+    """
+    import json
+    d = json.loads(data) if isinstance(data, str) else data
+
+    amount    = flt(d.get("amount", 0))
+    rate      = flt(d.get("rate", 0))
+    surcharge = flt(d.get("surcharge", 0))
+    cess      = flt(d.get("cess", 0))
+    tds_total = flt(d.get("tds_total")) or round(amount * (rate + surcharge + cess) / 100, 2)
+
+    entry = frappe.get_doc({
+        "doctype":           "TDS Entry",
+        "company":           d.get("company"),
+        "date":              d.get("date") or today(),
+        "section":           d.get("section", ""),
+        "party":             d.get("party", ""),
+        "pan":               d.get("pan", ""),
+        "nature_of_payment": d.get("nature_of_payment", ""),
+        "amount":            amount,
+        "rate":              rate,
+        "surcharge":         surcharge,
+        "cess":              cess,
+        "tds_total":         tds_total,
+        "expense_account":   d.get("expense_account", ""),
+        "remarks":           d.get("remarks", ""),
+    })
+    entry.insert(ignore_permissions=True)
+
+    # Post GL entries if expense_account is provided
+    voucher_no = ""
+    if d.get("expense_account") and amount > 0 and tds_total > 0:
+        try:
+            gl_result = create_tds_entry(
+                company=d.get("company"),
+                party=d.get("party", ""),
+                expense_account=d.get("expense_account"),
+                amount=str(amount),
+                tds_amount=str(tds_total),
+                tds_section=d.get("section", ""),
+                date=d.get("date") or today(),
+                remarks=d.get("remarks", ""),
+            )
+            voucher_no = gl_result.get("voucher_no", "")
+            frappe.db.set_value("TDS Entry", entry.name, "voucher_no", voucher_no)
+            frappe.db.commit()
+        except Exception:
+            pass
+
+    return {"name": entry.name, "voucher_no": voucher_no, "tds_total": tds_total}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def update_tds_entry_status(
+    entry_name: str,
+    status: str,
+    challan_no: str = "",
+    challan_date: str = "",
+) -> dict:
+    """Mark a TDS Entry as Deposited or Filed and store challan details."""
+    frappe.db.set_value("TDS Entry", entry_name, {
+        "status": status,
+        "challan_no": challan_no,
+        "challan_date": challan_date,
+    })
+    frappe.db.commit()
+    return {"name": entry_name, "status": status}
+
+
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def save_irn(
     invoice_name: str,

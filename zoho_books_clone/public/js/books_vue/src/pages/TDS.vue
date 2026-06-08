@@ -3,7 +3,7 @@
     <div class="tds-topbar">
       <div>
         <div class="tds-title">TDS</div>
-        <div class="tds-subtitle">Tax Deducted at Source — Purchase Invoice Deductions</div>
+        <div class="tds-subtitle">Tax Deducted at Source — Purchase Invoice Deductions &amp; Manual Entries</div>
       </div>
       <div class="tds-controls">
         <div class="tds-search-wrap"><span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span><input v-model="search" placeholder="Search by party or section…" class="tds-search-input" /></div>
@@ -13,12 +13,13 @@
         </select>
         <button class="tds-btn-ghost" @click="load" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
         <button v-if="list.length" class="tds-btn-ghost" @click="exportCSV"><span v-html="icon('download',13)"></span> CSV</button>
+        <button class="tds-btn-primary" @click="openNewEntry"><span v-html="icon('plus',13)"></span> New TDS Entry</button>
       </div>
     </div>
 
     <div v-if="!loading && noTdsNote" class="tds-note">
       <span v-html="icon('info',14)"></span>
-      No TDS deductions found. TDS transactions appear here when a Purchase Invoice has a tax line with "TDS", "194C", "194J" etc. in the description.
+      No TDS deductions found. TDS transactions appear here when a Purchase Invoice has a tax line with "TDS", "194C", "194J" etc. in the description, or when a manual TDS Entry is created.
     </div>
 
     <div class="tds-summary" v-if="!loading">
@@ -43,7 +44,7 @@
     <div class="tds-card">
       <table class="tds-table">
         <thead><tr>
-          <th @click="sort('name')" class="sortable">Voucher # <span v-html="sortArrow('name')"></span></th>
+          <th @click="sort('name')" class="sortable">Voucher / Ref <span v-html="sortArrow('name')"></span></th>
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
           <th>Party</th>
           <th>TDS Section</th>
@@ -51,36 +52,159 @@
           <th class="ta-r">TDS Rate %</th>
           <th class="ta-r">TDS Amount</th>
           <th class="ta-r">Net Payment</th>
+          <th>Source</th>
+          <th>Status</th>
+          <th>Action</th>
         </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 8" :key="n"><td colspan="8"><div class="tds-shimmer"></div></td></tr>
+            <tr v-for="n in 8" :key="n"><td colspan="11"><div class="tds-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="e in sorted" :key="e.name + (e.tds_section||'')" class="tds-row">
+            <tr v-for="e in sorted" :key="(e.entry_name || e.name) + (e.tds_section||'')" class="tds-row">
               <td><span class="tds-code">{{ e.name }}</span></td>
               <td class="mono-sm text-muted">{{ fmtDate(e.posting_date) }}</td>
-              <td>{{ e.supplier_name || e.supplier || '—' }}</td>
-              <td><span class="tds-section-badge">{{ e.tds_section || e.tax_type || '—' }}</span></td>
+              <td>{{ e.party || '—' }}</td>
+              <td><span class="tds-section-badge">{{ e.tds_section || '—' }}</span></td>
               <td class="ta-r mono-sm">{{ fmtCur(e.gross_amount) }}</td>
               <td class="ta-r mono-sm text-muted">{{ e.rate ? `${e.rate}%` : '—' }}</td>
               <td class="ta-r mono-sm red">{{ fmtCur(e.tds_amount) }}</td>
               <td class="ta-r mono-sm">{{ fmtCur(e.net_payment) }}</td>
+              <td><span class="tds-source-badge" :class="e.source==='entry' ? 'tds-source-manual' : 'tds-source-bill'">{{ e.source === 'entry' ? 'Manual' : 'Bill' }}</span></td>
+              <td>
+                <span v-if="e.source==='entry'" class="tds-status-badge" :class="'tds-status-' + (e.status||'pending').toLowerCase()">{{ e.status || 'Pending' }}</span>
+                <span v-else class="text-muted" style="font-size:11.5px">From PI</span>
+              </td>
+              <td>
+                <button v-if="e.source==='entry' && e.status !== 'Deposited' && e.status !== 'Filed'" class="tds-act-btn" @click="openDeposit(e)">Mark Deposited</button>
+              </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="8" class="tds-empty">No TDS transactions found</td></tr>
+            <tr v-if="!sorted.length"><td colspan="11" class="tds-empty">No TDS transactions found</td></tr>
           </template>
         </tbody>
       </table>
     </div>
+
+    <!-- ── New TDS Entry Drawer ── -->
+    <Teleport to="body">
+      <div v-if="showEntryDrawer" class="tds-drawer-bg" @click.self="showEntryDrawer=false"></div>
+      <div class="tds-drawer-panel" :class="{open:showEntryDrawer}">
+        <div class="tds-drawer-header">
+          <div>
+            <div class="tds-drawer-title">New TDS Entry</div>
+            <div class="tds-drawer-sub">Record a TDS deduction manually</div>
+          </div>
+          <button class="tds-drawer-close" @click="showEntryDrawer=false" v-html="icon('x',15)"></button>
+        </div>
+        <div class="tds-drawer-body">
+          <div class="tds-form-grid">
+            <div class="tds-form-field">
+              <label class="tds-lbl">Date <span class="tds-req">*</span></label>
+              <input v-model="entryForm.date" type="date" class="tds-fi" />
+            </div>
+            <div class="tds-form-field">
+              <label class="tds-lbl">TDS Section <span class="tds-req">*</span></label>
+              <select v-model="entryForm.section" class="tds-fi" @change="onSectionChange">
+                <option value="">Select Section</option>
+                <option>194C</option><option>194J</option><option>194A</option>
+                <option>194H</option><option>194I</option><option>192</option>
+                <option>195</option><option>Other</option>
+              </select>
+            </div>
+            <div class="tds-form-field">
+              <label class="tds-lbl">Party (Vendor) <span class="tds-req">*</span></label>
+              <input v-model="entryForm.party" class="tds-fi" placeholder="Vendor name" />
+            </div>
+            <div class="tds-form-field">
+              <label class="tds-lbl">PAN Number</label>
+              <input v-model="entryForm.pan" class="tds-fi" placeholder="ABCDE1234F" @input="entryForm.pan=entryForm.pan.toUpperCase()" />
+            </div>
+            <div class="tds-form-field" style="grid-column:span 2">
+              <label class="tds-lbl">Nature of Payment</label>
+              <input v-model="entryForm.nature_of_payment" class="tds-fi" placeholder="e.g. Professional Services, Rent" />
+            </div>
+            <div class="tds-form-field">
+              <label class="tds-lbl">Gross Amount <span class="tds-req">*</span></label>
+              <input v-model.number="entryForm.amount" type="number" min="0" step="0.01" class="tds-fi" @input="calcEntryTds" />
+            </div>
+            <div class="tds-form-field">
+              <label class="tds-lbl">TDS Rate (%)</label>
+              <input v-model.number="entryForm.rate" type="number" min="0" max="100" step="0.01" class="tds-fi" @input="calcEntryTds" />
+            </div>
+            <div class="tds-form-field">
+              <label class="tds-lbl">Surcharge (%)</label>
+              <input v-model.number="entryForm.surcharge" type="number" min="0" step="0.01" class="tds-fi" @input="calcEntryTds" />
+            </div>
+            <div class="tds-form-field">
+              <label class="tds-lbl">Cess (%)</label>
+              <input v-model.number="entryForm.cess" type="number" min="0" step="0.01" class="tds-fi" @input="calcEntryTds" />
+            </div>
+            <div class="tds-form-field" style="grid-column:span 2">
+              <label class="tds-lbl">TDS Amount (auto-calculated)</label>
+              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;font-size:14px;font-weight:700;color:#dc2626;font-family:monospace">
+                {{ fmtCur(entryForm.tds_total) }}
+              </div>
+            </div>
+            <div class="tds-form-field" style="grid-column:span 2">
+              <label class="tds-lbl">Expense Account <span style="color:#9ca3af;font-weight:400">(optional — posts GL on save)</span></label>
+              <select v-model="entryForm.expense_account" class="tds-fi">
+                <option value="">— No GL posting —</option>
+                <option v-for="a in expenseAccounts" :key="a.name" :value="a.name">{{ a.name }}</option>
+              </select>
+            </div>
+            <div class="tds-form-field" style="grid-column:span 2">
+              <label class="tds-lbl">Remarks</label>
+              <textarea v-model="entryForm.remarks" class="tds-fi" rows="2" placeholder="Internal notes…"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="tds-drawer-footer">
+          <button class="tds-btn-ghost" @click="showEntryDrawer=false">Cancel</button>
+          <button class="tds-btn-primary" :disabled="entrySaving" @click="saveTDSEntry">
+            <span v-if="entrySaving" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
+            {{ entrySaving ? 'Saving…' : 'Save TDS Entry' }}
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- ── Mark Deposited Modal ── -->
+    <Teleport to="body">
+      <div v-if="showDepositModal" class="tds-drawer-bg" @click.self="showDepositModal=false"></div>
+      <div v-if="showDepositModal" class="tds-modal">
+        <div class="tds-modal-header">
+          <span style="font-size:14px;font-weight:700;color:#111827">Mark TDS as Deposited</span>
+          <button class="tds-drawer-close" @click="showDepositModal=false" v-html="icon('x',14)"></button>
+        </div>
+        <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+          <div>
+            <label class="tds-lbl">Challan Number</label>
+            <input v-model="depositForm.challan_no" class="tds-fi" placeholder="Challan reference number" />
+          </div>
+          <div>
+            <label class="tds-lbl">Challan Date</label>
+            <input v-model="depositForm.challan_date" type="date" class="tds-fi" />
+          </div>
+        </div>
+        <div style="padding:12px 20px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #f3f4f6">
+          <button class="tds-btn-ghost" @click="showDepositModal=false">Cancel</button>
+          <button class="tds-btn-primary" :disabled="depositSaving" @click="saveDeposit">
+            {{ depositSaving ? 'Saving…' : 'Mark Deposited' }}
+          </button>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { apiGET, resolveCompany } from "../api/client.js";
+import { ref, reactive, computed, onMounted } from "vue";
+import { apiGET, apiPOST, apiList, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+
+const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "192": 0, "195": 20, "Other": 10 };
 
 const { toast } = useToast();
 const list = ref([]);
@@ -90,6 +214,23 @@ const periodFilter = ref("");
 const sortCol = ref("posting_date");
 const sortDir = ref("desc");
 const noTdsNote = ref(false);
+const expenseAccounts = ref([]);
+
+// Entry drawer
+const showEntryDrawer = ref(false);
+const entrySaving = ref(false);
+const entryForm = reactive({
+  date: new Date().toISOString().slice(0, 10),
+  section: "", party: "", pan: "", nature_of_payment: "",
+  amount: 0, rate: 0, surcharge: 0, cess: 0, tds_total: 0,
+  expense_account: "", remarks: "",
+});
+
+// Deposit modal
+const showDepositModal = ref(false);
+const depositSaving = ref(false);
+const depositTarget = ref(null);
+const depositForm = reactive({ challan_no: "", challan_date: "" });
 
 const now = new Date();
 function makePeriods() {
@@ -115,14 +256,62 @@ async function load() {
       params.from_date = `${yr}-${mo}-01`;
       params.to_date   = `${yr}-${mo}-${new Date(+yr, +mo, 0).getDate()}`;
     }
-    const rows = await apiGET("zoho_books_clone.db.queries.get_tds_transactions", params);
-    list.value = Array.isArray(rows) ? rows : (rows?.message || []);
+
+    const [piRows, entryRows] = await Promise.all([
+      apiGET("zoho_books_clone.db.queries.get_tds_transactions", params).catch(() => []),
+      apiGET("zoho_books_clone.api.gst.get_tds_entries", params).catch(() => []),
+    ]);
+
+    const piNormalized = (Array.isArray(piRows) ? piRows : []).map(e => ({
+      name: e.name,
+      posting_date: e.posting_date,
+      party: e.supplier_name || e.supplier || "",
+      tds_section: e.tds_section || e.tax_type || "",
+      gross_amount: flt(e.gross_amount),
+      rate: e.rate,
+      tds_amount: flt(e.tds_amount),
+      net_payment: flt(e.net_payment),
+      source: "bill",
+      status: "",
+      entry_name: null,
+    }));
+
+    const entryNormalized = (Array.isArray(entryRows) ? entryRows : []).map(e => ({
+      name: e.voucher_no || e.name,
+      posting_date: e.date,
+      party: e.party || "",
+      tds_section: e.section || "",
+      gross_amount: flt(e.amount),
+      rate: e.amount > 0 ? Math.round(flt(e.tds_total) / flt(e.amount) * 100 * 100) / 100 : 0,
+      tds_amount: flt(e.tds_total),
+      net_payment: flt(e.amount) - flt(e.tds_total),
+      source: "entry",
+      status: e.status || "Pending",
+      entry_name: e.name,
+    }));
+
+    // Merge: deduplicate by voucher_no (entries already linked from bills via GL)
+    const piVouchers = new Set(piNormalized.map(r => r.name).filter(Boolean));
+    const uniqueEntries = entryNormalized.filter(r => !r.name || !piVouchers.has(r.name));
+    list.value = [...piNormalized, ...uniqueEntries];
+
     if (!list.value.length) noTdsNote.value = true;
   } catch (e) {
     toast.error(e.message || "Failed to load TDS data");
   } finally {
     loading.value = false;
   }
+}
+
+async function loadExpenseAccounts() {
+  try {
+    const rows = await apiList("Account", {
+      fields: ["name"],
+      filters: [["account_type", "=", "Expense Account"], ["is_group", "=", 0]],
+      limit: 100,
+    });
+    expenseAccounts.value = rows || [];
+  } catch { expenseAccounts.value = []; }
 }
 
 const totalTds   = computed(() => list.value.reduce((s, e) => s + flt(e.tds_amount), 0));
@@ -132,7 +321,7 @@ const totalNet   = computed(() => list.value.reduce((s, e) => s + flt(e.net_paym
 const sectionBreakdown = computed(() => {
   const map = {};
   list.value.forEach(e => {
-    const sec = e.tds_section || e.tax_type || "Unknown";
+    const sec = e.tds_section || "Unknown";
     if (!map[sec]) map[sec] = { section: sec, count: 0, amount: 0 };
     map[sec].count++;
     map[sec].amount += flt(e.tds_amount);
@@ -144,8 +333,8 @@ const filtered = computed(() => {
   if (!search.value.trim()) return list.value;
   const q = search.value.toLowerCase();
   return list.value.filter(e =>
-    (e.supplier_name || e.supplier || "").toLowerCase().includes(q) ||
-    (e.tds_section || e.tax_type || "").toLowerCase().includes(q)
+    (e.party || "").toLowerCase().includes(q) ||
+    (e.tds_section || "").toLowerCase().includes(q)
   );
 });
 
@@ -167,15 +356,85 @@ function sortArrow(col) {
   return sortDir.value === "asc" ? "↑" : "↓";
 }
 
+function openNewEntry() {
+  Object.assign(entryForm, {
+    date: new Date().toISOString().slice(0, 10),
+    section: "", party: "", pan: "", nature_of_payment: "",
+    amount: 0, rate: 0, surcharge: 0, cess: 0, tds_total: 0,
+    expense_account: "", remarks: "",
+  });
+  showEntryDrawer.value = true;
+}
+
+function onSectionChange() {
+  entryForm.rate = TDS_RATES[entryForm.section] ?? 0;
+  calcEntryTds();
+}
+
+function calcEntryTds() {
+  entryForm.tds_total = Math.round(
+    flt(entryForm.amount) * (flt(entryForm.rate) + flt(entryForm.surcharge) + flt(entryForm.cess)) / 100 * 100
+  ) / 100;
+}
+
+async function saveTDSEntry() {
+  if (!entryForm.section) return toast.error("TDS Section is required");
+  if (!entryForm.party.trim()) return toast.error("Party name is required");
+  if (!entryForm.amount || entryForm.amount <= 0) return toast.error("Gross amount must be positive");
+
+  entrySaving.value = true;
+  try {
+    const co = await resolveCompany();
+    await apiPOST("zoho_books_clone.api.gst.save_tds_entry", {
+      data: JSON.stringify({ ...entryForm, company: co }),
+    });
+    toast.success("TDS Entry saved successfully");
+    showEntryDrawer.value = false;
+    await load();
+  } catch (e) {
+    toast.error(e.message || "Failed to save TDS entry");
+  } finally {
+    entrySaving.value = false;
+  }
+}
+
+function openDeposit(entry) {
+  depositTarget.value = entry;
+  Object.assign(depositForm, { challan_no: entry.challan_no || "", challan_date: new Date().toISOString().slice(0, 10) });
+  showDepositModal.value = true;
+}
+
+async function saveDeposit() {
+  if (!depositTarget.value?.entry_name) return;
+  depositSaving.value = true;
+  try {
+    await apiPOST("zoho_books_clone.api.gst.update_tds_entry_status", {
+      entry_name: depositTarget.value.entry_name,
+      status: "Deposited",
+      challan_no: depositForm.challan_no,
+      challan_date: depositForm.challan_date,
+    });
+    toast.success("TDS Entry marked as Deposited");
+    showDepositModal.value = false;
+    depositTarget.value = null;
+    await load();
+  } catch (e) {
+    toast.error(e.message || "Failed to update status");
+  } finally {
+    depositSaving.value = false;
+  }
+}
+
 function exportCSV() {
   const rows = [
-    ["Voucher #", "Date", "Party", "TDS Section", "Gross Amount", "TDS Rate %", "TDS Amount", "Net Payment"],
+    ["Voucher / Ref", "Date", "Party", "TDS Section", "Gross Amount", "TDS Rate %", "TDS Amount", "Net Payment", "Source", "Status"],
     ...sorted.value.map(e => [
-      e.name, e.posting_date,
-      e.supplier_name || e.supplier || "",
-      e.tds_section || e.tax_type || "",
+      e.name, e.posting_date, e.party || "",
+      e.tds_section || "",
       flt(e.gross_amount), e.rate || "",
       flt(e.tds_amount), flt(e.net_payment),
+      e.source === "entry" ? "Manual" : "Bill",
+      e.status || "",
     ]),
   ];
   const csv = rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -189,7 +448,7 @@ function fmtCur(v) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(flt(v));
 }
 
-onMounted(load);
+onMounted(() => { load(); loadExpenseAccounts(); });
 </script>
 
 <style scoped>
@@ -200,8 +459,10 @@ onMounted(load);
 .tds-search-wrap{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;min-width:200px;}
 .tds-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
 .tds-select{border:1px solid #e5e7eb;border-radius:8px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
-.tds-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;}
+.tds-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;font-family:inherit;}
 .tds-btn-ghost:hover:not(:disabled){background:#f9fafb;}.tds-btn-ghost:disabled{opacity:.5;cursor:not-allowed;}
+.tds-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;}
+.tds-btn-primary:hover:not(:disabled){background:#1d4ed8;}.tds-btn-primary:disabled{opacity:.55;cursor:default;}
 .tds-note{display:flex;align-items:flex-start;gap:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;font-size:12.5px;color:#1e40af;line-height:1.55;}
 .tds-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
 .tds-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
@@ -225,8 +486,38 @@ onMounted(load);
 .tds-row:last-child td{border-bottom:none;}.tds-row:hover td{background:#f9fafb;}
 .tds-code{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
 .tds-section-badge{background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
+.tds-source-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;}
+.tds-source-manual{background:#fef3c7;color:#92400e;}
+.tds-source-bill{background:#f0fdf4;color:#166534;}
+.tds-status-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;}
+.tds-status-pending{background:#fef3c7;color:#92400e;}
+.tds-status-deposited{background:#f0fdf4;color:#166534;}
+.tds-status-filed{background:#eff6ff;color:#1d4ed8;}
+.tds-act-btn{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:4px 10px;font-size:11.5px;cursor:pointer;color:#374151;font-family:inherit;}
+.tds-act-btn:hover{border-color:#2563eb;color:#2563eb;background:#eff6ff;}
 .mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
 .tds-empty{text-align:center;color:#9ca3af;padding:48px!important;}
 .tds-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Drawer */
+.tds-drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:999;}
+.tds-drawer-panel{position:fixed;right:0;top:0;bottom:0;width:min(540px,96vw);background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.12);z-index:1000;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);}
+.tds-drawer-panel.open{transform:translateX(0);}
+.tds-drawer-header{background:linear-gradient(135deg,#1e40af,#2563eb);padding:18px 24px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;}
+.tds-drawer-title{font-size:16px;font-weight:700;color:#fff;}
+.tds-drawer-sub{font-size:12px;color:rgba(255,255,255,.8);margin-top:2px;}
+.tds-drawer-close{background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;font-size:18px;line-height:1;padding:0;}
+.tds-drawer-close:hover{color:#fff;}
+.tds-drawer-body{flex:1;overflow-y:auto;padding:20px 24px;}
+.tds-drawer-footer{padding:14px 24px;border-top:1px solid #f3f4f6;display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;}
+.tds-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.tds-form-field{display:flex;flex-direction:column;gap:4px;}
+.tds-lbl{font-size:11.5px;font-weight:600;color:#374151;}
+.tds-req{color:#dc2626;}
+.tds-fi{border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;outline:none;color:#111827;width:100%;box-sizing:border-box;}
+.tds-fi:focus{border-color:#2563eb;box-shadow:0 0 0 3px #2563eb1a;}
+/* Modal */
+.tds-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.18);z-index:1001;width:min(420px,90vw);overflow:hidden;}
+.tds-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f3f4f6;}
 </style>

@@ -626,6 +626,39 @@
             @addressDeleted="load"
           />
 
+          <div class="inv-sec-lbl">TDS / Withholding Tax</div>
+          <div class="inv-fg inv-fg2">
+            <div class="inv-field" style="grid-column:span 2;display:flex;align-items:center;gap:10px">
+              <input type="checkbox" id="tds_applicable" :checked="!!form.tds_applicable"
+                @change="form.tds_applicable = $event.target.checked ? 1 : 0"
+                style="width:16px;height:16px;accent-color:#E67700;cursor:pointer;flex-shrink:0"/>
+              <label for="tds_applicable" style="font-size:13px;color:#374151;cursor:pointer;font-weight:500">
+                TDS Applicable — deduct tax at source on payments to this vendor
+              </label>
+            </div>
+            <template v-if="form.tds_applicable">
+              <div class="inv-field">
+                <label class="inv-lbl">Default TDS Section</label>
+                <select v-model="form.tds_section" class="inv-fi">
+                  <option value="">Select Section</option>
+                  <option>194C</option>
+                  <option>194J</option>
+                  <option>194A</option>
+                  <option>194H</option>
+                  <option>194I</option>
+                  <option>192</option>
+                  <option>195</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div class="inv-field">
+                <label class="inv-lbl">PAN Number</label>
+                <input v-model="form.pan" class="inv-fi" placeholder="ABCDE1234F"
+                  @input="form.pan = form.pan.toUpperCase()"/>
+              </div>
+            </template>
+          </div>
+
           <div class="inv-sec-lbl">Account Settings</div>
           <div class="inv-fg">
             <div class="inv-field">
@@ -730,6 +763,7 @@ const form = reactive({
   ship_address_line1: "", ship_address_line2: "",
   ship_city: "", ship_state: "", ship_pincode: "", ship_country: "India",
   default_payable_account: "", disabled: 0,
+  tds_applicable: 0, tds_section: "", pan: "",
 });
 
 const formErrors = reactive({});
@@ -793,6 +827,7 @@ function resetForm() {
     ship_address_line1: "", ship_address_line2: "",
     ship_city: "", ship_state: "", ship_pincode: "", ship_country: "India",
     default_payable_account: "", disabled: 0,
+    tds_applicable: 0, tds_section: "", pan: "",
   });
   Object.keys(formErrors).forEach(k => delete formErrors[k]);
 }
@@ -855,6 +890,9 @@ async function openEdit(name) {
       ship_country: doc.ship_country || "India",
       default_payable_account: doc.default_payable_account || "",
       disabled: doc.disabled || 0,
+      tds_applicable: doc.tds_applicable || 0,
+      tds_section: doc.tds_section || "",
+      pan: doc.pan || "",
     });
   } catch (e) {
     toast("Could not load vendor: " + (e.message || e), "error");
@@ -945,6 +983,9 @@ async function saveVendor() {
       ship_country: form.ship_country.trim() || "India",
       default_payable_account: form.default_payable_account,
       disabled: form.disabled ? 1 : 0,
+      tds_applicable: form.tds_applicable ? 1 : 0,
+      tds_section: form.tds_section,
+      pan: form.pan.trim(),
     };
     let doc_to_save = doc;
     if (drawerMode.value === "edit") {

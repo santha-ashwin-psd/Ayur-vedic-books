@@ -288,7 +288,11 @@
               <div class="inv-totals">
                 <div class="inv-total-row"><span>Subtotal</span><span class="inv-total-amt">{{ fmtCur(subtotal) }}</span></div>
                 <div class="inv-total-row" style="color:#6b7280;font-size:12px"><span>Tax ({{ form.tax_rate||0 }}%)</span><span class="inv-total-amt">{{ fmtCur(taxAmount) }}</span></div>
-                <div class="inv-total-row inv-grand-total"><span>Grand Total</span><span class="inv-total-amt" style="font-size:16px;color:#1565c0">{{ fmtCur(subtotal+taxAmount) }}</span></div>
+                <div v-if="form.tds_applicable && tdsAmount > 0" class="inv-total-row" style="color:#d97706;font-size:12px">
+                  <span>TDS u/s {{ form.tds_section }} ({{ form.tds_rate }}%)</span>
+                  <span class="inv-total-amt" style="color:#d97706">− {{ fmtCur(tdsAmount) }}</span>
+                </div>
+                <div class="inv-total-row inv-grand-total"><span>Grand Total</span><span class="inv-total-amt" style="font-size:16px;color:#1565c0">{{ fmtCur(subtotal + taxAmount - tdsAmount) }}</span></div>
               </div>
             </div>
           </div>
@@ -553,7 +557,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiSubmit, apiDelete, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
@@ -572,6 +576,8 @@ import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
 import BulkActionBar from "../components/BulkActionBar.vue";
 import TimelineStepper from "../components/TimelineStepper.vue";
+
+const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "192": 0, "195": 20, "Other": 10 };
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
@@ -612,7 +618,7 @@ const copyingLast = ref(false);
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const BILL_CURRENCIES = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
-const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "" });
+const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
 const vendorBillingAddrs = ref([]);
 const warehouses = ref([]);
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name","parent_warehouse"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.parent_warehouse?`${x.parent_warehouse} / ${x.name}`:x.name,value:x.name}));}catch{warehouses.value=[];}}
@@ -732,7 +738,7 @@ const billTlProgressWidth = computed(() => {
 });
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "" });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
   vendorBillingAddrs.value = [];
   lines.value = [blankLine()];
   Object.assign(billCollapsed, { details: false, billing: true, lines: false, remarks: true });
@@ -741,7 +747,7 @@ function openNew() {
 }
 async function openEdit(b) {
   editingName.value = b.name;
-  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "" });
+  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
   vendorBillingAddrs.value = [];
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
@@ -814,6 +820,20 @@ async function fetchItems(q = "") {
     items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_rate || 0 }));
   } catch { items.value = []; }
 }
+watch(() => form.supplier, async (name) => {
+  if (!name) { form.tds_applicable = false; form.tds_section = ""; form.tds_rate = 0; return; }
+  try {
+    const doc = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Supplier", name });
+    if (doc?.tds_applicable) {
+      form.tds_applicable = true;
+      form.tds_section = doc.tds_section || "";
+      form.tds_rate = TDS_RATES[doc.tds_section] ?? 10;
+    } else {
+      form.tds_applicable = false; form.tds_section = ""; form.tds_rate = 0;
+    }
+  } catch {}
+});
+
 async function onVendorSelect(_opt) {
   form.billing_address = ""; form.selected_billing_addr_name = "";
   vendorBillingAddrs.value = [];
@@ -845,6 +865,7 @@ function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.
 function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
 const subtotal = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
 const taxAmount = computed(() => Math.round(subtotal.value * flt(form.tax_rate) / 100 * 100) / 100);
+const tdsAmount = computed(() => form.tds_applicable && form.tds_rate > 0 ? Math.round(subtotal.value * form.tds_rate / 100 * 100) / 100 : 0);
 
 async function copyLastItems() {
   if (!form.supplier) return;
@@ -873,6 +894,14 @@ async function saveBill(submit) {
     const taxes = form.tax_rate > 0 && taxAccountHead.value
       ? [{ doctype: "Tax Line", charge_type: "On Net Total", account_head: taxAccountHead.value, description: taxAccountHead.value, rate: form.tax_rate }]
       : [];
+    if (form.tds_applicable && form.tds_rate > 0 && form.tds_section) {
+      taxes.push({
+        doctype: "Tax Line", charge_type: "On Net Total",
+        account_head: taxAccountHead.value || "TDS Payable",
+        description: `TDS u/s ${form.tds_section}`,
+        rate: -form.tds_rate,
+      });
+    }
     const doc = {
       doctype: "Purchase Invoice", company,
       supplier: form.supplier, posting_date: form.posting_date,

@@ -575,12 +575,38 @@ input[type=date].b-input { color-scheme: light; }
   .nim-table-wrap{overflow-x:auto;}
   .nim-table{min-width:480px;}
 
-  /* Pill tabs scrollable */
+  /* Pill tabs scrollable — overridden at ≤480px below */
   .zb-split-pills,.b-filter-row{flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;}
   .zb-split-pill,.b-pill{flex-shrink:0;}
 
   /* Invoice list page toolbar */
   .no-sidebar-pad > div:first-child{flex-wrap:wrap;gap:6px;}
+}
+
+/* ══ Filter pills — Grid layout at ≤480px (no scroll) ══
+   Override the nowrap/scroll set at ≤640px above.
+   Pills keep their existing design; just wrap into a grid.
+   5 pills → 3-col grid: [All][Draft][Unpaid] / [Overdue][Paid]
+   ════════════════════════════════════════════════ */
+@media(max-width:480px){
+  .b-filter-row {
+    display:grid!important;
+    grid-template-columns:repeat(3, 1fr)!important;
+    gap:6px!important;
+    flex-wrap:unset!important;
+    overflow-x:visible!important;
+    padding-bottom:0!important;
+    width:100%!important;
+  }
+  .b-filter-row .b-pill {
+    flex-shrink:unset!important;
+    white-space:nowrap!important;
+    text-align:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    padding:7px 8px!important;
+    font-size:12.5px!important;
+  }
 }
 
 /* ══ Very small (≤ 400px) ══ */
@@ -589,3 +615,171 @@ input[type=date].b-input { color-scheme: light; }
   .b-kpi-value{font-size:20px!important;}
   .nim-modal-body{padding:12px!important;}
 }
+
+/* ══════════════════════════════════════════════════════
+   LINE ITEMS TABLE → CARD LAYOUT  (≤ 425px)
+   Uses structural selector (no :has()) for broad browser support
+   ══════════════════════════════════════════════════════ */
+@media (max-width:425px){
+
+  /* Hide the column headers */
+  .add-card-body > div:first-child > table thead {
+    display:none!important;
+  }
+
+  /* Table and tbody: flex column of cards */
+  .add-card-body > div:first-child > table,
+  .add-card-body > div:first-child > table tbody {
+    display:flex!important;
+    flex-direction:column!important;
+    gap:10px!important;
+    width:100%!important;
+    overflow:visible!important;
+  }
+
+  /* Each row = a card */
+  .add-card-body > div:first-child > table tbody tr {
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+    background:#fff!important;
+    border:1.5px solid #e3e8ef!important;
+    border-radius:10px!important;
+    padding:12px!important;
+    box-shadow:0 1px 4px rgba(0,0,0,.06)!important;
+    position:relative!important;
+    width:100%!important;
+  }
+
+  /* All td cells: flex column */
+  .add-card-body > div:first-child > table tbody tr td {
+    display:flex!important;
+    flex-direction:column!important;
+    gap:3px!important;
+    padding:0!important;
+    border:none!important;
+    min-width:0!important;
+    font-size:13px!important;
+  }
+
+  /* Row # — top-left, col 1 */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(1) {
+    grid-column:1/2!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    font-size:11px!important;
+    color:#6b7280!important;
+    font-weight:600!important;
+    grid-row:1!important;
+  }
+
+  /* Delete button — top-right, col 2 */
+  .add-card-body > div:first-child > table tbody tr td:last-child {
+    grid-column:2/3!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    grid-row:1!important;
+  }
+  .add-card-body > div:first-child > table tbody tr td:last-child .add-line-del {
+    opacity:1!important;
+  }
+
+  /* Item name (col 2) spans full row */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(2) {
+    grid-column:1/3!important;
+  }
+
+  /* Amount cell (second-to-last) spans full row, prominent */
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2) {
+    grid-column:1/3!important;
+    flex-direction:row!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+    background:#f0f4ff!important;
+    border-radius:6px!important;
+    padding:8px 10px!important;
+    font-size:14px!important;
+    font-weight:700!important;
+    color:#1a1a2e!important;
+  }
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2)::before {
+    content:'Amount'!important;
+    font-size:9.5px!important;
+    font-weight:700!important;
+    text-transform:uppercase!important;
+    letter-spacing:.05em!important;
+    color:#6b7280!important;
+  }
+
+  /* All inputs/selects inside cells fill width */
+  .add-card-body > div:first-child > table tbody tr td .inv-ci,
+  .add-card-body > div:first-child > table tbody tr td select.inv-ci {
+    width:100%!important;
+    font-size:13px!important;
+    padding:6px 8px!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Label pseudo-elements for each field */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(3)::before { content:'Description'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(4)::before { content:'HSN/SAC'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(5)::before { content:'Qty'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(6)::before { content:'UOM'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(7)::before { content:'Rate'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(8)::before { content:'Disc %'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+
+  /* Last row (+ Add new line) — transparent, no card styling */
+  .add-card-body > div:first-child > table tbody tr:last-child {
+    display:block!important;
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    padding:4px 0!important;
+  }
+  .add-card-body > div:first-child > table tbody tr:last-child td {
+    grid-column:1/2!important;
+    flex-direction:row!important;
+  }
+}
+
+/* ══ More Actions Dropdown — Mobile Fix (≤480px) ══
+   Use position:fixed to pin dropdown inside the viewport regardless
+   of parent overflow or stacking contexts.
+   ══════════════════════════════════════════════════ */
+@media(max-width:480px){
+  /* Compact buttons so all 3 fit on one line */
+  .add-btn-cancel, .add-btn-draft, .add-btn-more {
+    font-size:12px!important;
+    padding:8px 10px!important;
+    white-space:nowrap!important;
+  }
+
+  /* Drawer panel: must not clip overflow so fixed child renders over it */
+  .inv-drawer-panel { overflow-x:visible!important; }
+  .inv-drawer-panel > *:not(:last-child) { overflow-x:hidden!important; }
+
+  /* ===== KEY FIX: use position:fixed so dropdown is always inside viewport ===== */
+  .add-btn-more + div,
+  div:has(> .add-more-menu-item) {
+    position:fixed!important;   /* relative to viewport — never clips */
+    left:8px!important;         /* 8px from left edge */
+    right:8px!important;        /* 8px from right edge */
+    width:auto!important;       /* stretch to fill between left+right */
+    max-width:none!important;
+    bottom:72px!important;      /* sit above the footer bar */
+    z-index:99999!important;
+    border-radius:12px!important;
+    box-shadow:0 8px 32px rgba(0,0,0,.18)!important;
+  }
+
+  /* Items: full width, bigger tap target */
+  .add-more-menu-item {
+    width:100%!important;
+    font-size:14px!important;
+    padding:14px 20px!important;
+    white-space:nowrap!important;
+    text-align:left!important;
+  }
+}
+

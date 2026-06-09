@@ -7,7 +7,382 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lato:wght@400;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/zoho_books_clone/books.css">
+<link rel="stylesheet" href="/assets/zoho_books_clone/books.css?v=2">
+<style>
+/* ===== MORE ACTIONS DROPDOWN — FIXED INSIDE VIEWPORT at ≤480px =====
+   position:fixed pins the dropdown to the viewport edges.
+   This guarantees it never overflows regardless of parent overflow.
+   ===================================================== */
+@media(max-width:480px){
+  /* Hide Preview button — not useful on small screens, saves header space */
+  .inv-preview-toggle { display:none !important; }
+
+  /* Compact footer buttons so all 3 fit on one line */
+  .add-btn-cancel, .add-btn-draft, .add-btn-more {
+    font-size:12px !important;
+    padding:8px 10px !important;
+    white-space:nowrap !important;
+  }
+
+  /* KEY FIX: pin dropdown to viewport using position:fixed */
+  .add-btn-more + div,
+  div:has(> .add-more-menu-item) {
+    position:fixed !important;   /* viewport-relative — never clips */
+    left:8px !important;         /* 8px margin from left */
+    right:8px !important;        /* 8px margin from right */
+    bottom:72px !important;      /* sits above the footer bar (~64px tall) */
+    width:auto !important;       /* fill between left and right */
+    max-width:none !important;
+    z-index:99999 !important;
+    border-radius:12px !important;
+    box-shadow:0 8px 32px rgba(0,0,0,.18) !important;
+  }
+
+  /* Menu items: full width, comfortably tappable */
+  .add-more-menu-item {
+    width:100% !important;
+    font-size:14px !important;
+    padding:14px 20px !important;
+    white-space:nowrap !important;
+    text-align:left !important;
+  }
+}
+
+
+
+
+/* ===== FILTER PILLS → GRID LAYOUT at ≤480px =====
+   The invoice list pills use class "sales-pill" (not "b-pill").
+   The compiled Vite CSS sets their container to overflow-x:auto / flex-wrap:nowrap.
+   Override: convert to a 3-col grid so all pills are visible at once.
+   [All] [Draft] [Unpaid]
+   [Overdue] [Paid]
+   ===================================================== */
+@media(max-width:480px){
+  /* Target the container holding sales-pill buttons */
+  div:has(> .sales-pill),
+  div:has(> button.sales-pill) {
+    display:grid !important;
+    grid-template-columns:repeat(3, 1fr) !important;
+    gap:6px !important;
+    overflow-x:visible !important;
+    overflow-y:visible !important;
+    padding-bottom:0 !important;
+    width:100% !important;
+    flex-wrap:unset !important;
+  }
+
+  /* Each pill: full width of its grid cell, centered text */
+  .sales-pill {
+    flex-shrink:unset !important;
+    width:100% !important;
+    text-align:center !important;
+    justify-content:center !important;
+    padding:7px 6px !important;
+    font-size:12px !important;
+    white-space:nowrap !important;
+  }
+}
+
+
+/* ===== LINE ITEMS → CARD LAYOUT at ≤480px =====
+   Inline to bypass browser caching of books.css.
+   Uses broad .add-card-body table selector (no :has()) for all browsers.
+   Using 480px breakpoint to catch all devices up to 425px CSS pixels.
+   ===================================================== */
+@media(max-width:480px){
+  /* Clip horizontal overflow in content area ONLY — NOT the footer (last child)
+     so the More Actions dropdown (position:absolute in footer) can escape. */
+  .inv-drawer-panel { overflow-x:visible !important; overflow-y:auto !important; }
+  .inv-drawer-panel > *:not(:last-child) { overflow-x:hidden !important; }
+  .add-card-body > div { overflow:visible !important; overflow-x:visible !important; }
+
+  /* Hide the column-header row */
+  .add-card-body table thead { display:none !important; }
+
+  /* Table and tbody become vertical flex stacks */
+  .add-card-body table,
+  .add-card-body table tbody {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:10px !important;
+    width:100% !important;
+    min-width:0 !important;
+    overflow:visible !important;
+    table-layout:fixed !important;
+  }
+
+  /* Every data row becomes a 2-column card */
+  .add-card-body table tbody tr {
+    display:grid !important;
+    grid-template-columns:1fr 1fr !important;
+    gap:8px !important;
+    background:#fff !important;
+    border:1.5px solid #e3e8ef !important;
+    border-radius:10px !important;
+    padding:12px !important;
+    box-shadow:0 1px 4px rgba(0,0,0,.07) !important;
+    min-width:0 !important;
+    width:100% !important;
+  }
+
+  /* All cells: flex-column, no border/padding */
+  .add-card-body table tbody tr td {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:3px !important;
+    padding:0 !important;
+    border:none !important;
+    font-size:13px !important;
+    min-width:0 !important;
+  }
+
+  /* Cell 1 (#) – top-left */
+  .add-card-body table tbody tr td:nth-child(1) {
+    grid-column:1/2 !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    grid-row:1 !important;
+  }
+
+  /* Cell 2 (Item) – full width */
+  .add-card-body table tbody tr td:nth-child(2) {
+    grid-column:1/3 !important;
+  }
+
+  /* Last cell (delete) – top-right */
+  .add-card-body table tbody tr td:last-child {
+    grid-column:2/3 !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    justify-content:flex-end !important;
+    grid-row:1 !important;
+  }
+  .add-card-body table tbody tr td:last-child .add-line-del { opacity:1 !important; }
+
+  /* 2nd-to-last cell (Amount) – full width footer */
+  .add-card-body table tbody tr td:nth-last-child(2) {
+    grid-column:1/3 !important;
+    flex-direction:row !important;
+    justify-content:space-between !important;
+    align-items:center !important;
+    border-top:1px solid #f0f3f7 !important;
+    padding-top:8px !important;
+    margin-top:4px !important;
+    font-weight:700 !important;
+    color:#1a1a2e !important;
+  }
+  .add-card-body table tbody tr td:nth-last-child(2)::before {
+    content:'Amount' !important;
+    font-size:9.5px !important;
+    font-weight:700 !important;
+    text-transform:uppercase !important;
+    letter-spacing:.05em !important;
+    color:#9ca3af !important;
+  }
+
+  /* Inputs & selects inside cells: full width */
+  .add-card-body table tbody tr td input,
+  .add-card-body table tbody tr td select,
+  .add-card-body table tbody tr td .ss-trigger {
+    width:100% !important;
+    font-size:13px !important;
+    padding:6px 8px !important;
+    box-sizing:border-box !important;
+  }
+
+  /* Last row (Add new line): no card */
+  .add-card-body table tbody tr:last-child {
+    display:block !important;
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
+    padding:4px 0 !important;
+  }
+}
+
+@media(max-width:375px){
+  .add-card-body > div { overflow:visible !important; }
+  .add-card-body table thead { display:none !important; }
+  .add-card-body table,
+  .add-card-body table tbody {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:8px !important;
+    width:100% !important;
+    min-width:0 !important;
+    overflow:visible !important;
+  }
+  .add-card-body table tbody tr {
+    display:grid !important;
+    grid-template-columns:1fr 1fr !important;
+    gap:6px !important;
+    background:#fff !important;
+    border:1.5px solid #e3e8ef !important;
+    border-radius:10px !important;
+    padding:10px !important;
+    box-shadow:0 1px 4px rgba(0,0,0,.07) !important;
+    min-width:0 !important;
+  }
+  .add-card-body table tbody tr td {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:3px !important;
+    padding:0 !important;
+    border:none !important;
+    font-size:12.5px !important;
+    min-width:0 !important;
+  }
+  .add-card-body table tbody tr td:nth-child(1){grid-column:1/2 !important;flex-direction:row !important;align-items:center !important;}
+  .add-card-body table tbody tr td:nth-child(2){grid-column:1/3 !important;}
+  .add-card-body table tbody tr td:last-child{grid-column:2/3 !important;flex-direction:row !important;align-items:center !important;justify-content:flex-end !important;}
+  .add-card-body table tbody tr td:last-child .add-line-del{opacity:1 !important;}
+  .add-card-body table tbody tr td:nth-last-child(2){grid-column:1/3 !important;flex-direction:row !important;justify-content:space-between !important;align-items:center !important;border-top:1px solid #f0f3f7 !important;padding-top:7px !important;margin-top:3px !important;font-weight:700 !important;color:#1a1a2e !important;}
+  .add-card-body table tbody tr td:nth-last-child(2)::before{content:'Amount' !important;font-size:9px !important;font-weight:700 !important;text-transform:uppercase !important;letter-spacing:.05em !important;color:#9ca3af !important;}
+  .add-card-body table tbody tr td input,
+  .add-card-body table tbody tr td select,
+  .add-card-body table tbody tr td .ss-trigger{width:100% !important;font-size:12.5px !important;padding:5px 7px !important;box-sizing:border-box !important;}
+  .add-card-body table tbody tr:last-child{display:block !important;background:transparent !important;border:none !important;box-shadow:none !important;padding:3px 0 !important;}
+}
+
+/* ===== PAYMENTS TAB TABLE → CARD LAYOUT at ≤480px =====
+   Applies to the Payments tab table inside the Invoice VIEW drawer.
+   5 columns: Payment #, Date, Mode, Reference, Amount.
+   Uses .inv-drawer-panel:not(.is-add) to target view-only drawer.
+   Same card approach as the line items table.
+   ===================================================== */
+@media(max-width:480px){
+  /* View drawer: stop overflow-x on the payments table wrapper */
+  .inv-drawer-panel:not(.is-add) { overflow-x:hidden !important; }
+
+  /* Payments table: hide headers, become flex stack */
+  .inv-drawer-panel:not(.is-add) table {
+    display:flex !important;
+    flex-direction:column !important;
+    width:100% !important;
+    min-width:0 !important;
+    overflow:visible !important;
+  }
+  .inv-drawer-panel:not(.is-add) table thead {
+    display:none !important;
+  }
+  .inv-drawer-panel:not(.is-add) table tbody {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:10px !important;
+    width:100% !important;
+    overflow:visible !important;
+  }
+
+  /* Each payment row → card */
+  .inv-drawer-panel:not(.is-add) table tbody tr {
+    display:grid !important;
+    grid-template-columns:1fr 1fr !important;
+    gap:6px 10px !important;
+    background:#fff !important;
+    border:1.5px solid #e3e8ef !important;
+    border-radius:10px !important;
+    padding:12px !important;
+    box-shadow:0 1px 4px rgba(0,0,0,.07) !important;
+    width:100% !important;
+    min-width:0 !important;
+  }
+
+  /* All td: flex column, no border/padding */
+  .inv-drawer-panel:not(.is-add) table tbody tr td {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:2px !important;
+    padding:0 !important;
+    border:none !important;
+    min-width:0 !important;
+    font-size:13px !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  /* Col 1: Payment # — full width top, blue link */
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(1) {
+    grid-column:1/3 !important;
+    flex-direction:row !important;
+    align-items:center !important;
+    font-size:13px !important;
+    font-weight:700 !important;
+  }
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(1)::before {
+    content:'PMT #' !important;
+    font-size:9.5px !important;
+    font-weight:700 !important;
+    text-transform:uppercase !important;
+    letter-spacing:.05em !important;
+    color:#9ca3af !important;
+    margin-right:6px !important;
+    flex-shrink:0 !important;
+  }
+
+  /* Col 2: Date — left col */
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(2) {
+    grid-column:1/2 !important;
+    font-size:12px !important;
+    color:#6b7280 !important;
+    white-space:nowrap !important;
+  }
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(2)::before {
+    content:'Date' !important;
+    font-size:9.5px !important; font-weight:700 !important;
+    text-transform:uppercase !important; letter-spacing:.05em !important;
+    color:#9ca3af !important;
+  }
+
+  /* Col 3: Mode — right col */
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(3) {
+    grid-column:2/3 !important;
+    font-size:12px !important;
+  }
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(3)::before {
+    content:'Mode' !important;
+    font-size:9.5px !important; font-weight:700 !important;
+    text-transform:uppercase !important; letter-spacing:.05em !important;
+    color:#9ca3af !important;
+  }
+
+  /* Col 4: Reference — full width, muted */
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(4) {
+    grid-column:1/3 !important;
+    font-size:11px !important;
+    color:#9ca3af !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(4)::before {
+    content:'Ref #' !important;
+    font-size:9.5px !important; font-weight:700 !important;
+    text-transform:uppercase !important; letter-spacing:.05em !important;
+    color:#9ca3af !important;
+  }
+
+  /* Col 5: Amount — full-width footer, green & bold */
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(5) {
+    grid-column:1/3 !important;
+    flex-direction:row !important;
+    justify-content:space-between !important;
+    align-items:center !important;
+    border-top:1px solid #f0f3f7 !important;
+    padding-top:8px !important;
+    margin-top:4px !important;
+    font-weight:700 !important;
+    font-size:15px !important;
+    color:#16a34a !important;
+  }
+  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(5)::before {
+    content:'Amount' !important;
+    font-size:9.5px !important; font-weight:700 !important;
+    text-transform:uppercase !important; letter-spacing:.05em !important;
+    color:#9ca3af !important;
+  }
+}
+</style>
 <script>
 // Generate favicon matching the sidebar brand mark (blue rounded square + "B")
 (function() {
@@ -112,21 +487,7 @@ html,body{height:100%;overflow:hidden;background:#f0f2f5}
   .inv-ab-btn.inv-ab-dropdown + div{right:auto!important;left:0!important;min-width:150px!important;max-width:calc(100vw - 32px)!important;}
   /* Bottom grid */
   .inv-bottom-grid{grid-template-columns:1fr!important;padding:0 10px 10px!important;}
-}
-/* ≤375px */
-@media(max-width:375px){
-  .inv-view-header{padding:10px 8px 6px!important;}
-  .inv-view-number{font-size:15px!important;}
-  .inv-view-body{margin:0 6px 6px!important;}
-  .inv-tab-body{padding:8px!important;}
-  .inv-details-meta-col{padding:8px 10px!important;}
-  .inv-dmeta-date-val{font-size:13px!important;}
-  .inv-tl-wrap{padding:10px 8px!important;}
-  .inv-tl-dot{width:26px!important;height:26px!important;}
-}
 
-/* ══ Invoice Items Table → Card layout (375px & 425px) ══ */
-@media(max-width:425px){
   /* Container: no horizontal scroll needed */
   .inv-items-wrap { overflow:visible!important; }
   .inv-items-table { display:block!important; }
@@ -199,12 +560,188 @@ html,body{height:100%;overflow:hidden;background:#f0f2f5}
   /* Cell 6 — Discount: hide */
   .inv-items-table tbody td:nth-child(6) { display:none!important; order:5!important; }
 
+  /* ══ Payments Table → Card layout (375px & 425px) ══ */
+  .inv-payments-wrap { overflow:visible!important; }
+  .inv-payments-table { display:block!important; width:100%!important; }
+  .inv-payments-table thead { display:none!important; }
+  .inv-payments-table tbody { display:flex!important; flex-direction:column!important; gap:8px!important; }
+  .inv-payments-table tbody tr {
+    display:grid!important;
+    grid-template-columns:1fr auto!important;
+    gap:4px!important;
+    padding:12px 14px!important;
+    border:1px solid #e3e8ef!important;
+    border-radius:8px!important;
+    background:#fff!important;
+    box-shadow:0 1px 2px rgba(0,0,0,.04)!important;
+  }
+  .inv-payments-table tbody td { padding:0!important; border:none!important; display:flex!important; align-items:center!important; }
+
+  /* Cell 1: Payment # */
+  .inv-payments-table tbody td:nth-child(1) { grid-column:1/2!important; font-weight:600!important; font-size:13px!important; color:#1e3a8a!important; }
+  /* Cell 5: Amount (Right aligned) */
+  .inv-payments-table tbody td:nth-child(5) { grid-column:2/3!important; justify-content:flex-end!important; font-size:14.5px!important; font-weight:700!important; color:#059669!important; }
+  /* Cell 2: Date */
+  .inv-payments-table tbody td:nth-child(2) { grid-column:1/2!important; font-size:12px!important; color:#6b7280!important; margin-top:2px!important; }
+  /* Cell 3: Mode */
+  .inv-payments-table tbody td:nth-child(3) { grid-column:2/3!important; justify-content:flex-end!important; font-size:12px!important; color:#6b7280!important; margin-top:2px!important; }
+  /* Cell 4: Reference */
+  .inv-payments-table tbody td:nth-child(4) { grid-column:1/3!important; font-size:11.5px!important; color:#9ca3af!important; margin-top:4px!important; padding-top:4px!important; border-top:1px solid #f3f4f6!important; }
+
   /* Totals section: full width, no min-width overflow */
   .inv-totals-section { justify-content:stretch!important; }
   .inv-totals-inner   { min-width:0!important; width:100%!important; padding-right:0!important; }
   .inv-total-line     { font-size:13px!important; }
   .inv-grand-lbl      { font-size:14px!important; }
   .inv-grand-amt      { font-size:16px!important; }
+
+  /* ══ Edit/Add Invoice — Line Items Table → Cards ══
+     Targets: .inv-lines-tbl inside .inv-lines-wrap
+     Used in the invoice edit & new invoice drawers.          */
+
+  /* Full-screen drawer on mobile */
+  .inv-drawer-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide table header — labels go into each card */
+  .add-card-body > div:first-child > table thead { display:none!important; }
+
+  /* Table + tbody become a flex column of cards */
+  .add-card-body > div:first-child > table,
+  .add-card-body > div:first-child > table tbody {
+    display:flex!important;
+    flex-direction:column!important;
+    gap:10px!important;
+    width:100%!important;
+  }
+
+  /* Each <tr> = card */
+  .add-card-body > div:first-child > table tbody tr {
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+    background:#fff!important;
+    border:1.5px solid #e3e8ef!important;
+    border-radius:10px!important;
+    padding:12px!important;
+    box-shadow:0 1px 4px rgba(0,0,0,.06)!important;
+    position:relative!important;
+  }
+
+  /* All <td> cells: flex column, no border/padding */
+  .add-card-body > div:first-child > table tbody tr td {
+    display:flex!important;
+    flex-direction:column!important;
+    gap:3px!important;
+    padding:0!important;
+    border:none!important;
+    font-size:13px!important;
+  }
+
+  /* Row number — first cell, top-left */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(1) {
+    grid-column:1/2!important;
+    flex-direction:row!important;
+    align-items:center!important;
+  }
+
+  /* Delete button cell — top-right */
+  .add-card-body > div:first-child > table tbody tr td:last-child {
+    grid-column:2/3!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+  }
+  /* Always show delete on mobile  /* Delete icon styling */
+  .add-card-body > div:first-child > table tbody tr td:last-child .add-line-del {
+    opacity:1!important;
+  }
+
+  /* Item name field — full width */
+  .inv-lines-tbl tbody tr td:nth-child(2) {
+    grid-column:1/3!important;
+  }
+
+  /* The "Amount" cell — bottom right, prominent */
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2) {
+    grid-column:1/3!important;
+    flex-direction:row!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+    border-top:1px solid #f0f3f7!important;
+    padding-top:8px!important;
+    margin-top:4px!important;
+    font-weight:700!important;
+    color:#1a1a2e!important;
+  }
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2)::before {
+    content:'Amount'!important;
+    font-size:9.5px!important;
+    font-weight:700!important;
+    text-transform:uppercase!important;
+    letter-spacing:.05em!important;
+    color:#9ca3af!important;
+  }
+
+  /* Inputs & selects fill cell */
+  .add-card-body > div:first-child > table tbody tr td .inv-ci,
+  .add-card-body > div:first-child > table tbody tr td select.inv-ci {
+    width:100%!important;
+    font-size:13px!important;
+    padding:6px 8px!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Add Labels to the stacked cells */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(3)::before { content:'Description'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(4)::before { content:'HSN/SAC'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(5)::before { content:'Qty'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(6)::before { content:'UOM'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(7)::before { content:'Rate'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(8)::before { content:'Disc %'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+
+  /* "+ Add new line" row */
+  .add-card-body > div:first-child > table tbody tr:last-child {
+    grid-template-columns:1fr!important;
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    padding:4px 0!important;
+  }
+  .add-card-body > div:first-child > table tbody tr:last-child td {
+    grid-column:1/2!important;
+    flex-direction:row!important;
+  }
+
+  /* Totals panel — stack vertically */
+  .inv-totals-wrap {
+    flex-direction:column!important;
+    gap:12px!important;
+  }
+  .inv-totals {
+    width:100%!important;
+    min-width:0!important;
+    align-items:stretch!important;
+  }
+  .inv-total-row { width:100%!important; }
+  .inv-tax-section { min-width:0!important; width:100%!important; }
+}
+/* ≤375px */
+@media(max-width:375px){
+  .inv-view-header{padding:10px 8px 6px!important;}
+  .inv-view-number{font-size:15px!important;}
+  .inv-view-body{margin:0 6px 6px!important;}
+  .inv-tab-body{padding:8px!important;}
+  .inv-details-meta-col{padding:8px 10px!important;}
+  .inv-dmeta-date-val{font-size:13px!important;}
+  .inv-tl-wrap{padding:10px 8px!important;}
+  .inv-tl-dot{width:26px!important;height:26px!important;}
 }
 
 @media(max-width:400px){
@@ -240,9 +777,9 @@ window.__booksCompany = "";
   } else {
     var css = document.createElement("link");
     css.rel = "stylesheet";
-    css.href = "/assets/zoho_books_clone/js/style.css?v=4";
+    css.href = "/assets/zoho_books_clone/js/style.css?v=7";
     document.head.appendChild(css);
-    appendScript("/assets/zoho_books_clone/js/books.js?v=4");
+    appendScript("/assets/zoho_books_clone/js/books.js?v=6");
   }
 })();
 </script>

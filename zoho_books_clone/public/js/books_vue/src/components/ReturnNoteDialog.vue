@@ -200,7 +200,7 @@ function onCancel() { if (saving.value) return; cancel(); }
   background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px;
   padding: 10px 12px; font-size: 12.5px; color: #92400e;
 }
-.rnd-warn-tag { margin-left: 6px; font-family: monospace; font-size: 12px; }
+.rnd-warn-tag { margin-left: 6px; font-size: 12px; }
 .rnd-warn-sub { margin-top: 4px; font-size: 11.5px; }
 .rnd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .rnd-field { display: flex; flex-direction: column; gap: 4px; }
@@ -232,12 +232,11 @@ function onCancel() { if (saving.value) return; cancel(); }
   font-size: 12px; text-align: center; outline: none; font-family: inherit;
 }
 .rnd-qty:focus { border-color: #2563eb; }
-.rnd-num { text-align: right; font-family: monospace; color: #6b7280; }
+.rnd-num { text-align: right;color: #6b7280; }
 .rnd-amt { font-weight: 600; color: #111827; }
 .rnd-total {
   text-align: right; padding: 8px 12px 0; font-size: 13px;
 }
-.rnd-total strong { font-family: monospace; }
 .rnd-footer {
   display: flex; justify-content: flex-end; gap: 8px;
   padding: 12px 18px; border-top: 1px solid #e5e7eb; flex-shrink: 0;

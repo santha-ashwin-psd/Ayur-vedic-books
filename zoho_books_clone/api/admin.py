@@ -253,7 +253,7 @@ def _send_invite_email(email: str, first_name: str, company: str, temp_password:
     <div style="font-size:13px;color:#666;margin-bottom:6px">Email</div>
     <div style="font-size:15px;color:#0D1117;margin-bottom:14px"><b>{email}</b></div>
     <div style="font-size:13px;color:#666;margin-bottom:6px">Temporary password</div>
-    <div style="font-size:18px;color:#1A237E;font-family:monospace;letter-spacing:2px"><b>{temp_password}</b></div>
+    <div style="font-size:18px;color:#1A237E;letter-spacing:2px"><b>{temp_password}</b></div>
   </div>
   <p style="color:#555;font-size:14px;line-height:1.6">
     Please sign in and change your password from <b>Profile → Change Password</b> immediately.

@@ -301,7 +301,7 @@ onMounted(async()=>{
 .ta-r{text-align:right!important;}
 .ia-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer;}
 .ia-row:last-child td{border-bottom:none;}.ia-row:hover td{background:#f9fafb;}
-.font-medium{font-weight:600;}.mono-sm{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.font-medium{font-weight:600;}.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
 .green{color:#16a34a!important;}.red{color:#dc2626!important;}
 .ia-reason{display:inline-flex;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:#475569;font-size:11.5px;font-weight:600;}
 .ia-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
@@ -326,7 +326,7 @@ onMounted(async()=>{
 .ia-dh-top .ia-badge{margin-left:auto;}
 .ia-dh-amount{margin-top:16px;}
 .ia-dh-amt-lbl{font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
-.ia-dh-amt-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',ui-monospace,monospace;letter-spacing:-.01em;margin-top:2px;}
+.ia-dh-amt-val{font-size:26px;font-weight:800;letter-spacing:-.01em;margin-top:2px;}
 .ia-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;}
 .ia-section-hdr{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;margin-top:4px;}
 .ia-section-hdr span{color:#2563eb;display:inline-flex;}
@@ -342,7 +342,7 @@ textarea.ia-input{resize:vertical;}
 .ia-stat{background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:10px 12px;}
 .ia-stat.pos{background:#f0fdf4;border-color:#bbf7d0;}.ia-stat.neg{background:#fef2f2;border-color:#fecaca;}
 .ia-stat-lbl{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:2px;}
-.ia-stat-val{font-size:18px;font-weight:800;font-family:'JetBrains Mono',ui-monospace,monospace;color:#0f172a;}
+.ia-stat-val{font-size:18px;font-weight:800;color:#0f172a;}
 .ia-stat.pos .ia-stat-val{color:#16a34a;}.ia-stat.neg .ia-stat-val{color:#dc2626;}
 .ia-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .ia-meta-lbl{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}

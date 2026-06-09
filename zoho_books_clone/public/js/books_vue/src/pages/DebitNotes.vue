@@ -342,7 +342,7 @@
         </div>
         <div class="dn-field">
           <label class="inv-lbl">Amount to Apply <span class="inv-req">*</span></label>
-          <input v-model.number="applyModal.amount" type="number" min="0.01" :max="applyModal.balance" step="0.01" class="inv-fi ta-r" style="font-family:monospace" />
+          <input v-model.number="applyModal.amount" type="number" min="0.01" :max="applyModal.balance" step="0.01" class="inv-fi ta-r" />
         </div>
       </div>
       <div class="inv-dfooter">

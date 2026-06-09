@@ -192,7 +192,7 @@ onMounted(load);
 .sso-input { border:1px solid #e5e7eb; border-radius:7px; padding:8px 10px; font:inherit; font-size:13px; outline:none; color:#111827; background:#fff; }
 .sso-input:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.08); }
 .sso-hint { font-size:11.5px; color:#64748b; line-height:1.6; display:flex; flex-direction:column; gap:3px; }
-.sso-code { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:10.5px; background:#f1f5f9; color:#0f172a; padding:2px 6px; border-radius:4px; word-break:break-all; display:block; margin-top:4px; }
+.sso-code { font-size:10.5px; background:#f1f5f9; color:#0f172a; padding:2px 6px; border-radius:4px; word-break:break-all; display:block; margin-top:4px; }
 
 .sso-actions { padding:14px 18px 18px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #f1f5f9; }
 .sso-btn-primary { display:inline-flex; align-items:center; gap:6px; background:#2563eb; color:#fff; border:none; border-radius:8px; padding:9px 16px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }

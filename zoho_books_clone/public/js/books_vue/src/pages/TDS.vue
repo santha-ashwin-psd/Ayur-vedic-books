@@ -141,7 +141,7 @@
             </div>
             <div class="tds-form-field" style="grid-column:span 2">
               <label class="tds-lbl">TDS Amount (auto-calculated)</label>
-              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;font-size:14px;font-weight:700;color:#dc2626;font-family:monospace">
+              <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;font-size:14px;font-weight:700;color:#dc2626;">
                 {{ fmtCur(entryForm.tds_total) }}
               </div>
             </div>
@@ -467,7 +467,7 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 .tds-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
 .tds-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
 .tds-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
-.tds-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
+.tds-sum-val{font-size:18px;font-weight:700;color:#111827;}
 .blue{color:#2563eb!important;}.red{color:#dc2626!important;}
 .tds-sections{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
 .tds-sections-title{font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}
@@ -476,7 +476,7 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 .tds-sec-label{margin-bottom:4px;}
 .tds-sec-badge{background:#eff6ff;color:#2563eb;border-radius:10px;padding:2px 10px;font-size:11.5px;font-weight:700;}
 .tds-sec-count{font-size:11.5px;color:#6b7280;margin-top:4px;}
-.tds-sec-amount{font-size:14px;font-weight:700;color:#dc2626;font-family:monospace;margin-top:2px;}
+.tds-sec-amount{font-size:14px;font-weight:700;color:#dc2626;margin-top:2px;}
 .tds-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .tds-table{width:100%;border-collapse:collapse;font-size:13px;}
 .tds-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
@@ -484,7 +484,7 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 .ta-r{text-align:right!important;}
 .tds-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;}
 .tds-row:last-child td{border-bottom:none;}.tds-row:hover td{background:#f9fafb;}
-.tds-code{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
+.tds-code{font-size:12.5px;color:#2563eb;font-weight:600;}
 .tds-section-badge{background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .tds-source-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;}
 .tds-source-manual{background:#fef3c7;color:#92400e;}
@@ -495,7 +495,7 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 .tds-status-filed{background:#eff6ff;color:#1d4ed8;}
 .tds-act-btn{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:4px 10px;font-size:11.5px;cursor:pointer;color:#374151;font-family:inherit;}
 .tds-act-btn:hover{border-color:#2563eb;color:#2563eb;background:#eff6ff;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.mono-sm{font-size:12.5px;}.text-muted{color:#6b7280;}
 .tds-empty{text-align:center;color:#9ca3af;padding:48px!important;}
 .tds-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}

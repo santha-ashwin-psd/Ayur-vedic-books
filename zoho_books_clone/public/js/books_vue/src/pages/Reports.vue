@@ -391,10 +391,10 @@ const reports = [
 .bs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 @media (max-width: 700px) { .bs-grid { grid-template-columns: 1fr; } }
 .bs-block { background: var(--surface-2); border-radius: var(--radius-sm); padding: 18px; }
-.bs-section-title { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
-.assets .bs-amount    { color: var(--accent); font-family: var(--mono); font-size: 20px; font-weight: 700; }
-.liabilities .bs-amount { color: var(--red);    font-family: var(--mono); font-size: 20px; font-weight: 700; }
-.equity .bs-amount    { color: var(--amber);  font-family: var(--mono); font-size: 20px; font-weight: 700; }
+.bs-section-title { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+.assets .bs-amount    { color: var(--accent); font-size: 20px; font-weight: 700; }
+.liabilities .bs-amount { color: var(--red);    font-size: 20px; font-weight: 700; }
+.equity .bs-amount    { color: var(--amber);  font-size: 20px; font-weight: 700; }
 
 .cf-rows { display: flex; flex-direction: column; gap: 0; }
 .cf-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
@@ -408,8 +408,7 @@ const reports = [
 .fw-600 { font-weight: 600; }
 .fw-700 { font-weight: 700; }
 
-.mono     { font-family: var(--mono); }
-.mono-sm  { font-family: var(--mono); font-size: 12.5px; }
+.mono-sm  {font-size: 13px; }
 .green    { color: var(--green); }
 .red      { color: var(--red);   }
 .ta-r     { text-align: right; }

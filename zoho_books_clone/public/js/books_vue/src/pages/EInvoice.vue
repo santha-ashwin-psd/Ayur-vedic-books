@@ -155,7 +155,7 @@
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
                 <div class="ei-meta-card">
                   <div class="ei-meta-lbl">Ack No.</div>
-                  <div class="ei-meta-val" style="font-size:12px;font-family:monospace">{{ viewing.ack_no || '—' }}</div>
+                  <div class="ei-meta-val" style="font-size:12px;">{{ viewing.ack_no || '—' }}</div>
                 </div>
                 <div class="ei-meta-card">
                   <div class="ei-meta-lbl">Ack Date</div>
@@ -183,7 +183,7 @@
             <div v-if="showManualForm" class="ei-manual-form">
               <div class="ei-section-title" style="margin-bottom:8px">Enter IRN Manually</div>
               <label class="ei-lbl">IRN (64-char hex) <span style="color:#ef4444">*</span></label>
-              <input v-model="manualForm.irn" class="ei-fi" placeholder="64-character hex string from NIC portal" maxlength="64" style="font-family:monospace;font-size:12px" />
+              <input v-model="manualForm.irn" class="ei-fi" placeholder="64-character hex string from NIC portal" maxlength="64" style="font-size:12px" />
               <label class="ei-lbl" style="margin-top:8px">Ack No. <span style="color:#ef4444">*</span></label>
               <input v-model="manualForm.ack_no" class="ei-fi" placeholder="Acknowledgement number" />
               <label class="ei-lbl" style="margin-top:8px">Ack Date</label>
@@ -492,7 +492,7 @@ onMounted(load);
 .ei-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
 .ei-sum-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px 16px; }
 .ei-sum-lbl { font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
-.ei-sum-val { font-size:20px; font-weight:800; color:#111827; font-family:monospace; }
+.ei-sum-val { font-size:20px; font-weight:800; color:#111827;  }
 .ei-note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:12px 16px; font-size:12.5px; color:#92400e; display:flex; align-items:center; gap:8px; }
 .ei-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
 .ei-table { width:100%; border-collapse:collapse; font-size:13px; }
@@ -503,9 +503,9 @@ onMounted(load);
 .ei-row td { padding:10px 12px; border-bottom:1px solid #f3f4f6; cursor:pointer; }
 .ei-row:last-child td { border-bottom:none; }
 .ei-row:hover td { background:#f9fafb; }
-.ei-code { font-family:monospace; font-size:12.5px; color:#2563eb; font-weight:600; }
-.ei-irn-chip { font-family:monospace; font-size:11px; color:#374151; background:#f3f4f6; padding:2px 6px; border-radius:4px; }
-.mono-sm { font-family:monospace; font-size:12.5px; }
+.ei-code {  font-size:12.5px; color:#2563eb; font-weight:600; }
+.ei-irn-chip {  font-size:11px; color:#374151; background:#f3f4f6; padding:2px 6px; border-radius:4px; }
+.mono-sm {  font-size:13px; }
 .text-muted { color:#9ca3af; }
 .ei-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:10px; font-size:11.5px; font-weight:600; }
 .badge-green  { background:#dcfce7; color:#16a34a; }
@@ -528,12 +528,12 @@ onMounted(load);
 .ei-meta-val { font-size:13.5px; font-weight:600; color:#1a1d23; margin-top:3px; }
 .ei-gstin-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6; }
 .ei-gstin-lbl { font-size:12px; color:#6b7280; }
-.ei-gstin-val { font-family:monospace; font-size:12px; color:#374151; font-weight:600; }
+.ei-gstin-val {  font-size:12px; color:#374151; font-weight:600; }
 .ei-drawer-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:0; }
 .ei-drawer-footer { padding:14px 20px; border-top:1px solid #f3f4f6; display:flex; gap:8px; justify-content:flex-end; flex-shrink:0; }
 .ei-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; margin-top:16px; margin-bottom:8px; }
 .ei-irn-block { background:#f8faff; border:1px solid #dbeafe; border-radius:8px; padding:12px 14px; }
-.ei-irn-text { font-family:monospace; font-size:11px; color:#1e40af; word-break:break-all; line-height:1.6; flex:1; }
+.ei-irn-text {  font-size:11px; color:#1e40af; word-break:break-all; line-height:1.6; flex:1; }
 .ei-copy-btn { background:none; border:1px solid #dbeafe; border-radius:6px; padding:4px 7px; cursor:pointer; color:#2563eb; flex-shrink:0; display:flex; align-items:center; }
 .ei-copy-btn:hover { background:#eff6ff; }
 .ei-qr-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; }

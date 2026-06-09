@@ -42,17 +42,17 @@
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0">
       <div style="flex:1;min-width:140px;padding:12px 16px;border-radius:8px;text-align:center;background:#E0F7FA">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#0C8599;margin-bottom:4px">Assets</div>
-        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:#0C8599">{{fmtINR(eq.assets)}}</div>
+        <div style="font-size:18px;font-weight:700;color:#0C8599">{{fmtINR(eq.assets)}}</div>
       </div>
       <div style="font-size:20px;font-weight:700;color:#868E96;padding:0 12px;align-self:center">=</div>
       <div style="flex:1;min-width:140px;padding:12px 16px;border-radius:8px;text-align:center;background:#FFE3E3">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#C92A2A;margin-bottom:4px">Liabilities</div>
-        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:#C92A2A">{{fmtINR(eq.liabilities)}}</div>
+        <div style="font-size:18px;font-weight:700;color:#C92A2A">{{fmtINR(eq.liabilities)}}</div>
       </div>
       <div style="font-size:20px;font-weight:700;color:#868E96;padding:0 12px;align-self:center">+</div>
       <div style="flex:1;min-width:140px;padding:12px 16px;border-radius:8px;text-align:center;background:#F3F0FF">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#2563eb;margin-bottom:4px">Equity</div>
-        <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:#2563eb">{{fmtINR(eq.equity)}}</div>
+        <div style="font-size:18px;font-weight:700;color:#2563eb">{{fmtINR(eq.equity)}}</div>
       </div>
     </div>
     <div class="ob-eq-diff" :class="!eq.assets&&!eq.liabilities&&!eq.equity?'ob-eq-zero':Math.abs(eq.diff)<0.01?'ob-eq-ok':'ob-eq-err'">
@@ -71,7 +71,7 @@
             <span style="font-size:13px;color:#868E96">{{secAccts(type).length}} accounts &nbsp;·&nbsp; {{secAccts(type).filter(a=>balances[a.name]>0).length}} filled</span>
           </div>
           <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-family:var(--mono);font-size:14px;font-weight:700" :style="{color:OB_TYPE_META[type].color}">{{fmtINR(secTotal(type))}}</span>
+            <span style="font-size:14px;font-weight:700" :style="{color:OB_TYPE_META[type].color}">{{fmtINR(secTotal(type))}}</span>
             <span style="font-size:11px;color:#868E96;transition:transform .2s;display:inline-block" :style="{transform:isSec(type)?'rotate(90deg)':'rotate(0deg)'}">&#9654;</span>
           </div>
         </div>
@@ -97,7 +97,7 @@
           </div>
           <div style="display:grid;grid-template-columns:1fr 130px 130px;gap:10px;padding:10px 16px;background:#F8F9FC;border-top:1px solid #E2E8F0">
             <div style="font-size:12px;font-weight:600;color:#868E96">Total {{OB_TYPE_META[type].label}}</div>
-            <div style="font-family:var(--mono);font-size:13px;font-weight:700;text-align:right" :style="{color:OB_TYPE_META[type].color}">{{fmtINR(secTotal(type))}}</div>
+            <div style="font-size:13px;font-weight:700;text-align:right" :style="{color:OB_TYPE_META[type].color}">{{fmtINR(secTotal(type))}}</div>
             <div></div>
           </div>
         </template>
@@ -365,7 +365,7 @@ onMounted(load);
 
 .ob-bal-input {
   width: 100%; border: 1px solid #E2E8F0; border-radius: 6px;
-  padding: 6px 10px; font-size: 13px; font-family: var(--mono,'JetBrains Mono',monospace);
+  padding: 6px 10px; font-size: 13px; 
   text-align: right; outline: none;
 }
 .ob-bal-input:focus { border-color: #3B5BDB; box-shadow: 0 0 0 3px rgba(59,91,219,.08); }

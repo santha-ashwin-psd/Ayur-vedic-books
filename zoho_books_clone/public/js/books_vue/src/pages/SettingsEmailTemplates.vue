@@ -72,12 +72,12 @@
           <div>
             <div style="font-size:11.5px;font-weight:600;color:#6b7db3;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Quick insert variables</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
-              <button v-for="v in BUILTIN_VARS" :key="v.key" class="nim-btn nim-btn-ghost" @click="insertVar(v.key)" :title="v.desc" style="padding:3px 8px;font-size:11.5px;font-family:monospace">{{v.key}}</button>
+              <button v-for="v in BUILTIN_VARS" :key="v.key" class="nim-btn nim-btn-ghost" @click="insertVar(v.key)" :title="v.desc" style="padding:3px 8px;font-size:11.5px;">{{v.key}}</button>
             </div>
           </div>
           <div class="nim-field">
             <label class="nim-label">Email Body <span style="color:#c92a2a">*</span></label>
-            <textarea class="nim-input" v-model="form.response" rows="10" :placeholder="bodyPlaceholder" style="font-family:monospace;font-size:12.5px;resize:vertical"></textarea>
+            <textarea class="nim-input" v-model="form.response" rows="10" :placeholder="bodyPlaceholder" style="font-size:12.5px;resize:vertical"></textarea>
           </div>
           <div v-if="form.use_html && form.response">
             <button class="nim-btn nim-btn-ghost" @click="preview=!preview" style="font-size:12px">{{preview?'Hide Preview':'Show HTML Preview'}}</button>

@@ -55,7 +55,6 @@
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
             <th @click="sortBy('name')" class="sortable">Bill # <span v-html="sortArrow('name')"></span></th>
             <th @click="sortBy('supplier_name')" class="sortable">Vendor <span v-html="sortArrow('supplier_name')"></span></th>
-            <th @click="sortBy('bill_no')" class="sortable">Vendor Bill # <span v-html="sortArrow('bill_no')"></span></th>
             <th @click="sortBy('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
             <th @click="sortBy('due_date')" class="sortable">Due Date <span v-html="sortArrow('due_date')"></span></th>
             <th>Status</th>
@@ -73,7 +72,6 @@
               <td><input type="checkbox" :checked="selected.has(b.name)" @change="toggle(b.name)" /></td>
               <td @click="openView(b)"><span class="inv-link">{{ b.name }}</span></td>
               <td @click="openView(b)">{{ b.supplier_name || b.supplier || '—' }}</td>
-              <td @click="openView(b)" class="text-muted mono-sm">{{ b.bill_no||'—' }}</td>
               <td @click="openView(b)" class="text-muted mono-sm">{{ fmtDate(b.posting_date) }}</td>
               <td @click="openView(b)" :class="isOverdue(b)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(b.due_date)||'—' }}</td>
               <td @click="openView(b)"><span class="inv-status-badge" :class="statusCls(b)">{{ statusLabel(b) }}</span></td>
@@ -1173,7 +1171,7 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .inv-dmeta-date-val { font-size: 14px; font-weight: 600; color: #111827; }
 .inv-dmeta-date-val.is-overdue { color: #dc2626; }
 .col-balance { background: #f8fafc; }
-.inv-balance-val { font-size: 20px; font-weight: 800; color: #dc2626; font-family: monospace; }
+.inv-balance-val { font-size: 20px; font-weight: 800; color: #dc2626; }
 .inv-balance-val.is-zero, .inv-balance-val.is-paid { color: #16a34a; }
 .inv-rec-pay-btn { margin-top: 8px; background: #1a6ef7; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
 .inv-rec-pay-btn:hover { background: #155fd4; }
@@ -1198,7 +1196,7 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .t-amt { font-weight: 600; }
 .inv-grand-total-line { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 4px; }
 .inv-grand-lbl { font-size: 14px; font-weight: 700; color: #111827; }
-.inv-grand-amt { font-size: 18px; font-weight: 800; color: #1a6ef7; font-family: monospace; }
+.inv-grand-amt { font-size: 18px; font-weight: 800; color: #1a6ef7; }
 
 /* ── Edit drawer: add-card styles ── */
 .add-card { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin-bottom: 12px; background: #fff; }

@@ -616,7 +616,7 @@ function actDotClass(dt) {
 .db-table tbody tr:hover { background: #fafafa; }
 
 .ta-r    { text-align: right; }
-.mono    { font-family: monospace; font-size: 12.5px; }
+.mono    { font-size: 12.5px; }
 .tc-name { font-weight: 600; font-size: 13px; color: #111827; }
 .tc-sub  { font-size: 11.5px; color: #9ca3af; }
 .tc-green{ color: #16a34a; font-weight: 600; }

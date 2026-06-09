@@ -386,7 +386,7 @@
             <span class="ta-r mono-sm text-muted">{{ l.received_qty }}</span>
             <span class="ta-r mono-sm text-muted">{{ l.remaining_to_bill }}</span>
             <input v-model.number="l.toBill" type="number" min="0" :max="l.remaining_to_bill" step="0.001"
-              class="inv-fi ta-r" style="font-family:monospace;width:90px" />
+              class="inv-fi ta-r" style="width:90px" />
           </div>
         </div>
         <div v-if="threeWayMismatch" class="po-warn">
@@ -915,14 +915,13 @@ onMounted(() => { load(); loadTaxAccount(); });
   transition: right .22s ease;
 }
 .inv-drawer-panel.open { right: 0; }
-.po-view-drawer { width: 540px; right: -540px; }
+.po-view-drawer { width: 625px; right: -625px; }
 .po-view-drawer.open { right: 0; }
 
 /* ── View panel: large amount display ── */
 .po-view-amount {
   font-size: 20px;
   font-weight: 800;
-  font-family: monospace;
   color: #dc2626;
 }
 

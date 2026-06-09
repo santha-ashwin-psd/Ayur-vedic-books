@@ -418,7 +418,7 @@
               <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
               <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
               <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmtCur(Math.abs(t.amount))}}</span>
-              <span style="text-align:right;font-family:monospace" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):'—'}}</span>
+              <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):'—'}}</span>
               <span style="font-size:11.5px;color:#6B7280">{{t.status||(t.docstatus===2?'Cancelled':'Submitted')}}</span>
             </div>
           </div>

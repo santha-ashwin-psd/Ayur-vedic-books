@@ -105,7 +105,7 @@
               </td>
               <td class="ta-r"><span class="se-item-cnt">{{ e._itemCount||'—' }}</span></td>
               <td class="ta-r">
-                <span :style="'font-family:monospace;font-size:12.5px;font-weight:600;color:'+(flt(e.value_difference)>=0?'#16a34a':'#dc2626')">
+                <span :style="'font-size:12.5px;font-weight:600;color:'+(flt(e.value_difference)>=0?'#16a34a':'#dc2626')">
                   {{ flt(e.value_difference)>=0?'+':'' }}{{ fmtCur(e.value_difference) }}
                 </span>
               </td>
@@ -196,7 +196,7 @@
           </div>
           <div class="se-items-total" v-if="lines.length">
             <div style="grid-column:1/5;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Total</div>
-            <div class="ta-r" style="font-family:monospace;font-weight:700;color:#0f172a">{{ fmtCur(lineTotal) }}</div>
+            <div class="ta-r" style="font-weight:700;color:#0f172a">{{ fmtCur(lineTotal) }}</div>
             <div></div>
           </div>
           <button class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
@@ -238,7 +238,7 @@
               <span class="se-source-label" :style="'background:'+sourceInfo(viewDoc).color+'22;color:'+sourceInfo(viewDoc).color">{{ sourceInfo(viewDoc).label }}</span>
               <template v-if="viewDoc.reference_doctype && viewDoc.reference_name">
                 <span style="font-size:12px;color:#6b7280">{{ viewDoc.reference_doctype }}:</span>
-                <span style="font-size:13px;font-weight:700;color:#2563eb;font-family:monospace">{{ viewDoc.reference_name }}</span>
+                <span style="font-size:13px;font-weight:700;color:#2563eb;">{{ viewDoc.reference_name }}</span>
               </template>
               <template v-else-if="viewDoc.adjustment_reason">
                 <span style="font-size:13px;color:#374151">{{ viewDoc.adjustment_reason }}</span>
@@ -293,9 +293,9 @@
                   </td>
                   <td class="text-muted" style="font-size:12px">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</td>
                   <td class="text-muted" style="font-size:12px">{{ it.t_warehouse||viewDoc.to_warehouse||'—' }}</td>
-                  <td class="ta-r mono-sm">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></td>
-                  <td class="ta-r mono-sm">{{ fmtCur(it.basic_rate) }}</td>
-                  <td class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</td>
+                  <td class="ta-r ">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></td>
+                  <td class="ta-r ">{{ fmtCur(it.basic_rate) }}</td>
+                  <td class="ta-r " style="font-weight:600">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -333,7 +333,7 @@
             <div style="display:flex;gap:16px;flex-wrap:wrap">
               <div v-if="viewDoc.company"><span class="se-meta-lbl">Company</span><div style="font-size:12.5px;margin-top:2px">{{ viewDoc.company }}</div></div>
               <div v-if="viewDoc.owner"><span class="se-meta-lbl">Created by</span><div style="font-size:12.5px;margin-top:2px">{{ viewDoc.owner }}</div></div>
-              <div v-if="viewDoc.creation"><span class="se-meta-lbl">Created</span><div style="font-size:12.5px;margin-top:2px;font-family:monospace">{{ fmtDate(viewDoc.creation?.slice(0,10)) }}</div></div>
+              <div v-if="viewDoc.creation"><span class="se-meta-lbl">Created</span><div style="font-size:12.5px;margin-top:2px;">{{ fmtDate(viewDoc.creation?.slice(0,10)) }}</div></div>
             </div>
           </div>
 
@@ -697,20 +697,20 @@ onMounted(async () => {
 .ta-r { text-align:right!important; }
 .se-row td { padding:10px 12px; border-bottom:1px solid #f3f4f6; vertical-align:middle; cursor:pointer; }
 .se-row:last-child td { border-bottom:none; } .se-row:hover td { background:#f9fafb; }
-.se-num { font-family:monospace; font-size:12.5px; color:#2563eb; font-weight:700; }
-.se-type-badge { display:inline-flex; padding:3px 8px; border-radius:20px; font-size:11.5px; font-weight:700; }
+.se-num { font-size:12.5px; color:#2563eb; font-weight:700; }
+.se-type-badge { display:inline-flex; padding:3px 8px; border-radius:20px; font-size:11.5px; font-weight:700; white-space: nowrap;}
 .se-badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:10px; font-size:11.5px; font-weight:600; }
 .badge-green { background:#dcfce7; color:#16a34a; } .badge-orange { background:#fff7ed; color:#ea580c; } .badge-grey { background:#f3f4f6; color:#6b7280; }
 .se-source-cell { display:flex; align-items:center; gap:5px; }
 .se-source-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-.se-source-ref { font-family:monospace; font-size:11px; color:#6b7280; background:#f3f4f6; padding:1px 5px; border-radius:4px; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.se-source-ref { font-size:11px; color:#6b7280; background:#f3f4f6; padding:1px 5px; border-radius:4px; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .se-wh-flow { display:flex; align-items:center; gap:4px; flex-wrap:nowrap; }
 .se-wh-tag { font-size:11px; font-weight:600; background:#eff6ff; color:#1d4ed8; padding:2px 7px; border-radius:6px; white-space:nowrap; max-width:100px; overflow:hidden; text-overflow:ellipsis; }
 .se-wh-tag-to { background:#f0fdf4; color:#15803d; }
 .se-item-cnt { font-size:12px; font-weight:700; color:#6b7280; background:#f3f4f6; padding:1px 7px; border-radius:8px; }
 .se-act-btn { background:transparent; border:1px solid #e5e7eb; border-radius:6px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#6b7280; }
 .se-act-btn:hover { background:#eff6ff; color:#2563eb; border-color:#bfdbfe; }
-.mono-sm { font-family:monospace; font-size:12.5px; } .text-muted { color:#6b7280; }
+.mono-sm { font-size:12.5px; } .text-muted { color:#6b7280; }
 .se-empty { text-align:center; color:#9ca3af; padding:48px!important; cursor:default!important; }
 .se-shimmer { height:13px; background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%); border-radius:4px; animation:shimmer 1.2s infinite; background-size:200% 100%; }
 @keyframes shimmer { 0%{background-position:200% 0}100%{background-position:-200% 0} }
@@ -766,7 +766,7 @@ textarea.se-input { resize:vertical; }
 .se-val-out { background:#fff7ed; border-color:#fed7aa; }
 .se-val-diff { background:#f8fafc; border-color:#e2e8f0; }
 .se-val-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; margin-bottom:4px; }
-.se-val-num { font-family:monospace; font-weight:700; font-size:14px; }
+.se-val-num { font-weight:700; font-size:14px; }
 .se-val-in .se-val-num  { color:#16a34a; }
 .se-val-out .se-val-num { color:#ea580c; }
 .se-meta-lbl { font-size:10.5px; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; display:block; }

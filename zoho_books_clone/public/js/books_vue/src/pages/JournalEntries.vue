@@ -60,7 +60,7 @@
         <tr>
           <th>Entry #</th><th>Date</th><th>Type</th><th>Narration</th>
           <th class="ta-r">Total Debit</th><th class="ta-r">Total Credit</th>
-          <th>Lines</th><th>Status</th>
+          <th>Status</th>
           <th style="text-align:center;width:100px">Actions</th>
         </tr>
       </thead>
@@ -78,13 +78,12 @@
         </template>
         <template v-else>
           <tr v-for="e in filteredRows" :key="e.name" class="clickable" @click="openView(e.name)">
-            <td style="font-family:monospace;font-size:12px;font-weight:700;color:#2563eb">{{e.name}}</td>
+            <td style="font-size:12px;font-weight:700;color:#2563eb">{{e.name}}</td>
             <td style="font-size:12.5px;color:#868e96">{{fmtDateLocal(e.date)}}</td>
             <td><span class="b-badge" :class="JE_TYPE_COLOR[e.type]||'je-type-info'">{{e.type||'Journal Entry'}}</span></td>
             <td style="font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{e.narration||'—'}}</td>
-            <td class="ta-r" style="font-family:monospace;font-weight:600;color:#c92a2a">{{fmtINR(e.total_debit)}}</td>
-            <td class="ta-r" style="font-family:monospace;font-weight:600;color:#2f9e44">{{fmtINR(e.total_credit)}}</td>
-            <td style="font-size:12px;color:#868e96">{{(e.lines||[]).length||'—'}}</td>
+            <td class="ta-r" style="font-weight:600;color:#c92a2a">{{fmtINR(e.total_debit)}}</td>
+            <td class="ta-r" style="font-weight:600;color:#2f9e44">{{fmtINR(e.total_credit)}}</td>
             <td><span class="b-badge" :class="JE_STATUS_COLOR[e.status]||'je-s-draft'">{{e.status}}</span></td>
             <td style="text-align:center">
               <div style="display:flex;gap:4px;justify-content:center">
@@ -171,7 +170,7 @@
               <span v-html="icon(balanced&&(totalDr>0)?'check':'info',14)"></span>
               <span>{{!lines.length||(totalDr===0&&totalCr===0)?'Add debit and credit lines':balanced?'Balanced — ready to post':'Difference: ₹'+Math.abs(totalDr-totalCr).toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
             </div>
-            <div style="font-family:monospace;font-weight:700">
+            <div style="font-weight:700">
               <span v-if="totalDr>0||totalCr>0">Dr: ₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}} / Cr: ₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
             </div>
           </div>
@@ -213,8 +212,8 @@
                 </tr>
                 <tr class="jen-total-row">
                   <td colspan="3" style="padding:8px 10px;font-size:12px;font-weight:700;color:#868e96;text-transform:uppercase;letter-spacing:.04em">Totals</td>
-                  <td style="text-align:right;padding:8px 10px;font-family:monospace;font-weight:700;color:#c92a2a">₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
-                  <td style="text-align:right;padding:8px 10px;font-family:monospace;font-weight:700;color:#2f9e44">₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
+                  <td style="text-align:right;padding:8px 10px;font-weight:700;color:#c92a2a">₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
+                  <td style="text-align:right;padding:8px 10px;font-weight:700;color:#2f9e44">₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
                   <td colspan="2"></td>
                 </tr>
               </tbody>
@@ -288,11 +287,11 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
             <div style="background:#fff4f4;border:1px solid #ffcdd2;border-radius:8px;padding:12px 16px;text-align:center">
               <div style="font-size:10.5px;color:#c92a2a;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total Debit (Dr)</div>
-              <div style="font-size:20px;font-weight:700;color:#c92a2a;font-family:monospace">{{fmtINR(viewEntry.total_debit)}}</div>
+              <div style="font-size:20px;font-weight:700;color:#c92a2a;">{{fmtINR(viewEntry.total_debit)}}</div>
             </div>
             <div style="background:#f0fff4;border:1px solid #b2f2bb;border-radius:8px;padding:12px 16px;text-align:center">
               <div style="font-size:10.5px;color:#2f9e44;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total Credit (Cr)</div>
-              <div style="font-size:20px;font-weight:700;color:#2f9e44;font-family:monospace">{{fmtINR(viewEntry.total_credit)}}</div>
+              <div style="font-size:20px;font-weight:700;color:#2f9e44;">{{fmtINR(viewEntry.total_credit)}}</div>
             </div>
           </div>
 
@@ -313,8 +312,8 @@
                 {{l.account}}
                 <span v-if="l.party" style="color:#868e96;font-size:11px;margin-left:6px">· {{l.party}}</span>
               </div>
-              <div style="text-align:right;font-family:monospace;font-weight:600;color:#c92a2a">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
-              <div style="text-align:right;font-family:monospace;font-weight:600;color:#2f9e44">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
+              <div style="text-align:right;font-weight:600;color:#c92a2a">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
+              <div style="text-align:right;font-weight:600;color:#2f9e44">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
             </div>
           </div>
           <div v-else style="border:1px dashed #e2e8f0;border-radius:8px;padding:24px;text-align:center;color:#adb5bd;font-size:13px">

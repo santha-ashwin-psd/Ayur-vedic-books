@@ -1836,7 +1836,7 @@
         </div>
         <div v-for="inv in invoices.slice(0,3)" :key="inv.name" class="nim-invoice-row">
           <span>{{inv.name}}</span>
-          <span style="font-family:monospace;font-weight:600">{{fmt(inv.outstanding_amount)}}</span>
+          <span style="font-weight:600">{{fmt(inv.outstanding_amount)}}</span>
         </div>
         <div v-if="invoices.length>3" class="nim-invoice-more">+{{invoices.length-3}} more</div>
       </div>

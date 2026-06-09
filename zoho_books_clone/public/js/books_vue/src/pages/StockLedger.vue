@@ -95,15 +95,15 @@
         <div class="sl-dbody">
           <div class="sl-section-hdr"><span v-html="icon('info',13)"></span> Movement</div>
           <div class="sl-meta-grid">
-            <div><div class="sl-meta-lbl">Balance After</div><div class="mono-sm">{{ fmtQty(viewDoc.qty_after_transaction) }}</div></div>
-            <div><div class="sl-meta-lbl">Valuation Rate</div><div class="mono-sm">{{ fmtCur(viewDoc.valuation_rate) }}</div></div>
-            <div><div class="sl-meta-lbl">Value Change</div><div class="mono-sm" :class="flt(viewDoc.stock_value_difference)>=0?'green':'red'">{{ fmtCur(viewDoc.stock_value_difference) }}</div></div>
-            <div><div class="sl-meta-lbl">Posting Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}</div></div>
+            <div><div class="sl-meta-lbl">Balance After</div><div >{{ fmtQty(viewDoc.qty_after_transaction) }}</div></div>
+            <div><div class="sl-meta-lbl">Valuation Rate</div><div >{{ fmtCur(viewDoc.valuation_rate) }}</div></div>
+            <div><div class="sl-meta-lbl">Value Change</div><div  :class="flt(viewDoc.stock_value_difference)>=0?'green':'red'">{{ fmtCur(viewDoc.stock_value_difference) }}</div></div>
+            <div><div class="sl-meta-lbl">Posting Date</div><div >{{ fmtDate(viewDoc.posting_date) }}</div></div>
           </div>
           <div class="sl-section-hdr"><span v-html="icon('file',13)"></span> Source Voucher</div>
           <div class="sl-meta-grid">
             <div><div class="sl-meta-lbl">Type</div><div>{{ viewDoc.voucher_type||'—' }}</div></div>
-            <div><div class="sl-meta-lbl">Number</div><div class="mono-sm" style="color:#2563eb">{{ viewDoc.voucher_no||'—' }}</div></div>
+            <div><div class="sl-meta-lbl">Number</div><div  style="color:#2563eb">{{ viewDoc.voucher_no||'—' }}</div></div>
           </div>
           <button v-if="viewDoc.voucher_type==='Stock Entry'" class="sl-link-btn" @click="goVoucher(viewDoc)">
             <span v-html="icon('ext',14)"></span> Open Stock Entry
@@ -212,8 +212,8 @@ onMounted(()=>{fetchItems("");fetchWarehouses("");});
 .ta-r{text-align:right!important;}
 .sl-row td{padding:9px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer;}
 .sl-row:last-child td{border-bottom:none;}.sl-row:hover td{background:#f9fafb;}
-.sl-voucher{font-family:monospace;font-size:12px;color:#2563eb;}
-.font-medium{font-weight:600;}.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.sl-voucher{font-size:12px;color:#2563eb;}
+.font-medium{font-weight:600;}.mono-sm{font-size:12.5px;}.text-muted{color:#6b7280;}
 .sl-empty{text-align:center;color:#9ca3af;padding:48px!important;}
 .sl-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
@@ -234,7 +234,7 @@ onMounted(()=>{fetchItems("");fetchWarehouses("");});
 .badge-green{background:#dcfce7;color:#16a34a;}.badge-red{background:#fee2e2;color:#dc2626;}
 .sl-dh-amount{margin-top:16px;}
 .sl-dh-amt-lbl{font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
-.sl-dh-amt-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.01em;margin-top:2px;}
+.sl-dh-amt-val{font-size:26px;font-weight:800;letter-spacing:-.01em;margin-top:2px;}
 .sl-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;}
 .sl-section-hdr{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;margin-top:4px;}
 .sl-section-hdr span{color:#2563eb;display:inline-flex;}

@@ -70,7 +70,7 @@
       <template v-if="viewDoc">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:60px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:#EDF2FF">
           <div>
-            <div style="font-size:15px;font-weight:700;font-family:monospace">{{viewDoc.name}}</div>
+            <div style="font-size:15px;font-weight:700;">{{viewDoc.name}}</div>
             <div style="font-size:12px;color:#6b7280;margin-top:1px">GRN · {{viewDoc.posting_date}}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">

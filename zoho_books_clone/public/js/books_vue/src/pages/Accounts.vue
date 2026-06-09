@@ -809,7 +809,7 @@ onMounted(load);
 .coa-icon-btn:hover { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
 
 /* ── Misc ── */
-.coa-mono  { font-family: 'DM Mono', 'Fira Code', monospace; font-size: 12px; color: #6b7280; }
+.coa-mono  { font-size: 12px; color: #6b7280; }
 .coa-muted { color: #9ca3af; }
 .coa-empty { text-align: center; color: #9ca3af; padding: 48px !important; font-size: 14px; }
 

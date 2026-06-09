@@ -429,9 +429,9 @@ onMounted(async () => {
 
 .pf-view-head{padding:18px 20px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#fff9db 0%,#ffe066 100%);flex-shrink:0;}
 .pf-view-head-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
-.pf-view-num{font-size:18px;font-weight:700;font-family:monospace;color:#111827;}
+.pf-view-num{font-size:18px;font-weight:700;color:#111827;}
 .pf-view-sub{font-size:12.5px;color:#876800;margin-top:2px;}
-.pf-view-amount{font-size:24px;font-weight:800;color:#16a34a;font-family:monospace;margin-top:10px;}
+.pf-view-amount{font-size:24px;font-weight:800;color:#16a34a;margin-top:10px;}
 
 .pf-dbody{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc;}
 .pf-section{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
@@ -463,5 +463,4 @@ onMounted(async () => {
 .pf-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0;}
 .pf-btn-amber{background:#fff9db;color:#a16207;border:1px solid #ffd43b;}
 .pf-btn-amber:hover{background:#fff3bf;}
-.mono{font-family:monospace;}
 </style>

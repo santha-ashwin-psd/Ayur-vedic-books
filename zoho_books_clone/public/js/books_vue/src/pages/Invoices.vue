@@ -1040,7 +1040,7 @@
             <template v-if="viewInv.irn">
               <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:6px">IRN</div>
               <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:8px;margin-bottom:10px">
-                <div style="font-family:monospace;font-size:10.5px;color:#1e40af;word-break:break-all;line-height:1.7;flex:1">{{ viewInv.irn }}</div>
+                <div style="font-size:10.5px;color:#1e40af;word-break:break-all;line-height:1.7;flex:1">{{ viewInv.irn }}</div>
                 <button @click="copyViewIRN" style="background:none;border:1px solid #dbeafe;border-radius:6px;padding:4px 8px;cursor:pointer;color:#2563eb;font-size:12px;flex-shrink:0">
                   {{ eiCopied ? '✓ Copied' : 'Copy' }}
                 </button>
@@ -1048,7 +1048,7 @@
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
                 <div style="background:#f8f9fc;border:1px solid #e8ecf0;border-radius:8px;padding:10px 12px">
                   <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#868e96">Ack No.</div>
-                  <div style="font-size:12.5px;font-weight:600;color:#1a1d23;margin-top:3px;font-family:monospace">{{ viewInv.ack_no || '—' }}</div>
+                  <div style="font-size:12.5px;font-weight:600;color:#1a1d23;margin-top:3px;">{{ viewInv.ack_no || '—' }}</div>
                 </div>
                 <div style="background:#f8f9fc;border:1px solid #e8ecf0;border-radius:8px;padding:10px 12px">
                   <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#868e96">Ack Date</div>
@@ -1088,7 +1088,7 @@
                 <div style="font-size:13px;font-weight:600;color:#374151">Enter IRN Manually</div>
                 <div>
                   <label style="font-size:11.5px;font-weight:600;color:#374151;display:block;margin-bottom:4px">IRN (64-char hex) *</label>
-                  <input v-model="eiManualIrn" class="ei-input" placeholder="64-character hex from NIC portal" maxlength="64" style="font-family:monospace;font-size:11.5px" />
+                  <input v-model="eiManualIrn" class="ei-input" placeholder="64-character hex from NIC portal" maxlength="64" style="font-size:11.5px" />
                 </div>
                 <div>
                   <label style="font-size:11.5px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Ack No. *</label>

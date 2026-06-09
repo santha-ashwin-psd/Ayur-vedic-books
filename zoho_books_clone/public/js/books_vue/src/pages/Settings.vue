@@ -451,7 +451,7 @@ onMounted(() => {
 .users-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .users-table th, .users-table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid #F1F5F9; }
 .users-table th { font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-.users-table .mono { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #475569; }
+.users-table .mono { font-size: 13px; color: #475569; }
 .users-table select { padding: 5px 8px; font-size: 13px; border: 1px solid #E2E8F0; border-radius: 6px; }
 .modules-cell { max-width: 200px; }
 .row-actions { text-align: right; }

@@ -4,23 +4,23 @@
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
     <div class="b-card" style="padding:13px 16px">
       <div style="font-size:10.5px;color:#868E96;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Total Years</div>
-      <div style="font-size:22px;font-weight:700;font-family:var(--mono)">{{stats.total}}</div>
+      <div style="font-size:22px;font-weight:700;">{{stats.total}}</div>
     </div>
     <div class="b-card" style="padding:13px 16px;border-left:3px solid #2F9E44">
       <div style="font-size:10.5px;color:#2F9E44;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Current Year</div>
-      <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:#2F9E44">{{stats.currentName}}</div>
+      <div style="font-size:14px;font-weight:700;;color:#2F9E44">{{stats.currentName}}</div>
     </div>
     <div class="b-card" style="padding:13px 16px;border-left:3px solid #3B5BDB">
       <div style="font-size:10.5px;color:#3B5BDB;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Days Elapsed</div>
-      <div style="font-size:22px;font-weight:700;font-family:var(--mono);color:#3B5BDB">{{stats.elapsed}}</div>
+      <div style="font-size:22px;font-weight:700;;color:#3B5BDB">{{stats.elapsed}}</div>
     </div>
     <div class="b-card" style="padding:13px 16px;border-left:3px solid #E67700">
       <div style="font-size:10.5px;color:#E67700;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Periods Locked</div>
-      <div style="font-size:22px;font-weight:700;font-family:var(--mono);color:#E67700">{{stats.locked}}</div>
+      <div style="font-size:22px;font-weight:700;;color:#E67700">{{stats.locked}}</div>
     </div>
     <div class="b-card" style="padding:13px 16px" :style="{borderLeft:stats.needsClosing?'3px solid #C92A2A':'3px solid #E2E8F0'}">
       <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px" :style="{color:stats.needsClosing?'#C92A2A':'#868E96'}">Needs Closing</div>
-      <div style="font-size:22px;font-weight:700;font-family:var(--mono)" :style="{color:stats.needsClosing?'#C92A2A':'#1A1D23'}">{{stats.needsClosing}}</div>
+      <div style="font-size:22px;font-weight:700;" :style="{color:stats.needsClosing?'#C92A2A':'#1A1D23'}">{{stats.needsClosing}}</div>
     </div>
   </div>
 
@@ -54,7 +54,7 @@
             style="position:absolute;top:0;right:0;background:#2F9E44;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:0 10px 0 6px;letter-spacing:.5px">CURRENT</div>
 
           <div style="font-size:15px;font-weight:700;margin-bottom:3px;padding-right:70px">{{y.name}}</div>
-          <div style="font-size:12px;color:#868E96;margin-bottom:10px;font-family:var(--mono)">{{fmtDate(y.start)}} → {{fmtDate(y.end)}}</div>
+          <div style="font-size:12px;color:#868E96;margin-bottom:10px;">{{fmtDate(y.start)}} → {{fmtDate(y.end)}}</div>
 
           <template v-if="isCurrent(y.start,y.end)">
             <div style="margin-bottom:10px">
@@ -103,7 +103,7 @@
           <div style="padding:16px 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;background:#F8F9FC">
             <div>
               <div style="font-size:16px;font-weight:700">{{selectedYearData.name}}</div>
-              <div style="font-size:12px;color:#868E96;margin-top:2px;font-family:var(--mono)">
+              <div style="font-size:12px;color:#868E96;margin-top:2px;">
                 {{fmtDate(selectedYearData.start)}} → {{fmtDate(selectedYearData.end)}}
                 &nbsp;·&nbsp;{{daysBetween(selectedYearData.start,selectedYearData.end)}} days
                 &nbsp;·&nbsp;{{(selectedYearData.periods||[]).length}} periods
@@ -144,7 +144,7 @@
               <span :style="{fontWeight:p.is_current?'700':'400',color:p.is_current?'#1A1D23':'#344054'}">{{p.name}}</span>
               <span v-if="p.is_current" style="margin-left:6px;font-size:10px;background:#EEF2FF;color:#3B5BDB;padding:1px 6px;border-radius:10px;font-weight:600">NOW</span>
             </div>
-            <div style="font-size:11.5px;color:#868E96;font-family:var(--mono)">{{fmtShort(p.start)}} – {{fmtShort(p.end)}}</div>
+            <div style="font-size:11.5px;color:#868E96;">{{fmtShort(p.start)}} – {{fmtShort(p.end)}}</div>
             <div>
               <span v-if="p.locked" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#FFE3E3;color:#C92A2A">🔒 Locked</span>
               <span v-else-if="p.is_current" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#EEF2FF;color:#3B5BDB">Open</span>
@@ -278,7 +278,7 @@
                 <span :style="{color:p.is_current?'#3B5BDB':'#344054',fontWeight:p.is_current?600:400}">
                   {{p.name}}<span v-if="p.is_current" style="margin-left:5px;font-size:10px;background:#EEF2FF;color:#3B5BDB;padding:1px 5px;border-radius:8px">NOW</span>
                 </span>
-                <span style="color:#868E96;font-family:var(--mono)">{{p.start}} – {{p.end}}</span>
+                <span style="color:#868E96;">{{p.start}} – {{p.end}}</span>
               </div>
               <div v-if="periodPreview.length>6"
                 style="padding:8px 14px;text-align:center;color:#868E96;font-size:12px;background:#F8F9FC">

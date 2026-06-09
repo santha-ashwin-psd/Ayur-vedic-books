@@ -282,7 +282,7 @@ onMounted(load);
 .g3-row.g3-total td{background:#f9fafb;}
 .g3-sec-lbl{font-weight:700;color:#374151;margin-right:6px;}
 .g3-note{font-size:11px;color:#9ca3af;font-weight:400;margin-left:4px;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
 .green{color:#16a34a!important;}.red{color:#dc2626!important;}.blue{color:#2563eb!important;}
 .g3-badge{background:#eff6ff;color:#2563eb;border-radius:10px;padding:2px 8px;font-size:11.5px;font-weight:600;}
 .g3-tax-summary{display:flex;flex-direction:column;padding:0 16px;}

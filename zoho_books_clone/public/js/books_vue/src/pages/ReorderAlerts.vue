@@ -103,7 +103,7 @@ onMounted(load);
 .ra-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
 .ra-sum-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;}
 .ra-sum-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
-.ra-sum-val{font-size:18px;font-weight:700;color:#111827;font-family:monospace;}
+.ra-sum-val{font-size:18px;font-weight:700;color:#111827;}
 .orange{color:#ea580c!important;}.red{color:#dc2626!important;}
 .ra-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
 .ra-table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -113,8 +113,8 @@ onMounted(load);
 .ra-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;}
 .ra-row:last-child td{border-bottom:none;}.ra-row:hover td{background:#f9fafb;}
 .ra-row.critical td{background:#fff5f5;}
-.ra-code{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.text-muted{color:#6b7280;}
+.ra-code{font-size:12.5px;color:#2563eb;font-weight:600;}
+.mono-sm{font-size:12.5px;}.text-muted{color:#6b7280;}
 .ra-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .badge-red{background:#fee2e2;color:#dc2626;}.badge-orange{background:#fff7ed;color:#ea580c;}.badge-green{background:#dcfce7;color:#16a34a;}
 .ra-empty{text-align:center;color:#9ca3af;padding:48px!important;}

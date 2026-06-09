@@ -310,7 +310,7 @@ function newInvoice() {
 .cp-stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px 18px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
 .cp-stat-card.warn{background:linear-gradient(135deg,#fef2f2,#fff);border-color:#fecaca;}
 .cp-stat-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
-.cp-stat-val{font-size:22px;font-weight:700;color:#111827;font-family:monospace;margin-top:6px;}
+.cp-stat-val{font-size:22px;font-weight:700;color:#111827;margin-top:6px;}
 .cp-stat-val-sm{font-size:14px;font-family:inherit;}
 .cp-stat-sub{font-size:11.5px;color:#9ca3af;margin-top:4px;}
 .green{color:#16a34a!important;}.red{color:#dc2626!important;}
@@ -337,7 +337,7 @@ function newInvoice() {
 .cp-table td{padding:11px 14px;border-bottom:1px solid #f3f4f6;vertical-align:middle;}
 .cp-table tr:last-child td{border-bottom:none;}
 .ta-r{text-align:right!important;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.mono{font-family:monospace;}.text-muted{color:#6b7280;}
+.mono-sm{font-size:12.5px;}.text-muted{color:#6b7280;}
 .cp-type-pill{display:inline-flex;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;}
 .type-invoice{background:#dbeafe;color:#1d4ed8;}
 .type-cn{background:#fef2f2;color:#dc2626;}

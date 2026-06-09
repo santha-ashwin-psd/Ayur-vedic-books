@@ -159,13 +159,13 @@ onMounted(load);
 .s-pill.off{background:#fef2f2;color:#dc2626;}
 .s-card-body{padding:14px 18px 18px;display:flex;flex-direction:column;gap:10px;}
 .s-line{font-size:12.5px;color:#475569;line-height:1.55;margin:0;}
-.s-mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;background:#f1f5f9;color:#0f172a;padding:1px 6px;border-radius:4px;}
+.s-mono{font-size:11.5px;background:#f1f5f9;color:#0f172a;padding:1px 6px;border-radius:4px;}
 .s-note{font-size:11.5px;color:#94a3b8;}
 .s-rows{display:flex;flex-direction:column;gap:8px;}
 .s-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;}
 .s-row-lbl{color:#64748b;}
 .s-row-val{color:#0f172a;font-weight:500;}
-.s-row-val.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;}
+.s-row-val.mono{font-size:11.5px;}
 .s-row-more{font-size:11.5px;color:#94a3b8;}
 .s-status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
 .s-status-dot.on{background:#16a34a;}

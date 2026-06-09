@@ -32,7 +32,7 @@ def _send_otp_email(email, first_name, otp):
   <h2 style="color:#1A237E;font-size:22px;margin-bottom:8px">Verify your email</h2>
   <p style="color:#555;margin-bottom:24px;line-height:1.6">Hi {first_name}, use this code to activate your Books account:</p>
   <div style="background:#E8EAF6;border-radius:12px;padding:28px;text-align:center;margin-bottom:24px">
-    <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#1A237E;font-family:monospace">{otp}</span>
+    <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#1A237E;">{otp}</span>
   </div>
   <p style="color:#888;font-size:13px;line-height:1.6">
     This code expires in <strong>30 minutes</strong>.<br>
@@ -255,7 +255,7 @@ def _send_reset_otp_email(email, otp):
   <h2 style="color:#1A237E;font-size:22px;margin-bottom:8px">Reset your password</h2>
   <p style="color:#555;margin-bottom:24px;line-height:1.6">Use this 6-digit code to reset your Books password:</p>
   <div style="background:#E8EAF6;border-radius:12px;padding:28px;text-align:center;margin-bottom:24px">
-    <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#1A237E;font-family:monospace">{otp}</span>
+    <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#1A237E;">{otp}</span>
   </div>
   <p style="color:#888;font-size:13px;line-height:1.6">
     This code expires in <strong>15 minutes</strong>.<br>
@@ -354,7 +354,7 @@ def send_login_otp(email):
   <h2 style="color:#1A237E;font-size:22px;margin-bottom:8px">Your sign-in code</h2>
   <p style="color:#555;margin-bottom:24px;line-height:1.6">Use this 6-digit code to sign in to Books:</p>
   <div style="background:#E8EAF6;border-radius:12px;padding:28px;text-align:center;margin-bottom:24px">
-    <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#1A237E;font-family:monospace">{otp}</span>
+    <span style="font-size:40px;font-weight:800;letter-spacing:14px;color:#1A237E;">{otp}</span>
   </div>
   <p style="color:#888;font-size:13px;line-height:1.6">
     This code expires in <strong>10 minutes</strong>.<br>

@@ -98,19 +98,19 @@
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
         <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
           <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Stock Value</div>
-          <div style="font-size:18px;font-weight:700;color:#2563eb;font-family:var(--mono,'JetBrains Mono',monospace)">{{fmt(whStats.value)}}</div>
+          <div style="font-size:18px;font-weight:700;color:#2563eb;">{{fmt(whStats.value)}}</div>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
           <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Items in Stock</div>
-          <div style="font-size:18px;font-weight:700;color:#111827;font-family:var(--mono,'JetBrains Mono',monospace)">{{whStats.items}}</div>
+          <div style="font-size:18px;font-weight:700;color:#111827;">{{whStats.items}}</div>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
           <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Reserved Qty</div>
-          <div style="font-size:18px;font-weight:700;color:#E67700;font-family:var(--mono,'JetBrains Mono',monospace)">{{whStats.reserved.toFixed(2)}}</div>
+          <div style="font-size:18px;font-weight:700;color:#E67700;">{{whStats.reserved.toFixed(2)}}</div>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
           <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Projected Qty</div>
-          <div style="font-size:18px;font-weight:700;color:#1971C2;font-family:var(--mono,'JetBrains Mono',monospace)">{{whStats.projected.toFixed(2)}}</div>
+          <div style="font-size:18px;font-weight:700;color:#1971C2;">{{whStats.projected.toFixed(2)}}</div>
         </div>
       </div>
 
@@ -149,14 +149,14 @@
             </tr></thead>
             <tbody>
               <tr v-for="r in stockItems" :key="r.item_code" class="cust-row">
-                <td style="font-family:var(--mono);font-size:12.5px;color:#5C7CFA">{{r.item_code}}</td>
+                <td style="font-size:12.5px;color:#5C7CFA">{{r.item_code}}</td>
                 <td style="font-weight:500">{{r.item_name}}</td>
                 <td style="font-size:12px;color:#868E96">{{r.item_group||'—'}}</td>
                 <td style="font-size:12px;color:#868E96">{{r.uom||'Nos'}}</td>
-                <td style="text-align:right;font-family:var(--mono);font-weight:600;color:#2F9E44">{{flt(r.actual_qty).toFixed(2)}}</td>
-                <td style="text-align:right;font-family:var(--mono);color:#E67700">{{flt(r.reserved_qty).toFixed(2)}}</td>
-                <td style="text-align:right;font-family:var(--mono)">{{fmt(r.valuation_rate)}}</td>
-                <td style="text-align:right;font-family:var(--mono);font-weight:600">{{fmt(r.stock_value)}}</td>
+                <td style="text-align:right;font-weight:600;color:#2F9E44">{{flt(r.actual_qty).toFixed(2)}}</td>
+                <td style="text-align:right;color:#E67700">{{flt(r.reserved_qty).toFixed(2)}}</td>
+                <td style="text-align:right;">{{fmt(r.valuation_rate)}}</td>
+                <td style="text-align:right;font-weight:600">{{fmt(r.stock_value)}}</td>
                 <td style="text-align:center">
                   <span v-if="r.below_reorder" style="font-size:11px;background:#FFF3BF;color:#E67700;padding:2px 7px;border-radius:12px;font-weight:600">⚠ Low</span>
                   <span v-else style="color:#d1d5db">—</span>
@@ -193,11 +193,11 @@
             <div style="width:40px;height:40px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0" v-html="icon('box',18)"></div>
             <div>
               <div style="font-size:13.5px;font-weight:700;color:#111827">{{ adjDrawer.item_name }}</div>
-              <div style="font-size:11.5px;color:#6b7280;margin-top:2px;font-family:monospace">{{ adjDrawer.item_code }}</div>
+              <div style="font-size:11.5px;color:#6b7280;margin-top:2px;">{{ adjDrawer.item_code }}</div>
             </div>
             <div style="margin-left:auto;text-align:right">
               <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Current Qty</div>
-              <div style="font-size:18px;font-weight:700;color:#2563eb;font-family:monospace">{{ adjDrawer.current_qty }}</div>
+              <div style="font-size:18px;font-weight:700;color:#2563eb;">{{ adjDrawer.current_qty }}</div>
             </div>
           </div>
 
@@ -205,7 +205,7 @@
           <div>
             <label class="nim-label">New Quantity (counted on-hand) <span style="color:#dc2626">*</span></label>
             <input v-model.number="adjDrawer.new_qty" type="number" min="0" step="0.001" class="nim-input"
-              :placeholder="`Current: ${adjDrawer.current_qty}`" style="font-size:16px;font-weight:600;font-family:monospace" />
+              :placeholder="`Current: ${adjDrawer.current_qty}`" style="font-size:16px;font-weight:600;" />
             <div v-if="adjDrawer.new_qty !== '' && adjDrawer.new_qty !== null" style="margin-top:6px;font-size:12.5px;display:flex;align-items:center;gap:6px">
               <span :style="{color: adjDrawer.new_qty > adjDrawer.current_qty ? '#16a34a' : adjDrawer.new_qty < adjDrawer.current_qty ? '#dc2626' : '#6b7280', fontWeight:600}">
                 {{ adjDrawer.new_qty > adjDrawer.current_qty ? `+${(adjDrawer.new_qty - adjDrawer.current_qty).toFixed(3)} increase` :

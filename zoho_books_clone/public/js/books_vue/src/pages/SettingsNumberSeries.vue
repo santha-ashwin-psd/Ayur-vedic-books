@@ -30,10 +30,10 @@
           <td style="padding:12px 16px">
             <span style="background:#F3F0FF;color:#2563eb;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{s.doctype}}</span>
           </td>
-          <td style="padding:12px 16px;font-family:monospace;font-weight:700;color:#1a1a2e;font-size:13.5px">{{s.prefix}}</td>
+          <td style="padding:12px 16px;font-weight:700;color:#1a1a2e;font-size:13.5px">{{s.prefix}}</td>
           <td style="padding:12px 16px;color:#4a5568;text-align:center">{{s.padding||4}}</td>
           <td style="padding:12px 16px;color:#4a5568;text-align:center">{{s.current||0}}</td>
-          <td style="padding:12px 16px;font-family:monospace;color:#2F9E44;font-weight:600">{{preview(s)}}</td>
+          <td style="padding:12px 16px;color:#2F9E44;font-weight:600">{{preview(s)}}</td>
           <td style="padding:12px 16px;text-align:right">
             <button class="nim-btn nim-btn-ghost" @click="resetSeries(s)" style="font-size:12px;color:#c92a2a">Reset to 1</button>
           </td>
@@ -60,7 +60,7 @@
           </div>
           <div class="nim-field">
             <label class="nim-label">Prefix <span style="color:#c92a2a">*</span></label>
-            <input class="nim-input" v-model="form.prefix" placeholder="e.g. INV-" style="font-family:monospace"/>
+            <input class="nim-input" v-model="form.prefix" placeholder="e.g. INV-" />
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="nim-field">
@@ -73,7 +73,7 @@
             </div>
           </div>
           <div v-if="form.prefix" style="background:#f8f9fc;border-radius:8px;padding:12px;font-size:12.5px">
-            Preview: <b style="font-family:monospace;color:#2F9E44">{{form.prefix}}{{String((form.current||0)+1).padStart(form.padding||4,'0')}}</b>
+            Preview: <b style="color:#2F9E44">{{form.prefix}}{{String((form.current||0)+1).padStart(form.padding||4,'0')}}</b>
           </div>
         </div>
         <div class="nim-footer">

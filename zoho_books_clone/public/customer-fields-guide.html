@@ -44,7 +44,7 @@
   .field-card{border:1px solid #e8ecf0;border-radius:10px;padding:18px 20px;background:#fff;transition:box-shadow .15s}
   .field-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
   .field-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
-  .field-name{font-size:14px;font-weight:700;color:#1a1d23;font-family:'JetBrains Mono',monospace}
+  .field-name{font-size:14px;font-weight:700;color:#1a1d23;}
   .field-badges{display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0}
   .badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
   .badge-req{background:#FFF5F5;color:#C92A2A;border:1px solid #fecaca}
@@ -267,7 +267,7 @@
           <div class="meta-item"><div class="meta-label">Visible for</div><div class="meta-value">Registered, SEZ</div></div>
           <div class="meta-item"><div class="meta-label">Used in</div><div class="meta-value">GSTR-1, B2B invoices</div></div>
         </div>
-        <div class="field-desc">The 15-character GST Identification Number issued to registered businesses. Auto-converts to uppercase. Format: <code style="font-family:monospace;background:#f1f3f9;padding:1px 5px;border-radius:3px">SS-PPPPPNNNNPC-Z-C</code> where SS=state code, P=PAN, N=entity number, C=checksum.</div>
+        <div class="field-desc">The 15-character GST Identification Number issued to registered businesses. Auto-converts to uppercase. Format: <code style="background:#f1f3f9;padding:1px 5px;border-radius:3px">SS-PPPPPNNNNPC-Z-C</code> where SS=state code, P=PAN, N=entity number, C=checksum.</div>
         <div class="field-usecase">
           <div class="field-usecase-icon">💡</div>
           <div class="field-usecase-text"><strong>Use Case:</strong> Printed on B2B invoices as legally required. Used in GSTR-1 B2B section. Required for ITC claim by the customer. The first 2 digits (state code) also auto-derive Place of Supply for intra-state tax split.</div>

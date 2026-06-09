@@ -150,10 +150,10 @@ onMounted(()=>{load();fetchWarehouses("");fetchItemGroups("");});
 .ta-r{text-align:right!important;}
 .sv-row td{padding:9px 12px;border-bottom:1px solid #f3f4f6;}
 .sv-row:last-child td{border-bottom:none;}.sv-row:hover td{background:#f9fafb;}
-.sv-code{font-family:monospace;font-size:12.5px;color:#2563eb;font-weight:600;}
+.sv-code{font-size:12.5px;color:#2563eb;font-weight:600;}
 .sv-adjust-btn{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:7px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;}
 .sv-adjust-btn:hover{background:#dbeafe;}
-.mono-sm{font-family:monospace;font-size:12.5px;}.font-medium{font-weight:600;}.text-muted{color:#6b7280;}
+.mono-sm{font-size:13px;}.font-medium{font-weight:600;}.text-muted{color:#6b7280;}
 .sv-empty{text-align:center;color:#9ca3af;padding:48px!important;}
 .sv-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}

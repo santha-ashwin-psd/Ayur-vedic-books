@@ -70,7 +70,7 @@
               <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
                 <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px">
                   <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Annual Budget</div>
-                  <div style="font-size:17px;font-weight:700;font-family:var(--mono);color:#3B5BDB">{{fmtINR(selectedCC.budget)||"—"}}</div>
+                  <div style="font-size:17px;font-weight:700;color:#3B5BDB">{{fmtINR(selectedCC.budget)||"—"}}</div>
                 </div>
                 <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px">
                   <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Spent (YTD)</div>
@@ -95,7 +95,7 @@
             <template v-if="selectedCC.is_group">
               <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
                 <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Child Centers</div><div style="font-size:17px;font-weight:700;font-family:var(--mono)">{{ccChildren.length}}</div></div>
-                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Total Budget</div><div style="font-size:17px;font-weight:700;font-family:var(--mono);color:#3B5BDB">{{fmtINR(ccChildren.reduce((s,c)=>s+Number(c.budget||0),0))}}</div></div>
+                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Total Budget</div><div style="font-size:17px;font-weight:700;color:#3B5BDB">{{fmtINR(ccChildren.reduce((s,c)=>s+Number(c.budget||0),0))}}</div></div>
                 <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Total Spent</div><div style="font-size:17px;font-weight:700;font-family:var(--mono)">{{fmtINR(ccChildren.reduce((s,c)=>s+(spend[c.name]||0),0))}}</div></div>
               </div>
               <div v-if="ccChildren.length">
@@ -105,7 +105,7 @@
                   <div style="flex:1;background:#E8ECF0;border-radius:10px;height:6px;overflow:hidden">
                     <div style="height:100%;border-radius:10px;transition:width .4s" :style="{width:Math.round((spend[c.name]||0)/Math.max(1,...ccChildren.map(x=>spend[x.name]||0))*100)+'%',background:c.color}"></div>
                   </div>
-                  <span style="font-size:12px;font-family:var(--mono);color:#868E96;width:70px;text-align:right;flex-shrink:0">{{fmtINR(spend[c.name]||0)}}</span>
+                  <span style="font-size:12px;color:#868E96;width:70px;text-align:right;flex-shrink:0">{{fmtINR(spend[c.name]||0)}}</span>
                 </div>
               </div>
             </template>
@@ -182,7 +182,7 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
             <div>
               <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Annual Budget (₹)</label>
-              <input v-model="fForm.budget" class="b-input" type="number" min="0" step="1000" placeholder="0" style="font-family:var(--mono)"/>
+              <input v-model="fForm.budget" class="b-input" type="number" min="0" step="1000" placeholder="0" />
             </div>
             <div>
               <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Budget Period</label>
@@ -196,7 +196,7 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
             <div>
               <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Budget Alert At (%)</label>
-              <input v-model="fForm.alert_pct" class="b-input" type="number" min="0" max="100" style="font-family:var(--mono)"/>
+              <input v-model="fForm.alert_pct" class="b-input" type="number" min="0" max="100" />
             </div>
             <div>
               <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Budget Action</label>

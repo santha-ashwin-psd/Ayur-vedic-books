@@ -92,15 +92,15 @@
     <div style="font-size:13.5px;font-weight:700;margin-bottom:16px;color:#1a1a2e">Step 3 — Import Results</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
       <div style="background:#EBFBEE;border:1px solid #8CE99A;border-radius:10px;padding:16px;text-align:center">
-        <div style="font-size:28px;font-weight:700;color:#2F9E44;font-family:monospace">{{result.created}}</div>
+        <div style="font-size:28px;font-weight:700;color:#2F9E44;">{{result.created}}</div>
         <div style="font-size:12px;color:#2F9E44;font-weight:600;margin-top:4px">Created</div>
       </div>
       <div style="background:#FFF9DB;border:1px solid #FFD43B;border-radius:10px;padding:16px;text-align:center">
-        <div style="font-size:28px;font-weight:700;color:#E67700;font-family:monospace">{{result.skipped}}</div>
+        <div style="font-size:28px;font-weight:700;color:#E67700;">{{result.skipped}}</div>
         <div style="font-size:12px;color:#E67700;font-weight:600;margin-top:4px">Skipped</div>
       </div>
       <div style="background:#FFF5F5;border:1px solid #FFC9C9;border-radius:10px;padding:16px;text-align:center">
-        <div style="font-size:28px;font-weight:700;color:#C92A2A;font-family:monospace">{{result.errors.length}}</div>
+        <div style="font-size:28px;font-weight:700;color:#C92A2A;">{{result.errors.length}}</div>
         <div style="font-size:12px;color:#C92A2A;font-weight:600;margin-top:4px">Errors</div>
       </div>
     </div>

@@ -30,12 +30,12 @@
           <template v-if="loading"><tr v-for="n in 6" :key="n"><td colspan="9" style="padding:14px"><div class="b-shimmer" style="height:12px"></div></td></tr></template>
           <tr v-else-if="!filtered.length"><td colspan="9" class="b-empty">No items found</td></tr>
           <tr v-else v-for="row in filtered" :key="row.name" class="clickable" @click="openEdit(row)">
-            <td><span class="mono" style="font-size:12px;color:#3B5BDB">{{row.item_code||row.name}}</span></td>
+            <td><span  style="font-size:12px;color:#3B5BDB">{{row.item_code||row.name}}</span></td>
             <td class="fw-600">{{row.item_name}}</td>
             <td class="c-muted">{{row.item_group||'—'}}</td>
             <td><span class="b-badge b-badge-muted" style="font-size:11px">{{row.item_type||'—'}}</span></td>
             <td class="c-muted" style="font-size:12.5px">{{row.stock_uom||'Nos'}}</td>
-            <td class="ta-r mono fw-600">{{fmt(row.standard_rate)}}</td>
+            <td class="ta-r fw-600">{{fmt(row.standard_rate)}}</td>
             <td class="ta-r c-muted" style="font-size:12.5px">{{row.gst_rate||0}}%</td>
             <td><span class="b-badge" :class="row.disabled?'b-badge-red':'b-badge-green'">{{row.disabled?'Inactive':'Active'}}</span></td>
             <td style="text-align:center">
@@ -58,10 +58,10 @@
           <span class="b-badge b-badge-muted" style="font-size:10.5px">{{row.item_type||'—'}}</span>
         </div>
         <div class="fw-700" style="font-size:14px;margin-bottom:3px;line-height:1.3">{{row.item_name}}</div>
-        <div class="mono c-muted" style="font-size:11px;margin-bottom:8px">{{row.item_code}}</div>
+        <div class="c-muted" style="font-size:11px;margin-bottom:8px">{{row.item_code}}</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span class="c-muted" style="font-size:12px">{{row.item_group||'—'}}</span>
-          <span class="mono fw-700" style="font-size:13px;color:#2F9E44">{{fmt(row.standard_rate)}}</span>
+          <span class="fw-700" style="font-size:13px;color:#2F9E44">{{fmt(row.standard_rate)}}</span>
         </div>
       </div>
     </div>
@@ -139,8 +139,8 @@
 
           <template v-else-if="drawerTab==='pricing'">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-              <div><label class="nim-label">Selling Rate (₹)</label><input type="number" class="nim-input" v-model="form.standard_rate" min="0" style="font-family:var(--mono)"/></div>
-              <div><label class="nim-label">Buying Rate (₹)</label><input type="number" class="nim-input" v-model="form.standard_buying_rate" min="0" style="font-family:var(--mono)"/></div>
+              <div><label class="nim-label">Selling Rate (₹)</label><input type="number" class="nim-input" v-model="form.standard_rate" min="0" /></div>
+              <div><label class="nim-label">Buying Rate (₹)</label><input type="number" class="nim-input" v-model="form.standard_buying_rate" min="0" /></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
               <div><label class="nim-label">GST Rate (%)</label>
@@ -178,8 +178,8 @@
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div><label class="nim-label">Reorder Level</label><input type="number" class="nim-input" v-model="form.reorder_level" min="0" style="font-family:var(--mono)"/></div>
-              <div><label class="nim-label">Reorder Qty</label><input type="number" class="nim-input" v-model="form.reorder_qty" min="0" style="font-family:var(--mono)"/></div>
+              <div><label class="nim-label">Reorder Level</label><input type="number" class="nim-input" v-model="form.reorder_level" min="0" /></div>
+              <div><label class="nim-label">Reorder Qty</label><input type="number" class="nim-input" v-model="form.reorder_qty" min="0"/></div>
             </div>
             <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:12px;color:#1e40af;margin-top:4px">
               To set or adjust stock quantities, go to <strong>Inventory → Warehouses</strong> → select a warehouse → click <strong>Adjust</strong> next to any item.

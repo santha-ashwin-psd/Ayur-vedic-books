@@ -87,10 +87,10 @@
                 </td>
               </tr>
               <tr v-else v-for="p in filteredPrices" :key="p.name" class="clickable" @click="openEditPrice(p)">
-                <td><span class="mono" style="font-size:12px;color:#3B5BDB">{{p.item_code}}</span></td>
+                <td><span  style="font-size:12px;color:#3B5BDB">{{p.item_code}}</span></td>
                 <td class="fw-600">{{p.item_name||p.item_code}}</td>
                 <td class="c-muted" style="font-size:12.5px">{{p.uom||'Nos'}}</td>
-                <td class="ta-r mono fw-600" style="color:#2F9E44">{{fmtRate(p.price_list_rate)}}</td>
+                <td class="ta-r fw-600" style="color:#2F9E44">{{fmtRate(p.price_list_rate)}}</td>
                 <td class="c-muted" style="font-size:12.5px">{{p.valid_from||'—'}}</td>
                 <td class="c-muted" style="font-size:12.5px">{{p.valid_upto||'—'}}</td>
                 <td style="text-align:center">

@@ -13,10 +13,10 @@
               <span>Linked</span><span>Mode / Type</span><span>Date</span><span style="text-align:right">Amount</span>
             </div>
             <div v-for="p in state.links" :key="p.name" class="ccd-links-row">
-              <span style="font-family:monospace">{{ p.name }}</span>
+              <span >{{ p.name }}</span>
               <span>{{ p.mode || p.type || "—" }}</span>
-              <span style="font-family:monospace;color:#6b7280">{{ p.date || "—" }}</span>
-              <span style="text-align:right;font-family:monospace;font-weight:700;color:#059669">{{ fmt(p.amount) }}</span>
+              <span style="color:#6b7280">{{ p.date || "—" }}</span>
+              <span style="text-align:right;font-weight:700;color:#059669">{{ fmt(p.amount) }}</span>
             </div>
           </div>
           <p v-if="state.links.length" class="ccd-warn">

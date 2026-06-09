@@ -329,63 +329,103 @@
     <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
     <div class="inv-drawer-panel pmt-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewPmt">
-        <div class="pmt-view-head" :class="viewPmt.payment_type==='Receive'?'head-green':'head-red'">
-          <div>
-            <div class="inv-view-number pmt-view-num-dark">{{ viewPmt.name }}</div>
-            <div class="pmt-view-party">
-              <DocLink :doctype="viewPmt.party_type || (viewPmt.payment_type==='Receive'?'Customer':'Supplier')" :name="viewPmt.party" :mono-style="false">
-                {{ viewPmt.party_name || viewPmt.party || '—' }}
-              </DocLink>
+
+        <!-- ── Header card: Payment # + amount + status ── -->
+        <div class="pmt-vd-body">
+          <div class="pmt-vd-hero-card">
+            <div class="pmt-vd-hero-left">
+              <div class="pmt-vd-hero-num">{{ viewPmt.name }}</div>
+              <div class="pmt-vd-hero-party">
+                <DocLink :doctype="viewPmt.party_type || (viewPmt.payment_type==='Receive'?'Customer':'Supplier')" :name="viewPmt.party" :mono-style="false">
+                  {{ viewPmt.party_name || viewPmt.party || '—' }}
+                </DocLink>
+              </div>
             </div>
+            <div class="pmt-vd-hero-right">
+              <div class="pmt-vd-hero-amount">{{ fmtCur(viewPmt.paid_amount) }}</div>
+              <span class="pmt-vd-status-badge" :class="viewPmt.payment_type==='Receive'?'pmt-vd-badge-green':'pmt-vd-badge-red'">
+                <span class="pmt-vd-badge-dot"></span>
+                {{ viewPmt.payment_type==='Receive'?'RECEIVED':'PAID OUT' }}
+              </span>
+            </div>
+            <button class="pmt-vd-close" @click="viewOpen=false"><span v-html="icon('x',15)"></span></button>
           </div>
-          <div style="text-align:right">
-            <div class="pmt-view-amount">{{ fmtCur(viewPmt.paid_amount) }}</div>
-            <span class="inv-status-badge" :class="viewPmt.payment_type==='Receive'?'badge-green':'badge-red'">
-              {{ viewPmt.payment_type==='Receive'?'Received':'Paid Out' }}
-            </span>
-          </div>
-          <button class="inv-dclose pmt-dclose-light" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-        </div>
-        <div class="inv-dbody pmt-dbody">
-          <div class="section-card">
-            <div class="pmt-section-hdr" style="margin-bottom:8px">Payment Details</div>
-          <div class="pmt-meta-grid">
-            <div><div class="pmt-meta-lbl">Payment Date</div><div>{{ fmtDate(viewPmt.payment_date) }}</div></div>
-            <div><div class="pmt-meta-lbl">Mode</div><div>{{ viewPmt.mode_of_payment||'—' }}</div></div>
-            <div><div class="pmt-meta-lbl">Reference No</div><div class="mono-sm">{{ viewPmt.reference_no||'—' }}</div></div>
-            <div><div class="pmt-meta-lbl">Reference Date</div><div class="mono-sm">{{ fmtDate(viewPmt.reference_date) }}</div></div>
-            <div><div class="pmt-meta-lbl">Paid From</div><div>{{ viewPmt.paid_from||'—' }}</div></div>
-            <div><div class="pmt-meta-lbl">Paid To</div><div>{{ viewPmt.paid_to||'—' }}</div></div>
-          </div>
-        </div>
-          <!-- Linked references -->
-          <div class="space-top section-card" v-if="viewPmt.references&&viewPmt.references.length">
-            <div class="pmt-section-hdr" style="margin-bottom:8px">Linked Documents</div>
-            <div class="pmt-inv-table">
-              <div class="pmt-inv-head"><div></div><div>Document</div><div class="ta-r">Outstanding</div><div class="ta-r">Allocated</div></div>
-              <div v-for="r in viewPmt.references" :key="r.reference_name" class="pmt-inv-row">
-                <div></div>
-                <div><DocLink :doctype="r.reference_doctype || (viewPmt.payment_type==='Receive'?'Sales Invoice':'Purchase Invoice')" :name="r.reference_name" /></div>
-                <div class="ta-r mono-sm">{{ fmtCur(r.outstanding_amount) }}</div>
-                <div class="ta-r mono-sm green">{{ fmtCur(r.allocated_amount) }}</div>
+
+          <!-- ── Payment Details card ── -->
+          <div class="pmt-vd-card">
+            <div class="pmt-vd-card-title">PAYMENT DETAILS</div>
+            <div class="pmt-vd-meta-grid">
+              <div>
+                <div class="pmt-vd-lbl">PAYMENT DATE</div>
+                <div class="pmt-vd-val">{{ fmtDate(viewPmt.payment_date) }}</div>
+              </div>
+              <div>
+                <div class="pmt-vd-lbl">MODE</div>
+                <div class="pmt-vd-val">{{ viewPmt.mode_of_payment||'—' }}</div>
+              </div>
+              <div>
+                <div class="pmt-vd-lbl">REFERENCE NO</div>
+                <div class="pmt-vd-val mono-sm">{{ viewPmt.reference_no||'—' }}</div>
+              </div>
+              <div>
+                <div class="pmt-vd-lbl">REFERENCE DATE</div>
+                <div class="pmt-vd-val mono-sm">{{ fmtDate(viewPmt.reference_date) }}</div>
+              </div>
+              <div>
+                <div class="pmt-vd-lbl">PAID FROM</div>
+                <div class="pmt-vd-val">{{ viewPmt.paid_from||'—' }}</div>
+              </div>
+              <div>
+                <div class="pmt-vd-lbl">PAID TO</div>
+                <div class="pmt-vd-val">{{ viewPmt.paid_to||'—' }}</div>
               </div>
             </div>
           </div>
-          <div class="space-top section-card" v-if="viewPmt.remarks" style="grid-column:1/-1">
-            <div class="pmt-meta-lbl">Remarks</div><div>{{ viewPmt.remarks }}</div>
+
+          <!-- ── Linked Documents card ── -->
+          <div class="pmt-vd-card" v-if="viewPmt.references&&viewPmt.references.length">
+            <div class="pmt-vd-card-title">LINKED DOCUMENTS</div>
+            <table class="pmt-vd-link-table">
+              <thead>
+                <tr>
+                  <th style="text-align: left;">DOCUMENT</th>
+                  <th class="ta-r">OUTSTANDING</th>
+                  <th class="ta-r">ALLOCATED</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in viewPmt.references" :key="r.reference_name">
+                  <td>
+                    <DocLink :doctype="r.reference_doctype || (viewPmt.payment_type==='Receive'?'Sales Invoice':'Purchase Invoice')" :name="r.reference_name" />
+                  </td>
+                  <td class="ta-r mono-sm">{{ fmtCur(r.outstanding_amount) }}</td>
+                  <td class="ta-r mono-sm pmt-vd-alloc-green">{{ fmtCur(r.allocated_amount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ── Remarks card ── -->
+          <div class="pmt-vd-card" v-if="viewPmt.remarks">
+            <div class="pmt-vd-card-title">REMARKS</div>
+            <div class="pmt-vd-remarks">{{ viewPmt.remarks }}</div>
           </div>
         </div>
+
+        <!-- ── Footer ── -->
         <div class="inv-dfooter">
-          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-          <button v-if="viewPmt.docstatus===0" class="form-btn form-btn-success" @click="openEdit(viewPmt);viewOpen=false">
-            <span v-html="icon('edit',13)"></span> Edit
-          </button>
-          <button v-if="viewPmt.docstatus===1" class="form-btn form-btn-danger" @click="cancelPmt(viewPmt)">
-            Cancel Payment
-          </button>
-          <button v-if="viewPmt.docstatus===0 || viewPmt.docstatus===2" class="form-btn form-btn-danger" @click="deletePmt(viewPmt)">
-            <span v-html="icon('trash',13)"></span> Delete
-          </button>
+          <button class="pmt-vd-btn-close" @click="viewOpen=false">Close</button>
+          <div style="display:flex;gap:8px">
+            <button v-if="viewPmt.docstatus===0" class="form-btn form-btn-success" @click="openEdit(viewPmt);viewOpen=false">
+              <span v-html="icon('edit',13)"></span> Edit
+            </button>
+            <button v-if="viewPmt.docstatus===1" class="pmt-vd-btn-cancel" @click="cancelPmt(viewPmt)">
+              Cancel Payment
+            </button>
+            <button v-if="viewPmt.docstatus===0 || viewPmt.docstatus===2" class="pmt-vd-btn-cancel" @click="deletePmt(viewPmt)">
+              <span v-html="icon('trash',13)"></span> Delete
+            </button>
+          </div>
         </div>
       </template>
     </div>
@@ -814,7 +854,7 @@ onMounted(async () => {
 .pmt-edit-drawer.open { right: 0; }
 
 /* ── View drawer width override ── */
-.pmt-view-drawer { width: 520px; right: -520px; transition: right .24s cubic-bezier(.32,.72,0,1); position: fixed; top: 0; bottom: 0; }
+.pmt-view-drawer { width: 625px; right: -625px; transition: right .24s cubic-bezier(.32,.72,0,1); position: fixed; top: 0; bottom: 0; }
 .pmt-view-drawer.open { right: 0; }
 
 /* ── Payment-specific drawer header (light bg, not gradient) ── */
@@ -941,4 +981,185 @@ onMounted(async () => {
 /* ── Payment-specific badge colours (not in shared CSS) ── */
 .badge-green { background:#dcfce7; color:#16a34a; }
 .badge-red   { background:#fee2e2; color:#dc2626; }
+
+/* ══════════════════════════════════════════════
+   View Drawer – new clean card design
+   ══════════════════════════════════════════════ */
+.pmt-vd-body {
+  flex: 1;
+  overflow-y: auto;
+  background: #f1f3f9;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Hero card: Payment # / party / amount / status */
+.pmt-vd-hero-card {
+  position: relative;
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px 20px 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.pmt-vd-hero-left { flex: 1; min-width: 0; }
+.pmt-vd-hero-num {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -.3px;
+}
+.pmt-vd-hero-party {
+  margin-top: 4px;
+  font-size: 13.5px;
+  color: #2563eb;
+  font-weight: 500;
+}
+.pmt-vd-hero-right {
+  text-align: right;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+.pmt-vd-hero-amount {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -.4px;
+}
+.pmt-vd-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  border-radius: 20px;
+  padding: 3px 10px 3px 8px;
+}
+.pmt-vd-badge-green { background: #dcfce7; color: #15803d; }
+.pmt-vd-badge-red   { background: #fee2e2; color: #dc2626; }
+.pmt-vd-badge-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.pmt-vd-close {
+    position: absolute;
+    top: -4px;
+    right: 0px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: #fff1f2;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #dc2626;
+    transition: background .15s;
+}
+.pmt-vd-close:hover { background: #e5e7eb; color: #111827; }
+
+/* Generic info card */
+.pmt-vd-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.pmt-vd-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+/* 2-column meta grid inside details card */
+.pmt-vd-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 24px;
+}
+.pmt-vd-lbl {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 3px;
+}
+.pmt-vd-val {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 500;
+}
+
+/* Linked documents table */
+.pmt-vd-link-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.pmt-vd-link-table thead tr {
+  border-bottom: 1.5px solid #f3f4f6;
+}
+.pmt-vd-link-table th {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 0 0 10px;
+}
+.pmt-vd-link-table td {
+  padding: 14px 0;
+  border-bottom: 1px solid #f3f4f6;
+  color: #111827;
+  font-weight: 500;
+}
+.pmt-vd-link-table tbody tr:last-child td { border-bottom: none; }
+.pmt-vd-alloc-green { color: #16a34a !important; font-weight: 700; }
+
+/* Remarks */
+.pmt-vd-remarks {
+  font-size: 13.5px;
+  color: #374151;
+  font-style: italic;
+}
+
+/* Footer buttons */
+.pmt-vd-btn-close {
+  border: 1.5px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 8px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.pmt-vd-btn-close:hover { background: #f9fafb; }
+
+.pmt-vd-btn-cancel {
+  border: none;
+  background: #fff1f2;
+  color: #dc2626;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 8px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.pmt-vd-btn-cancel:hover { background: #fee2e2; }
 </style>

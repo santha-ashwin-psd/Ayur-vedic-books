@@ -858,7 +858,7 @@ onMounted(async () => {
   transition: right .24s cubic-bezier(.32,.72,0,1);
 }
 .cn-drawer.open { right: 0; }
-.cn-view-drawer { width: 520px; right: -520px; }
+.cn-view-drawer { width: 625px; right: -625px; }
 .cn-view-drawer.open { right: 0; }
 
 /* ── Body tray for add-cards ── */

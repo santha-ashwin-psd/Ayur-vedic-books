@@ -1201,3 +1201,71 @@ def get_invoice_payments(invoice_name):
          ORDER BY pe.payment_date
     """, invoice_name, as_dict=True)
     return rows
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_customer_unused_credits():
+    """
+    Return {customer_name: available_credit} by summing unapplied balances across
+    all submitted Credit Notes (Sales Invoice rows with is_return=1) per customer.
+
+    Mirrors get_credit_note_balance in docs.py:
+      balance = ABS(grand_total) - applied_via_PE_refs - applied_via_JE_contra
+    """
+    company = (
+        frappe.defaults.get_user_default("company")
+        or frappe.defaults.get_global_default("company")
+    )
+
+    # 1. All submitted Credit Notes (is_return=1 Sales Invoices) for this company
+    cns = frappe.db.sql("""
+        SELECT name, customer, ABS(grand_total) AS total
+          FROM `tabSales Invoice`
+         WHERE docstatus = 1
+           AND is_return = 1
+           AND company = %s
+    """, company, as_dict=True)
+
+    if not cns:
+        return {}
+
+    cn_names = [c.name for c in cns]
+    cn_map = {c.name: {"customer": c.customer, "total": float(c.total or 0), "applied": 0.0}
+              for c in cns}
+
+    # 2. Applied via Payment Entry References
+    placeholders = ",".join(["%s"] * len(cn_names))
+    pe_rows = frappe.db.sql(f"""
+        SELECT per.reference_name, SUM(ABS(per.allocated_amount)) AS applied
+          FROM `tabPayment Entry Reference` per
+          JOIN `tabPayment Entry` pe ON pe.name = per.parent
+         WHERE per.reference_doctype = 'Sales Invoice'
+           AND per.reference_name IN ({placeholders})
+           AND pe.docstatus = 1
+         GROUP BY per.reference_name
+    """, cn_names, as_dict=True)
+    for r in pe_rows:
+        if r.reference_name in cn_map:
+            cn_map[r.reference_name]["applied"] += float(r.applied or 0)
+
+    # 3. Applied via Journal Entry contra rows (same logic as _je_applications_for_si)
+    je_rows = frappe.db.sql(f"""
+        SELECT jea.reference_name, SUM(ABS(jea.debit)) AS applied
+          FROM `tabJournal Entry Account` jea
+          JOIN `tabJournal Entry` je ON je.name = jea.parent
+         WHERE jea.reference_type = 'Sales Invoice'
+           AND jea.reference_name IN ({placeholders})
+           AND je.docstatus = 1
+         GROUP BY jea.reference_name
+    """, cn_names, as_dict=True)
+    for r in je_rows:
+        if r.reference_name in cn_map:
+            cn_map[r.reference_name]["applied"] += float(r.applied or 0)
+
+    # 4. Sum remaining balance per customer
+    result = {}
+    for info in cn_map.values():
+        balance = max(0.0, info["total"] - info["applied"])
+        if balance > 0:
+            result[info["customer"]] = result.get(info["customer"], 0.0) + balance
+
+    return result

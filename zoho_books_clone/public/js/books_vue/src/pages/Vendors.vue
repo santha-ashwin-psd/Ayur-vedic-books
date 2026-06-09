@@ -297,36 +297,26 @@
             </div>
 
             <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
-              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F3F4F6">
+              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" :style="!collapsed.address?'border-bottom:1px solid #F3F4F6':''" @click="collapsed.address=!collapsed.address">
                 <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">ADDRESS</span>
-                <span style="font-size:12px;color:#9CA3AF">▲</span>
+                <svg :style="{transition:'transform 0.2s',transform:collapsed.address?'rotate(-90deg)':'rotate(0deg)'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
               </div>
-              <div style="padding:14px 16px;display:flex;flex-direction:column;gap:14px">
-                <div>
-                  <div style="font-size:11.5px;font-weight:600;color:#6B7280;margin-bottom:6px">Billing Address</div>
-                  <div v-if="selectedVendor.city||selectedVendor.address_line1" style="font-size:13px;color:#374151;line-height:1.6">
-                    <div v-if="selectedVendor.address_line1">{{selectedVendor.address_line1}}</div>
-                    <div v-if="selectedVendor.address_line2">{{selectedVendor.address_line2}}</div>
-                    <div>{{[selectedVendor.city,selectedVendor.state,selectedVendor.pincode].filter(Boolean).join(', ')}}</div>
-                    <div>{{selectedVendor.country||'India'}}</div>
-                  </div>
-                  <div v-else style="font-size:12.5px;color:#9CA3AF">
-                    No Billing Address — <a href="#" @click.prevent="openEdit(selectedVendor.name)" style="color:#E67700;text-decoration:none">New Address</a>
-                  </div>
-                </div>
-                <div>
-                  <div style="font-size:11.5px;font-weight:600;color:#6B7280;margin-bottom:6px">Shipping Address</div>
-                  <div style="font-size:12.5px;color:#9CA3AF">No Shipping Address — <a href="#" @click.prevent="openEdit(selectedVendor.name)" style="color:#E67700;text-decoration:none">New Address</a></div>
-                </div>
+              <div v-show="!collapsed.address" style="padding:14px 16px">
+                <AddressManager
+                  v-if="selectedVendor.name"
+                  :partyDoctype="'Supplier'"
+                  :partyName="selectedVendor.name"
+                  :readonly="true"
+                />
               </div>
             </div>
 
             <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
-              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F3F4F6">
+              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" :style="!collapsed.otherDetails?'border-bottom:1px solid #F3F4F6':''" @click="collapsed.otherDetails=!collapsed.otherDetails">
                 <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">OTHER DETAILS</span>
-                <span style="font-size:12px;color:#9CA3AF">▲</span>
+                <svg :style="{transition:'transform 0.2s',transform:collapsed.otherDetails?'rotate(-90deg)':'rotate(0deg)'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
               </div>
-              <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+              <div v-show="!collapsed.otherDetails" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
                 <div style="display:flex;justify-content:space-between;font-size:12.5px">
                   <span style="color:#6B7280">Default Currency</span>
                   <span style="font-weight:600;color:#111827">{{selectedVendor.default_currency||'INR'}}</span>
@@ -347,11 +337,14 @@
             </div>
 
             <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
-              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" @click="collapsed.contacts=!collapsed.contacts">
                 <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">CONTACT PERSONS</span>
-                <button @click="openEdit(selectedVendor.name)" style="background:none;border:none;cursor:pointer;color:#E67700;font-size:12px">+ Add</button>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <button @click.stop="openEdit(selectedVendor.name)" style="background:none;border:none;cursor:pointer;color:#E67700;font-size:12px">+ Add</button>
+                  <svg :style="{transition:'transform 0.2s',transform:collapsed.contacts?'rotate(-90deg)':'rotate(0deg)'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                </div>
               </div>
-              <div style="padding:10px 16px 14px;font-size:12.5px;color:#9CA3AF">No contacts added yet.</div>
+              <div v-show="!collapsed.contacts" style="padding:10px 16px 14px;font-size:12.5px;color:#9CA3AF">No contacts added yet.</div>
             </div>
           </div>
 
@@ -753,6 +746,8 @@ const deleting      = ref(false);
 const accounts      = ref([]);
 const pendingAddresses = ref([]);
 
+const collapsed = reactive({ address: false, otherDetails: false, contacts: false });
+
 const form = reactive({
   name: "",
   supplier_name: "", supplier_type: "Company",
@@ -1083,12 +1078,14 @@ async function selectVendor(v) {
   vendorTxns.value = [];
   vendorStatement.value = { rows: [], totals: {} };
   try {
-    const [sum, txns] = await Promise.all([
+    const [sum, txns, fullDoc] = await Promise.all([
       apiGET("zoho_books_clone.api.docs.get_vendor_summary", { vendor: v.name }).catch(() => ({})),
       apiGET("zoho_books_clone.api.docs.get_vendor_transactions", { vendor: v.name, limit: 100 }).catch(() => []),
+      apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Supplier", name: v.name }).catch(() => null),
     ]);
     vendorSummary.value = sum || {};
     vendorTxns.value = txns || [];
+    if (fullDoc) selectedVendor.value = { ...v, ...fullDoc };
   } catch (e) { /* keep panel open */ }
   detailLoading.value = false;
 }

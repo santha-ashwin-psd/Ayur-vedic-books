@@ -620,8 +620,13 @@ def get_ap_aging(company: str, as_of_date: str) -> list[dict]:
 # ── Customer Statement ────────────────────────────────────────────────────────
 
 @frappe.whitelist()
-def get_customer_statement(customer: str, company: str) -> dict:
+def get_customer_statement(customer: str, company: str = "") -> dict:
     """Outstanding invoices + payment history for a customer."""
+    if not company:
+        from zoho_books_clone.api.session import _get_company
+        company = _get_company(frappe.session.user) or ""
+    if not company:
+        frappe.throw("No default company configured. Please set one in Books Settings.")
     invoices = frappe.db.sql("""
         SELECT name, posting_date, due_date, grand_total, outstanding_amount, currency,
                CASE WHEN due_date < CURDATE() AND outstanding_amount > 0 THEN 1 ELSE 0 END AS is_overdue

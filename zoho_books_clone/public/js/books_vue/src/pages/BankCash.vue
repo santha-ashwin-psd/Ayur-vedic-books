@@ -53,7 +53,7 @@
             <tr v-for="p in sorted" :key="p.name" class="cash-row" @click="openView(p)">
               <td @click.stop><input type="checkbox" :checked="selected.has(p.name)" @change="toggleSelect(p.name)" /></td>
               <td><span class="cash-num">{{ p.name }}</span></td>
-              <td>{{ p.party||'—' }}</td>
+              <td>{{ p.party_name||p.party||'—' }}</td>
               <td class="mono-sm text-muted">{{ fmtDate(p.payment_date) }}</td>
               <td><span class="cash-badge" :class="p.payment_type==='Receive'?'badge-green':'badge-red'">{{ p.payment_type==='Receive'?'Cash In':'Cash Out' }}</span></td>
               <td class="ta-r mono-sm">{{ fmtCur(p.paid_amount) }}</td>
@@ -111,7 +111,7 @@
             <div class="cash-dh-ico"><span v-html="icon('cash',20)"></span></div>
             <div>
               <div class="cash-dh-title">{{ viewDoc.name }}</div>
-              <div class="cash-dh-sub">{{ viewDoc.party||'—' }} · {{ fmtDate(viewDoc.payment_date) }}</div>
+              <div class="cash-dh-sub">{{ viewDoc.party_name||viewDoc.party||'—' }} · {{ fmtDate(viewDoc.payment_date) }}</div>
             </div>
             <span class="cash-badge" :class="viewDoc.payment_type==='Receive'?'badge-green':'badge-red'">{{ viewDoc.payment_type==='Receive'?'Cash In':'Cash Out' }}</span>
           </div>
@@ -124,7 +124,7 @@
           <div class="cash-section-hdr"><span v-html="icon('info',13)"></span> Details</div>
           <div class="cash-meta-grid">
             <div><div class="cash-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.payment_date) }}</div></div>
-            <div><div class="cash-meta-lbl">Party</div><div>{{ viewDoc.party||'—' }}</div></div>
+            <div><div class="cash-meta-lbl">Party</div><div>{{ viewDoc.party_name||viewDoc.party||'—' }}</div></div>
             <div><div class="cash-meta-lbl">Type</div><div>{{ viewDoc.payment_type==='Receive'?'Cash In':'Cash Out' }}</div></div>
             <div><div class="cash-meta-lbl">Mode</div><div>Cash</div></div>
           </div>
@@ -163,8 +163,8 @@ const selected=ref(new Set());
 const partyOptions=ref([]);
 const sortCol=ref("payment_date"),sortDir=ref("desc");
 const form=reactive({payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",remarks:""});
-async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Payment Entry",{fields:["name","party","payment_type","payment_date","paid_amount","remarks","docstatus"],filters:[["company","=",co],["mode_of_payment","=","Cash"],["docstatus","=",1]],limit:200,order:"payment_date desc"});selected.value=new Set();}catch(e){toast.error(e.message||"Failed to load cash entries");}finally{loading.value=false;}}
-const filtered=computed(()=>{let r=list.value;if(activeTab.value!=="all")r=r.filter(p=>p.payment_type===activeTab.value);if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(p=>(p.party||"").toLowerCase().includes(q)||(p.name||"").toLowerCase().includes(q)||(p.remarks||"").toLowerCase().includes(q));}return r;});
+async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Payment Entry",{fields:["name","party","party_name","payment_type","payment_date","paid_amount","remarks","docstatus"],filters:[["company","=",co],["mode_of_payment","=","Cash"],["docstatus","=",1]],limit:200,order:"payment_date desc"});selected.value=new Set();}catch(e){toast.error(e.message||"Failed to load cash entries");}finally{loading.value=false;}}
+const filtered=computed(()=>{let r=list.value;if(activeTab.value!=="all")r=r.filter(p=>p.payment_type===activeTab.value);if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(p=>(p.party_name||p.party||"").toLowerCase().includes(q)||(p.name||"").toLowerCase().includes(q)||(p.remarks||"").toLowerCase().includes(q));}return r;});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
 function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}

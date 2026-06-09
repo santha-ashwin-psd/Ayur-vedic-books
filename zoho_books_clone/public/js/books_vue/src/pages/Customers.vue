@@ -216,32 +216,26 @@
           </div>
 
           <div style="border:1px solid #F3F4F6;border-radius:10px;overflow:hidden">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#FAFAFA;border-bottom:1px solid #F3F4F6">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#FAFAFA;cursor:pointer;user-select:none" :style="custSectionCollapsed.address ? {} : {borderBottom:'1px solid #F3F4F6'}" @click="custSectionCollapsed.address=!custSectionCollapsed.address">
               <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">ADDRESS</span>
-              <span style="color:#9CA3AF;font-size:13px">▲</span>
+              <span style="color:#9CA3AF;font-size:13px;transition:transform .2s;display:inline-block" :style="custSectionCollapsed.address ? {transform:'rotate(180deg)'} : {}">▲</span>
             </div>
-            <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
-              <div>
-                <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Billing Address</div>
-                <div v-if="selectedCustomer.city||selectedCustomer.address_line1" style="font-size:12.5px;color:#374151;line-height:1.6">
-                  <div v-if="selectedCustomer.address_line1">{{selectedCustomer.address_line1}}</div>
-                  <div>{{[selectedCustomer.city,selectedCustomer.state].filter(Boolean).join(', ')}}</div>
-                </div>
-                <div v-else style="font-size:12.5px;color:#9CA3AF">No Billing Address - <a href="#" @click.prevent="openEdit(selectedCustomer.name)" style="color:#2563EB;text-decoration:none">New Address</a></div>
-              </div>
-              <div>
-                <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px">Shipping Address</div>
-                <div style="font-size:12.5px;color:#9CA3AF">No Shipping Address - <a href="#" @click.prevent="openEdit(selectedCustomer.name)" style="color:#2563EB;text-decoration:none">New Address</a></div>
-              </div>
+            <div v-show="!custSectionCollapsed.address" style="padding:14px">
+              <AddressManager
+                v-if="selectedCustomer.name"
+                :partyDoctype="'Customer'"
+                :partyName="selectedCustomer.name"
+                :readonly="true"
+              />
             </div>
           </div>
 
           <div style="border:1px solid #F3F4F6;border-radius:10px;overflow:hidden">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#FAFAFA;border-bottom:1px solid #F3F4F6">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#FAFAFA;cursor:pointer;user-select:none" :style="custSectionCollapsed.otherDetails ? {} : {borderBottom:'1px solid #F3F4F6'}" @click="custSectionCollapsed.otherDetails=!custSectionCollapsed.otherDetails">
               <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">OTHER DETAILS</span>
-              <span style="color:#9CA3AF;font-size:13px">▲</span>
+              <span style="color:#9CA3AF;font-size:13px;transition:transform .2s;display:inline-block" :style="custSectionCollapsed.otherDetails ? {transform:'rotate(180deg)'} : {}">▲</span>
             </div>
-            <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+            <div v-show="!custSectionCollapsed.otherDetails" style="padding:14px;display:flex;flex-direction:column;gap:10px">
               <div style="display:flex;justify-content:space-between;font-size:12.5px">
                 <span style="color:#6B7280">Customer Type</span><span style="font-weight:600;color:#111827">{{selectedCustomer.customer_type||'Business'}}</span>
               </div>
@@ -259,14 +253,14 @@
           </div>
 
           <div style="border:1px solid #F3F4F6;border-radius:10px;overflow:hidden">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#FAFAFA">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#FAFAFA;cursor:pointer;user-select:none" :style="custSectionCollapsed.contactPersons ? {} : {borderBottom:'1px solid #F3F4F6'}" @click="custSectionCollapsed.contactPersons=!custSectionCollapsed.contactPersons">
               <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">CONTACT PERSONS</span>
-              <div style="display:flex;gap:6px">
-                <button style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:12px">+</button>
-                <span style="color:#9CA3AF;font-size:13px">▲</span>
+              <div style="display:flex;gap:6px" @click.stop>
+                <button style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:12px" @click="custSectionCollapsed.contactPersons=false">+</button>
+                <span style="color:#9CA3AF;font-size:13px;transition:transform .2s;display:inline-block" :style="custSectionCollapsed.contactPersons ? {transform:'rotate(180deg)'} : {}">▲</span>
               </div>
             </div>
-            <div style="padding:14px;font-size:12.5px;color:#9CA3AF">No contact persons found.</div>
+            <div v-show="!custSectionCollapsed.contactPersons" style="padding:14px;font-size:12.5px;color:#9CA3AF">No contact persons found.</div>
           </div>
         </div>
 
@@ -289,8 +283,8 @@
               <tbody>
                 <tr>
                   <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 0">{{ selectedCustomer.default_currency || 'INR' }}</td>
-                  <td style="text-align:right;font-size:13px;font-weight:700;color:#2563EB;padding:10px 0;">{{fmt(selectedCustomer.credit_limit||0)}}</td>
-                  <td style="text-align:right;font-size:13px;font-weight:700;padding:10px 0;" :style="{color: selectedCustomer.outstanding>0?'#dc2626':'#111827'}">{{ fmt(selectedCustomer.outstanding||0) }}</td>
+                  <td style="text-align:right;font-size:13px;font-weight:700;padding:10px 0;" :style="{color: selectedCustomer.outstanding>0?'#dc2626':'#111827'}">{{fmt(selectedCustomer.outstanding||0)}}</td>
+                  <td style="text-align:right;font-size:13px;font-weight:700;padding:10px 0;" :style="{color: selectedCustomer.unused_credits>0?'#dc2626':'#111827'}">{{ fmt(selectedCustomer.unused_credits||0) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -1192,15 +1186,16 @@ const filtered = computed(() => {
 async function load() {
   loading.value = true;
   try {
-    const [rows, balances] = await Promise.all([
+    const [rows, balances, credits] = await Promise.all([
       apiList("Customer", {
         fields: ["name","customer_name","customer_type","email_id","mobile_no",
           "tax_id","city","state","disabled","default_currency","credit_limit","salutation","gst_treatment"],
         order: "customer_name asc", limit: 300,
       }),
       apiGET("zoho_books_clone.api.books_data.get_customer_outstanding").catch(() => ({})),
+      apiGET("zoho_books_clone.api.books_data.get_customer_unused_credits").catch(() => ({})),
     ]);
-    list.value = (rows || []).map(c => ({ ...c, outstanding: balances[c.name] || 0 }));
+    list.value = (rows || []).map(c => ({ ...c, outstanding: balances[c.name] || 0, unused_credits: credits[c.name] || 0 }));
   } catch (e) {
     toast("Failed to load customers: " + (e.message || e), "error");
   } finally { loading.value = false; }
@@ -1413,16 +1408,22 @@ const selectedCustomer = ref(null);
 const activeCustomerTab = ref("overview");
 const custTxns = ref([]);
 const custTxnsLoading = ref(false);
+const custSectionCollapsed = reactive({ address: false, otherDetails: false, contactPersons: false });
 
 async function selectCustomer(c) {
   selectedCustomer.value = c;
   activeCustomerTab.value = "overview";
   stmt.value = null;
+  Object.assign(custSectionCollapsed, { address: false, otherDetails: false, contactPersons: false });
   custTxns.value = [];
   custTxnsLoading.value = true;
   try {
-    custTxns.value = await apiGET("zoho_books_clone.api.docs.get_customer_transactions",
-      { customer: c.name, limit: 100 }) || [];
+    const [txns, fullDoc] = await Promise.all([
+      apiGET("zoho_books_clone.api.docs.get_customer_transactions", { customer: c.name, limit: 100 }).catch(() => []),
+      apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Customer", name: c.name }).catch(() => null),
+    ]);
+    custTxns.value = txns || [];
+    if (fullDoc) selectedCustomer.value = { ...c, ...fullDoc, outstanding: c.outstanding || 0, unused_credits: c.unused_credits || 0 };
   } catch (e) { /* keep panel open */ }
   custTxnsLoading.value = false;
 }
@@ -1441,10 +1442,7 @@ async function loadStatement() {
   if (!selectedCustomer.value) return;
   stmtLoading.value = true;
   try {
-    const co = (await apiGET("frappe.client.get_value", {
-      doctype: "Books Settings", filters: JSON.stringify({ name: "Books Settings" }),
-      fieldname: JSON.stringify(["default_company"]),
-    }))?.default_company || "";
+    const co = await resolveCompany();
     stmt.value = await apiGET("zoho_books_clone.db.queries.get_customer_statement", {
       customer: selectedCustomer.value.name, company: co,
     });
@@ -1456,10 +1454,7 @@ async function sendStatement() {
   if (!selectedCustomer.value || !stmt.value) return;
   sendingStmt.value = true;
   try {
-    const co = stmt.value?.invoices?.[0]?.company || (await apiGET("frappe.client.get_value", {
-      doctype: "Books Settings", filters: JSON.stringify({ name: "Books Settings" }),
-      fieldname: JSON.stringify(["default_company"]),
-    }))?.default_company || "";
+    const co = await resolveCompany();
     await apiPOST("zoho_books_clone.db.queries.send_customer_statement", {
       customer: selectedCustomer.value.name, company: co,
     });

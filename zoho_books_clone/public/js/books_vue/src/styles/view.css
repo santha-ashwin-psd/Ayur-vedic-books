@@ -280,7 +280,7 @@
   border-bottom: 1.5px solid #e5e7eb;
   padding: 0 20px;
   background: #fff;
-  overflow-x: auto;
+  overflow: hidden;
   flex-shrink: 0;
 }
 .inv-vtab {

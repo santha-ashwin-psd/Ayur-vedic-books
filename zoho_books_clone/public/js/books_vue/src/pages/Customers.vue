@@ -140,299 +140,321 @@
     <div class="zb-list-pane" style="width:320px;min-width:260px;border-right:1px solid #e4e8f0;display:flex;flex-direction:column;overflow:hidden">
       <div style="padding:16px 16px 10px;border-bottom:1px solid #f0f2f5;flex-shrink:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <span style="font-size:14px;font-weight:700;color:#111827">Active Customers ▾</span>
-          <button class="sales-btn-primary" style="padding:5px 10px;font-size:12px" @click="openAdd"><span v-html="icon('plus',12)"></span> New</button>
+          <span style="font-size:14px;font-weight:700;color:#111827">Customers</span>
+          <button class="nim-btn nim-btn-primary" style="padding:5px 10px;font-size:12px" @click="openAdd">
+            <span v-html="icon('plus',12)"></span> New Customer
+          </button>
         </div>
         <div class="sales-search" style="width:100%">
           <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
           <input v-model="search" placeholder="Search customers…" class="sales-search-input" autocomplete="off"/>
         </div>
+        <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap">
+          <button class="sales-pill" :class="{'active':activeFilter==='all'}" @click="activeFilter='all'" style="font-size:11.5px">All <span class="sales-pill-count" :class="activeFilter==='all'?'':'zb-pc-muted'">{{counts.all}}</span></button>
+          <button class="sales-pill" :class="{'active':activeFilter==='active'}" @click="activeFilter='active'" style="font-size:11.5px">Active <span class="sales-pill-count" :class="activeFilter==='active'?'':'zb-pc-muted'">{{counts.active}}</span></button>
+          <button class="sales-pill" :class="{'active':activeFilter==='disabled'}" @click="activeFilter='disabled'" style="font-size:11.5px">Disabled <span class="sales-pill-count" :class="activeFilter==='disabled'?'':'zb-pc-muted'">{{counts.disabled}}</span></button>
+        </div>
       </div>
       <div style="flex:1;overflow-y:auto">
-        <div v-for="c in filtered" :key="c.name"
-          @click="selectCustomer(c)"
-          :style="{padding:'12px 16px',borderBottom:'1px solid #f0f2f5',cursor:'pointer',
-            background:selectedCustomer.name===c.name?'#EFF6FF':'transparent',
-            borderLeft:selectedCustomer.name===c.name?'3px solid #2563EB':'3px solid transparent'}">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{c.customer_name}}</div>
-              <div style="font-size:12px;margin-top:2px;" :style="{color: c.outstanding>0 ? '#dc2626' : '#6B7280'}">{{ c.outstanding > 0 ? fmt(c.outstanding) : '₹0.00' }}</div>
-            </div>
-            <span class="b-badge" :class="c.disabled?'b-badge-red':'b-badge-green'" style="font-size:10px">{{c.disabled?'Disabled':'Active'}}</span>
-          </div>
-        </div>
-      </div>
-      <div style="padding:8px 16px;border-top:1px solid #f0f2f5;font-size:11.5px;color:#9ca3af;flex-shrink:0">{{filtered.length}} customers</div>
-    </div>
-
-    <!-- Right panel: customer detail -->
-    <div style="flex:1;overflow-y:auto;background:#fff">
-      <!-- Header action bar -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid #F3F4F6;position:sticky;top:0;background:#fff;z-index:10">
-        <h2 style="font-size:20px;font-weight:700;color:#111827;margin:0">{{selectedCustomer.customer_name}}</h2>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="nim-btn" style="background:#fff;border:1px solid #E5E7EB;color:#374151;font-size:13px" @click="openEdit(selectedCustomer.name)">Edit</button>
-          <!-- <button style="background:none;border:none;cursor:pointer;padding:6px;border:1px solid #E5E7EB;border-radius:6px;display:grid;place-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button> -->
-          <!-- <button class="nim-btn nim-btn-primary" style="font-size:13px">New Transaction ▾</button>
-          <button class="nim-btn" style="background:#fff;border:1px solid #E5E7EB;color:#374151;font-size:13px">More ▾</button> -->
-          <button @click="closeCustomer" style="background:none;border:1px solid #E5E7EB;border-radius:6px;width:32px;height:32px;cursor:pointer;display:grid;place-items:center;color:#9CA3AF"><span v-html="icon('x',14)"></span></button>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div style="display:flex;border-bottom:2px solid #E5E7EB;padding:0 24px;gap:0">
-        <button v-for="t in ['Overview','Comments','Transactions','Mails','Statement']" :key="t"
-          @click="activeCustomerTab=t.toLowerCase()"
-          :style="{padding:'10px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
-            color:activeCustomerTab===t.toLowerCase()?'#2563EB':'#6B7280',
-            borderBottom:activeCustomerTab===t.toLowerCase()?'2px solid #2563EB':'2px solid transparent',marginBottom:'-2px'}">
-          {{t}}
-        </button>
-      </div>
-
-      <!-- Overview tab content -->
-      <div v-if="activeCustomerTab==='overview'" style="display:flex;gap:0;align-items:flex-start">
-
-        <!-- Left column: contact + sections -->
-        <div style="flex:0 0 55%;border-right:1px solid #F3F4F6;padding:20px 24px;display:flex;flex-direction:column;gap:16px;min-height:500px">
-
-          <div v-if="selectedCustomer.company_name||'PSD'" style="font-size:12px;font-weight:600;color:#6B7280">{{selectedCustomer.company_name||'PSD'}}</div>
-
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid #F3F4F6;border-radius:10px;background:#FAFAFA">
-            <div :style="{width:'44px',height:'44px',borderRadius:'50%',background:'#E5E7EB',display:'flex',alignItems:'center',justifyContent:'center',color:'#6B7280',fontSize:'16px',fontWeight:700,flexShrink:0}">
-              {{custInitials(selectedCustomer.customer_name)}}
-            </div>
-            <div style="flex:1">
-              <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:4px">{{ selectedCustomer.salutation ? selectedCustomer.salutation + ' ' : '' }}{{selectedCustomer.customer_name}}</div>
-              <div v-if="selectedCustomer.email_id" style="font-size:12.5px;color:#6B7280;margin-bottom:3px">{{selectedCustomer.email_id}}</div>
-              <div v-if="selectedCustomer.mobile_no" style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:#374151;margin-bottom:3px">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6A16 16 0 0 0 15.4 16.1l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                {{selectedCustomer.mobile_no}}
-              </div>
-              <div style="font-size:12px;color:#DC2626;margin-top:4px">Portal invitation not accepted</div>
-              <button style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:12px;padding:0;margin-top:2px">Re-invite</button>
-            </div>
-          </div>
-
-          <div style="border:1px solid #F3F4F6;border-radius:10px;overflow:hidden">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#FAFAFA;cursor:pointer;user-select:none" :style="custSectionCollapsed.address ? {} : {borderBottom:'1px solid #F3F4F6'}" @click="custSectionCollapsed.address=!custSectionCollapsed.address">
-              <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">ADDRESS</span>
-              <span style="color:#9CA3AF;font-size:13px;transition:transform .2s;display:inline-block" :style="custSectionCollapsed.address ? {transform:'rotate(180deg)'} : {}">▲</span>
-            </div>
-            <div v-show="!custSectionCollapsed.address" style="padding:14px">
-              <AddressManager
-                v-if="selectedCustomer.name"
-                :partyDoctype="'Customer'"
-                :partyName="selectedCustomer.name"
-                :readonly="true"
-              />
-            </div>
-          </div>
-
-          <div style="border:1px solid #F3F4F6;border-radius:10px;overflow:hidden">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#FAFAFA;cursor:pointer;user-select:none" :style="custSectionCollapsed.otherDetails ? {} : {borderBottom:'1px solid #F3F4F6'}" @click="custSectionCollapsed.otherDetails=!custSectionCollapsed.otherDetails">
-              <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">OTHER DETAILS</span>
-              <span style="color:#9CA3AF;font-size:13px;transition:transform .2s;display:inline-block" :style="custSectionCollapsed.otherDetails ? {transform:'rotate(180deg)'} : {}">▲</span>
-            </div>
-            <div v-show="!custSectionCollapsed.otherDetails" style="padding:14px;display:flex;flex-direction:column;gap:10px">
-              <div style="display:flex;justify-content:space-between;font-size:12.5px">
-                <span style="color:#6B7280">Customer Type</span><span style="font-weight:600;color:#111827">{{selectedCustomer.customer_type||'Business'}}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:12.5px">
-                <span style="color:#6B7280">Default Currency</span><span style="font-weight:600;color:#111827">{{selectedCustomer.default_currency||'INR'}}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
-                <span style="color:#6B7280">Portal Status</span>
-                <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#ECFDF5;color:#059669">● Enabled (1 of 1 Contacts)</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:12.5px">
-                <span style="color:#6B7280">Customer Language</span><span style="font-weight:600;color:#111827">English</span>
-              </div>
-            </div>
-          </div>
-
-          <div style="border:1px solid #F3F4F6;border-radius:10px;overflow:hidden">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#FAFAFA;cursor:pointer;user-select:none" :style="custSectionCollapsed.contactPersons ? {} : {borderBottom:'1px solid #F3F4F6'}" @click="custSectionCollapsed.contactPersons=!custSectionCollapsed.contactPersons">
-              <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">CONTACT PERSONS</span>
-              <div style="display:flex;gap:6px" @click.stop>
-                <button style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:12px" @click="custSectionCollapsed.contactPersons=false">+</button>
-                <span style="color:#9CA3AF;font-size:13px;transition:transform .2s;display:inline-block" :style="custSectionCollapsed.contactPersons ? {transform:'rotate(180deg)'} : {}">▲</span>
-              </div>
-            </div>
-            <div v-show="!custSectionCollapsed.contactPersons" style="padding:14px;font-size:12.5px;color:#9CA3AF">No contact persons found.</div>
-          </div>
-        </div>
-
-        <div style="flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:16px">
-          <div>
-            <div style="font-size:12px;color:#6B7280;margin-bottom:4px">Payment due period</div>
-            <div style="font-size:14px;font-weight:600;color:#111827">Due on Receipt</div>
-          </div>
-
-          <div>
-            <div style="font-size:16px;font-weight:700;color:#111827;margin-bottom:12px">Receivables</div>
-            <table style="width:100%;border-collapse:collapse">
-              <thead>
-                <tr style="border-bottom:1px solid #F3F4F6">
-                  <th style="text-align:left;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:0 0 8px">CURRENCY</th>
-                  <th style="text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:0 0 8px">OUTSTANDING RECEIVABLES</th>
-                  <th style="text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:0 0 8px">UNUSED CREDITS</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 0">{{ selectedCustomer.default_currency || 'INR' }}</td>
-                  <td style="text-align:right;font-size:13px;font-weight:700;padding:10px 0;" :style="{color: selectedCustomer.outstanding>0?'#dc2626':'#111827'}">{{fmt(selectedCustomer.outstanding||0)}}</td>
-                  <td style="text-align:right;font-size:13px;font-weight:700;padding:10px 0;" :style="{color: selectedCustomer.unused_credits>0?'#dc2626':'#111827'}">{{ fmt(selectedCustomer.unused_credits||0) }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <button style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:12.5px;padding:6px 0">View Opening Balance</button>
-          </div>
-
-          <div style="margin-top:8px">
-            <div style="font-size:12.5px;font-weight:700;color:#111827;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-              Recent Activity
-            </div>
-            <div style="text-align:center;padding:24px;color:#9CA3AF;border:1px dashed #E5E7EB;border-radius:8px;font-size:12.5px">
-              No recent activity. Transactions will appear here.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Statement Tab -->
-      <div v-if="activeCustomerTab==='statement'" style="padding:24px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <div>
-            <div style="font-size:15px;font-weight:700;color:#111827">Account Statement</div>
-            <div style="font-size:12px;color:#6B7280;margin-top:2px">Outstanding invoices for {{selectedCustomer.customer_name}}</div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="nim-btn" style="font-size:12.5px;background:#EBFBEE;color:#2F9E44;border-color:#8CE99A" @click="loadStatement" :disabled="stmtLoading">
-              <span v-if="stmtLoading">Loading…</span>
-              <span v-else>Refresh</span>
-            </button>
-            <button v-if="stmt && stmt.email" class="nim-btn nim-btn-primary" style="font-size:12.5px" @click="sendStatement" :disabled="sendingStmt">
-              {{sendingStmt ? 'Sending…' : '📧 Send to Customer'}}
-            </button>
-          </div>
-        </div>
-
-        <div v-if="stmtLoading" style="padding:40px;text-align:center;color:#9CA3AF">Loading statement…</div>
-        <div v-else-if="!stmt" style="padding:40px;text-align:center;color:#9CA3AF">
-          <div style="font-size:32px;margin-bottom:8px">📄</div>
-          <div style="font-size:13.5px;font-weight:600;color:#374151;margin-bottom:4px">No statement loaded</div>
-          <button class="nim-btn nim-btn-primary" @click="loadStatement">Load Statement</button>
-        </div>
-        <template v-else>
-          <!-- Summary cards -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-            <div style="background:#FFF5F5;border:1px solid #FFC9C9;border-radius:10px;padding:14px 16px">
-              <div style="font-size:11px;color:#C92A2A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Total Outstanding</div>
-              <div style="font-size:20px;font-weight:700;color:#C92A2A">₹{{fmtStmt(stmt.total_outstanding)}}</div>
-            </div>
-            <div style="background:#FFF9DB;border:1px solid #FFD43B;border-radius:10px;padding:14px 16px">
-              <div style="font-size:11px;color:#E67700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Overdue</div>
-              <div style="font-size:20px;font-weight:700;color:#E67700">₹{{fmtStmt(stmt.overdue_amount)}}</div>
-            </div>
-            <div style="background:#F3F4F6;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
-              <div style="font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Open Invoices</div>
-              <div style="font-size:20px;font-weight:700;color:#111827">{{stmt.invoices.length}}</div>
-            </div>
-          </div>
-
-          <!-- Outstanding invoices -->
-          <div v-if="stmt.invoices.length" style="margin-bottom:16px">
-            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Outstanding Invoices</div>
-            <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-              <thead style="background:#F9FAFB">
-                <tr>
-                  <th style="padding:8px 12px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Invoice</th>
-                  <th style="padding:8px 12px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Date</th>
-                  <th style="padding:8px 12px;text-align:left;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Due Date</th>
-                  <th style="padding:8px 12px;text-align:right;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Outstanding</th>
-                  <th style="padding:8px 12px;text-align:center;font-weight:600;color:#374151;border-bottom:1px solid #E5E7EB">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="inv in stmt.invoices" :key="inv.name" style="border-bottom:1px solid #F3F4F6">
-                  <td style="padding:8px 12px;color:#3B5BDB;font-size:12px">{{inv.name}}</td>
-                  <td style="padding:8px 12px;color:#6B7280">{{inv.posting_date}}</td>
-                  <td style="padding:8px 12px;color:#6B7280">{{inv.due_date}}</td>
-                  <td style="padding:8px 12px;text-align:right;font-weight:600">₹{{fmtStmt(inv.outstanding_amount)}}</td>
-                  <td style="padding:8px 12px;text-align:center">
-                    <span :style="'padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;'+(inv.is_overdue?'background:#FFF5F5;color:#C92A2A':'background:#EBFBEE;color:#2F9E44')">
-                      {{inv.is_overdue ? 'Overdue' : 'Due'}}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-else style="padding:20px;text-align:center;color:#9CA3AF;background:#F9FAFB;border-radius:8px">No outstanding invoices</div>
-
-          <!-- Recent payments -->
-          <div v-if="stmt.payments.length" style="margin-top:16px">
-            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Recent Payments</div>
-            <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-              <thead style="background:#F9FAFB">
-                <tr>
-                  <th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB">Payment</th>
-                  <th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB">Date</th>
-                  <th style="padding:8px 12px;text-align:left;font-weight:600;border-bottom:1px solid #E5E7EB">Mode</th>
-                  <th style="padding:8px 12px;text-align:right;font-weight:600;border-bottom:1px solid #E5E7EB">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="p in stmt.payments" :key="p.name" style="border-bottom:1px solid #F3F4F6">
-                  <td style="padding:8px 12px;color:#3B5BDB;font-size:12px">{{p.name}}</td>
-                  <td style="padding:8px 12px;color:#6B7280">{{p.payment_date}}</td>
-                  <td style="padding:8px 12px;color:#6B7280">{{p.mode_of_payment||'—'}}</td>
-                  <td style="padding:8px 12px;text-align:right;font-weight:600;color:#2F9E44">₹{{fmtStmt(p.paid_amount)}}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div v-if="!stmt.email" style="margin-top:12px;padding:10px 14px;background:#FFF9DB;border:1px solid #FFD43B;border-radius:8px;font-size:12.5px;color:#876800">
-            ⚠️ No email on file — add an email to enable sending this statement.
+        <template v-if="loading">
+          <div v-for="n in 6" :key="n" style="padding:14px 16px;border-bottom:1px solid #f0f2f5">
+            <div class="b-shimmer" style="height:12px;border-radius:4px;width:70%;margin-bottom:6px"></div>
+            <div class="b-shimmer" style="height:10px;border-radius:4px;width:40%"></div>
           </div>
         </template>
-      </div>
-
-      <!-- Transactions tab -->
-      <div v-if="activeCustomerTab==='transactions'" style="padding:24px">
-        <div v-if="custTxnsLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading transactions…</div>
-        <div v-else-if="!custTxns.length" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">
-          <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
-          <div style="font-size:12.5px">Invoices, payments, and credit notes for {{selectedCustomer.customer_name}} will appear here.</div>
+        <div v-else-if="!filtered.length" style="text-align:center;padding:40px 16px">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 10px;display:block"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:4px">{{search?'No matches':'No customers yet'}}</div>
+          <div style="font-size:12px;color:#9ca3af">{{search?'Try different keywords':'Add your first customer'}}</div>
+          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:12px;font-size:12px" @click="openAdd">New Customer</button>
         </div>
-        <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
-          <div style="display:grid;grid-template-columns:100px 1fr 110px 130px 130px 100px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
-            <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span><span>Status</span>
-          </div>
-          <div v-for="t in custTxns" :key="t.type+'-'+t.name"
-            style="display:grid;grid-template-columns:100px 1fr 110px 130px 130px 100px;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
-            <span :style="{
-              fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
-              background: t.type==='Invoice' ? '#DBEAFE' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
-              color: t.type==='Invoice' ? '#1E40AF' : t.type==='Payment' ? '#059669' : '#991B1B'
-            }">{{t.type}}</span>
-            <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
-            <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
-            <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmt(Math.abs(t.amount))}}</span>
-            <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#dc2626' : '#9CA3AF'}">{{t.outstanding>0?fmt(t.outstanding):'—'}}</span>
-            <span style="font-size:11.5px;color:#6B7280">{{t.status||(t.docstatus===2?'Cancelled':'Submitted')}}</span>
+        <div v-else v-for="c in filtered" :key="c.name"
+          @click="selectCustomer(c)"
+          :style="{
+            padding:'12px 16px',
+            borderBottom:'1px solid #f0f2f5',
+            cursor:'pointer',
+            background: selectedCustomer && selectedCustomer.name===c.name ? '#FFF7ED' : 'transparent',
+            borderLeft: selectedCustomer && selectedCustomer.name===c.name ? '3px solid #E67700' : '3px solid transparent',
+            transition:'background 0.15s',
+          }">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div :style="{
+              width:'34px',height:'34px',borderRadius:'50%',flexShrink:0,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontWeight:700,fontSize:'12px',color:'#fff',
+              background: c.disabled ? '#9CA3AF' : 'linear-gradient(135deg,#16a34a,#15803d)'
+            }">{{custInitials(c.customer_name)}}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {{c.customer_name}}
+              </div>
+              <div style="font-size:11.5px;color:#6B7280;margin-top:2px">
+                <span :style="c.outstanding>0?'color:#E67700;font-weight:600':''">{{ fmt(c.outstanding || 0) }}</span> outstanding
+                <span v-if="c.disabled" style="margin-left:6px;font-size:10px;font-weight:600;color:#6B7280;background:#F3F4F6;padding:1px 5px;border-radius:10px">Disabled</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      <div v-if="!loading && filtered.length" style="padding:8px 16px;border-top:1px solid #f0f2f5;font-size:11.5px;color:#9ca3af;display:flex;justify-content:space-between;flex-shrink:0">
+        <span>{{filtered.length}} of {{list.length}} customers</span>
+        <button @click="load" style="background:none;border:none;cursor:pointer;color:#6B7280;font-size:11.5px;display:flex;align-items:center;gap:3px"><span v-html="icon('refresh',11)"></span> Refresh</button>
+      </div>
+    </div>
 
-      <!-- Comments / Mails — kept generic for now -->
-      <div v-if="activeCustomerTab==='comments' || activeCustomerTab==='mails'" style="padding:32px 24px;text-align:center;color:#9CA3AF">
-        <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:capitalize">{{activeCustomerTab}}</div>
-        <div style="font-size:12.5px">No {{activeCustomerTab}} data available for {{selectedCustomer.customer_name}}.</div>
+    <!-- Right panel -->
+    <div style="flex:1;overflow-y:auto;background:#F9FAFB">
+      <div style="max-width:960px;margin:0 auto;padding:24px">
+
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div :style="{
+              width:'46px',height:'46px',borderRadius:'50%',flexShrink:0,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontWeight:700,fontSize:'16px',color:'#fff',
+              background: selectedCustomer.disabled ? '#9CA3AF' : 'linear-gradient(135deg,#16a34a,#15803d)'
+            }">{{custInitials(selectedCustomer.customer_name)}}</div>
+            <div>
+              <div style="font-size:19px;font-weight:700;color:#111827">{{selectedCustomer.customer_name}}</div>
+              <div style="font-size:12px;color:#6B7280">{{selectedCustomer.name}}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="nim-btn" style="background:#fff;color:#374151;border:1px solid #E5E7EB;font-size:13px" @click="openEdit(selectedCustomer.name)">
+              <span v-html="icon('edit',13)"></span> Edit
+            </button>
+            <button class="nim-btn" style="background:none;color:#9CA3AF;border:1px solid #E5E7EB;width:32px;height:32px;padding:0;display:grid;place-items:center" @click="closeCustomer" title="Close">
+              <span v-html="icon('x',14)"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div style="display:flex;border-bottom:2px solid #E5E7EB;margin-bottom:22px;gap:0">
+          <button @click="activeCustomerTab='overview'"
+            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
+              color:activeCustomerTab==='overview'?'#16a34a':'#6B7280',
+              borderBottom:activeCustomerTab==='overview'?'2px solid #16a34a':'2px solid transparent',marginBottom:'-2px'}">
+            Overview
+          </button>
+          <button @click="activeCustomerTab='transactions'"
+            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
+              color:activeCustomerTab==='transactions'?'#16a34a':'#6B7280',
+              borderBottom:activeCustomerTab==='transactions'?'2px solid #16a34a':'2px solid transparent',marginBottom:'-2px'}">
+            Transactions
+            <span v-if="custTxns.length" style="background:#16a34a;color:#fff;padding:1px 7px;border-radius:999px;font-size:11px;margin-left:4px">{{custTxns.length}}</span>
+          </button>
+          <button @click="activeCustomerTab='statement'; loadStatement()"
+            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
+              color:activeCustomerTab==='statement'?'#16a34a':'#6B7280',
+              borderBottom:activeCustomerTab==='statement'?'2px solid #16a34a':'2px solid transparent',marginBottom:'-2px'}">
+            Statement
+          </button>
+        </div>
+        <!-- Overview tab -->
+        <div v-if="activeCustomerTab==='overview'" style="display:flex;gap:20px;align-items:flex-start">
+
+          <!-- Left column ~55% -->
+          <div style="flex:0 0 55%;min-width:0;display:flex;flex-direction:column;gap:14px">
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:18px">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F3F4F6">
+                <div :style="{
+                  width:'44px',height:'44px',borderRadius:'50%',flexShrink:0,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontWeight:700,fontSize:'16px',color:'#fff',
+                  background: selectedCustomer.disabled ? '#9CA3AF' : 'linear-gradient(135deg,#16a34a,#15803d)'
+                }">{{custInitials(selectedCustomer.customer_name)}}</div>
+                <div>
+                  <div style="font-size:14px;font-weight:700;color:#111827">{{ selectedCustomer.salutation ? selectedCustomer.salutation + ' ' : '' }}{{selectedCustomer.customer_name}}</div>
+                  <div v-if="selectedCustomer.email_id" style="font-size:12px;color:#6B7280;margin-top:2px">{{selectedCustomer.email_id}}</div>
+                </div>
+                <div style="margin-left:auto;display:none;">
+                  <a href="#" style="font-size:12px;color:#16a34a;text-decoration:none">Invite to Portal</a>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <div v-if="selectedCustomer.mobile_no" style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6A16 16 0 0 0 15.4 16.1l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <span>{{selectedCustomer.mobile_no}}</span>
+                </div>
+                <div v-else style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#9CA3AF">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6A16 16 0 0 0 15.4 16.1l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  <span>No phone number</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" :style="!custSectionCollapsed.address?'border-bottom:1px solid #F3F4F6':''" @click="custSectionCollapsed.address=!custSectionCollapsed.address">
+                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">ADDRESS</span>
+                <svg :style="{transition:'transform 0.2s',transform:custSectionCollapsed.address?'rotate(-90deg)':'rotate(0deg)'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+              </div>
+              <div v-show="!custSectionCollapsed.address" style="padding:14px 16px">
+                <AddressManager
+                  v-if="selectedCustomer.name"
+                  :partyDoctype="'Customer'"
+                  :partyName="selectedCustomer.name"
+                  :readonly="true"
+                />
+              </div>
+            </div>
+
+            
+
+          </div>
+
+          <!-- Right column ~45% -->
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px">
+              <div style="font-size:11.5px;color:#6B7280;margin-bottom:4px">Payment due period</div>
+              <div style="font-size:14px;font-weight:600;color:#111827">{{selectedCustomer.payment_terms||'Due on Receipt'}}</div>
+            </div>
+
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6">
+                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">RECEIVABLES</span>
+              </div>
+              <table style="width:100%;border-collapse:collapse">
+                <thead>
+                  <tr style="border-bottom:1px solid #F3F4F6">
+                    <th style="text-align:left;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px">CURRENCY</th>
+                    <th style="text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 12px">OUTSTANDING RECEIVABLES</th>
+                    <th style="text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px">UNUSED CREDITS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px">{{ selectedCustomer.default_currency || "INR" }}</td>
+                    <td style="font-size:13px;font-weight:600;text-align:right;padding:10px 12px;" :style="{color: selectedCustomer.outstanding>0?'#dc2626':'#111827'}">{{fmt(selectedCustomer.outstanding||0)}}</td>
+                    <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;">{{ fmt(selectedCustomer.unused_credits||0) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style="padding:10px 16px ;display:none;">
+                <a href="#" style="font-size:12.5px;color:#2563EB;text-decoration:none">Enter Opening Balance</a>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" :style="!custSectionCollapsed.otherDetails?'border-bottom:1px solid #F3F4F6':''" @click="custSectionCollapsed.otherDetails=!custSectionCollapsed.otherDetails">
+                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">OTHER DETAILS</span>
+                <svg :style="{transition:'transform 0.2s',transform:custSectionCollapsed.otherDetails?'rotate(-90deg)':'rotate(0deg)'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+              </div>
+              <div v-show="!custSectionCollapsed.otherDetails" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">Default Currency</span>
+                  <span style="font-weight:600;color:#111827">{{selectedCustomer.default_currency||'INR'}}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
+                  <span style="color:#6B7280">Portal Status</span>
+                  <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280">● Disabled</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">Customer Type</span>
+                  <span style="font-weight:600;color:#111827">{{selectedCustomer.customer_type||'Company'}}</span>
+                </div>
+                <div v-if="selectedCustomer.tax_id" style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">GSTIN / Tax ID</span>
+                  <span style="font-weight:600;color:#111827">{{selectedCustomer.tax_id}}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:4px 0">
+              <button @click="confirmDelete(selectedCustomer)" style="background:none;border:none;cursor:pointer;color:#DC2626;font-size:12.5px;display:flex;align-items:center;gap:6px">
+                <span v-html="icon('trash',13)"></span> Delete Customer
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Transactions tab -->
+        <div v-else-if="activeCustomerTab==='transactions'">
+          <div v-if="custTxnsLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading transactions…</div>
+          <div v-else-if="!custTxns.length" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5" style="margin:0 auto 12px;display:block"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
+            <div style="font-size:12.5px;color:#9CA3AF">Invoices and payments for {{selectedCustomer.customer_name}} will appear here.</div>
+          </div>
+          <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:scroll">
+            <div style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
+              <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span>
+            </div>
+            <div v-for="t in custTxns" :key="t.type+'-'+t.name"
+              style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+              <span :style="{
+                fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
+                background: t.type==='Invoice' ? '#DBEAFE' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
+                color: t.type==='Invoice' ? '#1E40AF' : t.type==='Payment' ? '#059669' : '#991B1B'
+              }">{{t.type}}</span>
+              <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
+              <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
+              <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmt(Math.abs(t.amount))}}</span>
+              <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#dc2626' : '#9CA3AF'}">{{t.outstanding>0?fmt(t.outstanding):''}}</span>
+             
+            </div>
+          </div>
+        </div>
+
+        <!-- Statement tab -->
+        <div v-else-if="activeCustomerTab==='statement'">
+          <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+            <button class="nim-btn" style="border:1px solid #E5E7EB" @click="loadStatement" :disabled="stmtLoading">
+              <span v-if="stmtLoading">Loading…</span><span v-else>Refresh</span>
+            </button>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <button v-if="stmt && stmt.email" class="nim-btn" style="border:1px solid #E5E7EB" @click="sendStatement" :disabled="sendingStmt">
+                {{sendingStmt ? 'Sending…' : '📧 Send Statement'}}
+              </button>
+            </div>
+          </div>
+          <div v-if="stmtLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading statement…</div>
+          <div v-else-if="!stmt" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:40px;text-align:center;color:#9CA3AF">
+            <div style="font-size:32px;margin-bottom:8px">📄</div>
+            <div style="font-size:13.5px;font-weight:600;color:#374151;margin-bottom:4px">No statement loaded</div>
+            <button class="nim-btn nim-btn-primary" @click="loadStatement">Load Statement</button>
+          </div>
+          <template v-else>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">
+              <div style="background:#FFF5F5;border:1px solid #FFC9C9;border-radius:10px;padding:14px 16px">
+                <div style="font-size:11px;color:#C92A2A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Total Outstanding</div>
+                <div style="font-size:20px;font-weight:700;color:#C92A2A">₹{{fmtStmt(stmt.total_outstanding)}}</div>
+              </div>
+              <div style="background:#FFF9DB;border:1px solid #FFD43B;border-radius:10px;padding:14px 16px">
+                <div style="font-size:11px;color:#E67700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Overdue</div>
+                <div style="font-size:20px;font-weight:700;color:#E67700">₹{{fmtStmt(stmt.overdue_amount)}}</div>
+              </div>
+              <div style="background:#F3F4F6;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
+                <div style="font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Open Invoices</div>
+                <div style="font-size:20px;font-weight:700;color:#111827">{{stmt.invoices.length}}</div>
+              </div>
+            </div>
+            <div v-if="!stmt.email" style="margin-bottom:12px;padding:10px 14px;background:#FFF9DB;border:1px solid #FFD43B;border-radius:8px;font-size:12.5px;color:#876800">
+              ⚠️ No email on file — add an email to enable sending this statement.
+            </div>
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+              <div v-if="!stmt.invoices.length" style="padding:24px;text-align:center;color:#9CA3AF;font-size:13px">No outstanding invoices</div>
+              <template v-else>
+                <div style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px;padding:12px 14px;background:#F9FAFB;border-bottom:1px solid #E5E7EB">OUTSTANDING INVOICES</div>
+                <div v-for="inv in stmt.invoices" :key="inv.name"
+                  style="display:grid;grid-template-columns:160px 100px 100px auto 80px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+                  <span style="color:#2563EB;font-weight:600">{{inv.name}}</span>
+                  <span style="color:#6B7280">{{inv.posting_date}}</span>
+                  <span style="color:#6B7280">{{inv.due_date}}</span>
+                  <span style="text-align:right;font-weight:600">₹{{fmtStmt(inv.outstanding_amount)}}</span>
+                  <span :style="'padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;text-align:center;'+(inv.is_overdue?'background:#FFF5F5;color:#C92A2A':'background:#EBFBEE;color:#2F9E44')">
+                    {{inv.is_overdue ? 'Overdue' : 'Due'}}
+                  </span>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+
       </div>
     </div>
   </div>
@@ -442,7 +464,7 @@
     <div v-if="showDrawer" class="inv-drawer-bg" @click.self="showDrawer=false">
       <div class="inv-drawer-panel" :class="{open:showDrawer}" style="width:680px;max-width:98vw">
 
-        <div class="inv-dh" style="background:linear-gradient(135deg,#3B5BDB,#2244b8);padding:18px 24px">
+        <div class="inv-dh" style="background:linear-gradient(135deg,#16a34a,#15803d);padding:18px 24px">
           <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
             <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -829,7 +851,7 @@
         <!-- Footer -->
         <div class="inv-dfooter" style="border-top:1px solid #e8ecf0;padding:14px 24px;background:#fafbfd">
           <button class="form-btn form-btn-outline" @click="showDrawer=false">Cancel</button>
-          <button class="form-btn form-btn-primary" @click="saveCustomer" :disabled="saving" style="background:#3B5BDB;border-color:#3B5BDB;min-width:140px;position:relative">
+          <button class="form-btn form-btn-primary" @click="saveCustomer" :disabled="saving" style="background:#16a34a;border-color:#16a34a;min-width:140px;position:relative">
             <span v-if="saving" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
             {{saving ? 'Saving…' : (drawerMode==='add' ? 'Create Customer' : 'Save Changes')}}
             <span v-if="Object.keys(formErrors).length && !saving"
@@ -1408,13 +1430,13 @@ const selectedCustomer = ref(null);
 const activeCustomerTab = ref("overview");
 const custTxns = ref([]);
 const custTxnsLoading = ref(false);
-const custSectionCollapsed = reactive({ address: false, otherDetails: false, contactPersons: false });
+const custSectionCollapsed = reactive({ address: false, otherDetails: false });
 
 async function selectCustomer(c) {
   selectedCustomer.value = c;
   activeCustomerTab.value = "overview";
   stmt.value = null;
-  Object.assign(custSectionCollapsed, { address: false, otherDetails: false, contactPersons: false });
+  Object.assign(custSectionCollapsed, { address: false, otherDetails: false });
   custTxns.value = [];
   custTxnsLoading.value = true;
   try {
@@ -1544,7 +1566,7 @@ onMounted(load);
   height: 32px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: #16a34a;
+  background: linear-gradient(135deg, #16a34a, #15803d);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1590,8 +1612,10 @@ onMounted(load);
 .vt-td-mono      {font-size: 12px; color: #374151; }
 .vt-td-secondary { color: #6b7280; font-size: 12.5px; }
 .vt-td-actions   { text-align: center; width: 88px; }
+.vt-checkbox { width: 15px; height: 15px; accent-color: #16a34a; cursor: pointer; border-radius: 3px; }
 .vt-row-shimmer td { padding: 13px 14px; }
 .vt-row-disabled   { opacity: 0.55; }
+.vt-row-selected   { background: #f0fdf4 !important; }
 .vt-actions {
   display: flex;
   gap: 3px;

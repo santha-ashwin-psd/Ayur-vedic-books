@@ -280,7 +280,7 @@
                   <div style="font-size:14px;font-weight:700;color:#111827">{{selectedVendor.supplier_name}}</div>
                   <div v-if="selectedVendor.email_id" style="font-size:12px;color:#6B7280;margin-top:2px">{{selectedVendor.email_id}}</div>
                 </div>
-                <div style="margin-left:auto">
+                <div style="margin-left:auto;display:none">
                   <a href="#" style="font-size:12px;color:#E67700;text-decoration:none">Invite to Portal</a>
                 </div>
               </div>
@@ -311,41 +311,8 @@
               </div>
             </div>
 
-            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
-              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" :style="!collapsed.otherDetails?'border-bottom:1px solid #F3F4F6':''" @click="collapsed.otherDetails=!collapsed.otherDetails">
-                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">OTHER DETAILS</span>
-                <svg :style="{transition:'transform 0.2s',transform:collapsed.otherDetails?'rotate(-90deg)':'rotate(0deg)'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
-              </div>
-              <div v-show="!collapsed.otherDetails" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
-                <div style="display:flex;justify-content:space-between;font-size:12.5px">
-                  <span style="color:#6B7280">Default Currency</span>
-                  <span style="font-weight:600;color:#111827">{{selectedVendor.default_currency||'INR'}}</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
-                  <span style="color:#6B7280">Portal Status</span>
-                  <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280">● Disabled</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:12.5px">
-                  <span style="color:#6B7280">Vendor Type</span>
-                  <span style="font-weight:600;color:#111827">{{selectedVendor.supplier_type||'Company'}}</span>
-                </div>
-                <div v-if="selectedVendor.tax_id" style="display:flex;justify-content:space-between;font-size:12.5px">
-                  <span style="color:#6B7280">GSTIN / Tax ID</span>
-                  <span style="font-weight:600;color:#111827;">{{selectedVendor.tax_id}}</span>
-                </div>
-              </div>
-            </div>
+            
 
-            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
-              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" @click="collapsed.contacts=!collapsed.contacts">
-                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">CONTACT PERSONS</span>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <button @click.stop="openEdit(selectedVendor.name)" style="background:none;border:none;cursor:pointer;color:#E67700;font-size:12px">+ Add</button>
-                  <svg :style="{transition:'transform 0.2s',transform:collapsed.contacts?'rotate(-90deg)':'rotate(0deg)'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
-                </div>
-              </div>
-              <div v-show="!collapsed.contacts" style="padding:10px 16px 14px;font-size:12.5px;color:#9CA3AF">No contacts added yet.</div>
-            </div>
           </div>
 
           <!-- Right column ~45% -->
@@ -376,11 +343,34 @@
                   </tr>
                 </tbody>
               </table>
-              <div style="padding:10px 16px">
+              <div style="padding:10px 16px;display:none;">
                 <a href="#" style="font-size:12.5px;color:#2563EB;text-decoration:none">Enter Opening Balance</a>
               </div>
             </div>
-
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+              <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" :style="!collapsed.otherDetails?'border-bottom:1px solid #F3F4F6':''" @click="collapsed.otherDetails=!collapsed.otherDetails">
+                <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">OTHER DETAILS</span>
+                <svg :style="{transition:'transform 0.2s',transform:collapsed.otherDetails?'rotate(-90deg)':'rotate(0deg)'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+              </div>
+              <div v-show="!collapsed.otherDetails" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">Default Currency</span>
+                  <span style="font-weight:600;color:#111827">{{selectedVendor.default_currency||'INR'}}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
+                  <span style="color:#6B7280">Portal Status</span>
+                  <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280">● Disabled</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">Vendor Type</span>
+                  <span style="font-weight:600;color:#111827">{{selectedVendor.supplier_type||'Company'}}</span>
+                </div>
+                <div v-if="selectedVendor.tax_id" style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">GSTIN / Tax ID</span>
+                  <span style="font-weight:600;color:#111827;">{{selectedVendor.tax_id}}</span>
+                </div>
+              </div>
+            </div>
             <div style="padding:4px 0">
               <button @click="confirmDelete(selectedVendor)" style="background:none;border:none;cursor:pointer;color:#DC2626;font-size:12.5px;display:flex;align-items:center;gap:6px">
                 <span v-html="icon('trash',13)"></span> Delete Vendor
@@ -397,12 +387,12 @@
             <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
             <div style="font-size:12.5px;color:#9CA3AF">Bills and payments for {{selectedVendor.supplier_name}} will appear here.</div>
           </div>
-          <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
-            <div style="display:grid;grid-template-columns:90px 1fr 120px 130px 130px 100px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
-              <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span><span>Status</span>
+          <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:scroll">
+            <div style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
+              <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span>
             </div>
             <div v-for="t in vendorTxns" :key="t.type+'-'+t.name"
-              style="display:grid;grid-template-columns:90px 1fr 120px 130px 130px 100px;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+              style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
               <span :style="{
                 fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
                 background: t.type==='Bill' ? '#FEF3C7' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
@@ -411,8 +401,7 @@
               <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
               <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
               <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmtCur(Math.abs(t.amount))}}</span>
-              <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):'—'}}</span>
-              <span style="font-size:11.5px;color:#6B7280">{{t.status||(t.docstatus===2?'Cancelled':'Submitted')}}</span>
+              <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):''}}</span>
             </div>
           </div>
         </div>
@@ -431,12 +420,12 @@
           </div>
           <div v-if="detailLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading statement…</div>
           <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
-            <div style="display:grid;grid-template-columns:110px 1fr 100px 110px 110px 130px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
+            <div style="display:grid;grid-template-columns:100px 160px 100px 110px 110px 130px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
               <span>Date</span><span>Reference</span><span>Type</span><span style="text-align:right">Debit</span><span style="text-align:right">Credit</span><span style="text-align:right">Balance</span>
             </div>
             <div v-if="!vendorStatement.rows?.length" style="padding:24px;text-align:center;color:#9CA3AF;font-size:13px">No statement rows for this period.</div>
             <div v-for="(r,i) in (vendorStatement.rows || [])" :key="r.ref+'-'+i"
-              style="display:grid;grid-template-columns:110px 1fr 100px 110px 110px 130px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+              style="display:grid;grid-template-columns:100px 160px 100px 110px 110px 130px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
               <span style="color:#6B7280">{{fmtDate(r.date)}}</span>
               <span style="color:#2563EB;font-weight:600">{{r.ref}}</span>
               <span style="font-size:11px;color:#6B7280">{{r.type}}</span>
@@ -746,7 +735,7 @@ const deleting      = ref(false);
 const accounts      = ref([]);
 const pendingAddresses = ref([]);
 
-const collapsed = reactive({ address: false, otherDetails: false, contacts: false });
+const collapsed = reactive({ address: false, otherDetails: false });
 
 const form = reactive({
   name: "",

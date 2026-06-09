@@ -284,7 +284,7 @@
     <!-- ============================================================ VIEW DRAWER -->
     <Teleport to="body">
       <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false">
-        <div class="inv-drawer-panel inv-drawer-wide inv-view-page rec-view-drawer">
+        <div class="inv-drawer-panel inv-view-page rec-view-drawer">
       <template v-if="viewDoc">
         <!-- header -->
         <div class="inv-view-header rec-view-head" :class="viewDoc.ui_status==='Paused'?'paused':viewDoc.ui_status==='Completed'?'completed':''">
@@ -969,4 +969,5 @@ function exportCSV() {
 .badge-orange { background:#fef3c7;color:#ea580c; }
 .badge-grey { background:#e5e7eb;color:#6b7280; }
 .badge-red { background:#fee2e2;color:#dc2626; }
+.rec-view-drawer { width: 625px; right: -625px; }
 </style>

@@ -98,7 +98,7 @@
 
     <!-- VIEW DRAWER -->
     <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false">
-      <div class="inv-drawer-panel inv-drawer-wide inv-view-page">
+      <div class="inv-drawer-panel inv-view-page dc-view-drawer">
         <template v-if="viewDoc">
 
           <!-- Header -->
@@ -1139,4 +1139,5 @@ onMounted(async () => {
 .req { color:#dc2626; }
 .sortable { cursor:pointer;user-select:none; }
 .sortable:hover { color:#2563eb; }
+.dc-view-drawer { width: 625px; right: -625px; }
 </style>

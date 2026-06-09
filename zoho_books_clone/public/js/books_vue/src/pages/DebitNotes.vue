@@ -423,12 +423,27 @@ async function load() {
   loading.value = true;
   try {
     const co = await resolveCompany();
-    list.value = await apiList("Purchase Invoice", {
+    const rows = await apiList("Purchase Invoice", {
       fields: ["name", "supplier", "supplier_name", "posting_date", "grand_total", "return_against", "docstatus", "status"],
       filters: [["is_return", "=", 1], ["company", "=", co]],
       limit: 500,
       order: "posting_date desc",
     });
+    // Resolve supplier_name for any rows where it's missing
+    const missing = [...new Set(rows.filter(d => !d.supplier_name && d.supplier).map(d => d.supplier))];
+    if (missing.length) {
+      try {
+        const suppliers = await apiList("Supplier", {
+          fields: ["name", "supplier_name"],
+          filters: [["name", "in", missing]],
+          limit: missing.length,
+        });
+        const nameMap = {};
+        suppliers.forEach(s => { nameMap[s.name] = s.supplier_name || s.name; });
+        rows.forEach(d => { if (!d.supplier_name && d.supplier) d.supplier_name = nameMap[d.supplier] || d.supplier; });
+      } catch { /* fallback to supplier id */ }
+    }
+    list.value = rows;
     // Fetch balances for submitted DNs (parallel)
     const submitted = list.value.filter(d => d.docstatus === 1);
     const balances = await Promise.all(submitted.map(d =>

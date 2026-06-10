@@ -182,13 +182,14 @@ function onCancel() { if (saving.value) return; cancel(); }
   max-height: 92vh; display: flex; flex-direction: column;
   box-shadow: 0 12px 40px rgba(0,0,0,.2); overflow: hidden;
   animation: rnd-in .2s cubic-bezier(.34,1.56,.64,1);
+  font-family: 'Inter', 'Lato', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 @keyframes rnd-in { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: none; } }
 .rnd-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px; flex-shrink: 0;
 }
-.rnd-title { font-size: 15px; font-weight: 700; color: #fff; }
+.rnd-title { font-size: 15px; font-weight: 700; color: #fff; font-family: inherit; }
 .rnd-close {
   background: rgba(255,255,255,.18); border: none; cursor: pointer; font-size: 14px; color: #fff;
   width: 28px; height: 28px; border-radius: 6px;

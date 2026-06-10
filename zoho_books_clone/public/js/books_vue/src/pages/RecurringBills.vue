@@ -42,7 +42,7 @@
           <tr>
             <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th>
             <th @click="sort('name')" class="sortable">Subscription # <span v-html="sortArrow('name')"></span></th>
-            <th @click="sort('reference_document')" class="sortable">PO Reference <span v-html="sortArrow('reference_document')"></span></th>
+            <th @click="sort('reference_document')" class="sortable">Reference Bill <span v-html="sortArrow('reference_document')"></span></th>
             <th @click="sort('frequency')" class="sortable">Frequency <span v-html="sortArrow('frequency')"></span></th>
             <th @click="sort('start_date')" class="sortable">Start Date <span v-html="sortArrow('start_date')"></span></th>
             <th @click="sort('next_schedule_date')" class="sortable">Next Run <span v-html="sortArrow('next_schedule_date')"></span></th>
@@ -102,7 +102,7 @@
           </div>
           <div>
             <div class="rec-dheader-title">{{ editMode ? 'Edit Recurring Bill' : 'New Recurring Bill' }}</div>
-            <div class="rec-dheader-sub">{{ editMode ? form._name : 'Schedule a purchase order to repeat on a cadence' }}</div>
+            <div class="rec-dheader-sub">{{ editMode ? form._name : 'Automatically generate vendor bills on a schedule' }}</div>
           </div>
         </div>
         <button class="rec-dclose" @click="onOverlayClose"><span v-html="icon('x',16)"></span></button>
@@ -117,10 +117,10 @@
           </div>
           <div class="rec-fields-grid">
             <div class="rec-field" style="grid-column:1/-1">
-              <label class="rec-label">Purchase Order <span class="req">*</span></label>
-              <SearchableSelect v-model="form.reference_document" :options="refDocs" placeholder="Search a saved purchase order…" @search="fetchRefDocs" />
+              <label class="rec-label">Reference Bill <span class="req">*</span></label>
+              <SearchableSelect v-model="form.reference_document" :options="refDocs" placeholder="Search a saved bill…" @search="fetchRefDocs" />
               <div class="rec-field-help" v-if="!form.reference_document">
-                Pick an existing purchase order to use as the template.
+                Pick an existing bill to use as the template for this recurring schedule.
               </div>
             </div>
           </div>
@@ -209,7 +209,7 @@
           <div class="rec-view-head-row">
             <div>
               <div class="rec-view-num">{{ viewDoc.name }}</div>
-              <div class="rec-view-sub">Purchase Order · {{ viewDoc.frequency }}</div>
+              <div class="rec-view-sub">Reference Bill · {{ viewDoc.frequency }}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <span class="rec-badge rec-badge-lg" :class="statusClass(viewDoc.status)">{{ viewDoc.status||'Active' }}</span>
@@ -278,7 +278,7 @@
             <div class="rec-section">
               <div class="rec-section-hdr"><span v-html="icon('folder',13)"></span><span>Details</span></div>
               <div class="rec-meta-grid">
-                <div><div class="rec-meta-lbl">PO Reference</div><div class="mono-sm">{{ viewDoc.reference_document||'—' }}</div></div>
+                <div><div class="rec-meta-lbl">Reference Bill</div><div class="mono-sm">{{ viewDoc.reference_document||'—' }}</div></div>
                 <div><div class="rec-meta-lbl">Frequency</div><div>{{ viewDoc.frequency }}</div></div>
                 <div><div class="rec-meta-lbl">Start Date</div><div class="mono-sm">{{ fmtDate(viewDoc.start_date) }}</div></div>
                 <div><div class="rec-meta-lbl">End Date</div><div class="mono-sm">{{ fmtDate(viewDoc.end_date)||'No end' }}</div></div>
@@ -375,7 +375,7 @@ async function load() {
   try {
     list.value = await apiList("Auto Repeat", {
       fields: ["name","reference_doctype","reference_document","frequency","start_date","end_date","next_schedule_date","status"],
-      filters: [["reference_doctype","=","Purchase Order"]],
+      filters: [["reference_doctype","=","Purchase Invoice"]],
       limit: 500, order: "next_schedule_date asc",
     }) || [];
   } catch (e) {
@@ -544,13 +544,13 @@ async function runNow(doc) {
 
 async function fetchRefDocs(q = "") {
   try {
-    const r = await apiLinkValues("Purchase Order", q, [["docstatus","in",[0,1]]]);
+    const r = await apiLinkValues("Purchase Invoice", q, [["docstatus","in",[0,1]],["is_return","=",0]]);
     refDocs.value = r.map(x => ({ label: x.name, value: x.name }));
   } catch { refDocs.value = []; }
 }
 
 async function saveRec() {
-  if (!form.reference_document) return toast.error("Purchase order is required");
+  if (!form.reference_document) return toast.error("Reference bill is required");
   if (!form.start_date) return toast.error("Start date is required");
   if (form.end_date && form.end_date < form.start_date) return toast.error("End date must be after start date");
   drawerSaving.value = true;
@@ -570,7 +570,7 @@ async function saveRec() {
     } else {
       const doc = {
         doctype: "Auto Repeat",
-        reference_doctype: "Purchase Order",
+        reference_doctype: "Purchase Invoice",
         reference_document: form.reference_document,
         frequency: form.frequency,
         start_date: form.start_date,

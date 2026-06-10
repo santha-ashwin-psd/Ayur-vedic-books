@@ -227,18 +227,19 @@
 
 /* ══════════════════════════════════════════════
    ACTION BUTTONS BAR
-   (Edit | Print PDF | Duplicate | Download ▾ | Send Email | Delete)
+   (Edit | Duplicate | Download ▾ | Send Email | Delete)
    ══════════════════════════════════════════════ */
 .inv-action-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
+  gap: 6px;
+  padding: 10px 20px;
   border-bottom: 1px solid #e5e7eb;
   flex-wrap: wrap;
-  background: #fff;
+  background: #fafafa;
 }
 
+/* Base ghost button */
 .inv-ab-btn {
   display: inline-flex;
   align-items: center;
@@ -246,27 +247,52 @@
   border: 1px solid #e2e8f0;
   background: #fff;
   color: #374151;
-  border-radius: 6px;
-  padding: 7px 14px;
-  font-size: 13px;
+  border-radius: 7px;
+  padding: 7px 13px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color .15s, background .15s;
+  transition: border-color .15s, background .15s, color .15s, box-shadow .15s;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
 }
-.inv-ab-btn:hover    { border-color: #94a3b8; background: #f8fafc; }
-.inv-ab-btn:disabled { opacity: .5; cursor: not-allowed; }
+.inv-ab-btn:hover    { border-color: #cbd5e1; background: #f1f5f9; color: #111827; }
+.inv-ab-btn:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Delete — red tint */
 .inv-ab-btn.inv-ab-danger {
   color: #dc2626;
-  border-color: rgba(220,38,38,.25);
+  border-color: rgba(220,38,38,.22);
+  background: #fff;
 }
-.inv-ab-btn.inv-ab-danger:hover { background: #fef2f2; border-color: #dc2626; }
+.inv-ab-btn.inv-ab-danger:hover { background: #fef2f2; border-color: #fca5a5; }
 
-/* Download with caret */
-.inv-ab-btn.inv-ab-dropdown { gap: 4px; }
-.inv-ab-caret { font-size: 10px; margin-left: 2px; color: #9ca3af; }
+/* ── Download button — primary solid style ── */
+.inv-ab-btn.inv-ab-dropdown {
+  background: #1a6ef7;
+  color: #fff;
+  border-color: #1a6ef7;
+  gap: 6px;
+  padding: 7px 14px;
+  box-shadow: 0 1px 4px rgba(26,110,247,.35);
+}
+.inv-ab-btn.inv-ab-dropdown:hover {
+  background: #155fd4;
+  border-color: #155fd4;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(26,110,247,.4);
+}
+
+/* Caret inside download button */
+.inv-ab-caret {
+  font-size: 9px;
+  margin-left: 1px;
+  color: rgba(255,255,255,.7);
+  transition: transform .15s;
+}
+.inv-ab-btn.inv-ab-dropdown:hover .inv-ab-caret {
+  transform: translateY(1px);
+}
 
 /* Spacer between left actions and Delete */
 .inv-ab-spacer { flex: 1; }

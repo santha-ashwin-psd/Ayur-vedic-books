@@ -5,131 +5,290 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', Arial, sans-serif; color: #333; background: #fff; font-size: 13px; }
-  .page { max-width: 794px; margin: 0 auto; padding: 32px 40px; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ── OVERDUE RIBBON ── */
-  .ribbon-wrap { position: relative; overflow: hidden; }
-  .ribbon {
-    position: absolute; top: 18px; left: -28px;
-    background: #F6A623; color: #fff;
-    font-size: 10px; font-weight: 700; letter-spacing: .8px;
-    padding: 5px 36px; transform: rotate(-45deg);
-    text-transform: uppercase; z-index: 10;
+  :root {
+    --ink-900: #0D1117;
+    --ink-700: #1F2937;
+    --ink-500: #6B7280;
+    --ink-300: #D1D5DB;
+    --ink-100: #F3F4F6;
+    --ink-50:  #F9FAFB;
+    --accent:  #1B55E2;       /* brand blue */
+    --accent-light: #EEF3FD;
+    --green:   #15803D;
+    --green-bg:#DCFCE7;
+    --amber:   #B45309;
+    --amber-bg:#FEF3C7;
+    --red:     #B91C1C;
+    --red-bg:  #FEE2E2;
+    --slate:   #4B5563;
+    --slate-bg:#F1F5F9;
+    --radius:  6px;
   }
-  .ribbon.paid     { background: #2D8A4E; }
-  .ribbon.overdue  { background: #F6A623; }
-  .ribbon.draft    { background: #9E9E9E; }
 
-  /* ── HEADER ── */
-  .inv-header {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    margin-bottom: 28px;
+  body {
+    font-family: 'Inter', -apple-system, Arial, sans-serif;
+    color: var(--ink-700);
+    background: #fff;
+    font-size: 12.5px;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-  .logo-block { display: flex; flex-direction: column; gap: 6px; }
-  .logo-block img {
-    max-height: 56px; max-width: 180px;
+
+  .page {
+    max-width: 794px;
+    margin: 0 auto;
+    padding: 0;
+    background: #fff;
+  }
+
+  /* ═══════════════════════════════════════════════
+     TOP ACCENT BAR
+  ═══════════════════════════════════════════════ */
+  .accent-bar {
+    height: 5px;
+    background: linear-gradient(90deg, var(--accent) 0%, #4F7EF5 100%);
+  }
+
+  /* ═══════════════════════════════════════════════
+     HEADER
+  ═══════════════════════════════════════════════ */
+  .header-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 32px 44px 24px;
+    gap: 24px;
+  }
+
+  .logo-col { display: flex; flex-direction: column; gap: 12px; }
+
+  .logo-col img {
+    max-height: 54px; max-width: 180px;
     object-fit: contain; object-position: left center;
   }
   .logo-placeholder {
     display: flex; align-items: center; justify-content: center;
-    width: 140px; height: 52px;
-    border: 2px dashed #D0D5DD; border-radius: 6px;
-    font-size: 11px; color: #9AA0AB; letter-spacing: .3px;
+    width: 140px; height: 50px;
+    border: 1.5px dashed var(--ink-300); border-radius: var(--radius);
+    font-size: 10.5px; color: var(--ink-500); letter-spacing: .3px;
   }
-  .company-info { font-size: 12px; color: #555; line-height: 1.6; }
-  .company-info strong { font-size: 14px; font-weight: 600; color: #1A1A2E; display: block; margin-bottom: 2px; }
 
-  .inv-title-block { text-align: right; }
-  .inv-label { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #9AA0AB; margin-bottom: 4px; }
-  .inv-number { font-size: 22px; font-weight: 700; color: #1A1A2E; margin-bottom: 12px; }
+  .company-info { font-size: 11.5px; color: var(--ink-500); line-height: 1.65; }
+  .company-name { font-size: 14.5px; font-weight: 700; color: var(--ink-900); margin-bottom: 3px; }
 
-  .inv-meta-table { margin-left: auto; border-collapse: collapse; }
-  .inv-meta-table td { padding: 3px 0 3px 20px; font-size: 12.5px; }
-  .inv-meta-table td:first-child { color: #9AA0AB; font-weight: 400; }
-  .inv-meta-table td:last-child  { font-weight: 500; color: #1A1A2E; }
-
-  /* ── DIVIDER ── */
-  .divider { border: none; border-top: 1px solid #E8ECF0; margin: 16px 0; }
-
-  /* ── BILL TO / FROM SECTION ── */
-  .parties-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; gap: 24px; }
-  .party-block { flex: 1; }
-  .party-tag { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #9AA0AB; margin-bottom: 6px; }
-  .party-name { font-size: 14px; font-weight: 600; color: #1A1A2E; margin-bottom: 4px; }
-  .party-detail { font-size: 12px; color: #6B7280; line-height: 1.6; }
-
-  /* ── STATUS BADGE ── */
-  .badge {
-    display: inline-block; padding: 4px 10px; border-radius: 20px;
-    font-size: 11px; font-weight: 600; letter-spacing: .4px;
+  /* Right: invoice identity */
+  .inv-id-col { text-align: right; flex-shrink: 0; }
+  .doc-type-chip {
+    display: inline-block;
+    background: var(--accent); color: #fff;
+    font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    padding: 4px 12px; border-radius: 20px;
+    margin-bottom: 8px;
   }
-  .badge-paid     { background: #E8F9EE; color: #1C7C3B; }
-  .badge-overdue  { background: #FEF3CD; color: #B45309; }
-  .badge-draft    { background: #F1F3F5; color: #6B7280; }
-  .badge-partial  { background: #FEF3CD; color: #B45309; }
-  .badge-submitted{ background: #EBF5FF; color: #1565C0; }
+  .inv-number { font-size: 24px; font-weight: 700; color: var(--ink-900); letter-spacing: -.5px; }
 
-  /* ── ITEMS TABLE ── */
-  .items-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-  .items-table thead tr { background: #F8FAFC; }
+  .meta-grid {
+    margin-top: 10px;
+    display: grid; grid-template-columns: auto auto; gap: 4px 20px;
+    text-align: left;
+  }
+  .meta-grid .lbl { font-size: 10.5px; font-weight: 500; color: var(--ink-500); text-transform: uppercase; letter-spacing: .5px; }
+  .meta-grid .val { font-size: 12.5px; font-weight: 600; color: var(--ink-900); }
+
+  /* ═══════════════════════════════════════════════
+     SECTION DIVIDER
+  ═══════════════════════════════════════════════ */
+  .section-divider { border: none; border-top: 1px solid var(--ink-300); margin: 0 44px; }
+
+  /* ═══════════════════════════════════════════════
+     PARTIES ROW
+  ═══════════════════════════════════════════════ */
+  .parties-wrap {
+    display: flex; gap: 0;
+    padding: 20px 44px;
+  }
+  .party-col { flex: 1; padding-right: 24px; }
+  .party-col + .party-col { padding-left: 24px; padding-right: 0; border-left: 1px solid var(--ink-300); }
+
+  .party-label {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--accent);
+    margin-bottom: 5px;
+  }
+  .party-name { font-size: 14px; font-weight: 600; color: var(--ink-900); margin-bottom: 3px; }
+  .party-detail { font-size: 11.5px; color: var(--ink-500); line-height: 1.65; }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; letter-spacing: .3px;
+  }
+  .status-badge::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; opacity: .7;
+  }
+  .badge-paid     { background: var(--green-bg); color: var(--green); }
+  .badge-overdue  { background: var(--amber-bg); color: var(--amber); }
+  .badge-draft    { background: var(--slate-bg); color: var(--slate); }
+  .badge-partial  { background: var(--amber-bg); color: var(--amber); }
+  .badge-submitted{ background: var(--accent-light); color: var(--accent); }
+
+  /* ═══════════════════════════════════════════════
+     ITEMS TABLE
+  ═══════════════════════════════════════════════ */
+  .table-wrap { padding: 0 44px; }
+
+  .items-table { width: 100%; border-collapse: collapse; }
+
+  .items-table thead tr {
+    background: var(--ink-900);
+  }
   .items-table thead th {
-    padding: 10px 14px; font-size: 11px; font-weight: 600;
-    letter-spacing: .5px; text-transform: uppercase;
-    color: #6B7280; text-align: left; border-bottom: 2px solid #E4E7EC;
+    padding: 10px 14px;
+    font-size: 10px; font-weight: 600; letter-spacing: .7px;
+    text-transform: uppercase; color: rgba(255,255,255,.75);
+    text-align: left; white-space: nowrap;
   }
-  .items-table thead th.right { text-align: right; }
+  .items-table thead th:first-child { border-radius: var(--radius) 0 0 0; }
+  .items-table thead th:last-child  { border-radius: 0 var(--radius) 0 0; }
+  .items-table thead th.r { text-align: right; }
+
+  .items-table tbody tr { border-bottom: 1px solid var(--ink-100); }
+  .items-table tbody tr:nth-child(even) { background: var(--ink-50); }
+  .items-table tbody tr:last-child { border-bottom: none; }
+
   .items-table tbody td {
-    padding: 12px 14px; font-size: 13px; color: #374151;
-    border-bottom: 1px solid #F2F4F7; vertical-align: top;
+    padding: 11px 14px;
+    font-size: 12.5px; color: var(--ink-700);
+    vertical-align: top;
   }
-  .items-table tbody tr:last-child td { border-bottom: none; }
-  .items-table td.mono { font-variant-numeric: tabular-nums; text-align: right; }
-  .item-name { font-weight: 500; color: #111827; }
-  .item-desc { font-size: 11.5px; color: #9AA0AB; margin-top: 2px; }
-  .item-hsn  { font-size: 10.5px; color: #B8BDC7; }
+  .items-table td.mono {
+    font-variant-numeric: tabular-nums; text-align: right;
+    font-size: 12.5px; color: var(--ink-900);
+  }
+  .row-num { color: var(--ink-300); font-size: 11px; }
+  .item-name  { font-weight: 600; color: var(--ink-900); }
+  .item-desc  { font-size: 11px; color: var(--ink-500); margin-top: 2px; }
+  .item-hsn   { font-size: 10px; color: var(--ink-300); margin-top: 1px; }
 
-  /* ── TOTALS + QR SECTION ── */
-  .bottom-section { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 16px; gap: 24px; }
-  .notes-section { flex: 1; }
-  .notes-block { background: #F8FAFC; border-radius: 6px; padding: 12px 16px; margin-bottom: 12px; }
-  .notes-block .notes-title { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #9AA0AB; margin-bottom: 6px; }
-  .notes-block p { font-size: 12.5px; color: #555; line-height: 1.6; }
+  /* Table bottom border accent */
+  .table-foot-bar {
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent) 0%, #4F7EF5 100%);
+    border-radius: 0 0 var(--radius) var(--radius);
+    margin: 0; margin-bottom: 24px;
+  }
 
-  /* QR Code Block */
-  .qr-block { text-align: center; padding: 12px 16px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E8ECF0; min-width: 140px; }
-  .qr-block .qr-title { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #9AA0AB; margin-bottom: 8px; }
-  .qr-block .qr-canvas { margin: 0 auto 8px; }
-  .qr-block .qr-upi-id { font-size: 10.5px; color: #6B7280; word-break: break-all; }
-  .qr-block .qr-amount { font-size: 12px; font-weight: 600; color: #1A1A2E; margin-top: 4px; }
-  #qr-canvas { display: flex; justify-content: center; }
+  /* ═══════════════════════════════════════════════
+     BOTTOM: NOTES + QR + TOTALS
+  ═══════════════════════════════════════════════ */
+  .bottom-wrap {
+    display: flex;
+    gap: 24px;
+    padding: 0 44px 28px;
+    align-items: flex-start;
+  }
+
+  /* Notes */
+  .notes-col { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+
+  .notes-card {
+    background: var(--ink-50); border: 1px solid var(--ink-100);
+    border-radius: var(--radius); padding: 13px 16px;
+  }
+  .notes-card .card-title {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--ink-500); margin-bottom: 6px;
+  }
+  .notes-card p { font-size: 12px; color: var(--ink-700); line-height: 1.65; }
+
+  /* QR */
+  .qr-card {
+    background: var(--ink-50); border: 1px solid var(--ink-100);
+    border-radius: var(--radius); padding: 14px 18px;
+    text-align: center;
+  }
+  .qr-card .card-title {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--ink-500); margin-bottom: 10px;
+  }
+  #qr-canvas { display: flex; justify-content: center; margin-bottom: 8px; }
+  .qr-upi-id  { font-size: 10px; color: var(--ink-500); word-break: break-all; }
+  .qr-amount  { font-size: 12px; font-weight: 600; color: var(--ink-900); margin-top: 4px; }
 
   /* Totals */
-  .totals-block { min-width: 260px; }
+  .totals-col { min-width: 270px; }
+
+  .totals-card {
+    background: var(--ink-50); border: 1px solid var(--ink-100);
+    border-radius: var(--radius); overflow: hidden;
+  }
   .totals-table { width: 100%; border-collapse: collapse; }
-  .totals-table td { padding: 7px 14px; font-size: 13px; }
-  .totals-table td.t-label { color: #6B7280; }
-  .totals-table td.t-value { text-align: right; font-variant-numeric: tabular-nums; color: #374151; }
-  .totals-table .grand-row td { font-size: 15px; font-weight: 700; color: #1A1A2E; border-top: 2px solid #E4E7EC; padding-top: 10px; }
-  .totals-table .payment-row td { color: #2D8A4E; }
-  .totals-table .balance-row td { color: #D92D20; font-size: 14px; font-weight: 600; background: #FFF6F5; border-radius: 4px; }
-  .totals-table .subtotal-row td { border-top: 1px solid #F2F4F7; }
-  .total-words { font-size: 11.5px; color: #9AA0AB; margin-top: 8px; padding: 0 14px; font-style: italic; }
+  .totals-table tr + tr td { border-top: 1px solid var(--ink-100); }
+  .totals-table td { padding: 9px 16px; font-size: 12.5px; }
+  .totals-table td.t-lbl { color: var(--ink-500); }
+  .totals-table td.t-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; color: var(--ink-900); }
 
-  /* ── SIGNATURE / FOOTER ── */
-  .footer-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 36px; padding-top: 20px; border-top: 1px solid #E8ECF0; }
+  .grand-row { background: var(--ink-900) !important; }
+  .grand-row td { border-top: none !important; color: #fff !important; font-size: 15px; font-weight: 700; padding: 12px 16px; }
+  .grand-row td.t-lbl { color: rgba(255,255,255,.75) !important; }
+
+  .payment-row td { color: var(--green) !important; }
+  .balance-row { background: var(--red-bg) !important; }
+  .balance-row td { color: var(--red) !important; font-weight: 700; border-top: none !important; }
+
+  .total-words { font-size: 11px; color: var(--ink-500); font-style: italic; padding: 10px 16px; line-height: 1.5; }
+
+  /* ═══════════════════════════════════════════════
+     FOOTER
+  ═══════════════════════════════════════════════ */
+  .footer-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 18px 44px 28px;
+    border-top: 1px solid var(--ink-300);
+    margin: 0 0 0 0;
+  }
+
+  .thank-text { font-size: 14px; font-weight: 700; color: var(--ink-900); }
+  .thank-sub  { font-size: 11px; color: var(--ink-500); margin-top: 2px; }
+
   .sig-block { text-align: center; }
-  .sig-line { width: 160px; border-top: 1px solid #CDD5E0; margin: 0 auto 6px; padding-top: 6px; }
-  .sig-label { font-size: 11px; color: #9AA0AB; }
-  .footer-note { font-size: 11px; color: #B8BDC7; text-align: right; line-height: 1.7; }
-  .thank-msg { font-size: 13px; font-weight: 600; color: #1A1A2E; }
+  .sig-line {
+    width: 150px; border-top: 1.5px solid var(--ink-300);
+    margin: 0 auto 6px; padding-top: 6px;
+  }
+  .sig-label { font-size: 10.5px; color: var(--ink-500); letter-spacing: .3px; }
 
+  /* ═══════════════════════════════════════════════
+     STATUS RIBBON (corner)
+  ═══════════════════════════════════════════════ */
+  .ribbon-wrap { position: relative; overflow: hidden; }
+  .ribbon {
+    position: absolute; top: 22px; right: -30px;
+    background: var(--amber); color: #fff;
+    font-size: 9px; font-weight: 800; letter-spacing: 1px;
+    padding: 5px 42px; transform: rotate(45deg);
+    text-transform: uppercase; z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  .ribbon.paid    { background: var(--green); }
+  .ribbon.overdue { background: var(--amber); }
+  .ribbon.draft   { background: var(--slate); }
+
+  /* ═══════════════════════════════════════════════
+     PRINT
+  ═══════════════════════════════════════════════ */
   @media print {
-    .page { padding: 20px 28px; }
+    .page { max-width: 100%; }
     body  { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style>
@@ -137,120 +296,130 @@
 <body>
 <div class="page ribbon-wrap">
 
-  <!-- Overdue / Status Ribbon -->
-  {% if inv.status == "Overdue" %}
-  <div class="ribbon overdue">Overdue</div>
-  {% elif inv.status == "Paid" %}
+  <!-- Status corner ribbon -->
+  {% if inv.status == "Paid" %}
   <div class="ribbon paid">Paid</div>
+  {% elif inv.status == "Overdue" %}
+  <div class="ribbon overdue">Overdue</div>
   {% elif inv.status == "Draft" %}
   <div class="ribbon draft">Draft</div>
   {% endif %}
 
+  <!-- ── TOP ACCENT BAR ── -->
+  <div class="accent-bar"></div>
+
   <!-- ── HEADER ── -->
-  <div class="inv-header">
-    <div class="logo-block">
-      {# Logo: looks for company logo via attachment #}
+  <div class="header-wrap">
+    <div class="logo-col">
       {% set logo_url = company_doc.company_logo if company_doc and company_doc.company_logo else None %}
       {% if logo_url %}
         <img src="{{ logo_url }}" alt="{{ company }} logo" />
       {% else %}
         <div class="logo-placeholder">Your Logo Here</div>
       {% endif %}
-      <div class="company-info" style="margin-top:8px">
-        <strong>{{ company }}</strong>
+      <div class="company-info">
+        <div class="company-name">{{ company }}</div>
         {% if company_doc %}
           {{ company_doc.address or "" }}<br>
-          {% if company_doc.city %}{{ company_doc.city }}, {% endif %}
-          {{ company_doc.country or "India" }}<br>
-          {% if company_doc.tax_id %}GSTIN: {{ company_doc.tax_id }}{% endif %}
+          {% if company_doc.city %}{{ company_doc.city }}, {% endif %}{{ company_doc.country or "India" }}<br>
+          {% if company_doc.tax_id %}<strong style="color:var(--ink-700)">GSTIN:</strong> {{ company_doc.tax_id }}{% endif %}
         {% else %}
           Tamil Nadu, India
         {% endif %}
       </div>
     </div>
 
-    <div class="inv-title-block">
-      <div class="inv-label">Tax Invoice</div>
+    <div class="inv-id-col">
+      <div class="doc-type-chip">Tax Invoice</div>
       <div class="inv-number">{{ inv.name }}</div>
-      <table class="inv-meta-table">
-        <tr><td>Invoice Date</td><td>{{ frappe.format(inv.posting_date, "Date") }}</td></tr>
-        <tr><td>Due Date</td><td>{{ frappe.format(inv.due_date, "Date") }}</td></tr>
-        <tr><td>Terms</td><td>{{ inv.payment_terms_template or "Due on Receipt" }}</td></tr>
-        {% if inv.po_no %}<tr><td>P.O. #</td><td>{{ inv.po_no }}</td></tr>{% endif %}
-      </table>
+      <div class="meta-grid">
+        <span class="lbl">Invoice Date</span>
+        <span class="val">{{ frappe.format(inv.posting_date, "Date") }}</span>
+        <span class="lbl">Due Date</span>
+        <span class="val">{{ frappe.format(inv.due_date, "Date") }}</span>
+        <span class="lbl">Terms</span>
+        <span class="val">{{ inv.payment_terms_template or "Due on Receipt" }}</span>
+        {% if inv.po_no %}
+        <span class="lbl">P.O. #</span>
+        <span class="val">{{ inv.po_no }}</span>
+        {% endif %}
+      </div>
     </div>
   </div>
 
-  <hr class="divider">
+  <hr class="section-divider">
 
-  <!-- ── BILL TO / STATUS ── -->
-  <div class="parties-row">
-    <div class="party-block">
-      <div class="party-tag">Bill To</div>
+  <!-- ── PARTIES ── -->
+  <div class="parties-wrap">
+    <div class="party-col">
+      <div class="party-label">Bill To</div>
       <div class="party-name">{{ inv.customer_name }}</div>
       <div class="party-detail">
         {{ inv.address_display | replace("<br>", "\n") | striptags | replace("\n", "<br>") if inv.address_display else inv.customer }}
       </div>
     </div>
-    <div class="party-block" style="text-align:right">
-      <div class="party-tag">Status</div>
+    <div class="party-col" style="flex:0 0 200px; text-align:center;">
+      <div class="party-label" style="text-align:center">Status</div>
       {% set smap = {"Paid":"badge-paid","Overdue":"badge-overdue","Draft":"badge-draft","Partly Paid":"badge-partial","Submitted":"badge-submitted"} %}
-      <span class="badge {{ smap.get(inv.status,'badge-draft') }}">{{ inv.status }}</span>
-      <div style="margin-top:10px">
-        <div class="party-tag">Currency</div>
-        <div class="party-name">{{ inv.currency or "INR" }}</div>
+      <div style="margin-bottom:10px">
+        <span class="status-badge {{ smap.get(inv.status,'badge-draft') }}">{{ inv.status }}</span>
       </div>
+      <div class="party-label" style="text-align:center; margin-top:6px">Currency</div>
+      <div style="font-size:13px; font-weight:600; color:var(--ink-900)">{{ inv.currency or "INR" }}</div>
     </div>
   </div>
 
+  <hr class="section-divider" style="margin-bottom:16px">
+
   <!-- ── ITEMS TABLE ── -->
-  <table class="items-table">
-    <thead>
-      <tr>
-        <th style="width:36px">#</th>
-        <th>Item &amp; Description</th>
-        <th class="right" style="width:72px">Qty</th>
-        <th class="right" style="width:110px">Rate</th>
-        <th class="right" style="width:120px">Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in inv.items %}
-      <tr>
-        <td style="color:#B8BDC7">{{ loop.index }}</td>
-        <td>
-          <div class="item-name">{{ item.item_name }}</div>
-          {% if item.description and item.description != item.item_name %}
-            <div class="item-desc">{{ item.description }}</div>
-          {% endif %}
-          {% if item.gst_hsn_code %}<div class="item-hsn">HSN: {{ item.gst_hsn_code }}</div>{% endif %}
-        </td>
-        <td class="mono">{{ item.qty }} {{ item.uom or "pcs" }}</td>
-        <td class="mono">{{ frappe.format(item.rate, "Currency") }}</td>
-        <td class="mono">{{ frappe.format(item.amount, "Currency") }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width:32px">#</th>
+          <th>Item &amp; Description</th>
+          <th class="r" style="width:70px">Qty</th>
+          <th class="r" style="width:110px">Rate</th>
+          <th class="r" style="width:120px">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in inv.items %}
+        <tr>
+          <td><span class="row-num">{{ loop.index }}</span></td>
+          <td>
+            <div class="item-name">{{ item.item_name }}</div>
+            {% if item.description and item.description != item.item_name %}
+              <div class="item-desc">{{ item.description }}</div>
+            {% endif %}
+            {% if item.gst_hsn_code %}<div class="item-hsn">HSN: {{ item.gst_hsn_code }}</div>{% endif %}
+          </td>
+          <td class="mono">{{ item.qty }}&nbsp;<span style="font-size:10.5px;color:var(--ink-500)">{{ item.uom or "pcs" }}</span></td>
+          <td class="mono">{{ frappe.format(item.rate, "Currency") }}</td>
+          <td class="mono" style="font-weight:600">{{ frappe.format(item.amount, "Currency") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="table-foot-bar"></div>
+  </div>
 
-  <!-- ── BOTTOM: NOTES + QR + TOTALS ── -->
-  <div class="bottom-section">
+  <!-- ── BOTTOM SECTION ── -->
+  <div class="bottom-wrap">
 
-    <!-- Notes & QR Code (left side) -->
-    <div class="notes-section">
+    <!-- Notes + QR (left column) -->
+    <div class="notes-col">
       {% if inv.terms %}
-      <div class="notes-block">
-        <div class="notes-title">Notes</div>
+      <div class="notes-card">
+        <div class="card-title">Notes &amp; Terms</div>
         <p>{{ inv.terms }}</p>
       </div>
       {% endif %}
 
-      <!-- UPI QR Code -->
-      <div class="qr-block" style="margin-top:12px">
-        <div class="qr-title">Pay via UPI</div>
-        <div id="qr-canvas" class="qr-canvas"></div>
+      <div class="qr-card">
+        <div class="card-title">Pay via UPI</div>
+        <div id="qr-canvas"></div>
         <div class="qr-upi-id" id="upi-id-display">
-          {# Pull UPI ID from company doc custom field or fallback #}
           {{ company_doc.custom_upi_id if company_doc and company_doc.get("custom_upi_id") else "yourupi@bank" }}
         </div>
         <div class="qr-amount">
@@ -259,65 +428,65 @@
       </div>
     </div>
 
-    <!-- Totals (right side) -->
-    <div class="totals-block">
-      <table class="totals-table">
-        <tr class="subtotal-row">
-          <td class="t-label">Sub Total</td>
-          <td class="t-value">{{ frappe.format(inv.net_total, "Currency") }}</td>
-        </tr>
-        {% for tax in inv.taxes %}
-        <tr>
-          <td class="t-label">{{ tax.description }} ({{ tax.rate }}%)</td>
-          <td class="t-value">{{ frappe.format(tax.tax_amount, "Currency") }}</td>
-        </tr>
-        {% endfor %}
-        <tr class="grand-row">
-          <td class="t-label">Total</td>
-          <td class="t-value">{{ frappe.format(inv.grand_total, "Currency") }}</td>
-        </tr>
-        {% if inv.total_advance > 0 %}
-        <tr class="payment-row">
-          <td class="t-label">Payment Made</td>
-          <td class="t-value">(–) {{ frappe.format(inv.total_advance, "Currency") }}</td>
-        </tr>
+    <!-- Totals (right column) -->
+    <div class="totals-col">
+      <div class="totals-card">
+        <table class="totals-table">
+          <tr>
+            <td class="t-lbl">Sub Total</td>
+            <td class="t-val">{{ frappe.format(inv.net_total, "Currency") }}</td>
+          </tr>
+          {% for tax in inv.taxes %}
+          <tr>
+            <td class="t-lbl">{{ tax.description }} ({{ tax.rate }}%)</td>
+            <td class="t-val">{{ frappe.format(tax.tax_amount, "Currency") }}</td>
+          </tr>
+          {% endfor %}
+          <tr class="grand-row">
+            <td class="t-lbl">Total</td>
+            <td class="t-val">{{ frappe.format(inv.grand_total, "Currency") }}</td>
+          </tr>
+          {% if inv.total_advance > 0 %}
+          <tr class="payment-row">
+            <td class="t-lbl">Payment Made</td>
+            <td class="t-val">(–) {{ frappe.format(inv.total_advance, "Currency") }}</td>
+          </tr>
+          {% endif %}
+          {% if inv.outstanding_amount > 0 %}
+          <tr class="balance-row">
+            <td class="t-lbl" style="font-weight:600">Balance Due</td>
+            <td class="t-val">{{ frappe.format(inv.outstanding_amount, "Currency") }}</td>
+          </tr>
+          {% endif %}
+        </table>
+        {% if inv.in_words %}
+        <div class="total-words">{{ inv.in_words }}</div>
         {% endif %}
-        {% if inv.outstanding_amount > 0 %}
-        <tr class="balance-row">
-          <td class="t-label" style="font-weight:600">Balance Due</td>
-          <td class="t-value" style="font-weight:700">{{ frappe.format(inv.outstanding_amount, "Currency") }}</td>
-        </tr>
-        {% endif %}
-      </table>
-      <div class="total-words">
-        {{ inv.in_words or "" }}
       </div>
     </div>
+
   </div>
 
   <!-- ── FOOTER ── -->
-  <div class="footer-row">
+  <div class="footer-wrap">
     <div>
-      <div class="thank-msg">Thanks for your business.</div>
+      <div class="thank-text">Thank you for your business.</div>
+      <div class="thank-sub">We appreciate your prompt payment.</div>
     </div>
     <div class="sig-block">
       <div class="sig-line"></div>
-      <div class="sig-label">Authorized Signature</div>
+      <div class="sig-label">Authorized Signatory</div>
     </div>
   </div>
 
 </div>
 
-<!-- ── QR CODE GENERATION ── -->
 <script>
 (function() {
   try {
     var upiId = document.getElementById("upi-id-display").textContent.trim();
-    // Outstanding amount for UPI string
     var amountEl = document.querySelector(".qr-amount");
     var amountText = amountEl ? amountEl.textContent.replace(/[^0-9.]/g,"").trim() : "0";
-
-    // Build UPI payment string
     var companyName = {{ company | tojson }};
     var invName = {{ inv.name | tojson }};
     var upiString = "upi://pay?pa=" + encodeURIComponent(upiId)
@@ -325,20 +494,17 @@
       + "&am=" + encodeURIComponent(amountText)
       + "&cu=INR"
       + "&tn=" + encodeURIComponent("Payment for " + invName);
-
     var container = document.getElementById("qr-canvas");
     new QRCode(container, {
       text: upiString,
-      width: 110,
-      height: 110,
-      colorDark: "#1A1A2E",
-      colorLight: "#F8FAFC",
+      width: 100, height: 100,
+      colorDark: "#0D1117",
+      colorLight: "#F9FAFB",
       correctLevel: QRCode.CorrectLevel.M
     });
   } catch(e) {
-    // QRCode lib might not be available in print context; silently ignore
     var container = document.getElementById("qr-canvas");
-    if (container) container.innerHTML = '<div style="width:110px;height:110px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9AA0AB;border:1px dashed #ccc;border-radius:4px">QR unavailable</div>';
+    if (container) container.innerHTML = '<div style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9AA0AB;border:1px dashed #ccc;border-radius:4px">QR unavailable</div>';
   }
 })();
 </script>

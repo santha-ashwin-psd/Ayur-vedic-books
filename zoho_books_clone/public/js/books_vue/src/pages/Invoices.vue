@@ -733,12 +733,21 @@
               <span v-html="icon('download',13)"></span> <span class="ab-label">Download</span>
               <span class="inv-ab-caret">▾</span>
             </button>
-            <div v-if="showDownloadMenu" style="position:absolute;top:calc(100% + 4px);right:0;z-index:999;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:160px;padding:4px 0;">
+            <div v-if="showDownloadMenu" class="inv-dl-menu">
+              <div class="inv-dl-menu-header">Export Invoice</div>
               <button @click="downloadInvoicePdf('pdf')" class="inv-dl-menu-item">
-                <span v-html="icon('download',13)"></span> Download PDF
+                <span class="inv-dl-menu-icon" v-html="icon('download',14)"></span>
+                <span class="inv-dl-menu-text">
+                  <span class="inv-dl-menu-label">Download PDF</span>
+                  <span class="inv-dl-menu-sub">Save to your device</span>
+                </span>
               </button>
               <button @click="downloadInvoicePdf('print')" class="inv-dl-menu-item">
-                <span v-html="icon('printer',13)"></span> Open &amp; Print
+                <span class="inv-dl-menu-icon" v-html="icon('printer',14)"></span>
+                <span class="inv-dl-menu-text">
+                  <span class="inv-dl-menu-label">Open &amp; Print</span>
+                  <span class="inv-dl-menu-sub">Preview in new tab</span>
+                </span>
               </button>
             </div>
           </div>
@@ -908,7 +917,6 @@
                 </div>
               </div>
               <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No item details available.</div>
-              <!-- Cost Center badge -->
               <div v-if="viewInv.cost_center" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
                 <span style="color:#6b7280;font-weight:600">Cost Center:</span>
                 <span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:5px;padding:2px 10px;font-weight:600">{{ viewInv.cost_center }}</span>
@@ -1159,7 +1167,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
-import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { usePaymentDialog } from "../composables/usePaymentDialog.js";
@@ -1508,17 +1516,25 @@ async function downloadInvoicePdf(mode = 'pdf') {
   showDownloadMenu.value = false;
   if (!viewInv.value?.name) return;
   try {
-    const params = new URLSearchParams({
+    const csrfToken = await refreshCsrfToken();
+    const body = new URLSearchParams({
       doctype: 'Sales Invoice',
       name: viewInv.value.name,
-      format: 'Standard',
-      no_letterhead: 0,
-      letterhead: 'No Letterhead',
+      format: 'Tax Invoice',
+      no_letterhead: '1',
       settings: '{}',
       _lang: 'en',
     });
-    const url = `/api/method/frappe.utils.print_format.download_pdf?${params}`;
-    const res = await fetch(url, { credentials: 'include' });
+    if (csrfToken) body.append('csrf_token', csrfToken);
+    const res = await fetch('/api/method/frappe.utils.print_format.download_pdf', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Frappe-CSRF-Token': csrfToken || '',
+      },
+      body: body.toString(),
+    });
     if (!res.ok) throw new Error(`Server returned ${res.status}`);
     const blob = await res.blob();
     const objectUrl = URL.createObjectURL(blob);
@@ -1839,7 +1855,7 @@ async function saveInvoice(docstatus) {
   try {
     const company=await resolveCompany();
     const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0}));
-    const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>({doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate}));
+    const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>{const desc=(r.description||"").toUpperCase();const tax_type=desc.startsWith("CGST")?"CGST":desc.startsWith("SGST")?"SGST":desc.startsWith("IGST")?"IGST":desc.startsWith("CESS")?"Cess":"Other";return {doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate,tax_type};});
     const shipAddr=sameAsBillingAddr.value?form.billing_address:form.shipping_address||"";
 
     // If form.logo is still a data URL it means the background upload failed or
@@ -2565,8 +2581,74 @@ watch(() => route.query, (q) => {
 .inv-view-page .inv-tab-body { padding:16px; }
 
 /* ── Download dropdown menu ── */
-.inv-dl-menu-item { display:flex; align-items:center; gap:8px; width:100%; padding:8px 14px; font-size:13px; font-family:inherit; background:none; border:none; cursor:pointer; color:#111827; white-space:nowrap; text-align:left; }
-.inv-dl-menu-item:hover { background:#f3f4f6; }
+.inv-dl-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 999;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.13), 0 2px 6px rgba(0,0,0,.06);
+  min-width: 210px;
+  padding: 6px;
+  animation: dl-menu-in .12s ease;
+}
+@keyframes dl-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.inv-dl-menu-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding: 4px 10px 6px;
+}
+.inv-dl-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s;
+}
+.inv-dl-menu-item:hover { background: #f1f5f9; }
+.inv-dl-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: #eef3fd;
+  border-radius: 7px;
+  color: #1a6ef7;
+  flex-shrink: 0;
+}
+.inv-dl-menu-item:hover .inv-dl-menu-icon { background: #dce8fd; }
+.inv-dl-menu-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.inv-dl-menu-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+}
+.inv-dl-menu-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
 
 /* ── Mobile invoice cards ── */
 @media(max-width:475px) {

@@ -1954,10 +1954,46 @@
   <InvoiceModal :show="showSI" @close="showSI=false" @saved="name=>{showSI=false;onInvoiceSaved(name)}"/>
   <PurchaseModal :show="showPI" @close="showPI=false" @saved="load"/>
   <PaymentModal :show="showPay" @close="showPay=false" @saved="load"/>
-  <div class="b-quick-actions">
-    <button class="b-btn b-btn-primary" @click="showSI=true"><span v-html="icon('plus',14)"></span> New Invoice</button>
-    <button class="b-btn" style="border:1px solid #2F9E44;color:#2F9E44;background:#fff" @click="showPI=true"><span v-html="icon('plus',14)"></span> New Bill</button>
-    <button class="b-btn" style="border:1px solid #7C3AED;color:#7C3AED;background:#fff" @click="showPay=true"><span v-html="icon('plus',14)"></span> New Payment</button>
+  <div class="b-qa-section">
+    <div class="b-qa-title">Quick Actions</div>
+    <div class="b-quick-actions">
+      <button class="b-qa-card" @click="showSI=true">
+        <div class="b-qa-icon-wrap" style="background:#e0f7f4">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0bb8a8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <div class="b-qa-footer">
+          <span class="b-qa-label">New Invoice</span>
+          <svg class="b-qa-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </button>
+      <button class="b-qa-card" @click="showPay=true">
+        <div class="b-qa-icon-wrap" style="background:#e6f9ee">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1db954" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        </div>
+        <div class="b-qa-footer">
+          <span class="b-qa-label">Record Payment</span>
+          <svg class="b-qa-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </button>
+      <button class="b-qa-card" @click="$router.push('/customers')">
+        <div class="b-qa-icon-wrap" style="background:#f0eafe">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="b-qa-footer">
+          <span class="b-qa-label">Add Customer</span>
+          <svg class="b-qa-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </button>
+      <button class="b-qa-card" @click="showSI=true">
+        <div class="b-qa-icon-wrap" style="background:#fff8e6">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="b-qa-footer">
+          <span class="b-qa-label">Create Quote</span>
+          <svg class="b-qa-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </button>
+    </div>
   </div>
   <div class="b-kpi-grid">
     <div v-for="k in kpiDefs" :key="k.lbl" class="b-kpi">
@@ -3205,10 +3241,10 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           </tr></thead>
           <tbody>
             <tr v-for="p in invPayments" :key="p.name" style="border-top:1px solid #f3f4f6">
-              <td style="padding:6px 8px 6px 0;color:#2563eb;font-weight:600;font-family:monospace;font-size:11.5px">{{p.name}}</td>
+              <td style="padding:6px 8px 6px 0;color:#2563eb;font-weight:600;font-size:11.5px">{{p.name}}</td>
               <td style="padding:6px 8px;color:#374151">{{fmtDate(p.posting_date)}}</td>
               <td style="padding:6px 8px;color:#6b7280">{{p.payment_mode||'—'}}</td>
-              <td style="padding:6px 0 6px 8px;text-align:right;font-weight:700;color:#059669;font-family:monospace">{{fmt(p.allocated_amount)}}</td>
+              <td style="padding:6px 0 6px 8px;text-align:right;font-weight:700;color:#059669;">{{fmt(p.allocated_amount)}}</td>
             </tr>
           </tbody>
         </table>
@@ -3290,10 +3326,10 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                 </td>
                 <td v-if="tplSettings.showHSN" class="zb-pdf-td" style="font-size:11px;color:#6b7280">{{item.gst_hsn_code||'—'}}</td>
                 <td v-if="tplSettings.showUOM" class="zb-pdf-td" style="text-align:center;font-size:11px;color:#6b7280">{{item.uom||'pcs'}}</td>
-                <td class="zb-pdf-td" style="text-align:right;font-family:monospace">{{flt(item.qty).toFixed(2)}}</td>
-                <td class="zb-pdf-td" style="text-align:right;font-family:monospace">{{fmt(item.rate)}}</td>
-                <td v-if="tplSettings.showDiscount" class="zb-pdf-td" style="text-align:right;font-family:monospace">{{flt(item.discount_percentage||0).toFixed(1)}}%</td>
-                <td class="zb-pdf-td" style="text-align:right;font-family:monospace;font-weight:600">{{fmt(item.amount)}}</td>
+                <td class="zb-pdf-td" style="text-align:right;">{{flt(item.qty).toFixed(2)}}</td>
+                <td class="zb-pdf-td" style="text-align:right;">{{fmt(item.rate)}}</td>
+                <td v-if="tplSettings.showDiscount" class="zb-pdf-td" style="text-align:right;">{{flt(item.discount_percentage||0).toFixed(1)}}%</td>
+                <td class="zb-pdf-td" style="text-align:right;font-weight:600">{{fmt(item.amount)}}</td>
               </tr>
             </tbody>
           </table>
@@ -3374,7 +3410,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                 <td><input v-model="item.description" class="zb-cell-input" placeholder="Description"/></td>
                 <td><input v-model.number="item.qty" type="number" min="1" class="zb-cell-input zb-cell-num" @input="recalc"/></td>
                 <td><input v-model.number="item.rate" type="number" min="0" class="zb-cell-input zb-cell-num" @input="recalc"/></td>
-                <td style="text-align:right;font-family:monospace;font-weight:600;padding-right:6px;font-size:13px">{{fmt(item.amount)}}</td>
+                <td style="text-align:right;font-weight:600;padding-right:6px;font-size:13px">{{fmt(item.amount)}}</td>
                 <td><button @click="removeItem(i)" style="background:none;border:none;cursor:pointer;color:#e03131;padding:3px" v-html="icon('trash',12)"></button></td>
               </tr>
             </tbody>
@@ -3388,7 +3424,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                 <td><input v-model="tax.tax_type" class="zb-cell-input" placeholder="SGST"/></td>
                 <td><input v-model="tax.description" class="zb-cell-input" placeholder="SGST 9%"/></td>
                 <td><input v-model.number="tax.rate" type="number" class="zb-cell-input zb-cell-num" @input="recalc"/></td>
-                <td style="text-align:right;font-family:monospace;font-weight:600;padding-right:6px;font-size:13px">{{fmt(tax.tax_amount)}}</td>
+                <td style="text-align:right;font-weight:600;padding-right:6px;font-size:13px">{{fmt(tax.tax_amount)}}</td>
                 <td><button @click="removeTax(i)" style="background:none;border:none;cursor:pointer;color:#e03131;padding:3px" v-html="icon('trash',12)"></button></td>
               </tr>
             </tbody>
@@ -3993,7 +4029,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           <div style="display:flex;align-items:center;justify-content:space-between">
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{c.customer_name}}</div>
-              <div style="font-size:12px;color:#6B7280;margin-top:2px;font-family:monospace">₹0.00</div>
+              <div style="font-size:12px;color:#6B7280;margin-top:2px;">₹0.00</div>
             </div>
             <span class="b-badge" :class="c.disabled?'b-badge-red':'b-badge-green'" style="font-size:10px">{{c.disabled?'Disabled':'Active'}}</span>
           </div>
@@ -4134,8 +4170,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               <tbody>
                 <tr>
                   <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 0">INR- Indian Rupee</td>
-                  <td style="text-align:right;font-size:13px;font-weight:700;color:#2563EB;padding:10px 0;font-family:monospace">{{fmt(selectedCustomer.credit_limit||0)}}</td>
-                  <td style="text-align:right;font-size:13px;font-weight:700;color:#111827;padding:10px 0;font-family:monospace">₹0.00</td>
+                  <td style="text-align:right;font-size:13px;font-weight:700;color:#2563EB;padding:10px 0;">{{fmt(selectedCustomer.credit_limit||0)}}</td>
+                  <td style="text-align:right;font-size:13px;font-weight:700;color:#111827;padding:10px 0;">₹0.00</td>
                 </tr>
               </tbody>
             </table>
@@ -5189,7 +5225,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               </div>
               <div v-if="selectedVendor.tax_id" style="display:flex;justify-content:space-between;font-size:12.5px">
                 <span style="color:#6B7280">GSTIN / Tax ID</span>
-                <span style="font-weight:600;color:#111827;font-family:monospace">{{selectedVendor.tax_id}}</span>
+                <span style="font-weight:600;color:#111827;">{{selectedVendor.tax_id}}</span>
               </div>
             </div>
           </div>
@@ -5229,8 +5265,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               <tbody>
                 <tr>
                   <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px">INR</td>
-                  <td style="font-size:13px;font-weight:600;color:#E67700;text-align:right;padding:10px 12px;font-family:monospace">₹0.00</td>
-                  <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;font-family:monospace">₹0.00</td>
+                  <td style="font-size:13px;font-weight:600;color:#E67700;text-align:right;padding:10px 12px;">₹0.00</td>
+                  <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;">₹0.00</td>
                 </tr>
               </tbody>
             </table>
@@ -5789,13 +5825,13 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           </tr>
           <tr v-else v-for="q in filtered" :key="q.name" class="cust-row" @click="$router.push({name:'quote-detail',params:{name:q.name}})">
             <td>
-              <div style="color:#2563eb;font-family:monospace;font-size:12px;font-weight:700;cursor:pointer">{{q.name}}</div>
+              <div style="color:#2563eb;font-size:12px;font-weight:700;cursor:pointer">{{q.name}}</div>
               <div v-if="q.subject" style="font-size:11.5px;color:#9ca3af;margin-top:1px">{{q.subject}}</div>
             </td>
             <td class="cust-name">{{q.customer||'—'}}</td>
             <td class="cust-secondary">{{fmtDate(q.date)}}</td>
             <td :style="{color: isExpired(q)?'#dc2626':'#374151', fontWeight: isExpired(q)?'600':'400'}" class="cust-secondary">{{fmtDate(q.expiry)||'—'}}</td>
-            <td style="text-align:right;font-family:monospace;font-weight:600;color:#111827">{{fmt(q.grand_total)}}</td>
+            <td style="text-align:right;font-weight:600;color:#111827">{{fmt(q.grand_total)}}</td>
             <td><span class="b-badge" :class="displayStatus(q).cls">{{displayStatus(q).label}}</span></td>
             <td @click.stop style="text-align:center">
               <div style="display:flex;gap:4px;justify-content:center">
@@ -6061,9 +6097,9 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
         const rows = (q.items||[]).map((it,i) => `<tr>
           <td style="${tdStyle};text-align:center;color:#aaa;font-size:12px">${i+1}</td>
           <td style="${tdStyle}"><div style="font-weight:600;color:#1a1d23">${it.item_name||it.item_code||"Item"}</div>${it.description&&it.description!==it.item_name?`<div style="font-size:11px;color:#888;margin-top:1px">${it.description}</div>`:""}</td>
-          <td style="${tdStyle};text-align:right;font-family:monospace">${Number(it.qty||0).toFixed(2)}</td>
-          <td style="${tdStyle};text-align:right;font-family:monospace">${fmt2(it.rate)}</td>
-          <td style="${tdStyle};text-align:right;font-family:monospace;font-weight:600">${fmt2(it.amount)}</td>
+          <td style="${tdStyle};text-align:right;">${Number(it.qty||0).toFixed(2)}</td>
+          <td style="${tdStyle};text-align:right;">${fmt2(it.rate)}</td>
+          <td style="${tdStyle};text-align:right;font-weight:600">${fmt2(it.amount)}</td>
         </tr>`).join("");
         const taxRows = (q.taxes||[]).map(t => `<div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280;padding:3px 0;border-bottom:1px solid #f1f3f7"><span>${t.tax_type||t.description||"Tax"} (${Number(t.rate||0).toFixed(1)}%)</span><span>${fmt2(t.tax_amount)}</span></div>`).join("");
         const headerBg = isPro ? `background:${ac};padding:20px 28px;margin:-28px -28px 20px` : `padding-bottom:16px;border-bottom:2px solid #111827;margin-bottom:20px`;
@@ -6700,10 +6736,10 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                   </td>
                   <td v-if="tplSettings.showHSN" class="zb-pdf-td" style="font-size:11px;color:#6b7280">{{item.gst_hsn_code||'—'}}</td>
                   <td v-if="tplSettings.showUOM" class="zb-pdf-td" style="text-align:center;font-size:11px;color:#6b7280">{{item.uom||'pcs'}}</td>
-                  <td class="zb-pdf-td" style="text-align:right;font-family:monospace">{{flt(item.qty).toFixed(2)}}</td>
-                  <td class="zb-pdf-td" style="text-align:right;font-family:monospace">{{fmt(item.rate)}}</td>
-                  <td v-if="tplSettings.showDiscount" class="zb-pdf-td" style="text-align:right;font-family:monospace">{{flt(item.discount_percentage||0).toFixed(1)}}%</td>
-                  <td class="zb-pdf-td" style="text-align:right;font-family:monospace;font-weight:600">{{fmt(item.amount)}}</td>
+                  <td class="zb-pdf-td" style="text-align:right;">{{flt(item.qty).toFixed(2)}}</td>
+                  <td class="zb-pdf-td" style="text-align:right;">{{fmt(item.rate)}}</td>
+                  <td v-if="tplSettings.showDiscount" class="zb-pdf-td" style="text-align:right;">{{flt(item.discount_percentage||0).toFixed(1)}}%</td>
+                  <td class="zb-pdf-td" style="text-align:right;font-weight:600">{{fmt(item.amount)}}</td>
                 </tr>
               </tbody>
             </table>
@@ -6787,7 +6823,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                   <td><input v-model="item.description" class="zb-form-input" style="font-size:12px;padding:5px 8px" placeholder="Description"/></td>
                   <td style="text-align:center"><input v-model.number="item.qty" type="number" min="0.01" step="0.01" class="zb-form-input" style="width:70px;text-align:center;font-size:12px;padding:5px 8px" @input="recalc"/></td>
                   <td style="text-align:right"><input v-model.number="item.rate" type="number" min="0" step="0.01" class="zb-form-input" style="width:100px;text-align:right;font-size:12px;padding:5px 8px" @input="recalc"/></td>
-                  <td style="text-align:right;font-family:monospace;font-size:13px;padding-right:8px;font-weight:600">{{flt(item.amount).toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
+                  <td style="text-align:right;font-size:13px;padding-right:8px;font-weight:600">{{flt(item.amount).toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
                   <td><button v-if="form.items.length>1" @click="removeItem(i)" class="nim-del-btn" v-html="icon('trash',13)"></button></td>
                 </tr>
               </tbody>
@@ -6806,7 +6842,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                     <td><select v-model="tax.tax_type" class="zb-form-input" style="font-size:12px;padding:5px 8px" @change="tax.description=tax.tax_type;recalc()"><option>CGST</option><option>SGST</option><option>IGST</option><option>Cess</option><option>Other</option></select></td>
                     <td><input v-model="tax.description" class="zb-form-input" style="font-size:12px;padding:5px 8px"/></td>
                     <td style="text-align:center"><input v-model.number="tax.rate" type="number" min="0" max="100" step="0.01" class="zb-form-input" style="width:70px;text-align:center;font-size:12px;padding:5px 8px" @input="recalc"/></td>
-                    <td style="text-align:right;font-family:monospace;font-size:13px;padding-right:8px">{{flt(tax.tax_amount).toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
+                    <td style="text-align:right;font-size:13px;padding-right:8px">{{flt(tax.tax_amount).toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
                     <td><button @click="removeTax(i)" class="nim-del-btn" v-html="icon('trash',13)"></button></td>
                   </tr>
                 </tbody>
@@ -7260,13 +7296,13 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           </tr>
           <tr v-else v-for="o in filtered" :key="o.name" class="cust-row" @click="$router.push({name:'so-detail',params:{name:o.name}})">
             <td>
-              <div style="color:#2563eb;font-family:monospace;font-size:12px;font-weight:700">{{o.name}}</div>
+              <div style="color:#2563eb;font-size:12px;font-weight:700">{{o.name}}</div>
               <div v-if="o.ref_quote" style="font-size:11px;color:#9ca3af;margin-top:1px">from {{o.ref_quote}}</div>
             </td>
             <td class="cust-name">{{o.customer||'—'}}</td>
             <td class="cust-secondary">{{fmtDate(o.order_date)}}</td>
             <td class="cust-secondary">{{fmtDate(o.delivery_date)||'—'}}</td>
-            <td style="text-align:right;font-family:monospace;font-weight:600;color:#111827">{{fmt(o.grand_total)}}</td>
+            <td style="text-align:right;font-weight:600;color:#111827">{{fmt(o.grand_total)}}</td>
             <td>
               <div style="display:flex;align-items:center;gap:8px">
                 <div style="flex:1;background:#e4e8f0;border-radius:20px;height:6px;overflow:hidden;min-width:60px">
@@ -8113,10 +8149,10 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                   </td>
                   <td v-if="tplSettings.showHSN" class="zb-pdf-td" style="font-size:11px;color:#6b7280">{{item.gst_hsn_code||'—'}}</td>
                   <td v-if="tplSettings.showUOM" class="zb-pdf-td" style="text-align:center;font-size:11px;color:#6b7280">{{item.uom||'pcs'}}</td>
-                  <td class="zb-pdf-td" style="text-align:right;font-family:monospace">{{flt(item.qty).toFixed(2)}}</td>
-                  <td class="zb-pdf-td" style="text-align:right;font-family:monospace">{{fmt(item.rate)}}</td>
-                  <td v-if="tplSettings.showDiscount" class="zb-pdf-td" style="text-align:right;font-family:monospace">{{flt(item.discount_percentage||0).toFixed(1)}}%</td>
-                  <td class="zb-pdf-td" style="text-align:right;font-family:monospace;font-weight:600">{{fmt(item.amount)}}</td>
+                  <td class="zb-pdf-td" style="text-align:right;">{{flt(item.qty).toFixed(2)}}</td>
+                  <td class="zb-pdf-td" style="text-align:right;">{{fmt(item.rate)}}</td>
+                  <td v-if="tplSettings.showDiscount" class="zb-pdf-td" style="text-align:right;">{{flt(item.discount_percentage||0).toFixed(1)}}%</td>
+                  <td class="zb-pdf-td" style="text-align:right;font-weight:600">{{fmt(item.amount)}}</td>
                 </tr>
               </tbody>
             </table>
@@ -8192,7 +8228,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                   <td><input v-model="item.description" class="zb-form-input" style="font-size:12px;padding:5px 8px" placeholder="Description"/></td>
                   <td style="text-align:center"><input v-model.number="item.qty" type="number" min="0.01" step="0.01" class="zb-form-input" style="width:70px;text-align:center;font-size:12px;padding:5px 8px" @input="recalc"/></td>
                   <td style="text-align:right"><input v-model.number="item.rate" type="number" min="0" step="0.01" class="zb-form-input" style="width:100px;text-align:right;font-size:12px;padding:5px 8px" @input="recalc"/></td>
-                  <td style="text-align:right;font-family:monospace;font-size:13px;padding-right:8px;font-weight:600">{{flt(item.amount).toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
+                  <td style="text-align:right;font-size:13px;padding-right:8px;font-weight:600">{{flt(item.amount).toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
                   <td><button v-if="form.items.length>1" @click="removeItem(i)" class="nim-del-btn" v-html="icon('trash',13)"></button></td>
                 </tr>
               </tbody>
@@ -8210,7 +8246,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                     <td><select v-model="tax.tax_type" class="zb-form-input" style="font-size:12px;padding:5px 8px" @change="tax.description=tax.tax_type;recalc()"><option>CGST</option><option>SGST</option><option>IGST</option><option>Cess</option><option>Other</option></select></td>
                     <td><input v-model="tax.description" class="zb-form-input" style="font-size:12px;padding:5px 8px"/></td>
                     <td><input v-model.number="tax.rate" type="number" min="0" max="100" step="0.01" class="zb-form-input" style="width:70px;text-align:center;font-size:12px;padding:5px 8px" @input="recalc"/></td>
-                    <td style="text-align:right;font-family:monospace;font-size:13px;padding-right:8px">{{flt(tax.tax_amount).toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
+                    <td style="text-align:right;font-size:13px;padding-right:8px">{{flt(tax.tax_amount).toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
                     <td><button @click="removeTax(i)" class="nim-del-btn" v-html="icon('trash',13)"></button></td>
                   </tr>
                 </tbody>
@@ -8710,7 +8746,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               {{s.schedule_name||s.name}}
             </div>
             <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
-              <span style="font-size:12.5px;font-weight:700;color:#111827;font-family:monospace">{{fmt(s.grand_total)}}</span>
+              <span style="font-size:12.5px;font-weight:700;color:#111827;">{{fmt(s.grand_total)}}</span>
               <span style="font-size:11px;color:#9CA3AF">·</span>
               <span style="font-size:11px;color:#6B7280">{{FREQ_LABEL[s.frequency]||s.frequency}}</span>
             </div>
@@ -8848,7 +8884,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               </div>
               <div style="display:flex;justify-content:space-between">
                 <span style="font-size:12.5px;color:#6B7280">Schedule Ref</span>
-                <span style="font-size:12px;font-family:monospace;color:#2563EB;font-weight:700">{{selectedSched.name}}</span>
+                <span style="font-size:12px;color:#2563EB;font-weight:700">{{selectedSched.name}}</span>
               </div>
               <div style="display:flex;justify-content:space-between">
                 <span style="font-size:12.5px;color:#6B7280">Invoices Generated</span>
@@ -8875,7 +8911,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
             <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px">
               <div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:6px;letter-spacing:0.5px">INVOICE AMOUNT</div>
-              <div style="font-size:18px;font-weight:800;color:#111827;font-family:monospace">{{fmt(selectedSched.grand_total)}}</div>
+              <div style="font-size:18px;font-weight:800;color:#111827;">{{fmt(selectedSched.grand_total)}}</div>
               <div style="font-size:11px;color:#9CA3AF;margin-top:3px">per invoice</div>
             </div>
             <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px">
@@ -8914,8 +8950,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                   <tr v-for="(it,i) in selectedSched.items" :key="i" style="border-bottom:1px solid #F9FAFB">
                     <td style="font-size:12.5px;color:#374151;padding:8px 0">{{it.item_name||it.item_code||'—'}}</td>
                     <td style="font-size:12.5px;color:#6B7280;text-align:center;padding:8px 0">{{it.qty}}</td>
-                    <td style="font-size:12.5px;color:#6B7280;text-align:right;padding:8px 0;font-family:monospace">{{fmt(it.rate)}}</td>
-                    <td style="font-size:12.5px;font-weight:600;color:#111827;text-align:right;padding:8px 0;font-family:monospace">{{fmt(it.amount)}}</td>
+                    <td style="font-size:12.5px;color:#6B7280;text-align:right;padding:8px 0;">{{fmt(it.rate)}}</td>
+                    <td style="font-size:12.5px;font-weight:600;color:#111827;text-align:right;padding:8px 0;">{{fmt(it.amount)}}</td>
                   </tr>
                 </tbody>
               </table>
@@ -8926,10 +8962,10 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             <div v-if="selectedSched.grand_total" style="margin-top:12px;padding-top:12px;border-top:1px solid #F3F4F6;display:flex;justify-content:flex-end">
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
                 <div style="display:flex;gap:40px;font-size:12.5px;color:#6B7280">
-                  <span>Net Total</span><span style="font-family:monospace;font-weight:600;color:#111827">{{fmt(selectedSched.net_total)}}</span>
+                  <span>Net Total</span><span style="font-weight:600;color:#111827">{{fmt(selectedSched.net_total)}}</span>
                 </div>
                 <div style="display:flex;gap:40px;font-size:13.5px;font-weight:800;color:#111827;border-top:1px solid #E5E7EB;padding-top:6px;margin-top:2px">
-                  <span>Per Invoice Total</span><span style="font-family:monospace">{{fmt(selectedSched.grand_total)}}</span>
+                  <span>Per Invoice Total</span><span style="">{{fmt(selectedSched.grand_total)}}</span>
                 </div>
               </div>
             </div>
@@ -8956,9 +8992,9 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                 </thead>
                 <tbody>
                   <tr v-for="h in (selectedSched.history||[]).slice().reverse()" :key="h.inv_ref" style="border-bottom:1px solid #F9FAFB">
-                    <td style="font-size:12px;font-family:monospace;color:#2563EB;font-weight:700;padding:8px 0">{{h.inv_ref||'—'}}</td>
+                    <td style="font-size:12px;color:#2563EB;font-weight:700;padding:8px 0">{{h.inv_ref||'—'}}</td>
                     <td style="font-size:12px;color:#6B7280;padding:8px 0">{{fmtDate(h.date)}}</td>
-                    <td style="font-size:12.5px;font-weight:600;font-family:monospace;color:#111827;text-align:right;padding:8px 0">{{fmt(h.amount)}}</td>
+                    <td style="font-size:12.5px;font-weight:600;color:#111827;text-align:right;padding:8px 0">{{fmt(h.amount)}}</td>
                     <td style="text-align:right;padding:8px 0">
                       <button class="nim-btn" style="font-size:11px;padding:3px 8px;background:#F0FDF4;color:#059669;border:1px solid #A7F3D0">Record Payment</button>
                     </td>
@@ -8967,7 +9003,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               </table>
               <div style="margin-top:10px;padding-top:10px;border-top:1px solid #F3F4F6;display:flex;justify-content:space-between;font-size:12.5px;color:#6B7280">
                 <span>{{(selectedSched.history||[]).length}} invoice(s) generated</span>
-                <span style="font-weight:700;font-family:monospace;color:#111827">{{fmt((selectedSched.history||[]).reduce((s,h)=>s+flt(h.amount),0))}}</span>
+                <span style="font-weight:700;color:#111827">{{fmt((selectedSched.history||[]).reduce((s,h)=>s+flt(h.amount),0))}}</span>
               </div>
             </div>
             <div v-else style="text-align:center;padding:28px;color:#9CA3AF">
@@ -9226,14 +9262,14 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               <tbody>
                 <tr v-for="h in (histTarget.history||[]).slice().reverse()" :key="h.inv_ref" class="nim-tr">
                   <td class="cust-secondary">{{fmtDate(h.date)}}</td>
-                  <td style="font-family:monospace;color:#2563eb;font-size:12px;font-weight:700">{{h.inv_ref||'—'}}</td>
+                  <td style="color:#2563eb;font-size:12px;font-weight:700">{{h.inv_ref||'—'}}</td>
                   <td class="nim-amount" style="text-align:right">{{fmt(h.amount)}}</td>
                 </tr>
               </tbody>
             </table>
             <div style="padding:10px 14px;background:#f8f9fc;border-top:1px solid #e4e8f0;display:flex;justify-content:space-between;font-size:13px">
               <span style="color:#9ca3af">{{(histTarget.history||[]).length}} invoice(s) generated</span>
-              <span style="font-weight:700;font-family:monospace">{{fmt((histTarget.history||[]).reduce((s,h)=>s+flt(h.amount),0))}}</span>
+              <span style="font-weight:700;">{{fmt((histTarget.history||[]).reduce((s,h)=>s+flt(h.amount),0))}}</span>
             </div>
           </template>
           <div v-else style="text-align:center;padding:40px;color:#9ca3af;font-size:13px">No invoices generated yet</div>
@@ -9529,12 +9565,12 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             <button v-if="!search" class="nim-btn" style="margin-top:12px;background:#dc2626;color:#fff;height:37px;padding:0 14px;border-radius:8px;font-size:13.5px;font-weight:600;border:none;cursor:pointer" @click="openAdd"><span v-html="icon('plus',13)"></span> New Credit Note</button>
           </td></tr>
           <tr v-else v-for="n in filtered" :key="n.name" class="cust-row" @click="openView(n.name)">
-            <td><div style="color:#dc2626;font-family:monospace;font-size:12px;font-weight:700">{{n.name}}</div></td>
+            <td><div style="color:#dc2626;font-size:12px;font-weight:700">{{n.name}}</div></td>
             <td class="cust-name">{{n.customer||'—'}}</td>
-            <td style="font-family:monospace;font-size:12px;color:#2563eb">{{n.against_invoice||'—'}}</td>
+            <td style="font-size:12px;color:#2563eb">{{n.against_invoice||'—'}}</td>
             <td class="cust-secondary">{{fmtDate(n.date)}}</td>
             <td class="cust-secondary" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{n.reason||'—'}}</td>
-            <td style="text-align:right;font-family:monospace;font-weight:700;color:#dc2626">{{fmt(n.grand_total)}}</td>
+            <td style="text-align:right;font-weight:700;color:#dc2626">{{fmt(n.grand_total)}}</td>
             <td><span class="b-badge" :class="(STATUS_CFG[n.status]||STATUS_CFG.Draft).cls">{{n.status}}</span></td>
             <td @click.stop style="text-align:center"><div style="display:flex;gap:4px;justify-content:center">
               <button class="cust-act-btn cust-act-edit" @click="openEdit(n.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
@@ -9572,7 +9608,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               <div class="cust-sec-label" style="margin-top:0">Credit Note Details</div>
               <div class="nim-grid-2 nim-mb">
                 <div class="nim-field"><label class="nim-label">Customer</label><div style="font-size:13.5px;font-weight:600;color:#111827;padding:4px 0">{{viewNote.customer}}</div></div>
-                <div class="nim-field"><label class="nim-label">Against Invoice</label><div style="font-size:13.5px;color:#2563eb;font-family:monospace;font-weight:700;padding:4px 0">{{viewNote.against_invoice||'—'}}</div></div>
+                <div class="nim-field"><label class="nim-label">Against Invoice</label><div style="font-size:13.5px;color:#2563eb;font-weight:700;padding:4px 0">{{viewNote.against_invoice||'—'}}</div></div>
                 <div class="nim-field"><label class="nim-label">Date</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{fmtDate(viewNote.date)}}</div></div>
                 <div class="nim-field"><label class="nim-label">Reason</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{viewNote.reason||'—'}}</div></div>
               </div>
@@ -9642,7 +9678,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                       style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center"
                       onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='#fff'">
                       <div>
-                        <div style="font-weight:600;font-size:13px;color:#2563eb;font-family:monospace">{{inv.name}}</div>
+                        <div style="font-weight:600;font-size:13px;color:#2563eb;">{{inv.name}}</div>
                         <div style="font-size:11px;color:#6b7280;margin-top:1px">{{inv.customer}} · {{fmtDate(inv.posting_date)}}</div>
                       </div>
                       <div style="text-align:right;flex-shrink:0;margin-left:12px">
@@ -9922,13 +9958,13 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:12px" @click="openAdd"><span v-html="icon('plus',13)"></span> Record Payment</button>
           </td></tr>
           <tr v-else v-for="p in filtered" :key="p.name" class="cust-row" @click="openReceipt(p.name)">
-            <td><div style="color:#2563eb;font-family:monospace;font-size:12px;font-weight:700">{{p.name}}</div></td>
+            <td><div style="color:#2563eb;font-size:12px;font-weight:700">{{p.name}}</div></td>
             <td class="cust-name">{{p.customer||'—'}}</td>
             <td class="cust-secondary">{{fmtDate(p.date)}}</td>
             <td>
               <span class="b-badge" :style="{background:MODE_CSS[p.mode]?.split('|')[0]||'#f3f4f6',color:MODE_CSS[p.mode]?.split('|')[1]||'#374151'}">{{p.mode||'Other'}}</span>
             </td>
-            <td style="text-align:right;font-family:monospace;font-weight:700;font-size:14px;color:#059669">{{fmt(p.amount)}}</td>
+            <td style="text-align:right;font-weight:700;font-size:14px;color:#059669">{{fmt(p.amount)}}</td>
             <td class="cust-mono" style="font-size:12px">{{p.ref||'—'}}</td>
             <td class="cust-secondary" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{p.remarks||'—'}}</td>
             <td @click.stop style="text-align:center"><div style="display:flex;gap:4px;justify-content:center">
@@ -10008,7 +10044,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           <div class="nim-grid-2" style="gap:10px">
             <div class="nim-field"><label class="nim-label">Date</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{fmtDate(receiptData.date)}}</div></div>
             <div class="nim-field"><label class="nim-label">Mode</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{receiptData.mode}}</div></div>
-            <div v-if="receiptData.ref" class="nim-field"><label class="nim-label">Reference No.</label><div style="font-size:13px;font-family:monospace;color:#2563eb;padding:4px 0">{{receiptData.ref}}</div></div>
+            <div v-if="receiptData.ref" class="nim-field"><label class="nim-label">Reference No.</label><div style="font-size:13px;color:#2563eb;padding:4px 0">{{receiptData.ref}}</div></div>
             <div v-if="receiptData.remarks" class="nim-field" style="grid-column:span 2"><label class="nim-label">Remarks</label><div style="font-size:13px;color:#6b7280;padding:4px 0">{{receiptData.remarks}}</div></div>
           </div>
         </div>
@@ -10233,14 +10269,14 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           </td></tr>
           <tr v-else v-for="b in filtered" :key="b.name" class="cust-row" @click="openView(b.name)">
             <td>
-              <div style="color:#2563eb;font-family:monospace;font-size:12px;font-weight:700">{{b.ewb_no||b.name}}</div>
+              <div style="color:#2563eb;font-size:12px;font-weight:700">{{b.ewb_no||b.name}}</div>
               <div style="font-size:11px;color:#9ca3af">{{fmtDate(b.generated_date)}}</div>
             </td>
-            <td style="font-family:monospace;font-size:12px;color:#374151;font-weight:600">{{b.invoice_no||'—'}}</td>
+            <td style="font-size:12px;color:#374151;font-weight:600">{{b.invoice_no||'—'}}</td>
             <td class="cust-mono" style="font-size:11.5px">{{b.from_gstin||'—'}}</td>
             <td class="cust-mono" style="font-size:11.5px">{{b.to_gstin||'—'}}</td>
             <td class="cust-secondary">{{b.vehicle_no||'—'}}</td>
-            <td style="text-align:right;font-family:monospace;font-weight:600;color:#111827">{{fmt(b.taxable_value)}}</td>
+            <td style="text-align:right;font-weight:600;color:#111827">{{fmt(b.taxable_value)}}</td>
             <td>
               <template v-if="effectiveStatus(b)==='Active' && daysLeft(b)!==null">
                 <span :class="['ri-next-chip', daysLeft(b)<=0?'ri-today':daysLeft(b)<=2?'ri-soon':'ri-ok']">
@@ -10279,8 +10315,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             <!-- View mode -->
             <div v-if="drawerMode==='view' && viewBill" class="cust-drawer-body">
               <div class="nim-grid-3 nim-mb">
-                <div class="nim-field"><label class="nim-label">EWB Number</label><div style="font-size:14px;font-weight:700;color:#2563eb;font-family:monospace;padding:4px 0">{{viewBill.ewb_no||viewBill.name}}</div></div>
-                <div class="nim-field"><label class="nim-label">Invoice No.</label><div style="font-size:13.5px;font-weight:600;color:#374151;font-family:monospace;padding:4px 0">{{viewBill.invoice_no||'—'}}</div></div>
+                <div class="nim-field"><label class="nim-label">EWB Number</label><div style="font-size:14px;font-weight:700;color:#2563eb;padding:4px 0">{{viewBill.ewb_no||viewBill.name}}</div></div>
+                <div class="nim-field"><label class="nim-label">Invoice No.</label><div style="font-size:13.5px;font-weight:600;color:#374151;padding:4px 0">{{viewBill.invoice_no||'—'}}</div></div>
                 <div class="nim-field"><label class="nim-label">Invoice Date</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{fmtDate(viewBill.invoice_date)}}</div></div>
                 <div class="nim-field"><label class="nim-label">Document Type</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{viewBill.doc_type}}</div></div>
                 <div class="nim-field"><label class="nim-label">Generated On</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{fmtDate(viewBill.generated_date)}}</div></div>
@@ -10288,19 +10324,19 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               </div>
               <div class="cust-sec-label">Consignor (From)</div>
               <div class="nim-grid-2 nim-mb">
-                <div class="nim-field"><label class="nim-label">GSTIN</label><div style="font-size:13px;font-family:monospace;color:#374151;padding:4px 0">{{viewBill.from_gstin||'—'}}</div></div>
+                <div class="nim-field"><label class="nim-label">GSTIN</label><div style="font-size:13px;color:#374151;padding:4px 0">{{viewBill.from_gstin||'—'}}</div></div>
                 <div class="nim-field"><label class="nim-label">Name</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{viewBill.from_name||'—'}}</div></div>
                 <div v-if="viewBill.from_address" class="nim-field" style="grid-column:span 2"><label class="nim-label">Address</label><div style="font-size:13px;color:#6b7280;padding:4px 0">{{viewBill.from_address}}</div></div>
               </div>
               <div class="cust-sec-label">Consignee (To)</div>
               <div class="nim-grid-2 nim-mb">
-                <div class="nim-field"><label class="nim-label">GSTIN</label><div style="font-size:13px;font-family:monospace;color:#374151;padding:4px 0">{{viewBill.to_gstin||'—'}}</div></div>
+                <div class="nim-field"><label class="nim-label">GSTIN</label><div style="font-size:13px;color:#374151;padding:4px 0">{{viewBill.to_gstin||'—'}}</div></div>
                 <div class="nim-field"><label class="nim-label">Name</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{viewBill.to_name||'—'}}</div></div>
               </div>
               <div class="cust-sec-label">Transport</div>
               <div class="nim-grid-3 nim-mb">
                 <div class="nim-field"><label class="nim-label">Mode</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{viewBill.transport_mode}}</div></div>
-                <div class="nim-field"><label class="nim-label">Vehicle No.</label><div style="font-size:13.5px;font-family:monospace;font-weight:700;color:#374151;padding:4px 0">{{viewBill.vehicle_no||'—'}}</div></div>
+                <div class="nim-field"><label class="nim-label">Vehicle No.</label><div style="font-size:13.5px;font-weight:700;color:#374151;padding:4px 0">{{viewBill.vehicle_no||'—'}}</div></div>
                 <div class="nim-field"><label class="nim-label">Distance</label><div style="font-size:13.5px;color:#374151;padding:4px 0">{{viewBill.distance||0}} km</div></div>
               </div>
               <div class="cust-sec-label">Tax Details</div>
@@ -10777,7 +10813,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
       </div>
       <div class="b-card" style="padding:14px 16px">
         <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:0.6px;margin-bottom:4px">ORDER VALUE</div>
-        <div style="font-size:18px;font-weight:800;color:#111827;font-family:monospace">{{fmt(summary.value)}}</div>
+        <div style="font-size:18px;font-weight:800;color:#111827;">{{fmt(summary.value)}}</div>
       </div>
     </div>
     <div class="cust-toolbar">
@@ -10824,7 +10860,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               <td><div class="cust-name">{{o.vendor||'—'}}</div></td>
               <td class="cust-secondary">{{fmtDate(o.order_date)}}</td>
               <td class="cust-secondary">{{fmtDate(o.expected_date)||'—'}}</td>
-              <td style="text-align:right;font-family:monospace;font-weight:600">{{fmt(o.grand_total)}}</td>
+              <td style="text-align:right;font-weight:600">{{fmt(o.grand_total)}}</td>
               <td>
                 <div style="background:#E5E7EB;border-radius:4px;height:6px;width:80px">
                   <div :style="{width:receivedPct(o)+'%',height:'100%',background:'#2F9E44',borderRadius:'4px'}"></div>
@@ -10910,7 +10946,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             </div>
             <div style="margin-top:5px;display:flex;align-items:center;justify-content:space-between">
               <span class="b-badge" :class="(STATUS_CFG[o.status]||STATUS_CFG.Draft).cls" style="font-size:10px">{{o.status}}</span>
-              <span style="font-size:12.5px;font-weight:700;color:#111827;font-family:monospace">{{fmt(o.grand_total)}}</span>
+              <span style="font-size:12.5px;font-weight:700;color:#111827;">{{fmt(o.grand_total)}}</span>
             </div>
           </div>
         </div>
@@ -11039,7 +11075,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           </div>
           <div style="text-align:right">
             <div style="font-size:22px;font-weight:800;color:#E67700;letter-spacing:1px">PURCHASE ORDER</div>
-            <div style="font-size:14px;font-family:monospace;color:#374151;margin-top:4px"># {{selectedPO.name}}</div>
+            <div style="font-size:14px;color:#374151;margin-top:4px"># {{selectedPO.name}}</div>
           </div>
         </div>
 
@@ -11055,7 +11091,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           </div>
           <div>
             <div style="font-size:10.5px;font-weight:600;color:#9CA3AF;letter-spacing:0.5px;margin-bottom:3px">ORDER #</div>
-            <div style="font-size:13px;color:#374151;font-weight:600;font-family:monospace">{{selectedPO.name}}</div>
+            <div style="font-size:13px;color:#374151;font-weight:600;">{{selectedPO.name}}</div>
           </div>
         </div>
 
@@ -11093,8 +11129,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                 <div v-if="r.description" style="font-size:11.5px;color:#6B7280;margin-top:2px">{{r.description}}</div>
               </td>
               <td style="font-size:13px;color:#374151;text-align:center;padding:10px 12px">{{r.qty}}</td>
-              <td style="font-size:13px;color:#374151;text-align:right;padding:10px 12px;font-family:monospace">{{fmt(r.rate)}}</td>
-              <td style="font-size:13px;font-weight:600;color:#111827;text-align:right;padding:10px 12px;font-family:monospace">{{fmt(r.amount)}}</td>
+              <td style="font-size:13px;color:#374151;text-align:right;padding:10px 12px;">{{fmt(r.rate)}}</td>
+              <td style="font-size:13px;font-weight:600;color:#111827;text-align:right;padding:10px 12px;">{{fmt(r.amount)}}</td>
             </tr>
           </tbody>
         </table>
@@ -11103,13 +11139,13 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
         <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
           <div style="min-width:240px">
             <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#6B7280">
-              <span>Subtotal</span><span style="font-family:monospace;font-weight:600;color:#111827">{{fmt(selectedPO.net_total)}}</span>
+              <span>Subtotal</span><span style="font-weight:600;color:#111827">{{fmt(selectedPO.net_total)}}</span>
             </div>
             <div v-if="flt(selectedPO.total_tax)" style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#6B7280;border-bottom:1px solid #F3F4F6">
-              <span>Tax</span><span style="font-family:monospace;font-weight:600;color:#111827">{{fmt(selectedPO.total_tax)}}</span>
+              <span>Tax</span><span style="font-weight:600;color:#111827">{{fmt(selectedPO.total_tax)}}</span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:10px 0 0;font-size:15px;font-weight:700;color:#111827">
-              <span>Grand Total</span><span style="font-family:monospace;color:#E67700">{{fmt(selectedPO.grand_total)}}</span>
+              <span>Grand Total</span><span style="color:#E67700">{{fmt(selectedPO.grand_total)}}</span>
             </div>
           </div>
         </div>
@@ -11127,7 +11163,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">VENDOR</div><div style="font-size:13.5px;font-weight:600;color:#111827">{{selectedPO.vendor||'—'}}</div></div>
           <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">ORDER DATE</div><div style="font-size:13.5px;color:#111827">{{fmtDate(selectedPO.order_date)}}</div></div>
           <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">EXPECTED BY</div><div style="font-size:13.5px;color:#111827">{{fmtDate(selectedPO.expected_date)||'—'}}</div></div>
-          <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">GRAND TOTAL</div><div style="font-size:15px;font-weight:700;color:#E67700;font-family:monospace">{{fmt(selectedPO.grand_total)}}</div></div>
+          <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">GRAND TOTAL</div><div style="font-size:15px;font-weight:700;color:#E67700;">{{fmt(selectedPO.grand_total)}}</div></div>
         </div>
       </div>
     </div>
@@ -11711,8 +11747,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               <td><div class="cust-name">{{b.supplier||'—'}}</div></td>
               <td class="cust-secondary">{{fmtDate(b.posting_date)||'—'}}</td>
               <td class="cust-secondary" :style="{color:isOverdue(b)?'#C92A2A':'inherit',fontWeight:isOverdue(b)?'600':'400'}">{{fmtDate(b.due_date)||'—'}}</td>
-              <td style="text-align:right;font-family:monospace;font-weight:600">{{fmt(b.grand_total)}}</td>
-              <td style="text-align:right;font-family:monospace" :style="{color:flt(b.outstanding_amount)>0?'#E67700':'#2F9E44',fontWeight:600}">{{fmt(b.outstanding_amount)}}</td>
+              <td style="text-align:right;font-weight:600">{{fmt(b.grand_total)}}</td>
+              <td style="text-align:right;" :style="{color:flt(b.outstanding_amount)>0?'#E67700':'#2F9E44',fontWeight:600}">{{fmt(b.outstanding_amount)}}</td>
               <td><span class="b-badge" :class="statusClass(b)">{{statusLabel(b)}}</span></td>
               <td @click.stop style="text-align:center">
                 <div style="display:flex;gap:4px;justify-content:center">
@@ -11792,7 +11828,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             </div>
             <div style="margin-top:5px;display:flex;align-items:center;justify-content:space-between">
               <span class="b-badge" :class="statusClass(b)" style="font-size:10px">{{statusLabel(b)}}</span>
-              <span style="font-size:12.5px;font-weight:700;font-family:monospace" :style="{color:flt(b.outstanding_amount)>0?'#E67700':'#2F9E44'}">{{fmt(b.grand_total)}}</span>
+              <span style="font-size:12.5px;font-weight:700;" :style="{color:flt(b.outstanding_amount)>0?'#E67700':'#2F9E44'}">{{fmt(b.grand_total)}}</span>
             </div>
           </div>
         </div>
@@ -11923,9 +11959,9 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             </div>
             <div style="text-align:right">
               <div style="font-size:22px;font-weight:800;color:#E67700;letter-spacing:1px">BILL</div>
-              <div style="font-size:14px;font-family:monospace;color:#374151;margin-top:4px"># {{selectedBill.name}}</div>
+              <div style="font-size:14px;color:#374151;margin-top:4px"># {{selectedBill.name}}</div>
               <div v-if="flt(selectedBill.outstanding_amount)>0" style="font-size:12px;color:#9CA3AF;margin-top:2px">
-                Balance Due: <span style="font-weight:700;color:#E67700;font-family:monospace">{{fmt(selectedBill.outstanding_amount)}}</span>
+                Balance Due: <span style="font-weight:700;color:#E67700;">{{fmt(selectedBill.outstanding_amount)}}</span>
               </div>
             </div>
           </div>
@@ -11942,7 +11978,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             </div>
             <div v-if="selectedBill.bill_no">
               <div style="font-size:10.5px;font-weight:600;color:#9CA3AF;letter-spacing:0.5px;margin-bottom:3px">VENDOR BILL #</div>
-              <div style="font-size:13px;color:#374151;font-weight:600;font-family:monospace">{{selectedBill.bill_no}}</div>
+              <div style="font-size:13px;color:#374151;font-weight:600;">{{selectedBill.bill_no}}</div>
             </div>
           </div>
 
@@ -11957,11 +11993,11 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             <div style="min-width:240px">
               <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700;color:#111827;border-top:1px solid #F3F4F6">
                 <span>Grand Total</span>
-                <span style="font-family:monospace;color:#E67700">{{fmt(selectedBill.grand_total)}}</span>
+                <span style="color:#E67700">{{fmt(selectedBill.grand_total)}}</span>
               </div>
               <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:#6B7280">
                 <span>Outstanding</span>
-                <span style="font-family:monospace;font-weight:600" :style="{color:flt(selectedBill.outstanding_amount)>0?'#E67700':'#2F9E44'}">{{fmt(selectedBill.outstanding_amount)}}</span>
+                <span style="font-weight:600" :style="{color:flt(selectedBill.outstanding_amount)>0?'#E67700':'#2F9E44'}">{{fmt(selectedBill.outstanding_amount)}}</span>
               </div>
             </div>
           </div>
@@ -11975,8 +12011,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">STATUS</div><span class="b-badge" :class="statusClass(selectedBill)">{{statusLabel(selectedBill)}}</span></div>
           <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">BILL DATE</div><div style="font-size:13.5px;color:#111827">{{fmtDate(selectedBill.posting_date)||'—'}}</div></div>
           <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">DUE DATE</div><div style="font-size:13.5px;" :style="{color:isOverdue(selectedBill)?'#C92A2A':'#111827',fontWeight:isOverdue(selectedBill)?'600':'400'}">{{fmtDate(selectedBill.due_date)||'—'}}</div></div>
-          <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">GRAND TOTAL</div><div style="font-size:15px;font-weight:700;color:#111827;font-family:monospace">{{fmt(selectedBill.grand_total)}}</div></div>
-          <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">OUTSTANDING</div><div style="font-size:15px;font-weight:700;font-family:monospace" :style="{color:flt(selectedBill.outstanding_amount)>0?'#E67700':'#2F9E44'}">{{fmt(selectedBill.outstanding_amount)}}</div></div>
+          <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">GRAND TOTAL</div><div style="font-size:15px;font-weight:700;color:#111827;">{{fmt(selectedBill.grand_total)}}</div></div>
+          <div><div style="font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:4px">OUTSTANDING</div><div style="font-size:15px;font-weight:700;" :style="{color:flt(selectedBill.outstanding_amount)>0?'#E67700':'#2F9E44'}">{{fmt(selectedBill.outstanding_amount)}}</div></div>
         </div>
       </div>
     </div>
@@ -14850,8 +14886,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             <td style="padding:9px 14px">
               <span class="b-badge" :style="'background:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).bg+';color:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).color">{{row.root_type}}</span>
             </td>
-            <td style="padding:9px 14px;font-family:monospace;font-size:12px;color:#868e96">{{row.code||'—'}}</td>
-            <td class="ta-r" style="padding:9px 14px;font-family:monospace;font-weight:600" :class="row.opening>0?(row.bal_type==='Debit'?'coa-dr':'coa-cr'):'c-muted'">{{fmtINR(row.opening)}}</td>
+            <td style="padding:9px 14px;font-size:12px;color:#868e96">{{row.code||'—'}}</td>
+            <td class="ta-r" style="padding:9px 14px;font-weight:600" :class="row.opening>0?(row.bal_type==='Debit'?'coa-dr':'coa-cr'):'c-muted'">{{fmtINR(row.opening)}}</td>
             <td class="ta-r" style="padding:9px 14px;font-size:12px;color:#868e96">{{row.opening?row.bal_type:'—'}}</td>
             <td style="text-align:center;padding:8px 14px">
               <div style="display:flex;gap:4px;justify-content:center">
@@ -14940,7 +14976,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
           <div class="coa-fg coa-fg2">
             <div>
               <label class="coa-lbl">Opening Balance (₹)</label>
-              <input v-model="form.opening" type="number" min="0" step="0.01" class="coa-fi" placeholder="0.00" style="font-family:monospace"/>
+              <input v-model="form.opening" type="number" min="0" step="0.01" class="coa-fi" placeholder="0.00" style=""/>
             </div>
             <div>
               <label class="coa-lbl">Balance Type</label>
@@ -15317,12 +15353,12 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
         </template>
         <template v-else>
           <tr v-for="e in filteredRows" :key="e.name" class="clickable" @click="openView(e.name)">
-            <td style="font-family:monospace;font-size:12px;font-weight:700;color:#2563eb">{{e.name}}</td>
+            <td style="font-size:12px;font-weight:700;color:#2563eb">{{e.name}}</td>
             <td style="font-size:12.5px;color:#868e96">{{fmtDate(e.date)}}</td>
             <td><span class="b-badge" :class="JE_TYPE_COLOR[e.type]||'je-type-info'">{{e.type||'Journal Entry'}}</span></td>
             <td style="font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{e.narration||'—'}}</td>
-            <td class="ta-r" style="font-family:monospace;font-weight:600;color:#c92a2a">{{fmtINR(e.total_debit)}}</td>
-            <td class="ta-r" style="font-family:monospace;font-weight:600;color:#2f9e44">{{fmtINR(e.total_credit)}}</td>
+            <td class="ta-r" style="font-weight:600;color:#c92a2a">{{fmtINR(e.total_debit)}}</td>
+            <td class="ta-r" style="font-weight:600;color:#2f9e44">{{fmtINR(e.total_credit)}}</td>
             <td style="font-size:12px;color:#868e96">{{(e.lines||[]).length||'—'}}</td>
             <td><span class="b-badge" :class="JE_STATUS_COLOR[e.status]||'je-s-draft'">{{e.status}}</span></td>
             <td style="text-align:center">
@@ -15415,7 +15451,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               <span v-html="icon(balanced&&(totalDr>0)?'check':'info',14)"></span>
               <span>{{!lines.length||(totalDr===0&&totalCr===0)?'Add debit and credit lines':balanced?'Balanced — ready to post':'Difference: ₹'+Math.abs(totalDr-totalCr).toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
             </div>
-            <div style="font-family:monospace;font-weight:700">
+            <div style="font-weight:700">
               <span v-if="totalDr>0||totalCr>0">Dr: ₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}} / Cr: ₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
             </div>
           </div>
@@ -15458,8 +15494,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                 </tr>
                 <tr class="jen-total-row">
                   <td colspan="3" style="padding:8px 10px;font-size:12px;font-weight:700;color:#868e96;text-transform:uppercase;letter-spacing:.04em">Totals</td>
-                  <td style="text-align:right;padding:8px 10px;font-family:monospace;font-weight:700;color:#c92a2a">₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
-                  <td style="text-align:right;padding:8px 10px;font-family:monospace;font-weight:700;color:#2f9e44">₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
+                  <td style="text-align:right;padding:8px 10px;font-weight:700;color:#c92a2a">₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
+                  <td style="text-align:right;padding:8px 10px;font-weight:700;color:#2f9e44">₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
                   <td colspan="2"></td>
                 </tr>
               </tbody>
@@ -15519,8 +15555,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             </div>
           </div>
           <div style="display:flex;gap:24px;margin-bottom:20px;font-size:13px">
-            <div><span style="color:#868e96">Total Debit:</span> <strong style="color:#c92a2a;font-family:monospace">{{fmtINR(viewEntry.total_debit)}}</strong></div>
-            <div><span style="color:#868e96">Total Credit:</span> <strong style="color:#2f9e44;font-family:monospace">{{fmtINR(viewEntry.total_credit)}}</strong></div>
+            <div><span style="color:#868e96">Total Debit:</span> <strong style="color:#c92a2a;">{{fmtINR(viewEntry.total_debit)}}</strong></div>
+            <div><span style="color:#868e96">Total Credit:</span> <strong style="color:#2f9e44;">{{fmtINR(viewEntry.total_credit)}}</strong></div>
           </div>
           <div v-if="(viewEntry.lines||[]).length" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
             <div style="display:grid;grid-template-columns:1fr 120px 120px;gap:8px;padding:8px 14px;background:#f8f9fc;border-bottom:1px solid #e2e8f0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#868e96">
@@ -15529,8 +15565,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             <div v-for="(l,i) in viewEntry.lines" :key="i"
               style="display:grid;grid-template-columns:1fr 120px 120px;gap:8px;padding:9px 14px;border-bottom:1px solid #f1f3f5;font-size:13px">
               <div>{{l.account}}<span v-if="l.party" style="color:#868e96;font-size:11px;margin-left:6px">{{l.party}}</span></div>
-              <div style="text-align:right;font-family:monospace;color:#c92a2a">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
-              <div style="text-align:right;font-family:monospace;color:#2f9e44">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
+              <div style="text-align:right;color:#c92a2a">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
+              <div style="text-align:right;color:#2f9e44">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
             </div>
           </div>
           <div v-else style="color:#868e96;font-size:13px;margin-top:16px">No line detail available for this entry.</div>
@@ -17970,7 +18006,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
       </div>
       <div class="b-card" style="padding:14px 16px">
         <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:0.6px;margin-bottom:4px">THIS MONTH</div>
-        <div style="font-size:18px;font-weight:800;color:#DC2626;font-family:monospace">{{fmt(summary.monthVal)}}</div>
+        <div style="font-size:18px;font-weight:800;color:#DC2626;">{{fmt(summary.monthVal)}}</div>
       </div>
     </div>
     <div class="cust-toolbar">
@@ -18017,8 +18053,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               <td class="cust-secondary">{{fmtDate(e.posting_date)}}</td>
               <td><span style="font-size:11px;padding:2px 7px;border-radius:10px;background:#F3F4F6;font-weight:600;color:#374151">{{e.expense_type}}</span></td>
               <td class="cust-secondary" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{e.description||'—'}}</td>
-              <td style="text-align:right;font-family:monospace;font-weight:600;color:#E67700">{{fmt(e.amount)}}</td>
-              <td style="text-align:right;font-family:monospace;font-weight:600;color:#DC2626">{{fmt(e.total_amount||e.amount)}}</td>
+              <td style="text-align:right;font-weight:600;color:#E67700">{{fmt(e.amount)}}</td>
+              <td style="text-align:right;font-weight:600;color:#DC2626">{{fmt(e.total_amount||e.amount)}}</td>
               <td class="cust-secondary">{{e.paid_through||'—'}}</td>
               <td><span class="b-badge" :class="STATUS_CFG[e.status]?.cls||'b-badge-muted'">{{e.status}}</span></td>
               <td @click.stop style="text-align:center">
@@ -18089,7 +18125,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:13px;font-weight:700;font-family:monospace;color:#E67700">{{fmt(e.total_amount||e.amount)}}</div>
+            <div style="font-size:13px;font-weight:700;color:#E67700">{{fmt(e.total_amount||e.amount)}}</div>
             <span class="b-badge" :class="STATUS_CFG[e.status]?.cls||'b-badge-muted'" style="font-size:10px;margin-top:3px">{{e.status}}</span>
           </div>
         </div>
@@ -18168,7 +18204,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               </div>
               <div v-if="selectedExp.reference_no" style="display:flex;justify-content:space-between;font-size:13px">
                 <span style="color:#6B7280">Reference No.</span>
-                <span style="font-weight:600;color:#111827;font-family:monospace">{{selectedExp.reference_no}}</span>
+                <span style="font-weight:600;color:#111827;">{{selectedExp.reference_no}}</span>
               </div>
               <div v-if="selectedExp.cost_center" style="display:flex;justify-content:space-between;font-size:13px">
                 <span style="color:#6B7280">Cost Center</span>
@@ -18176,7 +18212,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
               </div>
               <div v-if="selectedExp.gst_rate" style="display:flex;justify-content:space-between;font-size:13px">
                 <span style="color:#6B7280">GST ({{selectedExp.gst_rate}}%)</span>
-                <span style="font-weight:600;color:#111827;font-family:monospace">{{fmt(selectedExp.tax_amount)}}</span>
+                <span style="font-weight:600;color:#111827;">{{fmt(selectedExp.tax_amount)}}</span>
               </div>
               <div v-if="selectedExp.description" style="border-top:1px solid #F3F4F6;padding-top:12px">
                 <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:0.8px;margin-bottom:4px">DESCRIPTION</div>
@@ -18210,20 +18246,20 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
                 <tbody>
                   <tr v-if="selectedExp.paid_through" style="border-bottom:1px solid #F9FAFB">
                     <td style="font-size:12.5px;color:#374151;padding:8px 0">{{selectedExp.paid_through}}</td>
-                    <td style="text-align:right;font-size:12.5px;color:#374151;padding:8px 0;font-family:monospace">0.00</td>
-                    <td style="text-align:right;font-size:12.5px;font-weight:600;color:#374151;padding:8px 0;font-family:monospace">{{flt(selectedExp.total_amount||selectedExp.amount).toFixed(2)}}</td>
+                    <td style="text-align:right;font-size:12.5px;color:#374151;padding:8px 0;">0.00</td>
+                    <td style="text-align:right;font-size:12.5px;font-weight:600;color:#374151;padding:8px 0;">{{flt(selectedExp.total_amount||selectedExp.amount).toFixed(2)}}</td>
                   </tr>
                   <tr v-if="selectedExp.expense_account" style="border-bottom:1px solid #F9FAFB">
                     <td style="font-size:12.5px;color:#374151;padding:8px 0">{{selectedExp.expense_account}}</td>
-                    <td style="text-align:right;font-size:12.5px;font-weight:600;color:#374151;padding:8px 0;font-family:monospace">{{flt(selectedExp.total_amount||selectedExp.amount).toFixed(2)}}</td>
-                    <td style="text-align:right;font-size:12.5px;color:#374151;padding:8px 0;font-family:monospace">0.00</td>
+                    <td style="text-align:right;font-size:12.5px;font-weight:600;color:#374151;padding:8px 0;">{{flt(selectedExp.total_amount||selectedExp.amount).toFixed(2)}}</td>
+                    <td style="text-align:right;font-size:12.5px;color:#374151;padding:8px 0;">0.00</td>
                   </tr>
                 </tbody>
                 <tfoot>
                   <tr style="border-top:1px solid #E5E7EB">
                     <td style="font-size:12.5px;font-weight:700;padding:8px 0"></td>
-                    <td style="text-align:right;font-size:12.5px;font-weight:700;padding:8px 0;font-family:monospace">{{flt(selectedExp.total_amount||selectedExp.amount).toFixed(2)}}</td>
-                    <td style="text-align:right;font-size:12.5px;font-weight:700;padding:8px 0;font-family:monospace">{{flt(selectedExp.total_amount||selectedExp.amount).toFixed(2)}}</td>
+                    <td style="text-align:right;font-size:12.5px;font-weight:700;padding:8px 0;">{{flt(selectedExp.total_amount||selectedExp.amount).toFixed(2)}}</td>
+                    <td style="text-align:right;font-size:12.5px;font-weight:700;padding:8px 0;">{{flt(selectedExp.total_amount||selectedExp.amount).toFixed(2)}}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -23999,7 +24035,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
 .ri-schedule-preview{background:#f8f9fc;border:1.5px solid #e4e8f0;border-radius:9px;padding:13px 16px}
 .ri-preview-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .ri-preview-dates{display:flex;gap:7px;flex-wrap:wrap}
-.ri-sdate{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;background:#fff;border:1.5px solid #e4e8f0;font-family:monospace;color:#374151}
+.ri-sdate{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;background:#fff;border:1.5px solid #e4e8f0;color:#374151}
 .ri-sdate-past{opacity:.4;text-decoration:line-through}
 .ri-sdate-next{background:#eff6ff;border-color:#2563eb;color:#2563eb;font-weight:700}
 
@@ -24020,7 +24056,7 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
 .qt-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;flex-shrink:0}
 .qt-sum-card{background:#fff;border:1px solid #e4e8f0;border-radius:10px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .qt-sum-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:4px}
-.qt-sum-value{font-size:22px;font-weight:700;color:#111827;letter-spacing:-.02em;font-family:monospace}
+.qt-sum-value{font-size:22px;font-weight:700;color:#111827;letter-spacing:-.02em;}
 /* Customer typeahead */
 .qt-cust-drop{position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:9999;background:#fff;border:1.5px solid #e4e8f0;border-radius:8px;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.1)}
 .qt-drop-item{padding:9px 14px;cursor:pointer;border-bottom:1px solid #f1f3f7;transition:background .1s}
@@ -24046,8 +24082,8 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
 .cust-row:hover td{background:#f8faff}
 .cust-row-disabled{opacity:.5}
 .cust-name{font-weight:600;color:#111827;font-size:13px}
-.cust-id{font-size:11px;color:#9ca3af;margin-top:1px;font-family:monospace}
-.cust-mono{font-family:monospace;font-size:12px;color:#374151}
+.cust-id{font-size:11px;color:#9ca3af;margin-top:1px;}
+.cust-mono{font-size:12px;color:#374151}
 .cust-secondary{font-size:12.5px;color:#374151}
 .cust-empty{text-align:center;padding:48px 20px}
 .cust-empty-icon{margin-bottom:12px;display:flex;justify-content:center}
@@ -24191,7 +24227,7 @@ select.nim-cell:focus{border-color:#2563eb;background-color:#eff6ff;box-shadow:0
 .nim-num{text-align:right;width:80px;}
 .nim-amount{
   font-size:13px;font-weight:600;color:#111827;
-  padding-right:12px !important;font-family:monospace;
+  padding-right:12px !important;
 }
 .nim-del-btn{
   background:none;border:none;cursor:pointer;
@@ -24225,7 +24261,7 @@ select.nim-cell:focus{border-color:#2563eb;background-color:#eff6ff;box-shadow:0
   font-size:13px;
 }
 .nim-total-label{color:#6b7280;}
-.nim-total-val{font-family:monospace;font-weight:600;color:#111827;}
+.nim-total-val{font-weight:600;color:#111827;}
 .nim-tax-row{font-size:12px;}
 .nim-tax-row .nim-total-label{color:#9ca3af;}
 .nim-total-grand{
@@ -24266,12 +24302,12 @@ select.nim-cell:focus{border-color:#2563eb;background-color:#eff6ff;box-shadow:0
 .dn-sum-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .dn-sum-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px}
 .dn-sum-lbl{font-size:11px;color:#868e96;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.dn-sum-val{font-size:20px;font-weight:700;font-family:monospace}
+.dn-sum-val{font-size:20px;font-weight:700;}
 .dn-pill{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:600;border:1px solid #e2e8f0;background:#fff;color:#868e96;cursor:pointer;transition:all .15s}
 .dn-pill:hover{border-color:#2563eb;color:#2563eb}.dn-pill.active{background:rgba(37,99,235,0.1);border-color:#2563eb;color:#2563eb}
 .dn-pc{font-size:11px;font-weight:500;padding:1px 6px;border-radius:10px;margin-left:2px}
 .dn-tbl{width:100%;border-collapse:collapse;font-size:13px}
-.dn-tbl th{text-align:left;padding:10px 14px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#868e96;font-weight:600;white-space:nowrap;background:#f8f9fc}
+.dn-tbl th{text-align:left;padding:10px 14px;border-bottom:1px solid #e2e8f0;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#868e96;font-weight:600;white-space:nowrap;background:#f8f9fc}
 .dn-tbl td{padding:11px 14px;border-bottom:1px solid #f1f3f5;vertical-align:middle}
 .dn-dh{background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .dn-dh-title{color:#fff;font-size:16px;font-weight:700}
@@ -24491,7 +24527,7 @@ body:has(.fy-drawer-open) .ai-panel {
 .ai-list-item:hover{background:#f8f9fc;}
 .ai-list-name{font-size:12.5px;font-weight:600;color:#111827;}
 .ai-list-inv{font-size:11px;color:#9ca3af;margin-top:1px;}
-.ai-list-amt{font-size:12.5px;font-weight:700;font-family:monospace;}
+.ai-list-amt{font-size:12.5px;font-weight:700;}
 .ai-list-more{padding:7px 12px;font-size:11.5px;color:#9ca3af;text-align:center;border-top:1px solid #f1f3f7;}
 
 .ai-action-btns{display:flex;gap:7px;flex-wrap:wrap;}
@@ -24577,7 +24613,7 @@ body:has(.fy-drawer-open) .ai-panel {
 .zb-split-item-shimmer{padding:11px 12px;border-bottom:1px solid #f4f5f7}
 .zb-split-item-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
 .zb-split-item-name{font-size:13px;font-weight:700;color:#111827}
-.zb-split-item-amt{font-size:13px;font-weight:700;font-family:monospace;color:#111827}
+.zb-split-item-amt{font-size:13px;font-weight:700;color:#111827}
 .zb-split-item-mid{display:flex;align-items:center;gap:5px;margin-bottom:4px}
 .zb-split-item-num{font-size:11px;color:#2563eb;font-weight:600}
 .zb-split-item-dot{color:#d1d5db;font-size:10px}
@@ -24643,97 +24679,6 @@ body:has(.fy-drawer-open) .ai-panel {
 .tpl-professional .zb-pdf-co-meta{color:rgba(255,255,255,.8)!important}
 .tpl-minimal .zb-pdf-head{border-bottom:1px solid #e4e8f0}
 .tpl-minimal .zb-pdf-inv-title{font-size:17px;font-weight:600;color:#6b7280}
-.tpl-minimal .zb-pdf-th{background:#fff;border-bottom:1px solid #374151}
-@media print{.no-print{display:none!important}}
-/* Right panel */
-.zb-right-panel{width:220px;flex-shrink:0;border-left:1px solid #e4e8f0;background:#fafbfd;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
-.zb-panel-card{border:1px solid #e4e8f0;border-radius:8px;padding:12px;background:#fff}
-.zb-panel-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px}
-.zb-panel-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;color:#6b7280;border-bottom:1px solid #f1f3f7}
-.zb-panel-row:last-child{border-bottom:none}
-/* Edit form */
-.zb-edit-wrap{flex:1;overflow-y:auto;padding:20px 24px;background:#f4f6fa}
-.zb-edit-form{max-width:780px;background:#fff;border-radius:10px;padding:24px 28px;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid #e4e8f0}
-.zb-form-section-title{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid #f1f3f7}
-.zb-form-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.zb-form-field{display:flex;flex-direction:column;gap:4px}
-.zb-form-label{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em}
-.zb-form-input{padding:7px 10px;border:1px solid #e4e8f0;border-radius:6px;font-size:13px;font-family:inherit;color:#111827;background:#fff;transition:.12s;width:100%;box-sizing:border-box}
-.zb-form-input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
-.zb-items-table{width:100%;border-collapse:collapse;margin-bottom:6px}
-.zb-items-table th{font-size:10px;font-weight:700;color:#9ca3af;padding:5px 6px;border-bottom:2px solid #f1f3f7;text-align:left;background:#fafbfd}
-.zb-items-table td{padding:4px 3px;border-bottom:1px solid #f1f3f7;vertical-align:middle}
-.zb-cell-input{width:100%;border:1px solid transparent;border-radius:4px;padding:4px 6px;font-size:12px;font-family:inherit;background:#fafbfd;transition:.1s;box-sizing:border-box}
-.zb-cell-input:focus{outline:none;border-color:#2563eb;background:#fff}
-.zb-cell-num{text-align:right;width:70px}
-.zb-add-row{background:none;border:none;color:#2563eb;font-size:11px;font-weight:600;cursor:pointer;padding:5px 2px;font-family:inherit}
-.zb-edit-totals{display:flex;flex-direction:column;align-items:flex-end;margin-top:14px;padding-top:10px;border-top:1px solid #f1f3f7;gap:5px}
-.zb-edit-total-row{display:flex;gap:48px;font-size:12px;color:#6b7280}
-.zb-edit-grand{font-size:15px;font-weight:800;color:#111827;padding-top:5px;border-top:2px solid #111827;width:100%;max-width:260px;justify-content:space-between}
-/* Cust menu */
-.zb-cust-menu-item{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:9px 14px;font-size:12.5px;font-weight:500;color:#374151;cursor:pointer;font-family:inherit;transition:.1s;text-align:left}
-.zb-cust-menu-item:hover{background:#f5f7ff;color:#2563eb}
-/* List pane */
-.zb-list-pane{width:300px;flex-shrink:0;border-right:1px solid #e4e8f0;background:#fff;display:flex;flex-direction:column;overflow:hidden}
-.zb-list-header{padding:12px 12px 0;flex-shrink:0}
-.zb-icon-btn{
-  width:28px;height:28px;border-radius:6px;
-  background:none;border:1.5px solid #e4e8f0;
-  cursor:pointer;display:grid;place-items:center;
-  color:#6b7280;transition:all .15s;
-}
-.zb-icon-btn:hover{background:#f5f8ff;border-color:#2563eb;color:#2563eb}
-.zb-list-search{display:flex;align-items:center;gap:7px;background:#f8f9fc;border:1px solid #e4e8f0;border-radius:20px;padding:6px 12px;margin-bottom:10px}
-.zb-list-search-input{border:none;outline:none;background:none;font-size:12.5px;font-family:inherit;color:#111827;width:100%;caret-color:#2563eb}
-.zb-list-search-input::placeholder{color:#9ca3af}
-.zb-list-pills{display:flex;gap:5px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid #f1f3f7}
-.zb-list-pill{
-  padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:600;
-  cursor:pointer;border:1.5px solid #e4e8f0;background:#fff;
-  color:#6b7280;font-family:inherit;
-  display:inline-flex;align-items:center;gap:5px;
-  transition:all .15s;white-space:nowrap;
-}
-.zb-list-pill:hover{border-color:#2563eb;color:#2563eb;background:#f5f8ff}
-.zb-list-pill.active{background:#2563eb;color:#fff;border-color:#2563eb;box-shadow:0 2px 6px rgba(37,99,235,.3)}
-.zb-pill-count{
-  font-size:10px;font-weight:700;
-  padding:1px 5px;border-radius:10px;
-  background:rgba(255,255,255,.25);
-  min-width:16px;text-align:center;
-}
-.zb-list-pill:not(.active) .zb-pill-count{background:#f1f3f7;color:#6b7280}
-.zb-list-items{flex:1;overflow-y:auto}
-.zb-list-item{padding:10px 12px;border-bottom:1px solid #f1f3f7;cursor:pointer;transition:.1s}
-.zb-list-item:hover{background:#f8f9fc}
-.zb-list-item.selected{background:#eff6ff;border-right:2px solid #2563eb}
-.zb-list-item-shimmer{padding:10px 12px;border-bottom:1px solid #f1f3f7}
-.zb-list-item-top{display:flex;justify-content:space-between;margin-bottom:3px}
-.zb-list-item-name{font-size:13px;font-weight:700;color:#111827}
-.zb-list-item-amount{font-size:13px;font-weight:700;font-family:monospace;color:#111827}
-.zb-list-item-mid{display:flex;align-items:center;gap:5px;margin-bottom:4px}
-.zb-list-item-num{font-size:11px;color:#2563eb;font-weight:600}
-.zb-list-item-dot{color:#d1d5db}
-.zb-list-item-date{font-size:11px;color:#9ca3af}
-.zb-list-item-bot{display:flex;justify-content:space-between}
-.zb-list-empty{text-align:center;padding:32px;color:#9ca3af;font-size:13px}
-.zb-list-status-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
-/* Send Email */
-.sem-page{position:fixed;inset:0;background:#fff;z-index:9999;display:flex;flex-direction:column;overflow:hidden}
-.sem-page-header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid #e4e8f0;background:#fff;flex-shrink:0}
-.sem-page-title{font-size:18px;font-weight:700;color:#111827;margin:0}
-.sem-back-btn{background:none;border:none;cursor:pointer;color:#6b7280;padding:5px;border-radius:5px;display:flex;align-items:center;transition:.12s}
-.sem-back-btn:hover{background:#f5f6f8}
-.sem-content{flex:1;overflow-y:auto;display:flex;flex-direction:column}
-.sem-error{background:#fef2f2;border-bottom:1px solid #fca5a5;padding:10px 24px;font-size:13px;color:#b91c1c}
-.sem-row{display:flex;align-items:center;border-bottom:1px solid #f1f3f7;min-height:48px;padding:0 24px;gap:16px;flex-shrink:0}
-.sem-row-tall{align-items:flex-start;padding-top:10px;padding-bottom:10px;min-height:52px}
-.sem-row-label{font-size:13px;color:#9ca3af;font-weight:500;width:80px;flex-shrink:0}
-.sem-row-value{flex:1;display:flex;align-items:center;gap:8px}
-.sem-from-val{color:#374151;font-size:13px;gap:6px}
-.sem-row-actions{display:flex;gap:8px}
-.sem-link-btn{background:none;border:none;color:#2563eb;font-size:13px;font-weight:600;cursor:pointer;padding:2px 6px;border-radius:4px}
-.sem-link-btn:hover{background:#eff6ff}
 .sem-chips-wrap{flex:1;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .sem-chip{display:inline-flex;align-items:center;gap:5px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:20px;padding:3px 10px 3px 8px;font-size:12px;color:#1e40af;font-weight:500}
 .sem-chip-remove{background:none;border:none;cursor:pointer;color:#93c5fd;font-size:11px;padding:0;margin-left:2px;line-height:1;transition:.1s}
@@ -24767,7 +24712,16 @@ body:has(.fy-drawer-open) .ai-panel {
   .zb-pdf-paper{box-shadow:none!important;max-width:100%!important;padding:20px!important}
   .zb-right-panel{display:none!important}
 }
-.b-quick-actions{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.b-qa-section{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px 18px 14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.b-qa-title{font-size:15px;font-weight:700;color:#111827;margin-bottom:14px}
+.b-quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.b-qa-card{display:flex;flex-direction:column;align-items:flex-start;gap:12px;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;padding:14px;cursor:pointer;transition:all .18s;font-family:inherit;width:100%;text-align:left;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.b-qa-card:hover{border-color:#2563eb;box-shadow:0 4px 12px rgba(37,99,235,.1);transform:translateY(-1px)}
+.b-qa-card:active{transform:translateY(0)}
+.b-qa-icon-wrap{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.b-qa-footer{display:flex;align-items:center;justify-content:space-between;width:100%}
+.b-qa-label{font-size:13.5px;font-weight:600;color:#111827}
+.b-qa-chevron{color:#9ca3af;flex-shrink:0}
 .b-shimmer{background:linear-gradient(90deg,#f1f3f7 25%,#e4e8f0 50%,#f1f3f7 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:4px}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 /* Hamburger */
@@ -24901,6 +24855,93 @@ body:has(.fy-drawer-open) .ai-panel {
   .nim-modal-body,.nim-modal-scroll{padding:10px!important}
   .zb-pdf-paper{padding:10px 8px!important}
 }
+@media(max-width:425px){
+  /* Full-screen modal — overflow:clip avoids scroll-container shift bug */
+  .nim-modal,.inv-drawer-panel,.cust-drawer,.coa-drawer-panel,.jen-drawer-panel,.bk-drawer-panel{
+    width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;
+    border-radius:0!important;top:0!important;left:0!important;right:0!important;
+    transform:none!important;margin:0!important;position:fixed!important;
+    overflow:clip!important;display:flex!important;flex-direction:column!important;
+  }
+  /* Scrollable body — box-sizing+width:100% prevents left-clipping */
+  .nim-modal-body,.nim-modal-scroll,.nim-body,.cust-drawer-body,.coa-dbody,.bk-d-body{
+    width:100%!important;box-sizing:border-box!important;padding:14px!important;
+    flex:1!important;min-height:0!important;overflow-x:hidden!important;
+    overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;
+  }
+  /* Single column grids */
+  .nim-grid-3,.nim-grid-2,.coa-fg,.coa-fg2,.jen-fg4,.bk-fg{grid-template-columns:1fr!important}
+  /* Footer: 3 buttons in a row */
+  .nim-footer,.coa-dfooter,.cust-drawer-footer,.bk-d-footer{
+    display:flex!important;flex-direction:row!important;align-items:center!important;
+    justify-content:space-between!important;gap:6px!important;padding:10px 12px!important;
+    flex-wrap:nowrap!important;border-top:1.5px solid #e5e7eb!important;
+    background:#fff!important;flex-shrink:0!important;width:100%!important;box-sizing:border-box!important;
+  }
+  .nim-footer .nim-btn,.nim-footer button,.coa-dfooter .b-btn,.coa-dfooter button{
+    flex:1!important;min-width:0!important;width:auto!important;height:40px!important;
+    padding:0 8px!important;font-size:12.5px!important;white-space:nowrap!important;
+    justify-content:center!important;display:inline-flex!important;align-items:center!important;
+    gap:4px!important;border-radius:8px!important;font-weight:600!important;
+    overflow:hidden!important;text-overflow:ellipsis!important;box-sizing:border-box!important;
+  }
+  /* Items table → card layout
+     Grid: [ITEM 1fr] [delete 34px] / row1
+           [DESCRIPTION span 2]     / row2
+           [QTY] [UOM]              / row3  */
+  .nim-table-wrap{overflow-x:hidden!important;overflow-y:visible!important;width:100%!important;box-sizing:border-box!important}
+  .nim-table{display:flex!important;flex-direction:column!important;gap:10px!important;min-width:0!important;width:100%!important}
+  .nim-table thead{display:none!important}
+  .nim-table tbody{display:flex!important;flex-direction:column!important;gap:10px!important;width:100%!important}
+  .nim-table tbody tr.nim-tr{
+    display:grid!important;grid-template-columns:1fr 34px!important;
+    grid-template-rows:auto auto auto!important;gap:6px!important;
+    background:#fff!important;border:1.5px solid #e3e8ef!important;border-radius:10px!important;
+    padding:12px!important;box-shadow:0 1px 4px rgba(0,0,0,.06)!important;
+    width:100%!important;box-sizing:border-box!important;position:static!important;
+  }
+  .nim-table tbody tr.nim-tr td{
+    display:flex!important;flex-direction:column!important;gap:3px!important;
+    padding:0!important;border:none!important;min-width:0!important;font-size:13px!important;box-sizing:border-box!important;
+  }
+  /* td:1 ITEM — col1 row1 */
+  .nim-table tbody tr.nim-tr td:nth-child(1){grid-column:1/2!important;grid-row:1!important}
+  .nim-table tbody tr.nim-tr td:nth-child(1)::before{content:'ITEM'!important;font-size:10px!important;color:#9ca3af!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:.05em!important;display:block!important}
+  /* td:2 DESCRIPTION — spans both cols, row2 */
+  .nim-table tbody tr.nim-tr td:nth-child(2){grid-column:1/3!important;grid-row:2!important}
+  .nim-table tbody tr.nim-tr td:nth-child(2)::before{content:'DESCRIPTION'!important;font-size:10px!important;color:#9ca3af!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:.05em!important;display:block!important}
+  /* td:3/4 QTY+UOM auto-placed to row3 */
+  .nim-table tbody tr.nim-tr td:nth-child(3)::before{content:'QTY'!important;font-size:10px!important;color:#9ca3af!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:.05em!important;display:block!important}
+  .nim-table tbody tr.nim-tr td:nth-child(4)::before{content:'UOM'!important;font-size:10px!important;color:#9ca3af!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:.05em!important;display:block!important}
+  /* td:last DELETE — col2 row1 beside ITEM, static (no overlap) */
+  .nim-table tbody tr.nim-tr td:last-child{
+    grid-column:2/3!important;grid-row:1!important;
+    flex-direction:row!important;align-items:flex-end!important;justify-content:center!important;
+    position:static!important;padding-top:18px!important;
+  }
+  .nim-table tbody tr.nim-tr td .nim-cell,.nim-table tbody tr.nim-tr td input.nim-cell,.nim-table tbody tr.nim-tr td select.nim-cell{
+    width:100%!important;font-size:13px!important;box-sizing:border-box!important;
+    border:1px solid #e5e7eb!important;border-radius:6px!important;padding:7px 10px!important;background:#f9fafb!important;
+  }
+  .nim-del-btn{width:32px!important;height:32px!important;background:#fee2e2!important;border-radius:8px!important;color:#dc2626!important;display:grid!important;place-items:center!important;flex-shrink:0!important}
+  .nim-table-footer{border:1.5px dashed #d1d5db!important;border-radius:10px!important;padding:12px!important;text-align:center!important;background:transparent!important;width:100%!important;box-sizing:border-box!important}
+  .nim-add-btn{width:100%!important;justify-content:center!important;padding:8px!important;font-size:13px!important}
+  .nim-input,.nim-select,.nim-textarea{font-size:14px!important;padding:10px 12px!important;border-radius:8px!important;border:1.5px solid #e5e7eb!important;width:100%!important;box-sizing:border-box!important;display:block!important}
+  .nim-textarea{min-height:80px!important;resize:vertical!important}
+  .nim-bottom-row{flex-direction:column!important;gap:12px!important}
+  .nim-totals{width:100%!important;min-width:0!important}
+}
+@media(max-width:375px){
+  .nim-modal-body,.nim-body,.nim-modal-scroll,.cust-drawer-body,.coa-dbody{padding:10px!important}
+  .nim-footer .nim-btn,.nim-footer button{height:38px!important;font-size:12px!important;padding:0 6px!important;border-radius:7px!important}
+  .nim-footer,.coa-dfooter{padding:8px 10px!important;gap:5px!important}
+  .nim-table tbody tr.nim-tr{padding:10px!important;gap:5px!important}
+  .nim-table tbody tr.nim-tr td:last-child{padding-top:16px!important}
+  .nim-input,.nim-select,.nim-textarea{font-size:13.5px!important;padding:8px 10px!important}
+  .nim-header-title,.coa-dh-title,.cust-drawer-title{font-size:14px!important}
+}
+
+
 
 /* ══════════════════════════════════════════════════
    CHART OF ACCOUNTS
@@ -24911,7 +24952,7 @@ body:has(.fy-drawer-open) .ai-panel {
 .coa-type-card:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .coa-type-card.active{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .coa-type-lbl{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
-.coa-type-val{font-size:18px;font-weight:700;font-family:monospace}
+.coa-type-val{font-size:18px;font-weight:700;}
 .coa-type-sub{font-size:11px;color:#868e96;margin-top:2px}
 
 .coa-tbl th{white-space:nowrap}
@@ -24924,7 +24965,7 @@ body:has(.fy-drawer-open) .ai-panel {
 .coa-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
 .coa-acct-name{font-size:13px;flex:1;margin-left:6px}
 .coa-group-chip{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:10px;margin-left:6px;flex-shrink:0;white-space:nowrap}
-.coa-acct-type{font-family:monospace;font-size:11.5px;color:#868e96;margin-left:8px}
+.coa-acct-type{font-size:11.5px;color:#868e96;margin-left:8px}
 .coa-dr{color:#c92a2a}
 .coa-cr{color:#2f9e44}
 
@@ -24966,7 +25007,7 @@ select.coa-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.
 .jen-sum-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .jen-sum-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px}
 .jen-sum-lbl{font-size:11px;color:#868e96;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.jen-sum-val{font-size:20px;font-weight:700;font-family:monospace}
+.jen-sum-val{font-size:20px;font-weight:700;}
 .jen-pill{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:600;border:1px solid #e2e8f0;background:#fff;color:#868e96;cursor:pointer;transition:all .15s;font-family:inherit}
 .jen-pill:hover{border-color:#3b5bdb;color:#1a1d23}
 .jen-pill.active{background:#eef2ff;border-color:#3b5bdb;color:#3b5bdb}
@@ -25127,7 +25168,7 @@ select.jen-ci{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.
 .bk-acct-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .bk-acct-name{font-size:14px;font-weight:700;color:#1a1d23;line-height:1.2}
 .bk-acct-bank{font-size:12px;color:#868e96;margin-top:3px}
-.bk-acct-num{font-size:12px;color:#adb5bd;font-family:monospace;margin-top:2px}
+.bk-acct-num{font-size:12px;color:#adb5bd;margin-top:2px}
 .bk-acct-bal{font-size:22px;font-weight:800;color:#1a1d23;margin-bottom:4px}
 .bk-acct-footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid #f1f3f5;font-size:12px;color:#868e96}
 .bk-add-card{border:2px dashed #d0d5e8;background:#f9faff;border-radius:14px;padding:20px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:160px;color:#6c7296;transition:border-color .15s,background .15s;gap:8px;font-size:13px;font-weight:600}
@@ -26719,13 +26760,13 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
         <div>
           <div style="font-size:11.5px;font-weight:600;color:#6b7db3;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Quick insert variables</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">
-            <button v-for="v in BUILTIN_VARS" :key="v.key" class="nim-btn nim-btn-ghost" @click="insertVar(v.key)" :title="v.desc" style="padding:3px 8px;font-size:11.5px;font-family:monospace">{{v.key}}</button>
+            <button v-for="v in BUILTIN_VARS" :key="v.key" class="nim-btn nim-btn-ghost" @click="insertVar(v.key)" :title="v.desc" style="padding:3px 8px;font-size:11.5px;">{{v.key}}</button>
           </div>
         </div>
         <!-- Body -->
         <div class="nim-field">
           <label class="nim-label">Email Body <span style="color:#c92a2a">*</span></label>
-          <textarea class="nim-input" v-model="form.response" rows="10" placeholder="Dear {{customer_name}},&#10;&#10;Your invoice {{invoice_no}} of ₹{{amount}} is due on {{due_date}}." style="font-family:monospace;font-size:12.5px;resize:vertical"></textarea>
+          <textarea class="nim-input" v-model="form.response" rows="10" placeholder="Dear {{customer_name}},&#10;&#10;Your invoice {{invoice_no}} of ₹{{amount}} is due on {{due_date}}." style="font-size:12.5px;resize:vertical"></textarea>
         </div>
         <!-- Preview toggle -->
         <div v-if="form.use_html && form.response">
@@ -26856,10 +26897,10 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
           <td style="padding:12px 16px">
             <span style="background:#F3F0FF;color:#7048E8;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{s.doctype}}</span>
           </td>
-          <td style="padding:12px 16px;font-family:monospace;font-weight:700;color:#1a1a2e;font-size:13.5px">{{s.prefix}}</td>
+          <td style="padding:12px 16px;font-weight:700;color:#1a1a2e;font-size:13.5px">{{s.prefix}}</td>
           <td style="padding:12px 16px;color:#4a5568;text-align:center">{{s.padding||4}}</td>
           <td style="padding:12px 16px;color:#4a5568;text-align:center">{{s.current||0}}</td>
-          <td style="padding:12px 16px;font-family:monospace;color:#2F9E44;font-weight:600">{{preview(s)}}</td>
+          <td style="padding:12px 16px;color:#2F9E44;font-weight:600">{{preview(s)}}</td>
           <td style="padding:12px 16px;text-align:right">
             <button class="nim-btn nim-btn-ghost" @click="resetSeries(s)" style="font-size:12px;color:#c92a2a">Reset to 1</button>
           </td>
@@ -26886,7 +26927,7 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
         </div>
         <div class="nim-field">
           <label class="nim-label">Prefix <span style="color:#c92a2a">*</span></label>
-          <input class="nim-input" v-model="form.prefix" placeholder="e.g. INV-" style="font-family:monospace"/>
+          <input class="nim-input" v-model="form.prefix" placeholder="e.g. INV-" style=""/>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="nim-field">
@@ -26899,7 +26940,7 @@ select.bk-fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
           </div>
         </div>
         <div v-if="form.prefix" style="background:#f8f9fc;border-radius:8px;padding:12px;font-size:12.5px">
-          Preview: <b style="font-family:monospace;color:#2F9E44">{{form.prefix}}{{String((form.current||0)+1).padStart(form.padding||4,'0')}}</b>
+          Preview: <b style="color:#2F9E44">{{form.prefix}}{{String((form.current||0)+1).padStart(form.padding||4,'0')}}</b>
         </div>
       </div>
       <div class="nim-footer">

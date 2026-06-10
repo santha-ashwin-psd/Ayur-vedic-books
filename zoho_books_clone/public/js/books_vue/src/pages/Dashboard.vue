@@ -38,20 +38,41 @@
       <span class="qa-title">Quick Actions</span>
       <div class="qa-actions">
         <button class="qa-btn" @click="navTo('/invoices')">
-          <span v-html="iconQaInvoice" style="color: aqua"></span> New Invoice
+          <div class="qa-icon-wrap" style="background:#e0f7f4">
+            <span v-html="iconQaInvoice" style="color:#0bb8a8"></span>
+          </div>
+          <div class="qa-btn-footer">
+            <span class="qa-btn-label">New Invoice</span>
+            <svg class="qa-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
         </button>
         <button class="qa-btn" @click="navTo('/payments')">
-          <span v-html="iconQaPayment" style="color: green"></span> Record Payment
+          <div class="qa-icon-wrap" style="background:#e6f9ee">
+            <span v-html="iconQaPayment" style="color:#1db954"></span>
+          </div>
+          <div class="qa-btn-footer">
+            <span class="qa-btn-label">Record Payment</span>
+            <svg class="qa-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
         </button>
         <button class="qa-btn" @click="navTo('/customers')">
-          <span v-html="iconQaCustomer" style="color: purple"></span> Add Customer
+          <div class="qa-icon-wrap" style="background:#f0eafe">
+            <span v-html="iconQaCustomer" style="color:#7c3aed"></span>
+          </div>
+          <div class="qa-btn-footer">
+            <span class="qa-btn-label">Add Customer</span>
+            <svg class="qa-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
         </button>
         <button class="qa-btn" @click="navTo('/quotes')">
-          <span v-html="iconQaQuote" style="color: orange"></span> Create Quote
+          <div class="qa-icon-wrap" style="background:#fff8e6">
+            <span v-html="iconQaQuote" style="color:#f59e0b"></span>
+          </div>
+          <div class="qa-btn-footer">
+            <span class="qa-btn-label">Create Quote</span>
+            <svg class="qa-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
         </button>
-        <!-- <button class="qa-btn qa-btn-more">
-          <span v-html="iconQaMore"></span> More Actions
-        </button> -->
       </div>
     </div>
 
@@ -481,25 +502,85 @@ function actDotClass(dt) {
 /* ── Quick Actions ─────────────────────────────────────────────────── */
 .qa-card {
   background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
-  padding: 14px 20px;
-  display: flex; align-items: center; gap: 20px;
-  justify-content: space-between;
+  padding: 18px 20px 16px;
 }
 .qa-title {
-  font-size: 13px; font-weight: 700; color: #374151;
-  white-space: nowrap; flex-shrink: 0;
+  font-size: 15px; font-weight: 700; color: #111827;
+  display: block; margin-bottom: 14px;
 }
-.qa-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qa-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
 .qa-btn {
-  display: flex; align-items: center; gap: 7px;
-  background: #fff; border: 1px solid #e5e7eb;
-  border-radius: 8px; padding: 8px 14px;
-  font-size: 12.5px; font-weight: 600; color: #374151;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  background: #fff; border: 1.5px solid #e5e7eb;
+  border-radius: 10px; padding: 14px;
   cursor: pointer; font-family: inherit;
-  transition: all .12s;
+  transition: all .18s;
+  width: 100%; text-align: left;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
 }
-.qa-btn:hover { background: #f9fafb; border-color: #d1d5db; color: #111827; }
+.qa-btn:hover { border-color: #2563eb; box-shadow: 0 4px 12px rgba(37,99,235,.1); transform: translateY(-1px); }
+.qa-btn:active { transform: translateY(0); }
+.qa-icon-wrap {
+  width: 46px; height: 46px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.qa-btn-footer {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+}
+.qa-btn-label {
+  font-size: 13.5px; font-weight: 600; color: #111827;
+}
+.qa-chevron { color: #9ca3af; flex-shrink: 0; }
 .qa-btn-more { color: #6b7280; }
+
+/* ── Responsive: 768px ── */
+@media (max-width: 768px) {
+  .db-wrap { padding: 16px; gap: 14px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .mid-grid { grid-template-columns: 1fr !important; }
+  .aging-pair { grid-template-columns: 1fr !important; }
+  .bot-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Responsive: 480px ── */
+@media (max-width: 480px) {
+  .db-wrap { padding: 14px 12px; gap: 12px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+  .kpi-card { padding: 12px 14px 10px; }
+  .kpi-value { font-size: 18px; }
+}
+
+/* ── Responsive: 425px ── */
+@media (max-width: 425px) {
+  .db-wrap { padding: 12px 10px; gap: 10px; }
+  .qa-card { padding: 14px 14px 12px; border-radius: 10px; }
+  .qa-title { font-size: 14px; margin-bottom: 10px; }
+  .qa-actions { grid-template-columns: 1fr 1fr !important; gap: 10px; }
+  .qa-btn { padding: 12px 10px; gap: 10px; border-radius: 8px; }
+  .qa-icon-wrap { width: 40px; height: 40px; border-radius: 8px; }
+  .qa-btn-label { font-size: 12.5px; }
+  .qa-chevron { width: 12px; height: 12px; }
+}
+
+/* ── Responsive: 375px ── */
+@media (max-width: 375px) {
+  .db-wrap { padding: 10px 8px; gap: 8px; }
+  .qa-card { padding: 12px 12px 10px; border-radius: 8px; }
+  .qa-title { font-size: 13.5px; margin-bottom: 8px; }
+  .qa-actions { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+  .qa-btn { padding: 10px 8px; gap: 8px; border-radius: 8px; }
+  .qa-icon-wrap { width: 36px; height: 36px; border-radius: 7px; }
+  .qa-btn-label { font-size: 11.5px; }
+  .qa-chevron { width: 11px; height: 11px; }
+  .kpi-grid { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+  .kpi-card { padding: 10px 12px 8px; }
+  .kpi-value { font-size: 16px; }
+}
 
 /* ── Cards ─────────────────────────────────────────────────────────── */
 .db-card {

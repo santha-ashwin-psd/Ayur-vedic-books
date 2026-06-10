@@ -722,6 +722,201 @@ input[type=date].b-input { color-scheme: light; }
   }
 
   /* Label pseudo-elements for each field */
+.b-card{overflow-x:auto;}
+
+  /* Toolbar stacking */
+  .cust-toolbar{flex-direction:column;align-items:stretch!important;gap:8px;}
+  .cust-toolbar-left,.cust-toolbar-right{width:100%;justify-content:space-between;}
+  .cust-filters{flex-wrap:wrap;}
+
+  /* Modals / drawers full width */
+  .nim-modal{width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important;margin:0!important;}
+  .nim-modal-body{padding:16px!important;}
+  .nim-grid-3{grid-template-columns:1fr 1fr!important;}
+  .nim-grid-2{grid-template-columns:1fr!important;}
+  .nim-footer{flex-direction:column-reverse;gap:8px!important;padding:12px 16px!important;}
+  .nim-footer button,.nim-footer .nim-btn{width:100%!important;justify-content:center!important;}
+
+  /* Invoice list table — hide less important columns */
+  .zb-col-order,.zb-col-currency{display:none!important;}
+
+  /* Invoice detail split panel */
+  .zb-master-detail{flex-direction:column!important;}
+  .zb-split-list,.zb-list-pane{width:100%!important;max-height:45vh;border-right:none!important;border-bottom:1px solid #e4e8f0;}
+  .zb-detail-area{height:55vh;overflow-y:auto;}
+
+  /* PDF preview */
+  .zb-pdf-paper{padding:16px!important;}
+
+  /* Action bar */
+  .b-action-bar{flex-direction:column;align-items:stretch!important;}
+  .b-filter-row{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;}
+  .b-pill{white-space:nowrap;flex-shrink:0;}
+}
+
+/* ══ Mobile (≤ 640px) ══ */
+@media (max-width:640px){
+  .b-search{display:none!important;}
+  .b-kpi-grid{grid-template-columns:1fr 1fr!important;gap:8px;}
+
+  /* Invoice list table — keep only essential columns */
+  .zb-col-order,.zb-col-currency,.zb-col-duedate{display:none!important;}
+
+  /* Nim form grids collapse to 1 col */
+  .nim-grid-3,.nim-grid-2{grid-template-columns:1fr!important;}
+
+  /* Drawers */
+  .nim-modal{border-radius:0!important;}
+  .nim-table-wrap{overflow-x:auto;}
+  .nim-table{min-width:480px;}
+
+  /* Pill tabs scrollable — overridden at ≤480px below */
+  .zb-split-pills,.b-filter-row{flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;}
+  .zb-split-pill,.b-pill{flex-shrink:0;}
+
+  /* Invoice list page toolbar */
+  .no-sidebar-pad > div:first-child{flex-wrap:wrap;gap:6px;}
+}
+
+/* ══ Filter pills — Grid layout at ≤480px (no scroll) ══
+   Override the nowrap/scroll set at ≤640px above.
+   Pills keep their existing design; just wrap into a grid.
+   5 pills → 3-col grid: [All][Draft][Unpaid] / [Overdue][Paid]
+   ════════════════════════════════════════════════ */
+@media(max-width:480px){
+  .b-filter-row {
+    display:grid!important;
+    grid-template-columns:repeat(3, 1fr)!important;
+    gap:6px!important;
+    flex-wrap:unset!important;
+    overflow-x:visible!important;
+    padding-bottom:0!important;
+    width:100%!important;
+  }
+  .b-filter-row .b-pill {
+    flex-shrink:unset!important;
+    white-space:nowrap!important;
+    text-align:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    padding:7px 8px!important;
+    font-size:12.5px!important;
+  }
+}
+
+/* ══ Very small (≤ 400px) ══ */
+@media (max-width:400px){
+  .b-kpi-grid{grid-template-columns:1fr!important;}
+  .b-kpi-value{font-size:20px!important;}
+  .nim-modal-body{padding:12px!important;}
+}
+
+/* ══════════════════════════════════════════════════════
+   LINE ITEMS TABLE → CARD LAYOUT  (≤ 425px)
+   Uses structural selector (no :has()) for broad browser support
+   ══════════════════════════════════════════════════════ */
+@media (max-width:425px){
+
+  /* Hide the column headers */
+  .add-card-body > div:first-child > table thead {
+    display:none!important;
+  }
+
+  /* Table and tbody: flex column of cards */
+  .add-card-body > div:first-child > table,
+  .add-card-body > div:first-child > table tbody {
+    display:flex!important;
+    flex-direction:column!important;
+    gap:10px!important;
+    width:100%!important;
+    overflow:visible!important;
+  }
+
+  /* Each row = a card */
+  .add-card-body > div:first-child > table tbody tr {
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+    background:#fff!important;
+    border:1.5px solid #e3e8ef!important;
+    border-radius:10px!important;
+    padding:12px!important;
+    box-shadow:0 1px 4px rgba(0,0,0,.06)!important;
+    position:relative!important;
+    width:100%!important;
+  }
+
+  /* All td cells: flex column */
+  .add-card-body > div:first-child > table tbody tr td {
+    display:flex!important;
+    flex-direction:column!important;
+    gap:3px!important;
+    padding:0!important;
+    border:none!important;
+    min-width:0!important;
+    font-size:13px!important;
+  }
+
+  /* Row # — top-left, col 1 */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(1) {
+    grid-column:1/2!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    font-size:11px!important;
+    color:#6b7280!important;
+    font-weight:600!important;
+    grid-row:1!important;
+  }
+
+  /* Delete button — top-right, col 2 */
+  .add-card-body > div:first-child > table tbody tr td:last-child {
+    grid-column:2/3!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    grid-row:1!important;
+  }
+  .add-card-body > div:first-child > table tbody tr td:last-child .add-line-del {
+    opacity:1!important;
+  }
+
+  /* Item name (col 2) spans full row */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(2) {
+    grid-column:1/3!important;
+  }
+
+  /* Amount cell (second-to-last) spans full row, prominent */
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2) {
+    grid-column:1/3!important;
+    flex-direction:row!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+    background:#f0f4ff!important;
+    border-radius:6px!important;
+    padding:8px 10px!important;
+    font-size:14px!important;
+    font-weight:700!important;
+    color:#1a1a2e!important;
+  }
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2)::before {
+    content:'Amount'!important;
+    font-size:9.5px!important;
+    font-weight:700!important;
+    text-transform:uppercase!important;
+    letter-spacing:.05em!important;
+    color:#6b7280!important;
+  }
+
+  /* All inputs/selects inside cells fill width */
+  .add-card-body > div:first-child > table tbody tr td .inv-ci,
+  .add-card-body > div:first-child > table tbody tr td select.inv-ci {
+    width:100%!important;
+    font-size:13px!important;
+    padding:6px 8px!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Label pseudo-elements for each field */
   .add-card-body > div:first-child > table tbody tr td:nth-child(3)::before { content:'Description'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
   .add-card-body > div:first-child > table tbody tr td:nth-child(4)::before { content:'HSN/SAC'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
   .add-card-body > div:first-child > table tbody tr td:nth-child(5)::before { content:'Qty'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
@@ -741,6 +936,93 @@ input[type=date].b-input { color-scheme: light; }
     grid-column:1/2!important;
     flex-direction:row!important;
   }
+}
+
+/* ══════════════════════════════════════════════════════
+   DELIVERY CHALLAN / NIM MODAL — 375px & 425px
+   Modern mobile layout — Zoho Books / Linear / Stripe style
+   ══════════════════════════════════════════════════════ */
+@media (max-width:425px) {
+
+  /* ── Full-screen modal panel ── */
+  .nim-modal,
+  .inv-drawer-panel,
+  .cust-drawer,
+  .coa-drawer-panel,
+  .jen-drawer-panel,
+  .bk-drawer-panel {
+    width:100vw!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    border-radius:0!important;
+    top:0!important; left:0!important; right:0!important;
+    transform:none!important;
+    margin:0!important;
+    position:fixed!important;
+    overflow:clip!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+
+  /* ── Scrollable body — box-sizing prevents left-clipping ── */
+  .nim-modal-body,
+  .nim-modal-scroll,
+  .nim-body,
+  .cust-drawer-body,
+  .coa-dbody,
+  .bk-d-body {
+    width:100%!important;
+    box-sizing:border-box!important;
+    padding:16px!important;
+    flex:1!important;
+    min-height:0!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  .nim-bottom-row {
+    flex-direction:column!important;
+    gap:12px!important;
+  }
+  .nim-totals {
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  /* ── Searchable select inside cards ── */
+  .nim-table .ss-trigger {
+    font-size:13px!important;
+    min-height:36px!important;
+    padding:6px 10px!important;
+    border-radius:6px!important;
+  }
+
+  /* ── Suppress horizontal scroll in modal ── */
+  .nim-modal,
+  .inv-drawer-panel {
+    overflow-x:hidden!important;
+  }
+}
+
+/* ════════════════════════════════════
+   375px — tighter padding
+   ════════════════════════════════════ */
+@media (max-width:375px) {
+  .nim-modal-body, .nim-body, .nim-modal-scroll,
+  .cust-drawer-body, .coa-dbody { padding:12px!important; }
+
+  .nim-footer, .coa-dfooter { padding:10px 12px!important; gap:6px!important; }
+  .nim-footer .nim-btn, .nim-footer button {
+    font-size:12.5px!important; height:42px!important;
+    padding:0 8px!important; border-radius:8px!important;
+  }
+  .nim-table tbody tr.nim-tr { padding:12px!important; gap:10px 8px!important; }
+  .nim-table tbody tr.nim-tr td:last-child { top:10px!important; right:10px!important; }
+  .nim-input, .nim-select, .nim-textarea { font-size:13.5px!important; }
+  .nim-table tbody tr.nim-tr td .nim-cell,
+  .nim-table tbody tr.nim-tr td input.nim-cell,
+  .nim-table tbody tr.nim-tr td select.nim-cell { font-size:13.5px!important; }
+  .nim-header-title, .coa-dh-title, .cust-drawer-title { font-size:14px!important; }
 }
 
 /* ══ More Actions Dropdown — Mobile Fix (≤480px) ══
@@ -782,4 +1064,3 @@ input[type=date].b-input { color-scheme: light; }
     text-align:left!important;
   }
 }
-

@@ -1312,6 +1312,31 @@ input[type=date].b-input { color-scheme: light; }
   .inv-lbl{font-size:11px!important;}
 }
 
+/* ── Quick Actions card grid — 425px ── */
+@media(max-width:425px){
+  .b-qa-section{padding:14px 14px 12px!important;border-radius:10px!important;}
+  .b-qa-title{font-size:14px!important;margin-bottom:10px!important;}
+  .b-quick-actions{gap:10px!important;grid-template-columns:1fr 1fr!important;}
+  .b-qa-card{padding:12px 10px!important;gap:10px!important;border-radius:8px!important;}
+  .b-qa-icon-wrap{width:40px!important;height:40px!important;border-radius:8px!important;}
+  .b-qa-icon-wrap svg{width:19px!important;height:19px!important;}
+  .b-qa-label{font-size:12.5px!important;}
+  .b-qa-chevron{width:13px!important;height:13px!important;}
+}
+
+/* ── Quick Actions card grid — 375px ── */
+@media(max-width:375px){
+  .b-qa-section{padding:12px 12px 10px!important;border-radius:8px!important;}
+  .b-qa-title{font-size:13.5px!important;margin-bottom:8px!important;}
+  .b-quick-actions{gap:8px!important;grid-template-columns:1fr 1fr!important;}
+  .b-qa-card{padding:10px 8px!important;gap:8px!important;border-radius:8px!important;}
+  .b-qa-icon-wrap{width:36px!important;height:36px!important;border-radius:7px!important;}
+  .b-qa-icon-wrap svg{width:17px!important;height:17px!important;}
+  .b-qa-label{font-size:11.5px!important;}
+  .b-qa-footer{gap:2px!important;}
+  .b-qa-chevron{width:12px!important;height:12px!important;}
+}
+
 /* ── 320px ── */
 @media(max-width:320px){
   .b-page,.cust-page,.page-banking{padding:8px 6px!important;}

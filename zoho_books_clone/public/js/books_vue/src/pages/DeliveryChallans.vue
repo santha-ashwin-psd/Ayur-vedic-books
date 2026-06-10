@@ -1140,4 +1140,191 @@ onMounted(async () => {
 .sortable { cursor:pointer;user-select:none; }
 .sortable:hover { color:#2563eb; }
 .dc-view-drawer { width: 625px; right: -625px; }
+/* ══════════════════════════════════════════════
+   MOBILE — Items → Card layout (375px & 425px)
+   Matches reference screenshot exactly.
+   ══════════════════════════════════════════════ */
+@media (max-width: 480px) {
+
+  /* ── Hide the 5-column desktop header ── */
+  .dc-items-head { display: none; }
+
+  /* ── Each item row → a card ── */
+  .dc-item-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    margin: 0 10px 10px;
+    padding: 14px;
+    gap: 10px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    box-sizing: border-box;
+    border-top: none;
+    position: relative;
+  }
+
+  /* ── Row 1: ITEM — full width ── */
+  .dc-item-row > div:nth-child(1) {
+    width: 100%;
+    order: 1;
+    min-width: 0;
+  }
+  .dc-item-row > div:nth-child(1)::before {
+    content: 'ITEM';
+    display: block;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    color: #9ca3af;
+    margin-bottom: 5px;
+  }
+
+  /* ── Row 2: DESCRIPTION (wide) + DELETE button (narrow) side by side ── */
+  .dc-item-row > div:nth-child(2) {
+    width: calc(100% - 48px); /* leave 40px + 8px gap for delete */
+    order: 2;
+    min-width: 0;
+  }
+  .dc-item-row > div:nth-child(2)::before {
+    content: 'DESCRIPTION';
+    display: block;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    color: #9ca3af;
+    margin-bottom: 5px;
+  }
+
+  /* Delete button: sits next to description INPUT (aligned to bottom) */
+  .dc-item-row > div:nth-child(5) {
+    width: 40px;
+    order: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-end;   /* ← pushes to bottom of row = next to the input */
+    flex-shrink: 0;
+    position: static;
+  }
+  .dc-item-row > div:nth-child(5) .add-line-del {
+    opacity: 1 !important;
+    background: #fee2e2 !important;
+    border: 1.5px solid #fecaca !important;
+    border-radius: 8px !important;
+    padding: 8px !important;
+    color: #dc2626 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    width: 36px !important;
+    height: 36px !important;
+    transition: background .15s !important;
+  }
+
+  /* ── Row 3: QTY (50%) + UOM (50%) side by side ── */
+  .dc-item-row > div:nth-child(3) {
+    width: calc(50% - 4px);
+    order: 3;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .dc-item-row > div:nth-child(3)::before {
+    content: 'QTY';
+    display: block;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    color: #9ca3af;
+    margin-bottom: 5px;
+  }
+
+  .dc-item-row > div:nth-child(4) {
+    width: calc(50% - 4px);
+    order: 3;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .dc-item-row > div:nth-child(4)::before {
+    content: 'UOM';
+    display: block;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    color: #9ca3af;
+    margin-bottom: 5px;
+  }
+
+  /* ── All inputs & selects: full width ── */
+  .dc-item-row .inv-fi {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    font-size: 13.5px !important;
+    padding: 9px 11px !important;
+    border-radius: 8px !important;
+  }
+  .dc-item-row .inv-fi.ta-r { text-align: left !important; }
+
+  /* ── Add new line button ── */
+  .add-new-line-row { padding: 8px 10px 10px; border-top: 1px solid #f0f3f7; }
+  .add-new-line-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 11px;
+    border: 1.5px dashed #d1d5db;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #2563eb;
+    background: #f8fafc;
+    gap: 6px;
+  }
+
+  /* ── VIEW drawer items table → cards ── */
+  .dc-items-tbl thead { display: none; }
+  .dc-items-tbl,
+  .dc-items-tbl tbody { display: block; width: 100%; }
+
+  .dc-items-tbl tbody tr {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    grid-template-rows: auto auto;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    gap: 3px 10px;
+  }
+  .dc-items-tbl tbody tr td:nth-child(1) {
+    grid-column: 1; grid-row: 1 / 3;
+    display: flex; align-items: center;
+    padding: 0; border: none;
+    font-size: 12px; color: #9ca3af; font-weight: 700;
+  }
+  .dc-items-tbl tbody tr td:nth-child(2) {
+    grid-column: 2; grid-row: 1;
+    padding: 0; border: none;
+  }
+  .dc-items-tbl tbody tr td:nth-child(3) {
+    grid-column: 2 / 4; grid-row: 2;
+    padding: 0; border: none;
+    font-size: 12px; color: #6b7280;
+  }
+  .dc-items-tbl tbody tr td:nth-child(4) {
+    grid-column: 3; grid-row: 1;
+    padding: 0; border: none;
+    text-align: right;
+    font-size: 14px; font-weight: 700; color: #111827;
+  }
+  .dc-items-tbl tbody tr td:nth-child(5),
+  .dc-items-tbl tbody tr td:nth-child(6) { display: none; }
+}
 </style>

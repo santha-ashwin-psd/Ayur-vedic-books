@@ -656,8 +656,25 @@
   /* Right-align amounts */
   .inv-table td.ta-r { justify-content: space-between; }
 
-  /* Actions cell: spread buttons */
-  .inv-table td:last-of-type { flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  /* Actions cell: always visible, spread buttons across full width */
+  .inv-table td:last-of-type {
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+    display: flex !important;
+    padding: 8px 14px !important;
+    border-top: 1px solid #f0f2f5;
+  }
+  /* Make action buttons larger and more tappable on mobile */
+  .inv-table td:last-of-type .inv-act-btn {
+    display: inline-flex !important;
+    padding: 7px 10px !important;
+    font-size: 12px !important;
+    border-radius: 6px !important;
+    gap: 4px !important;
+  }
+  /* Add visible labels on card layout */
+  .inv-table td:last-of-type .inv-act-btn::after { display: none; }
 
   .inv-table { min-width: 0; }
 
@@ -794,4 +811,117 @@
   .th-check         { display: none; }
 
   .bk-empty-btn     { display: none; }
+}
+
+/* ─────────────────────────────────────────────
+   425px — ensure action buttons show in cards
+   ───────────────────────────────────────────── */
+@media (max-width: 425px) {
+  /* Page padding */
+  .inv-page,
+  .list-page { padding: 8px !important; gap: 8px !important; }
+
+  /* Card row */
+  .inv-table tbody .inv-row {
+    border-radius: 10px !important;
+    border: 1px solid #e2e8f0 !important;
+    margin-bottom: 10px !important;
+    overflow: hidden !important;
+  }
+
+  /* ALL td cells in card mode */
+  .inv-table td {
+    padding: 7px 12px !important;
+    font-size: 12.5px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  /* ── Action buttons cell — ALWAYS SHOW ── */
+  .inv-table td:last-of-type {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    background: #f9fafb !important;
+    border-top: 1px solid #e5e7eb !important;
+  }
+  .inv-table td:last-of-type .inv-act-btn {
+    display: inline-flex !important;
+    padding: 7px 12px !important;
+    font-size: 12px !important;
+    border-radius: 6px !important;
+    border: 1px solid #e2e8f0 !important;
+    background: #fff !important;
+    color: #374151 !important;
+    gap: 5px !important;
+    align-items: center !important;
+  }
+  .inv-table td:last-of-type .inv-act-btn[style*="dc2626"] {
+    color: #dc2626 !important;
+    border-color: rgba(220,38,38,.3) !important;
+  }
+  .inv-table td:last-of-type .inv-act-pay {
+    color: #1a6ef7 !important;
+    border-color: rgba(26,110,247,.3) !important;
+    background: #eaf1ff !important;
+  }
+
+  /* Compact KPI/stat */
+  .bk-kpi-grid  { grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+  .bk-kpi-value { font-size: 15px !important; }
+  .bk-stat-grid { grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+}
+
+/* ─────────────────────────────────────────────
+   375px — tightest layout, action buttons still show
+   ───────────────────────────────────────────── */
+@media (max-width: 375px) {
+  .inv-page,
+  .list-page { padding: 6px !important; gap: 6px !important; }
+
+  .inv-table td {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* ── Action buttons cell ── */
+  .inv-table td:last-of-type {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    padding: 8px 10px !important;
+    background: #f9fafb !important;
+    border-top: 1px solid #e5e7eb !important;
+  }
+  .inv-table td:last-of-type .inv-act-btn {
+    display: inline-flex !important;
+    padding: 6px 10px !important;
+    font-size: 11.5px !important;
+    border-radius: 6px !important;
+    border: 1px solid #e2e8f0 !important;
+    background: #fff !important;
+    color: #374151 !important;
+    gap: 4px !important;
+    align-items: center !important;
+  }
+  .inv-table td:last-of-type .inv-act-pay {
+    color: #1a6ef7 !important;
+    border-color: rgba(26,110,247,.3) !important;
+    background: #eaf1ff !important;
+  }
+
+  /* KPI/stat: tighter */
+  .bk-kpi-grid  { gap: 5px !important; }
+  .bk-kpi-inner { padding: 8px 10px !important; }
+  .bk-kpi-value { font-size: 14px !important; }
+  .bk-stat-grid { gap: 5px !important; }
+  .bk-stat-card { padding: 7px 8px !important; }
 }

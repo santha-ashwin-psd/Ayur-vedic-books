@@ -152,6 +152,13 @@
                   <option>Other</option>
                 </select>
               </div>
+              <div class="dn-field">
+                <label class="inv-lbl">Cost Center</label>
+                <select v-model="form.cost_center" class="inv-fi">
+                  <option value="">— Select —</option>
+                  <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -637,7 +644,15 @@ function balanceFor(name) { return flt(_balances.value[name] || 0); }
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", item_name: "", description: "", original_qty: 1, original_amount: 0, qty: 1, rate: 0, included: true, mode: "qty", custom_amount: 0, pct: 100, amount: 0 });
 const debitPreset = ref("full");
-const form = reactive({ supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", notes: "" });
+const costCenters = ref([]);
+async function fetchCostCenters() {
+  try {
+    const co = await resolveCompany();
+    const r = await apiGET("frappe.client.get_list", { doctype: "Cost Center", fields: JSON.stringify(["name"]), filters: JSON.stringify([["disabled","=",0],["company","=",co],["is_group","=",0]]), order_by: "name asc", limit_page_length: 100 }) || [];
+    costCenters.value = r.map(c => c.name);
+  } catch { costCenters.value = []; }
+}
+const form = reactive({ supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", cost_center: "", notes: "" });
 const dnCollapsed = reactive({ vendor: false, bill: false, items: false, notes: true });
 
 // Apply-to-bill modal
@@ -813,25 +828,26 @@ const timelineSteps = computed(() => {
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", notes: "" });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", cost_center: "", notes: "" });
   lines.value = [blankLine()];
   selectedBillDocs.value = [];
   billSearchVal.value = "";
-  fetchVendors(""); fetchItems(""); bills.value = [];
+  fetchVendors(""); fetchItems(""); fetchCostCenters(); bills.value = [];
   drawerOpen.value = true;
 }
 async function openEdit(d) {
   editingName.value = d.name;
-  Object.assign(form, { supplier: d.supplier || "", posting_date: d.posting_date || todayStr(), return_against: d.return_against || "", reason: "Vendor Overcharge", notes: "" });
+  Object.assign(form, { supplier: d.supplier || "", posting_date: d.posting_date || todayStr(), return_against: d.return_against || "", reason: "Vendor Overcharge", cost_center: "", notes: "" });
   lines.value = [blankLine()];
   selectedBillDocs.value = [];
   billSearchVal.value = "";
-  fetchVendors(""); fetchItems("");
+  fetchVendors(""); fetchItems(""); fetchCostCenters();
   if (d.supplier) fetchBills("");
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Purchase Invoice", d.name);
     const billRef = d.return_against || "";
+    if (doc?.cost_center) form.cost_center = doc.cost_center;
     if (doc?.items?.length) {
       lines.value = doc.items.map(i => {
         const qty = Math.abs(i.qty || 0);
@@ -987,6 +1003,7 @@ async function saveDN(submit) {
         against_bill: form.return_against || "",
         date: form.posting_date,
         reason: form.reason,
+        cost_center: form.cost_center || "",
         notes: form.notes || "",
         items: JSON.stringify(itemsPayload),
       });
@@ -998,6 +1015,7 @@ async function saveDN(submit) {
         company, supplier: form.supplier,
         posting_date: form.posting_date,
         is_return: 1, return_against: form.return_against || null,
+        cost_center: form.cost_center || "",
         remarks: (form.reason || "") + (form.notes ? " — " + form.notes : ""),
         items: activeLines.map(l => ({
           doctype: "Purchase Invoice Item",

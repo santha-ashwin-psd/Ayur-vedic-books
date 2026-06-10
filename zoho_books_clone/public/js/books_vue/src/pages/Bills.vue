@@ -508,6 +508,11 @@
                   </div>
                 </div>
                 <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No item details available.</div>
+                <!-- Cost Center badge -->
+                <div v-if="viewDoc.cost_center" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
+                  <span style="color:#6b7280;font-weight:600">Cost Center:</span>
+                  <span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:5px;padding:2px 10px;font-weight:600">{{ viewDoc.cost_center }}</span>
+                </div>
               </template>
             </div>
           </template>
@@ -812,6 +817,7 @@ async function openView(b) {
     viewItems.value = doc?.items || [];
     viewTaxes.value = doc?.taxes || [];
     viewPayments.value = (payments || []).filter(p => p.docstatus === 1);
+    if (doc?.cost_center) viewDoc.value = { ...viewDoc.value, cost_center: doc.cost_center };
   } catch (e) { /* keep dialog open */ }
   viewLoading.value = false;
 }

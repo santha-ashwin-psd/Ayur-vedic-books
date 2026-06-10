@@ -848,6 +848,7 @@ def create_debit_note():
     date         = fd.get("date") or today()
     reason       = fd.get("reason") or ""
     notes        = fd.get("notes") or ""
+    cost_center  = fd.get("cost_center") or ""
     warehouse    = fd.get("warehouse") or ""
     items_raw    = fd.get("items") or "[]"
 
@@ -892,6 +893,7 @@ def create_debit_note():
         "return_against":   against_bill,
         "posting_date":     date,
         "remarks":          reason,
+        "cost_center":      cost_center,
         "credit_to":        ap_account,
         "expense_account":  expense_account,
         "items":            pi_items,

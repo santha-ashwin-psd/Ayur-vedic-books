@@ -11,7 +11,7 @@
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
-        <button class="sales-btn-primary" @click="openNew"><span ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg></span> New Payment</button>
+        <button class="sales-btn-primary" @click="openNew"><span ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg></span> {{ defaultTab === 'Receive' ? 'New Received Payment' : 'New Payment Made' }}</button>
       </div>
     </div>
 
@@ -78,7 +78,7 @@
                 <button v-if="p.docstatus===0 || p.docstatus===2" class="inv-act-btn" style="border-color:#fee2e2;color:#dc2626" @click="deletePmt(p)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="9" class="bk-empty-state"><div class="bk-empty-inner"><template v-if="search"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No payments match</p></template><template v-else><div class="bk-empty-illus"><svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="8" y="22" width="64" height="40" rx="8" fill="#e2e8f0"/><rect x="12" y="26" width="56" height="32" rx="6" fill="#fff"/><rect x="12" y="38" width="56" height="6" fill="#cbd5e1"/><circle cx="22" cy="50" r="5" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/><polyline points="19.5 50 21.5 52 24.5 48" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p class="bk-empty-title">No payments recorded yet</p><p class="bk-empty-sub">Record your first payment to track cash flow.</p><button class="bk-empty-btn" @click="openAdd(activeTab==='Pay'?'Pay':'Receive')"><span v-html="icon('plus',13)"></span> Record Payment</button></template></div></td></tr>
+            <tr v-if="!sorted.length"><td colspan="9" class="bk-empty-state"><div class="bk-empty-inner"><template v-if="search"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No payments match</p></template><template v-else><div class="bk-empty-illus"><svg width="80" height="80" viewBox="0 0 80 80" fill="none"><rect x="8" y="22" width="64" height="40" rx="8" fill="#e2e8f0"/><rect x="12" y="26" width="56" height="32" rx="6" fill="#fff"/><rect x="12" y="38" width="56" height="6" fill="#cbd5e1"/><circle cx="22" cy="50" r="5" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/><polyline points="19.5 50 21.5 52 24.5 48" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p class="bk-empty-title">No payments recorded yet</p><p class="bk-empty-sub">Record your first payment to track cash flow.</p><button class="bk-empty-btn" @click="openNew()"><span v-html="icon('plus',13)"></span> Record Payment</button></template></div></td></tr>
           </template>
         </tbody>
       </table>
@@ -649,7 +649,8 @@ function toggleAll(e) { selected.value = e.target.checked ? new Set(sorted.value
 function openNew() {
   editingName.value = "";
   Object.assign(form, blankForm());
-  form.payment_type = activeTab.value !== "all" ? activeTab.value : defaultTab.value;
+  // Always respect the route context: /payments-received => Receive (Sales), /payments => Pay (Purchase)
+  form.payment_type = defaultTab.value;
   form.party_type = form.payment_type === "Receive" ? "Customer" : "Supplier";
   outstandingInvoices.value = [];
   invoiceRefs.value = [];

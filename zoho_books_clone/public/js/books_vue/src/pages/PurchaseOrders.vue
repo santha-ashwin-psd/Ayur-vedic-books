@@ -254,119 +254,239 @@
 
     <!-- ── View Drawer ── -->
     <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
-    <div class="inv-drawer-panel po-view-drawer" :class="{open:viewOpen}">
+    <div class="inv-drawer-panel inv-view-page po-view-drawer" :class="{open:viewOpen && viewDoc}">
       <template v-if="viewDoc">
+
+        <!-- Header: PO number + badge | Bill CTA + Close -->
         <div class="inv-view-header">
           <div class="inv-view-header-left">
-            <div class="inv-view-number">{{ viewDoc.name }}</div>
-            <div class="inv-view-subtitle">{{ viewDoc.supplier_name||viewDoc.supplier }}</div>
+            <div class="inv-view-title-row">
+              <span class="inv-view-number">{{ viewDoc.name }}</span>
+              <span class="inv-hdr-badge" :class="badgeClass(viewDoc)">{{ displayStatus(viewDoc) }}</span>
+            </div>
+            <div class="inv-view-subtitle">
+              {{ viewDoc.supplier_name || viewDoc.supplier }}
+              <span v-if="viewDoc.expected_delivery_date"> · Expected {{ fmtDate(viewDoc.expected_delivery_date) }}
+                <span v-if="isPastExpected(viewDoc)" class="text-danger"> (overdue)</span>
+              </span>
+            </div>
           </div>
-          <div style="text-align:right">
-            <div class="po-view-amount">{{ fmtCur(viewDoc.grand_total) }}</div>
-            <span class="inv-hdr-badge status-draft">{{ displayStatus(viewDoc) }}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button v-if="canBill(viewDoc)" class="inv-view-cta" @click="openBillModal(viewDoc)">
+              <span v-html="icon('arrow-right',15)"></span> Convert to Bill
+            </button>
+            <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
+              <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
+            </button>
           </div>
-          <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
 
-        <TimelineStepper :steps="timelineSteps" />
-
-        <div class="inv-view-tabs">
-          <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
-          <button class="inv-vtab" :class="{active:viewTab==='fulfill'}" @click="viewTab='fulfill'">Fulfillment</button>
-          <button class="inv-vtab" :class="{active:viewTab==='links'}" @click="viewTab='links'">
-            Linked<span v-if="links.bills.length>0" class="inv-vtab-count">{{ links.bills.length }}</span>
-          </button>
-        </div>
-
+        <!-- Main white card -->
         <div class="inv-view-body">
+
+          <!-- Status timeline -->
+          <div class="inv-tl-wrap">
+            <TimelineStepper :steps="timelineSteps" />
+          </div>
+
+          <!-- Action buttons bar -->
+          <div class="inv-action-bar">
+            <button v-if="canEdit(viewDoc)" class="inv-ab-btn" @click="openEdit(viewDoc);viewOpen=false">
+              <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
+            </button>
+            <button class="inv-ab-btn" @click="emailPO(viewDoc)">
+              <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
+            </button>
+            <button class="inv-ab-btn" @click="printPO(viewDoc)">
+              <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
+            </button>
+            <button v-if="hasUnreceived" class="inv-ab-btn" @click="markAllReceived" :disabled="actionRunning">
+              <span v-html="icon('package',13)"></span> <span class="ab-label">Mark Received</span>
+            </button>
+            <span class="inv-ab-spacer"></span>
+            <button v-if="canCancel(viewDoc)" class="inv-ab-btn inv-ab-danger" @click="cancelPO(viewDoc)">
+              Cancel
+            </button>
+            <button v-if="canDelete(viewDoc)" class="inv-ab-btn inv-ab-danger" @click="deletePO(viewDoc)">
+              <span v-html="icon('trash',13)"></span> <span class="ab-label">Delete</span>
+            </button>
+          </div>
+
+          <!-- Tabs -->
+          <div class="inv-view-tabs">
+            <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
+            <button class="inv-vtab" :class="{active:viewTab==='fulfill'}" @click="viewTab='fulfill'">Fulfillment</button>
+            <button class="inv-vtab" :class="{active:viewTab==='links'}" @click="viewTab='links'">
+              Linked <span v-if="links.bills.length>0" class="inv-vtab-count">{{ links.bills.length }}</span>
+            </button>
+          </div>
+
+          <!-- ── Details tab ── -->
           <template v-if="viewTab==='details'">
-            <div class="po-meta-grid">
-              <div><div class="po-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.transaction_date) }}</div></div>
-              <div><div class="po-meta-lbl">Expected Delivery</div>
-                <div class="mono-sm" :class="isPastExpected(viewDoc)?'text-danger':''">{{ fmtDate(viewDoc.expected_delivery_date)||'—' }}</div>
+            <div class="inv-tab-body">
+
+              <!-- Meta cards row -->
+              <div class="inv-details-meta">
+                <div class="inv-details-meta-col">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('user',13)"></span>
+                    <span class="inv-dmeta-lbl">Vendor</span>
+                  </div>
+                  <div class="inv-dmeta-primary">{{ viewDoc.supplier_name || viewDoc.supplier }}</div>
+                </div>
+                <div class="inv-details-meta-col">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
+                    <span class="inv-dmeta-lbl">PO Date</span>
+                  </div>
+                  <div class="inv-dmeta-date-val">{{ fmtDate(viewDoc.transaction_date) }}</div>
+                </div>
+                <div class="inv-details-meta-col">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
+                    <span class="inv-dmeta-lbl">Expected Delivery</span>
+                  </div>
+                  <div class="inv-dmeta-date-val" :class="{'is-overdue':isPastExpected(viewDoc)}">
+                    {{ fmtDate(viewDoc.expected_delivery_date) || '—' }}
+                  </div>
+                </div>
+                <div class="inv-details-meta-col col-balance">
+                  <div class="inv-dmeta-icon-row">
+                    <span class="inv-dmeta-icon" v-html="icon('indianrupee',13)"></span>
+                    <span class="inv-dmeta-lbl">Total Value</span>
+                  </div>
+                  <div class="inv-dmeta-primary" style="font-size:18px;font-weight:800;color:#1a6ef7">{{ fmtCur(viewDoc.grand_total) }}</div>
+                </div>
               </div>
-              <div><div class="po-meta-lbl">Billing Address</div><div>{{ viewDoc.billing_address||'—' }}</div></div>
-              <div><div class="po-meta-lbl">Delivery Address</div><div>{{ viewDoc.delivery_address||'—' }}</div></div>
+
+              <!-- Addresses -->
+              <div v-if="viewDoc.billing_address || viewDoc.delivery_address" class="inv-bottom-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:0 0 4px">
+                <div v-if="viewDoc.billing_address">
+                  <div class="inv-dmeta-icon-row" style="margin-bottom:6px">
+                    <span class="inv-dmeta-icon" v-html="icon('map-pin',13)"></span>
+                    <span class="inv-dmeta-lbl">Billing Address</span>
+                  </div>
+                  <div style="font-size:12.5px;color:#374151;white-space:pre-wrap">{{ viewDoc.billing_address }}</div>
+                </div>
+                <div v-if="viewDoc.delivery_address">
+                  <div class="inv-dmeta-icon-row" style="margin-bottom:6px">
+                    <span class="inv-dmeta-icon" v-html="icon('map-pin',13)"></span>
+                    <span class="inv-dmeta-lbl">Delivery Address</span>
+                  </div>
+                  <div style="font-size:12.5px;color:#374151;white-space:pre-wrap">{{ viewDoc.delivery_address }}</div>
+                </div>
+              </div>
+
+              <!-- Line items -->
+              <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
+              <template v-else-if="viewItems.length">
+                <div class="inv-sec-lbl">Line Items</div>
+                <div class="inv-items-wrap">
+                  <table class="inv-items-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th class="th-r">Qty</th>
+                        <th class="th-r">Rate</th>
+                        <th class="th-r">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="it in viewItems" :key="it.name">
+                        <td>
+                          <strong>{{ it.item_name || it.item_code }}</strong>
+                          <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div>
+                        </td>
+                        <td class="td-r mono-sm">{{ it.qty }}</td>
+                        <td class="td-r mono-sm">{{ fmtCur(it.rate) }}</td>
+                        <td class="td-r mono-sm" style="font-weight:600">{{ fmtCur(it.amount) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+
+              <!-- Terms -->
+              <div v-if="viewDoc.terms" class="po-terms">
+                <div class="po-meta-lbl">Terms &amp; Conditions</div>
+                <div style="white-space:pre-wrap;font-size:12.5px;color:#374151;margin-top:4px">{{ viewDoc.terms }}</div>
+              </div>
+
             </div>
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <template v-else-if="viewItems.length">
-              <div class="inv-sec-lbl">Line Items</div>
-              <div class="po-view-items">
-                <div class="po-view-items-head"><span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span></div>
-                <div v-for="it in viewItems" :key="it.name" class="po-view-items-row">
-                  <span><strong>{{ it.item_name||it.item_code }}</strong>
-                    <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div></span>
-                  <span class="ta-r mono-sm">{{ it.qty }}</span>
-                  <span class="ta-r mono-sm">{{ fmtCur(it.rate) }}</span>
-                  <span class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(it.amount) }}</span>
+          </template>
+
+          <!-- ── Fulfillment tab ── -->
+          <template v-else-if="viewTab==='fulfill'">
+            <div class="inv-tab-body">
+              <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
+              <template v-else-if="fulfill.lines.length">
+                <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Status: <strong>{{ fulfill.computed_status }}</strong></div>
+                <div class="po-fulfill-tbl">
+                  <div class="po-fulfill-head">
+                    <span>Item</span><span class="ta-r">Ordered</span><span class="ta-r">Received</span>
+                    <span class="ta-r">Billed</span><span class="ta-r">Remaining</span>
+                  </div>
+                  <div v-for="l in fulfill.lines" :key="l.name" class="po-fulfill-row">
+                    <span>{{ l.item_name || l.item_code }}</span>
+                    <span class="ta-r mono-sm">{{ l.qty }}</span>
+                    <span class="ta-r mono-sm" :class="l.received_qty>=l.qty?'text-success':'text-muted'">{{ l.received_qty }}</span>
+                    <span class="ta-r mono-sm" :class="l.billed_qty>=l.qty?'text-success':'text-muted'">{{ l.billed_qty }}</span>
+                    <span class="ta-r mono-sm text-danger">{{ l.remaining_to_receive }} / {{ l.remaining_to_bill }}</span>
+                  </div>
                 </div>
-              </div>
-            </template>
-            <div v-if="viewDoc.terms" class="po-terms">
-              <div class="po-meta-lbl">Terms & Conditions</div>
-              <div style="white-space:pre-wrap;font-size:12.5px;color:#374151">{{ viewDoc.terms }}</div>
+                <div v-if="hasUnreceived" style="display:flex;justify-content:flex-end;margin-top:12px">
+                  <button class="inv-view-cta" @click="markAllReceived" :disabled="actionRunning">
+                    <span v-html="icon('package',14)"></span> Mark All Received
+                  </button>
+                </div>
+              </template>
+              <div v-else style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">No line items.</div>
             </div>
           </template>
 
-          <template v-if="viewTab==='fulfill'">
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <template v-else-if="fulfill.lines.length">
-              <div style="font-size:12px;color:#6b7280">Status: <strong>{{ fulfill.computed_status }}</strong></div>
-              <div class="po-fulfill-tbl">
-                <div class="po-fulfill-head">
-                  <span>Item</span><span class="ta-r">Ordered</span><span class="ta-r">Received</span>
-                  <span class="ta-r">Billed</span><span class="ta-r">Remaining</span>
+          <!-- ── Linked tab ── -->
+          <template v-else-if="viewTab==='links'">
+            <div class="inv-tab-body">
+              <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
+              <template v-else>
+                <template v-if="links.bills.length">
+                  <div class="inv-sec-lbl">Vendor Bills</div>
+                  <div class="inv-items-wrap">
+                    <table class="inv-items-table">
+                      <thead>
+                        <tr>
+                          <th>Bill #</th>
+                          <th>Date</th>
+                          <th class="th-r">Outstanding</th>
+                          <th class="th-r">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="b in links.bills" :key="b.name">
+                          <td class="inv-link">{{ b.name }}</td>
+                          <td class="text-muted mono-sm">{{ fmtDate(b.posting_date) }}</td>
+                          <td class="td-r mono-sm text-danger">{{ fmtCur(b.outstanding_amount) }}</td>
+                          <td class="td-r mono-sm" style="font-weight:600">{{ fmtCur(b.grand_total) }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+                <div v-if="!links.bills.length" style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
+                  No linked bills yet.
+                  <div v-if="canBill(viewDoc)" style="margin-top:12px">
+                    <button class="inv-view-cta" @click="openBillModal(viewDoc)">
+                      <span v-html="icon('arrow-right',14)"></span> Convert to Bill
+                    </button>
+                  </div>
                 </div>
-                <div v-for="l in fulfill.lines" :key="l.name" class="po-fulfill-row">
-                  <span>{{ l.item_name||l.item_code }}</span>
-                  <span class="ta-r mono-sm">{{ l.qty }}</span>
-                  <span class="ta-r mono-sm" :class="l.received_qty>=l.qty?'text-success':'text-muted'">{{ l.received_qty }}</span>
-                  <span class="ta-r mono-sm" :class="l.billed_qty>=l.qty?'text-success':'text-muted'">{{ l.billed_qty }}</span>
-                  <span class="ta-r mono-sm text-danger">{{ l.remaining_to_receive }} / {{ l.remaining_to_bill }}</span>
-                </div>
-              </div>
-              <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-                <button v-if="hasUnreceived" class="form-btn form-btn-outline" @click="markAllReceived" :disabled="actionRunning">📦 Mark All Received</button>
-              </div>
-            </template>
-            <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">No line items.</div>
+              </template>
+            </div>
           </template>
 
-          <template v-if="viewTab==='links'">
-            <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <template v-else>
-              <div v-if="links.bills.length" class="inv-sec-lbl">Vendor Bills</div>
-              <div v-for="b in links.bills" :key="b.name" class="po-link-row">
-                <span class="inv-link">{{ b.name }}</span>
-                <span class="text-muted">{{ fmtDate(b.posting_date) }}</span>
-                <span class="text-muted">Out: {{ fmtCur(b.outstanding_amount) }}</span>
-                <span style="text-align:right;font-weight:600">{{ fmtCur(b.grand_total) }}</span>
-              </div>
-              <div v-if="!links.bills.length"
-                style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
-                No linked bills yet.
-              </div>
-            </template>
-          </template>
-        </div>
-
-        <div class="inv-dfooter">
-          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-          <button v-if="canEdit(viewDoc)" class="form-btn form-btn-success" @click="openEdit(viewDoc);viewOpen=false">
-            <span v-html="icon('edit',13)"></span> Edit
-          </button>
-          <button class="form-btn form-btn-outline" @click="emailPO(viewDoc)">
-            <span v-html="icon('mail',13)"></span> Email
-          </button>
-          <button class="form-btn form-btn-outline" @click="printPO(viewDoc)" title="Print preview">
-            🖨 Print
-          </button>
-          <button v-if="canBill(viewDoc)" class="form-btn form-btn-primary" @click="openBillModal(viewDoc)">→ Bill</button>
-          <button v-if="canCancel(viewDoc)" class="form-btn form-btn-danger" @click="cancelPO(viewDoc)">Cancel</button>
-          <button v-if="canDelete(viewDoc)" class="form-btn form-btn-danger" @click="deletePO(viewDoc)">Delete</button>
-        </div>
+        </div><!-- /inv-view-body -->
       </template>
-    </div>
+      </div><!-- /inv-drawer-panel -->
 
     <!-- ── Convert-to-Bill modal (partial-qty + 3-way warn) ── -->
     <div v-if="billModal.open" class="inv-drawer-bg" @click.self="billModal.open=false" style="z-index:60"></div>
@@ -903,7 +1023,7 @@ onMounted(() => { load(); loadTaxAccount(); });
 </script>
 
 <style scoped>
-/* ── Drawer slide animation + width ── */
+/* ── Edit/Create drawer slide animation ── */
 .inv-drawer-panel {
   position: fixed;
   top: 0;
@@ -911,31 +1031,54 @@ onMounted(() => { load(); loadTaxAccount(); });
   bottom: 0;
   width: 600px;
   max-width: 96vw;
-  z-index: 8000;
+  z-index: 8100;
   transition: right .22s ease;
 }
 .inv-drawer-panel.open { right: 0; }
-.po-view-drawer { width: 625px; right: -625px; }
-.po-view-drawer.open { right: 0; }
 
-/* ── View panel: large amount display ── */
-.po-view-amount {
-  font-size: 20px;
-  font-weight: 800;
-  color: #dc2626;
-}
-
-/* ── View body padding ── */
-.inv-view-body {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  overflow-y: auto;
-  margin: 0;
-  border: none;
-  border-radius: 0;
-}
+/* ── View drawer: Invoice-style full panel ── */
+.inv-drawer-bg { position:fixed; inset:0; z-index:8000; background:rgba(15,23,42,.45); display:flex; justify-content:flex-end; backdrop-filter:blur(2px); }
+.inv-drawer-wide { width:800px; max-width:96vw; }
+.inv-view-page { display:flex; flex-direction:column; height:100%; background:#f5f6f8; overflow:hidden; }
+.inv-view-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:20px 24px 12px; background:#f5f6f8; flex-wrap:wrap; flex-shrink:0; }
+.inv-view-header-left { display:flex; flex-direction:column; gap:4px; }
+.inv-view-title-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.inv-view-number { font-size:20px; font-weight:800; color:#1a1a2e; letter-spacing:-.01em; }
+.inv-view-subtitle { font-size:13px; color:#6b7280; margin-top:1px; }
+.inv-hdr-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:.04em; white-space:nowrap; }
+.inv-view-cta { display:inline-flex; align-items:center; gap:7px; background:#1a6ef7; color:#fff; border:none; border-radius:7px; padding:9px 18px; font-size:13.5px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.inv-view-cta:hover { background:#155fd4; }
+.inv-view-cta:disabled { opacity:.55; cursor:not-allowed; }
+.inv-view-body { flex:1; display:flex; flex-direction:column; gap:0; margin:0 16px 16px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow-y:auto; }
+.inv-tl-wrap { padding:20px 28px; border-bottom:1px solid #e5e7eb; background:#fff; }
+.inv-action-bar { display:flex; align-items:center; gap:8px; padding:12px 20px; border-bottom:1px solid #e5e7eb; flex-wrap:wrap; background:#fff; }
+.inv-ab-btn { display:inline-flex; align-items:center; gap:6px; border:1px solid #e2e8f0; background:#fff; color:#374151; border-radius:6px; padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.inv-ab-btn:hover { border-color:#94a3b8; background:#f8fafc; }
+.inv-ab-btn:disabled { opacity:.5; cursor:not-allowed; }
+.inv-ab-btn.inv-ab-danger { color:#dc2626; border-color:rgba(220,38,38,.25); }
+.inv-ab-btn.inv-ab-danger:hover { background:#fef2f2; border-color:#dc2626; }
+.inv-ab-spacer { flex:1; }
+.inv-view-tabs { display:flex; gap:0; border-bottom:1.5px solid #e5e7eb; padding:0 20px; background:#fff; flex-shrink:0; }
+.inv-vtab { background:none; border:none; border-bottom:2.5px solid transparent; padding:11px 18px; margin-bottom:-1.5px; font-size:13.5px; font-weight:600; color:#6b7280; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.inv-vtab.active { color:#1a6ef7; border-bottom-color:#1a6ef7; }
+.inv-vtab-count { font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:10px; background:#e5e7eb; color:#374151; }
+.inv-tab-body { padding:20px; display:flex; flex-direction:column; gap:16px; }
+.inv-details-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; padding:16px; background:#f8fafc; border-bottom:1px solid #e5e7eb; }
+.inv-dmeta-icon-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+.inv-dmeta-icon { width:22px; height:22px; border-radius:5px; background:#dbeafe; color:#2563eb; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.inv-dmeta-lbl { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; }
+.inv-dmeta-primary { font-size:14px; font-weight:700; color:#1a1a2e; }
+.inv-dmeta-date-val { font-size:15px; font-weight:700; color:#1a1a2e; }
+.inv-dmeta-date-val.is-overdue { color:#dc2626; }
+.inv-sec-lbl { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#9ca3af; margin-bottom:8px; margin-top:4px; padding-top:16px; border-top:1px solid #f0f2f5; }
+.inv-sec-lbl:first-child { border-top:none; padding-top:0; margin-top:0; }
+.inv-items-wrap { border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
+.inv-items-table { width:100%; border-collapse:collapse; font-size:13px; }
+.inv-items-table th { padding:9px 14px; background:#f8fafc; border-bottom:1px solid #e8ecf0; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; text-align:left; }
+.inv-items-table td { padding:10px 14px; border-bottom:1px solid #f0f2f5; color:#374151; vertical-align:top; }
+.inv-items-table tr:last-child td { border-bottom:none; }
+.th-r { text-align:right; }
+.td-r { text-align:right; }
 
 /* ── Meta grid (view details tab) ── */
 .po-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }

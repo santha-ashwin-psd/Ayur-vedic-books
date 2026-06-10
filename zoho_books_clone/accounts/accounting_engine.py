@@ -377,6 +377,7 @@ def post_journal_entry(doc) -> None:
                 "party":        row.party or "",
                 "company":      doc.company,
                 "fiscal_year":  fy,
+                "cost_center":  getattr(row, "cost_center", None) or getattr(doc, "cost_center", None) or "",
                 "remarks":      doc.remark or f"Journal Entry {doc.name}",
             })
     if not gl_map:

@@ -839,15 +839,39 @@
 .inv-dclose:hover {border-color: #94a3b8; background: #f8fafc; }
 .inv-dbody      { flex: 1; overflow-y: auto; padding: 20px 24px; }
 .inv-dfooter    {
-  padding: 14px 24px;
+  padding: 12px 20px;
   border-top: 1px solid #e8ecf0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: #f8fafc;
   flex-shrink: 0;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+/* PO view drawer footer: two groups — main actions left, destructive right */
+.po-view-footer {
+  gap: 0;
+}
+.po-footer-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.po-footer-danger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Divider between the two groups */
+.po-footer-danger:not(:empty) {
+  padding-left: 12px;
+  border-left: 1px solid #e2e8f0;
+  margin-left: 6px;
 }
 
 /* ══════════════════════════════════════════════

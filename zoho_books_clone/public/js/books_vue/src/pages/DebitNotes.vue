@@ -799,7 +799,7 @@ onMounted(load);
   transition: right .22s ease;
 }
 .dn-drawer.open { right: 0; }
-.dn-view-drawer { width: 520px; right: -520px; }
+.dn-view-drawer { width: 625px; right: -625px; }
 .dn-view-drawer.open { right: 0; }
 
 /* ── Drawer add/edit body ── */

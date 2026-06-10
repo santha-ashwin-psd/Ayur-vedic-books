@@ -105,7 +105,8 @@
                 <label class="inv-lbl">Vendor / Supplier <span class="inv-req">*</span></label>
                 <SearchableSelect v-model="form.employee_name" :options="vendorOptions"
                   placeholder="Search supplier…" @search="fetchVendors" @open="fetchVendors('')"
-                  @select="opt => { form.employee_name = opt?.value ?? opt; form.vendor_display = opt?.label ?? opt?.value ?? ''; }" />
+                  :createable="true" createDoctype="Supplier"
+                  @select="opt => { form.employee_name = opt?.value ?? opt; form.vendor_display = opt?.label ?? opt?.value ?? ''; fetchVendors(''); }" />
               </div>
               <div>
                 <label class="inv-lbl">Expense Date <span class="inv-req">*</span></label>
@@ -308,6 +309,9 @@
       </template>
     </div>
   </div>
+
+  <!-- Quick-Create popup (shared: triggered by SearchableSelect createable) -->
+  <QuickCreateDrawer />
 </template>
 
 <script setup>
@@ -317,6 +321,7 @@ import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import QuickCreateDrawer from "../components/QuickCreateDrawer.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";

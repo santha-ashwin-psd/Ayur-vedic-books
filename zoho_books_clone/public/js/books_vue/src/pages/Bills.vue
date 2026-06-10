@@ -1125,7 +1125,7 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .inv-view-cta:hover { background: #155fd4; }
 
 /* ── inv-view-body wraps everything below header ── */
-.inv-view-body { margin: 12px 16px 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+.inv-view-body { margin: 12px 16px 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: scroll; }
 
 /* ── Status timeline ── */
 .inv-tl-wrap { padding: 20px 24px 4px; border-bottom: 1px solid #f0f2f5; }

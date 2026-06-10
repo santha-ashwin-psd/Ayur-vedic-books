@@ -896,20 +896,27 @@ def ai_chat(messages, system=None):
 def get_cost_center_spend(company=None):
     """
     Actual spend per cost center, summed from posted General Ledger Entries.
-    Net = SUM(debit) - SUM(credit) (positive for expense-side activity).
-    Returns a map { cost_center_name: net_spend }.
+    Only expense-side account types are counted (Expense, Cost of Goods Sold,
+    Stock, Fixed Asset) so that income/receivable/tax entries from Sales
+    Invoices do not pollute the spend figure.
+    Returns a map { cost_center_name: spend }.
     """
     if not company:
         company = _get_company(frappe.session.user)
     rows = frappe.db.sql("""
-        SELECT cost_center, SUM(debit) - SUM(credit) AS net
-        FROM `tabGeneral Ledger Entry`
-        WHERE company = %s
-          AND IFNULL(cost_center, '') <> ''
-          AND IFNULL(is_cancelled, 0) = 0
-        GROUP BY cost_center
+        SELECT gl.cost_center, SUM(gl.debit) AS spend
+        FROM `tabGeneral Ledger Entry` gl
+        JOIN `tabAccount` a ON a.name = gl.account
+        WHERE gl.company = %s
+          AND IFNULL(gl.cost_center, '') <> ''
+          AND IFNULL(gl.is_cancelled, 0) = 0
+          AND a.account_type IN (
+                'Expense', 'Cost of Goods Sold', 'Stock', 'Fixed Asset',
+                'Depreciation', 'Temporary'
+          )
+        GROUP BY gl.cost_center
     """, (company,), as_dict=True)
-    return {r.cost_center: flt(r.net) for r in rows}
+    return {r.cost_center: flt(r.spend) for r in rows}
 
 
 # ── CHART OF ACCOUNTS ─────────────────────────────────────────────────────────

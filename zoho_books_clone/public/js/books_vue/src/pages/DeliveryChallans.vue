@@ -1151,27 +1151,27 @@ onMounted(async () => {
 
   /* ── Each item row → a card ── */
   .dc-item-row {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
     background: #fff;
     border: 1.5px solid #e2e8f0;
     border-radius: 14px;
     margin: 0 10px 10px;
-    padding: 14px;
+    padding: 14px 14px 12px;
     gap: 10px 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
     box-sizing: border-box;
     border-top: none;
     position: relative;
   }
 
-  /* ── Row 1: ITEM — full width ── */
+  /* ── Row 1: ITEM — full width (col 1–2), with padding-right for delete btn ── */
   .dc-item-row > div:nth-child(1) {
-    width: 100%;
-    order: 1;
+    grid-column: 1 / -1;
+    grid-row: 1;
     min-width: 0;
+    padding-right: 44px; /* space for absolute delete btn */
   }
   .dc-item-row > div:nth-child(1)::before {
     content: 'ITEM';
@@ -1183,10 +1183,10 @@ onMounted(async () => {
     margin-bottom: 5px;
   }
 
-  /* ── Row 2: DESCRIPTION (wide) + DELETE button (narrow) side by side ── */
+  /* ── Row 2: DESCRIPTION — full width (col 1–2) ── */
   .dc-item-row > div:nth-child(2) {
-    width: calc(100% - 48px); /* leave 40px + 8px gap for delete */
-    order: 2;
+    grid-column: 1 / -1;
+    grid-row: 2;
     min-width: 0;
   }
   .dc-item-row > div:nth-child(2)::before {
@@ -1199,37 +1199,10 @@ onMounted(async () => {
     margin-bottom: 5px;
   }
 
-  /* Delete button: sits next to description INPUT (aligned to bottom) */
-  .dc-item-row > div:nth-child(5) {
-    width: 40px;
-    order: 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    align-self: flex-end;   /* ← pushes to bottom of row = next to the input */
-    flex-shrink: 0;
-    position: static;
-  }
-  .dc-item-row > div:nth-child(5) .add-line-del {
-    opacity: 1 !important;
-    background: #fee2e2 !important;
-    border: 1.5px solid #fecaca !important;
-    border-radius: 8px !important;
-    padding: 8px !important;
-    color: #dc2626 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    width: 36px !important;
-    height: 36px !important;
-    transition: background .15s !important;
-  }
-
-  /* ── Row 3: QTY (50%) + UOM (50%) side by side ── */
+  /* ── Row 3: QTY (left col) ── */
   .dc-item-row > div:nth-child(3) {
-    width: calc(50% - 4px);
-    order: 3;
+    grid-column: 1;
+    grid-row: 3;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -1244,9 +1217,10 @@ onMounted(async () => {
     margin-bottom: 5px;
   }
 
+  /* ── Row 3: UOM (right col) ── */
   .dc-item-row > div:nth-child(4) {
-    width: calc(50% - 4px);
-    order: 3;
+    grid-column: 2;
+    grid-row: 3;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -1259,6 +1233,37 @@ onMounted(async () => {
     letter-spacing: .07em;
     color: #9ca3af;
     margin-bottom: 5px;
+  }
+
+  /* ── Delete button: absolute top-right of card ── */
+  .dc-item-row > div:nth-child(5) {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dc-item-row > div:nth-child(5) .add-line-del {
+    opacity: 1 !important;
+    background: #fee2e2 !important;
+    border: 1.5px solid #fecaca !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
+    color: #dc2626 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    width: 36px !important;
+    height: 36px !important;
+    flex-shrink: 0 !important;
+    transition: background .15s !important;
+  }
+  .dc-item-row > div:nth-child(5) .add-line-del:hover {
+    background: #fecaca !important;
   }
 
   /* ── All inputs & selects: full width ── */

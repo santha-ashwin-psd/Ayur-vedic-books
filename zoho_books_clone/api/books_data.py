@@ -896,9 +896,12 @@ def ai_chat(messages, system=None):
 def get_cost_center_spend(company=None):
     """
     Actual spend per cost center, summed from posted General Ledger Entries.
-    Only expense-side account types are counted (Expense, Cost of Goods Sold,
-    Stock, Fixed Asset) so that income/receivable/tax entries from Sales
-    Invoices do not pollute the spend figure.
+    Counts debit-side GL rows only (never credits), so:
+    - Purchase bill expense lines    -> counted (Expense account, debit)
+    - Purchase bill ITC lines        -> counted (Tax/Input account, debit)
+    - Sales invoice income lines     -> excluded (credit, debit=0)
+    - Sales invoice tax lines        -> excluded (credit, debit=0)
+    - Sales invoice receivable lines -> excluded (Receivable account type)
     Returns a map { cost_center_name: spend }.
     """
     if not company:
@@ -910,9 +913,10 @@ def get_cost_center_spend(company=None):
         WHERE gl.company = %s
           AND IFNULL(gl.cost_center, '') <> ''
           AND IFNULL(gl.is_cancelled, 0) = 0
-          AND a.account_type IN (
-                'Expense', 'Cost of Goods Sold', 'Stock', 'Fixed Asset',
-                'Depreciation', 'Temporary'
+          AND gl.debit > 0
+          AND a.account_type NOT IN (
+                'Receivable', 'Payable', 'Bank', 'Cash',
+                'Income', 'Revenue'
           )
         GROUP BY gl.cost_center
     """, (company,), as_dict=True)

@@ -121,6 +121,24 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:poCollapsed.details}">
+            <!-- Purchase Type toggle -->
+            <div class="po-type-toggle">
+              <span class="po-type-lbl">Purchase Type</span>
+              <div class="po-type-btns">
+                <button type="button"
+                  class="po-type-btn" :class="{active: form.purchase_type === 'Goods'}"
+                  @click="form.purchase_type = 'Goods'; if(!form.set_warehouse) fetchWarehouses('')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                  Goods
+                </button>
+                <button type="button"
+                  class="po-type-btn" :class="{active: form.purchase_type === 'Services'}"
+                  @click="form.purchase_type = 'Services'; form.set_warehouse = ''">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                  Services
+                </button>
+              </div>
+            </div>
             <div class="add-details-grid">
               <div style="grid-column:1/-1">
                 <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
@@ -135,7 +153,8 @@
                 <label class="inv-lbl">Expected Delivery</label>
                 <input v-model="form.expected_delivery_date" type="date" class="inv-fi" />
               </div>
-              <div style="grid-column:1/-1">
+              <!-- Warehouse: only shown and required for Goods -->
+              <div v-if="form.purchase_type === 'Goods'" style="grid-column:1/-1">
                 <label class="inv-lbl">Receiving Warehouse <span class="inv-req">*</span></label>
                 <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…" @search="fetchWarehouses" />
               </div>
@@ -245,8 +264,10 @@
           <button class="add-btn-draft" :disabled="drawerSaving" @click="savePO('Draft')">
             <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
           </button>
-          <button class="add-btn-more" :disabled="drawerSaving" @click="savePO('To Receive')">
-            <span v-html="icon('check',13)"></span> {{ drawerSaving ? 'Saving…' : 'Issue PO' }}
+          <button class="add-btn-more" :disabled="drawerSaving"
+            @click="savePO(form.purchase_type === 'Services' ? 'To Receive' : 'To Receive')">
+            <span v-html="icon('check',13)"></span>
+            {{ drawerSaving ? 'Saving…' : (form.purchase_type === 'Services' ? 'Confirm Order' : 'Issue PO') }}
           </button>
         </div>
       </div>
@@ -263,6 +284,9 @@
             <div class="inv-view-title-row">
               <span class="inv-view-number">{{ viewDoc.name }}</span>
               <span class="inv-hdr-badge" :class="badgeClass(viewDoc)">{{ displayStatus(viewDoc) }}</span>
+              <span class="po-type-badge" :class="(viewDoc.purchase_type||'Goods')=== 'Goods' ? 'po-type-goods' : 'po-type-services'">
+                {{ viewDoc.purchase_type || 'Goods' }}
+              </span>
             </div>
             <div class="inv-view-subtitle">
               {{ viewDoc.supplier_name || viewDoc.supplier }}
@@ -300,7 +324,7 @@
             <button class="inv-ab-btn" @click="printPO(viewDoc)">
               <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
             </button>
-            <button v-if="hasUnreceived" class="inv-ab-btn" @click="markAllReceived" :disabled="actionRunning">
+            <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods'" class="inv-ab-btn" @click="markAllReceived" :disabled="actionRunning">
               <span v-html="icon('package',13)"></span> <span class="ab-label">Mark Received</span>
             </button>
             <span class="inv-ab-spacer"></span>
@@ -315,7 +339,7 @@
           <!-- Tabs -->
           <div class="inv-view-tabs">
             <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
-            <button class="inv-vtab" :class="{active:viewTab==='fulfill'}" @click="viewTab='fulfill'">Fulfillment</button>
+            <button v-if="(viewDoc.purchase_type || 'Goods') === 'Goods'" class="inv-vtab" :class="{active:viewTab==='fulfill'}" @click="viewTab='fulfill'">Fulfillment</button>
             <button class="inv-vtab" :class="{active:viewTab==='links'}" @click="viewTab='links'">
               Linked <span v-if="links.bills.length>0" class="inv-vtab-count">{{ links.bills.length }}</span>
             </button>
@@ -357,6 +381,15 @@
                   </div>
                   <div class="inv-dmeta-primary" style="font-size:18px;font-weight:800;color:#1a6ef7">{{ fmtCur(viewDoc.grand_total) }}</div>
                 </div>
+              </div>
+
+              <!-- Warehouse (Goods only) -->
+              <div v-if="viewDoc.set_warehouse" class="inv-dmeta-row" style="padding:8px 0 4px">
+                <div class="inv-dmeta-icon-row">
+                  <span class="inv-dmeta-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
+                  <span class="inv-dmeta-lbl">Receiving Warehouse</span>
+                </div>
+                <div style="font-size:13px;font-weight:600;color:#111827;margin-top:2px">{{ viewDoc.set_warehouse }}</div>
               </div>
 
               <!-- Addresses -->
@@ -589,7 +622,7 @@ let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const form = reactive({
   supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
-  billing_address: "", delivery_address: "", set_warehouse: "", tax_rate: 0, terms: "",
+  billing_address: "", delivery_address: "", set_warehouse: "", purchase_type: "Goods", tax_rate: 0, terms: "",
 });
 const warehouses = ref([]);
 async function fetchWarehouses(q = "") {
@@ -772,7 +805,7 @@ const threeWayMismatch = computed(() =>
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", set_warehouse: "", tax_rate: 0, terms: "" });
+  Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", set_warehouse: "", purchase_type: "Goods", tax_rate: 0, terms: "" });
   fetchWarehouses("");
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems("");
@@ -784,7 +817,7 @@ async function openEdit(o) {
     supplier: o.supplier || "", transaction_date: o.transaction_date || todayStr(),
     expected_delivery_date: o.expected_delivery_date || expectedDefault(),
     billing_address: o.billing_address || "", delivery_address: o.delivery_address || "",
-    set_warehouse: "", tax_rate: 0, terms: o.terms || "",
+    set_warehouse: "", purchase_type: o.purchase_type || "Goods", tax_rate: 0, terms: o.terms || "",
   });
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
@@ -863,7 +896,7 @@ function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 1
 async function savePO(newStatus) {
   if (!form.supplier) return toast.error("Vendor is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
-  if (!form.set_warehouse) return toast.error("Receiving Warehouse is required");
+  if (form.purchase_type === "Goods" && !form.set_warehouse) return toast.error("Receiving Warehouse is required for Goods orders");
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
@@ -872,7 +905,7 @@ async function savePO(newStatus) {
       : [];
     const doc = {
       doctype: "Purchase Order", company,
-      supplier: form.supplier, transaction_date: form.transaction_date,
+      supplier: form.supplier, transaction_date: form.transaction_date, purchase_type: form.purchase_type || "Goods",
       expected_delivery_date: form.expected_delivery_date || null,
       billing_address: form.billing_address || "",
       delivery_address: form.delivery_address || "",
@@ -1150,4 +1183,19 @@ onMounted(() => { load(); loadTaxAccount(); });
 .add-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #1a6ef7; color: #fff; border: none; border-radius: 7px; padding: 7px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .add-btn-primary:hover { background: #155fd4; }
 .add-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* -- Purchase Type Toggle ----------------------------------------- */
+.po-type-toggle { display: flex; align-items: center; gap: 12px; padding: 10px 0 14px; border-bottom: 1px solid #f0f2f5; margin-bottom: 14px; }
+.po-type-lbl { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.po-type-btns { display: flex; gap: 0; border: 1.5px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #f8fafc; }
+.po-type-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; font-size: 12.5px; font-weight: 600; color: #6b7280; background: transparent; border: none; cursor: pointer; transition: all .15s; }
+.po-type-btn + .po-type-btn { border-left: 1.5px solid #e2e8f0; }
+.po-type-btn:hover { background: #f1f5f9; color: #374151; }
+.po-type-btn.active { background: #1a6ef7; color: #fff; }
+.po-type-btn.active svg { stroke: #fff; }
+
+/* -- Purchase Type Badge (view header) ----------------------------- */
+.po-type-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.po-type-goods { background: #dbeafe; color: #1d4ed8; }
+.po-type-services { background: #f0fdf4; color: #15803d; }
 </style>

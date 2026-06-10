@@ -85,6 +85,16 @@
    "label": "Delivery Address"
   },
   {
+   "fieldname": "purchase_type",
+   "fieldtype": "Select",
+   "label": "Purchase Type",
+   "options": "Goods\nServices",
+   "default": "Goods",
+   "reqd": 1,
+   "in_list_view": 0,
+   "in_standard_filter": 1
+  },
+  {
    "fieldname": "set_warehouse",
    "fieldtype": "Link",
    "label": "Receiving Warehouse",

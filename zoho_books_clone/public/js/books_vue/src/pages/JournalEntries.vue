@@ -488,7 +488,7 @@ function openEdit(name) {
   if (!e || e.status !== "Draft") return;
   editingName.value = name;
   selectedTpl.value = "";
-  Object.assign(form, { date: e.date || todayStr(), type: e.type || "Journal Entry", ref: e.ref || "", cheque_date: e.cheque_date || "", narration: e.narration || "", cost_center: e.cost_center || "", status: e.status || "Draft" });
+  Object.assign(form, { date: e.date || todayStr(), type: e.type || "Journal Entry", ref: e.cheque_no || e.ref || "", cheque_date: e.cheque_date || "", narration: e.narration || "", cost_center: e.cost_center || "", status: e.status || "Draft" });
   lines.value = (e.lines && e.lines.length)
     ? e.lines.map((l, i) => ({ ...l, id: Date.now() + i }))
     : [
@@ -559,6 +559,9 @@ async function saveEntry(status) {
       posting_date: form.date,
       voucher_type: form.type,
       remark: form.narration,
+      cost_center: form.cost_center || null,
+      cheque_no: form.ref || null,
+      cheque_date: form.cheque_date || null,
       accounts: lines.value.filter((l) => l.account).map((l) => ({
         doctype: "Journal Entry Account",
         account: l.account,

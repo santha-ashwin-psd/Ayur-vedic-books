@@ -528,8 +528,8 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
 const route = useRoute();
-const defaultTab = route.path === "/payments-received" ? "Receive" : "Pay";
-const activeTab = ref(defaultTab);
+const defaultTab = computed(() => route.path === "/payments-received" ? "Receive" : "Pay");
+const activeTab = ref(defaultTab.value);
 const tabs = [{key:"all",label:"All"},{key:"Receive",label:"Received"},{key:"Pay",label:"Paid Out"}];
 
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
@@ -550,8 +550,8 @@ const vendorTdsInfo = ref(null); // { applicable, section, rate } from Supplier 
 
 const blankForm = () => ({
   doctype: "Payment Entry",
-  payment_type: defaultTab === "Receive" ? "Receive" : "Pay",
-  party_type: defaultTab === "Receive" ? "Customer" : "Supplier",
+  payment_type: defaultTab.value === "Receive" ? "Receive" : "Pay",
+  party_type: defaultTab.value === "Receive" ? "Customer" : "Supplier",
   party: "", mode_of_payment: "", paid_amount: "",
   payment_date: new Date().toISOString().slice(0,10),
   reference_no: "", reference_date: "", paid_from: "", paid_to: "", remarks: "",
@@ -649,7 +649,7 @@ function toggleAll(e) { selected.value = e.target.checked ? new Set(sorted.value
 function openNew() {
   editingName.value = "";
   Object.assign(form, blankForm());
-  form.payment_type = activeTab.value !== "all" ? activeTab.value : "Receive";
+  form.payment_type = activeTab.value !== "all" ? activeTab.value : defaultTab.value;
   form.party_type = form.payment_type === "Receive" ? "Customer" : "Supplier";
   outstandingInvoices.value = [];
   invoiceRefs.value = [];

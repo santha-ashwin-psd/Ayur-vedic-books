@@ -849,6 +849,7 @@ def create_debit_note():
     reason       = fd.get("reason") or ""
     notes        = fd.get("notes") or ""
     cost_center  = fd.get("cost_center") or ""
+    draft_only   = frappe.utils.cint(fd.get("draft_only") or 0)
     warehouse    = fd.get("warehouse") or ""
     items_raw    = fd.get("items") or "[]"
 
@@ -905,6 +906,12 @@ def create_debit_note():
     pi.flags.ignore_links = True
     pi.flags.ignore_mandatory = True
     pi.insert()
+
+    # Draft-only path: just save, no GL posting, no stock movement
+    if draft_only:
+        frappe.db.commit()
+        return {"debit_note": pi.name}
+
     pi.submit()
     frappe.db.commit()
 

@@ -536,8 +536,11 @@
 
         <div class="inv-dfooter">
           <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-success" @click="openEdit(viewDoc);viewOpen=false">
+          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
+          </button>
+          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitDraftDN(viewDoc)">
+            <span v-html="icon('check',13)"></span> Submit
           </button>
           <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" @click="emailDN(viewDoc)">
             <span v-html="icon('mail',13)"></span> Email
@@ -865,7 +868,16 @@ async function openEdit(d) {
         };
       });
     }
-    if (doc?.remarks) form.notes = doc.remarks;
+    if (doc?.remarks) {
+      const REASONS = ["Vendor Overcharge", "Goods Returned", "Damaged Goods", "Short Delivery", "Duplicate Invoice", "Other"];
+      const firstPart = doc.remarks.split(" — ")[0]?.trim() || "";
+      if (REASONS.includes(firstPart)) {
+        form.reason = firstPart;
+        form.notes = doc.remarks.slice(firstPart.length + 3).trim();
+      } else {
+        form.notes = doc.remarks;
+      }
+    }
     if (billRef) {
       try {
         const billDoc = await apiGet("Purchase Invoice", billRef);
@@ -1006,8 +1018,9 @@ async function saveDN(submit) {
         cost_center: form.cost_center || "",
         notes: form.notes || "",
         items: JSON.stringify(itemsPayload),
+        draft_only: submit ? 0 : 1,
       });
-      toast.success(`Debit Note ${r?.debit_note || ""} ${submit ? "submitted" : "issued"}`);
+      toast.success(`Debit Note ${r?.debit_note || ""} ${submit ? "submitted" : "saved as draft"}`);
     } else {
       const company = await resolveCompany();
       const doc = {
@@ -1056,9 +1069,15 @@ async function applyDN(d) {
     });
     if (!r.length) { toast.info("No open bills for this vendor"); return; }
     const balance = balanceFor(d.name) || viewBalance.value || Math.abs(flt(d.grand_total));
+    const returnAgainst = d.return_against || "";
+    const matchedBill = r.find(b => b.name === returnAgainst);
+    const defaultBill = matchedBill?.name || r[0]?.name || "";
+    const defaultOutstanding = flt(matchedBill?.outstanding_amount ?? r[0]?.outstanding_amount ?? 0);
     Object.assign(applyModal, {
-      open: true, saving: false, dnName: d.name, balance, bill: "",
-      amount: Math.min(balance, flt(r[0].outstanding_amount)), openBills: r,
+      open: true, saving: false, dnName: d.name, balance,
+      bill: defaultBill,
+      amount: Math.min(balance, defaultOutstanding),
+      openBills: r,
     });
   } catch (e) { toast.error(e.message || "Failed to load bills"); }
 }
@@ -1077,6 +1096,15 @@ async function submitApply() {
     if (viewDoc.value?.name === applyModal.dnName) await openView(viewDoc.value);
   } catch (e) { toast.error(e.message || "Apply failed"); }
   applyModal.saving = false;
+}
+async function submitDraftDN(d) {
+  if (!await confirm({ title: "Submit Debit Note", body: `Submit ${d.name}? GL entries will be posted and the note cannot be edited.`, okLabel: "Submit" })) return;
+  try {
+    await apiSubmit("Purchase Invoice", d.name);
+    toast.success(`${d.name} submitted`);
+    viewOpen.value = false;
+    await load();
+  } catch (e) { toast.error(e.message || "Submit failed"); }
 }
 async function cancelDN(d) {
   if (!await confirm({ title: "Cancel Debit Note", body: `Cancel ${d.name}? Any applications must be cancelled separately.`, okLabel: "Cancel DN" })) return;

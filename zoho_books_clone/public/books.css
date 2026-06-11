@@ -1350,3 +1350,81 @@ input[type=date].b-input { color-scheme: light; }
   .rec-page,.br-page,.bt-page,.btr-page,.chq-page,.cash-page,.pmt-page,.exp-page,.bill-page,.so-page,.po-page,.cn-page,.dn-page,.dc-page,.ew-page,.ei-page,.g1-page,.g3-page,.tds-page,.ia-page,.se-page,.sl-page,.sv-page,.ra-page,.cp-page,.r-page,.i-page,.page-reports{padding:8px 6px!important;}
   .report-tab{font-size:10px!important;padding:4px 5px!important;}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DELIVERY CHALLAN — Item Row Delete Button Fix (425px & 375px)
+   Works on both "New Delivery Challan" and "Edit Delivery Challan"
+   The 5th child div inside .dc-item-row is the delete button column.
+   We pin it absolutely so the row does not need to be 440px wide.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 425px) {
+  /* Allow dc-item-row to fit narrow screens */
+  .dc-item-row {
+    min-width: 319px !important;
+    position: relative !important;
+  }
+
+  /* Delete button — pin to top-right of the row card */
+  .dc-item-row > div:nth-child(5) {
+    position: absolute !important;
+    top: -40px !important;
+    right: 14px !important;
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Also target with Vue scoped attribute when present */
+  .dc-item-row > [data-v-91075abd]:nth-child(5) {
+    position: absolute !important;
+    top: -40px !important;
+    right: 14px !important;
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Give the items head the same reduced min-width */
+  .dc-items-head {
+    min-width: 319px !important;
+  }
+}
+
+@media (max-width: 375px) {
+  /* Tighter fit on 375px */
+  .dc-item-row {
+    min-width: 319px !important;
+    position: relative !important;
+  }
+
+  /* Delete button — same absolute positioning, slightly adjusted for 375px */
+  .dc-item-row > div:nth-child(5) {
+    position: absolute !important;
+    top: -40px !important;
+    right: 10px !important;
+    width: 34px !important;
+    height: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .dc-item-row > [data-v-91075abd]:nth-child(5) {
+    position: absolute !important;
+    top: -40px !important;
+    right: 10px !important;
+    width: 34px !important;
+    height: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .dc-items-head {
+    min-width: 319px !important;
+  }
+}

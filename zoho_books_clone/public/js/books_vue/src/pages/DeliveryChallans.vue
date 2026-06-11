@@ -26,12 +26,67 @@
     <div class="bk-kpi-card bk-kpi-info clickable" @click="activeTab='toDeliver'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">To Deliver</div><div class="bk-kpi-value bk-kpi-blue">{{ counts.toDeliver }}</div><div class="bk-kpi-trend" :class="dcTrends.deliver.up?'bk-trend-up':'bk-trend-down'">{{ dcTrends.deliver.up?'↑':'↓' }} {{ dcTrends.deliver.pct }}% vs last month</div></div></div></div>
     <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='delivered'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Delivered</div><div class="bk-kpi-value bk-kpi-green">{{ counts.delivered }}</div><div class="bk-kpi-trend" :class="dcTrends.delivered.up?'bk-trend-up':'bk-trend-down'">{{ dcTrends.delivered.up?'↑':'↓' }} {{ dcTrends.delivered.pct }}% vs last month</div></div></div></div>
   </div>
-  <div class="bk-stat-grid">
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ dcThisMonth }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Delivery Rate</div><div class="bk-stat-value bk-kpi-green">{{ list.length ? Math.round(counts.delivered/list.length*100) : 0 }}%</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Cancelled</div><div class="bk-stat-value bk-kpi-red">{{ counts.cancelled }}</div></div><div class="bk-stat-icon" style="background:#fee2e2;color:#dc2626"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div></div></div>
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Pending Dispatch</div><div class="bk-stat-value bk-kpi-amber">{{ counts.draft + counts.toDeliver }}</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div></div>
+  <!-- ── Mobile KPI Summary Strip (≤480px) ── -->
+  <div class="dc-mob-summary">
+    <div class="dc-mob-kpi dc-mob-kpi-green">
+      <div class="dc-mob-kpi-label">THIS MONTH CHALLANS</div>
+      <div class="dc-mob-kpi-val">{{ dcThisMonth }}</div>
+    </div>
+    <div class="dc-mob-kpi dc-mob-kpi-amber">
+      <div class="dc-mob-kpi-label">TO DELIVER</div>
+      <div class="dc-mob-kpi-val">{{ counts.toDeliver }}</div>
+    </div>
+    <div class="dc-mob-kpi dc-mob-kpi-blue">
+      <div class="dc-mob-kpi-label">DELIVERED</div>
+      <div class="dc-mob-kpi-val">{{ counts.delivered }}</div>
+    </div>
   </div>
+
+  <!-- ── Mobile Card List (≤480px) ── -->
+  <div class="dc-mob-list">
+    <div v-if="loading" class="dc-mob-loading">
+      <div v-for="n in 4" :key="n" class="dc-mob-card dc-mob-shimmer">
+        <div class="shimmer" style="height:14px;width:55%;border-radius:6px;margin-bottom:8px"></div>
+        <div class="shimmer" style="height:11px;width:38%;border-radius:6px;margin-bottom:6px"></div>
+        <div class="shimmer" style="height:11px;width:48%;border-radius:6px"></div>
+      </div>
+    </div>
+    <div v-else-if="!sorted.length" class="dc-mob-empty">No challans match your filters</div>
+    <template v-else>
+      <div v-for="r in paged" :key="r.name" class="dc-mob-card" @click="openView(r)">
+        <!-- Card body: left info + right status -->
+        <div class="dc-mob-card-body">
+          <div class="dc-mob-card-left">
+            <div class="dc-mob-challan-no">{{ r.name }}</div>
+            <div class="dc-mob-customer">{{ r.customer_name || r.customer || '—' }}</div>
+            <div class="dc-mob-date">Date: {{ r.posting_date || '—' }}</div>
+          </div>
+          <div class="dc-mob-card-divider"></div>
+          <div class="dc-mob-card-right">
+            <div class="dc-mob-qty">{{ r.total_qty ? r.total_qty + ' qty' : '—' }}</div>
+            <span class="inv-status-badge" :class="statusClass(r)">{{ statusLabel(r) }}</span>
+          </div>
+        </div>
+        <!-- Action icons row -->
+        <div class="dc-mob-actions" @click.stop>
+          <button class="dc-mob-act" @click.stop="openView(r)" title="View">
+            <span v-html="icon('eye', 15)"></span>
+          </button>
+          <button v-if="canEdit(r)" class="dc-mob-act" @click.stop="openEdit(r)" title="Edit">
+            <span v-html="icon('edit', 15)"></span>
+          </button>
+          <button v-if="r._source==='dn' && r.docstatus===0" class="dc-mob-act" @click.stop="submitOne(r)" title="Submit">
+            <span v-html="icon('check', 15)"></span>
+          </button>
+          <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="dc-mob-act dc-mob-act-del" @click.stop="deleteTarget={row:r,mode:'delete'}" title="Delete">
+            <span v-html="icon('trash', 15)"></span>
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+
 
   <!-- Table -->
   <!-- Bulk action bar -->
@@ -1151,27 +1206,27 @@ onMounted(async () => {
 
   /* ── Each item row → a card ── */
   .dc-item-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
     background: #fff;
     border: 1.5px solid #e2e8f0;
     border-radius: 14px;
     margin: 0 10px 10px;
-    padding: 14px 14px 12px;
+    padding: 14px;
     gap: 10px 8px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,.07);
     box-sizing: border-box;
     border-top: none;
     position: relative;
   }
 
-  /* ── Row 1: ITEM — full width (col 1–2), with padding-right for delete btn ── */
+  /* ── Row 1: ITEM — full width ── */
   .dc-item-row > div:nth-child(1) {
-    grid-column: 1 / -1;
-    grid-row: 1;
+    width: 100%;
+    order: 1;
     min-width: 0;
-    padding-right: 44px; /* space for absolute delete btn */
   }
   .dc-item-row > div:nth-child(1)::before {
     content: 'ITEM';
@@ -1183,10 +1238,10 @@ onMounted(async () => {
     margin-bottom: 5px;
   }
 
-  /* ── Row 2: DESCRIPTION — full width (col 1–2) ── */
+  /* ── Row 2: DESCRIPTION (wide) + DELETE button (narrow) side by side ── */
   .dc-item-row > div:nth-child(2) {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    width: calc(100% - 48px); /* leave 40px + 8px gap for delete */
+    order: 2;
     min-width: 0;
   }
   .dc-item-row > div:nth-child(2)::before {
@@ -1199,10 +1254,37 @@ onMounted(async () => {
     margin-bottom: 5px;
   }
 
-  /* ── Row 3: QTY (left col) ── */
+  /* Delete button: sits next to description INPUT (aligned to bottom) */
+  .dc-item-row > div:nth-child(5) {
+    width: 40px;
+    order: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-end;   /* ← pushes to bottom of row = next to the input */
+    flex-shrink: 0;
+    position: static;
+  }
+  .dc-item-row > div:nth-child(5) .add-line-del {
+    opacity: 1 !important;
+    background: #fee2e2 !important;
+    border: 1.5px solid #fecaca !important;
+    border-radius: 8px !important;
+    padding: 8px !important;
+    color: #dc2626 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    width: 36px !important;
+    height: 36px !important;
+    transition: background .15s !important;
+  }
+
+  /* ── Row 3: QTY (50%) + UOM (50%) side by side ── */
   .dc-item-row > div:nth-child(3) {
-    grid-column: 1;
-    grid-row: 3;
+    width: calc(50% - 4px);
+    order: 3;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -1217,10 +1299,9 @@ onMounted(async () => {
     margin-bottom: 5px;
   }
 
-  /* ── Row 3: UOM (right col) ── */
   .dc-item-row > div:nth-child(4) {
-    grid-column: 2;
-    grid-row: 3;
+    width: calc(50% - 4px);
+    order: 3;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -1233,37 +1314,6 @@ onMounted(async () => {
     letter-spacing: .07em;
     color: #9ca3af;
     margin-bottom: 5px;
-  }
-
-  /* ── Delete button: absolute top-right of card ── */
-  .dc-item-row > div:nth-child(5) {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .dc-item-row > div:nth-child(5) .add-line-del {
-    opacity: 1 !important;
-    background: #fee2e2 !important;
-    border: 1.5px solid #fecaca !important;
-    border-radius: 8px !important;
-    padding: 0 !important;
-    color: #dc2626 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    width: 36px !important;
-    height: 36px !important;
-    flex-shrink: 0 !important;
-    transition: background .15s !important;
-  }
-  .dc-item-row > div:nth-child(5) .add-line-del:hover {
-    background: #fecaca !important;
   }
 
   /* ── All inputs & selects: full width ── */
@@ -1331,5 +1381,189 @@ onMounted(async () => {
   }
   .dc-items-tbl tbody tr td:nth-child(5),
   .dc-items-tbl tbody tr td:nth-child(6) { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════
+   MOBILE CARD LAYOUT — matches Invoices page exactly
+   Visible only at ≤ 480px
+   ═══════════════════════════════════════════════════ */
+
+/* Hide mobile elements on desktop */
+.dc-mob-summary,
+.dc-mob-list { display: none; }
+
+@media (max-width: 480px) {
+
+  /* ── KPI summary strip ── */
+  .dc-mob-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 12px 0;
+  }
+  .dc-mob-kpi {
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .dc-mob-kpi-green  { background: #f0fdf4; }
+  .dc-mob-kpi-amber  { background: #fffbeb; }
+  .dc-mob-kpi-blue   { background: #eff6ff; }
+  .dc-mob-kpi-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+  .dc-mob-kpi-val {
+    font-size: 26px;
+    font-weight: 800;
+    color: #111827;
+    line-height: 1.1;
+  }
+
+  /* ── Card list wrapper ── */
+  .dc-mob-list {
+    display: block;
+    padding: 10px 12px 80px;
+  }
+
+  /* ── Single card ── */
+  .dc-mob-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    cursor: pointer;
+    overflow: hidden;
+    transition: box-shadow .15s;
+  }
+  .dc-mob-card:active { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+
+  /* ── Card body: left | divider | right ── */
+  .dc-mob-card-body {
+    display: flex;
+    align-items: stretch;
+    padding: 14px 16px 10px;
+    gap: 0;
+  }
+  .dc-mob-card-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .dc-mob-challan-no {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+  .dc-mob-customer {
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dc-mob-date {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  /* Vertical divider */
+  .dc-mob-card-divider {
+    width: 1px;
+    background: #e5e7eb;
+    margin: 0 14px;
+    flex-shrink: 0;
+  }
+
+  /* Right side: qty + status badge */
+  .dc-mob-card-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px;
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+  .dc-mob-qty {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  /* ── Action icons row ── */
+  .dc-mob-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 14px 10px;
+    border-top: 1px solid #f3f4f6;
+    margin-top: 4px;
+  }
+  .dc-mob-act {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    color: #6b7280;
+    transition: background .13s, color .13s;
+  }
+  .dc-mob-act:hover,
+  .dc-mob-act:active { background: #f1f5f9; color: #111827; }
+  .dc-mob-act-del { color: #dc2626 !important; }
+  .dc-mob-act-del:hover { background: #fee2e2 !important; }
+
+  /* ── Shimmer / empty states ── */
+  .dc-mob-shimmer {
+    padding: 16px;
+    pointer-events: none;
+  }
+  .dc-mob-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+    font-size: 13px;
+  }
+
+  /* Hide the desktop table and stat grid on mobile */
+  .inv-table-wrap,
+  .bk-kpi-grid,
+  .bk-kpi-grid-4,
+  .bk-stat-grid {
+    display: none !important;
+  }
+}
+
+@media (max-width: 425px) {
+  .dc-mob-summary { padding: 10px 10px 0; }
+  .dc-mob-kpi { padding: 12px 14px; }
+  .dc-mob-kpi-val { font-size: 24px; }
+  .dc-mob-list { padding: 8px 10px 80px; }
+  .dc-mob-card-body { padding: 12px 14px 8px; }
+}
+
+@media (max-width: 375px) {
+  .dc-mob-summary { padding: 8px 8px 0; gap: 6px; }
+  .dc-mob-kpi { padding: 11px 12px; }
+  .dc-mob-kpi-val { font-size: 22px; }
+  .dc-mob-list { padding: 7px 8px 80px; }
+  .dc-mob-card-body { padding: 11px 12px 8px; }
+  .dc-mob-challan-no { font-size: 13px; }
+  .dc-mob-customer { font-size: 12.5px; }
+  .dc-mob-date { font-size: 11.5px; }
 }
 </style>

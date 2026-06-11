@@ -273,7 +273,7 @@
       </div>
 
       <!-- Recent Activity -->
-      <div class="db-card" style="grid-column:1/-1">
+      <div class="db-card recent-activity-card" style="grid-column:1/-1">
         <div class="db-card-header">
           <span class="db-card-title">Recent Activity</span>
           <span class="db-badge db-badge-ghost">Last 10 transactions</span>
@@ -565,6 +565,7 @@ function actDotClass(dt) {
   .qa-icon-wrap { width: 40px; height: 40px; border-radius: 8px; }
   .qa-btn-label { font-size: 12.5px; }
   .qa-chevron { width: 12px; height: 12px; }
+  .recent-activity-card { display: none !important; }
 }
 
 /* ── Responsive: 375px ── */
@@ -580,6 +581,7 @@ function actDotClass(dt) {
   .kpi-grid { grid-template-columns: 1fr 1fr !important; gap: 8px; }
   .kpi-card { padding: 10px 12px 8px; }
   .kpi-value { font-size: 16px; }
+  .recent-activity-card { display: none !important; }
 }
 
 /* ── Cards ─────────────────────────────────────────────────────────── */

@@ -2795,7 +2795,7 @@ watch(() => route.query, (q) => {
     margin:0 !important;
     float:none !important;
     border-radius:999px !important;
-    padding:5px 12px !important;
+   
     font-size:11.5px !important;
     letter-spacing:0 !important;
     text-transform:capitalize !important;

@@ -304,10 +304,22 @@
             </div>
             <div v-if="viewDoc.recipients" class="rec-section" style="margin-top:12px">
               <div class="rec-section-hdr"><span v-html="icon('mail',13)"></span><span>Notification</span></div>
-              <div class="rec-meta-grid">
-                <div style="grid-column:1/-1"><div class="rec-meta-lbl">Recipients</div><div class="mono-sm" style="word-break:break-all">{{ viewDoc.recipients }}</div></div>
-                <div v-if="viewDoc.subject" style="grid-column:1/-1"><div class="rec-meta-lbl">Subject</div><div>{{ viewDoc.subject }}</div></div>
-                <div v-if="viewDoc.message" style="grid-column:1/-1"><div class="rec-meta-lbl">Message</div><div style="font-size:13px;white-space:pre-wrap">{{ viewDoc.message }}</div></div>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+                <div>
+                  <div class="rec-meta-lbl">Recipients</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+                    <span v-for="em in viewDoc.recipients.split(',').map(s=>s.trim()).filter(Boolean)" :key="em"
+                      style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:500;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe">{{ em }}</span>
+                  </div>
+                </div>
+                <div v-if="viewDoc.subject">
+                  <div class="rec-meta-lbl">Subject</div>
+                  <div style="font-size:13px;font-weight:500;color:#111827;margin-top:2px;white-space: pre-wrap;word-break: break-word;">{{ viewDoc.subject }}</div>
+                </div>
+                <div v-if="viewDoc.message">
+                  <div class="rec-meta-lbl">Message</div>
+                  <div style="font-size:13px;color:#374151;line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px 12px;margin-top:4px;max-height:120px;overflow-y:auto">{{ viewDoc.message }}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -662,7 +674,7 @@ onMounted(load);
 .rec-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(2px);z-index:40;}
 .rec-drawer{position:fixed;top:0;right:-560px;bottom:0;width:560px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
 .rec-drawer.open{right:0;}
-.rec-view-drawer{width:520px;right:-520px;}.rec-view-drawer.open{right:0;}
+.rec-view-drawer{width:625px;right:-625px;}.rec-view-drawer.open{right:0;}
 
 /* ── Drawer Header ── */
 .rec-dheader{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}

@@ -63,7 +63,7 @@
               <td @click="openView(p)"><span class="inv-link">{{ p.name }}</span></td>
               <td @click="openView(p)">{{ p.party_name||p.party||'—' }}</td>
               <td @click="openView(p)" class="text-muted">{{ p.mode_of_payment||'—' }}</td>
-              <td @click="openView(p)" class="text-muted mono-sm">{{ p.reference_no||'—' }}</td>
+              <td @click="openView(p)" class="text-muted mono-sm" style="overflow: hidden;max-width: 10px">{{ p.reference_no||'—' }}</td>
               <td @click="openView(p)" class="text-muted mono-sm">{{ fmtDate(p.payment_date) }}</td>
               <td @click="openView(p)">
                 <span class="inv-status-badge" :class="p.payment_type==='Receive'?'badge-green':'badge-red'">
@@ -167,7 +167,8 @@
               </div>
               <div>
                 <label class="inv-lbl">Amount <span class="inv-req">*</span></label>
-                <input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="inv-fi" placeholder="0.00" @input="syncUnallocated" />
+                <input v-model.number="form.paid_amount" type="number" min="0" max="999999999" step="0.01" class="inv-fi" :class="{'field-error': form.paid_amount > 999999999}" placeholder="0.00" @input="syncUnallocated" />
+                <div v-if="form.paid_amount > 999999999" class="exp-field-hint exp-field-hint-err">Amount cannot exceed 9 digits</div>
               </div>
               <div v-if="vendorTdsInfo?.applicable && tdsDeduction > 0" style="grid-column:1/-1">
                 <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:12.5px;display:flex;align-items:center;gap:8px">
@@ -218,8 +219,13 @@
                 <input v-model="form.reference_date" type="date" class="inv-fi" />
               </div>
               <div style="grid-column:1/-1">
-                <label class="inv-lbl">Reference / Cheque No</label>
-                <input v-model="form.reference_no" type="text" class="inv-fi" placeholder="e.g. CHQ-001, NEFT-78902" />
+                <label class="inv-lbl" style="display:flex;justify-content:space-between;align-items:center">
+                  <span>Reference / Cheque No</span>
+                  <span :style="{color: (form.reference_no||'').length > 140 ? '#ef4444' : (form.reference_no||'').length > 120 ? '#f59e0b' : '#9ca3af', fontSize:'11px', fontWeight:'600'}">
+                    {{ (form.reference_no||"").length }}/140
+                  </span>
+                </label>
+                <input v-model="form.reference_no" type="text" class="inv-fi" placeholder="e.g. CHQ-001, NEFT-78902" maxlength="140" />
               </div>
             </div>
           </div>
@@ -803,6 +809,7 @@ async function fetchPaidToAccounts(q = "") {
 async function savePayment(submit) {
   if (!form.party) return toast.error("Party is required");
   if (!form.paid_amount || flt(form.paid_amount) <= 0) return toast.error("Amount must be greater than 0");
+  if (flt(form.paid_amount) > 999999999) return toast.error("Amount cannot exceed 9 digits (max ₹999,999,999)");
   if (!form.payment_date) return toast.error("Payment date is required");
   drawerSaving.value = true;
   try {
@@ -1103,6 +1110,8 @@ onMounted(async () => {
   font-size: 14px;
   color: #111827;
   font-weight: 500;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Linked documents table */
@@ -1133,9 +1142,14 @@ onMounted(async () => {
 
 /* Remarks */
 .pmt-vd-remarks {
-  font-size: 13.5px;
-  color: #374151;
-  font-style: italic;
+    font-size: 13.5px;
+    color: #374151;
+    border-radius: 8px;
+    height: 100px;
+    background: #f2f2f2;
+    word-wrap: break-word;
+    padding: 10px;
+    overflow: scroll;
 }
 
 /* Footer buttons */

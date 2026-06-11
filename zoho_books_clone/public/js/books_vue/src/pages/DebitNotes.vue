@@ -446,7 +446,7 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:dnCollapsed.notes}">
-            <textarea v-model="form.notes" rows="3" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
+            <textarea v-model="form.remark" rows="3" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
           </div>
         </div>
 
@@ -639,6 +639,7 @@ const sortCol = ref("posting_date"), sortDir = ref("desc");
 const selectedBillDocs = ref([]);
 const billSearchVal = ref("");
 const billLoading = ref(false);
+const _suppressVendorSelect = ref(false);
 
 // Balance cache by DN name
 const _balances = ref({});
@@ -655,7 +656,7 @@ async function fetchCostCenters() {
     costCenters.value = r.map(c => c.name);
   } catch { costCenters.value = []; }
 }
-const form = reactive({ supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", cost_center: "", notes: "" });
+const form = reactive({ supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", cost_center: "", remark: "" });
 const dnCollapsed = reactive({ vendor: false, bill: false, items: false, notes: true });
 
 // Apply-to-bill modal
@@ -831,7 +832,7 @@ const timelineSteps = computed(() => {
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", cost_center: "", notes: "" });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", cost_center: "", remark: "" });
   lines.value = [blankLine()];
   selectedBillDocs.value = [];
   billSearchVal.value = "";
@@ -840,7 +841,9 @@ function openNew() {
 }
 async function openEdit(d) {
   editingName.value = d.name;
-  Object.assign(form, { supplier: d.supplier || "", posting_date: d.posting_date || todayStr(), return_against: d.return_against || "", reason: "Vendor Overcharge", cost_center: "", notes: "" });
+  _suppressVendorSelect.value = true;
+  Object.assign(form, { supplier: d.supplier || "", posting_date: d.posting_date || todayStr(), return_against: d.return_against || "", reason: "Vendor Overcharge", cost_center: d.cost_center || "", remark: d.remark ||"" });
+  _suppressVendorSelect.value = false;
   lines.value = [blankLine()];
   selectedBillDocs.value = [];
   billSearchVal.value = "";
@@ -868,15 +871,8 @@ async function openEdit(d) {
         };
       });
     }
-    if (doc?.remarks) {
-      const REASONS = ["Vendor Overcharge", "Goods Returned", "Damaged Goods", "Short Delivery", "Duplicate Invoice", "Other"];
-      const firstPart = doc.remarks.split(" — ")[0]?.trim() || "";
-      if (REASONS.includes(firstPart)) {
-        form.reason = firstPart;
-        form.notes = doc.remarks.slice(firstPart.length + 3).trim();
-      } else {
-        form.notes = doc.remarks;
-      }
+    if (doc?.remark) {
+        form.remark = doc.remark;
     }
     if (billRef) {
       try {
@@ -935,6 +931,7 @@ async function fetchBills(q = "") {
   } catch { bills.value = []; }
 }
 function onVendorSelect(opt) {
+  if (_suppressVendorSelect.value) return;
   clearBills();
   fetchBills("");
 }
@@ -996,7 +993,7 @@ function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 1
 
 async function saveDN(submit) {
   if (!form.supplier) return toast.error("Vendor is required");
-  const activeLines = lines.value.filter(l => l.included && l.item_code && effectiveAmount(l) > 0);
+  const activeLines = lines.value.filter(l => l.included && (l.item_code || l.item_name) && effectiveAmount(l) > 0);
   if (!activeLines.length) return toast.error("At least one included item with amount > 0 is required");
   // Set return_against to first selected bill
   form.return_against = selectedBillDocs.value[0]?.name || "";
@@ -1004,7 +1001,7 @@ async function saveDN(submit) {
   try {
     if (!editingName.value) {
       const itemsPayload = activeLines.map(l => ({
-        item_code: l.item_code,
+        item_code: l.item_code || l.item_name,
         item_name: l.item_name || l.item_code,
         description: l.description,
         qty: l.mode === "qty" ? flt(l.qty) : 1,
@@ -1016,7 +1013,7 @@ async function saveDN(submit) {
         date: form.posting_date,
         reason: form.reason,
         cost_center: form.cost_center || "",
-        notes: form.notes || "",
+        remark: form.remark || "",
         items: JSON.stringify(itemsPayload),
         draft_only: submit ? 0 : 1,
       });
@@ -1029,7 +1026,7 @@ async function saveDN(submit) {
         posting_date: form.posting_date,
         is_return: 1, return_against: form.return_against || null,
         cost_center: form.cost_center || "",
-        remarks: (form.reason || "") + (form.notes ? " — " + form.notes : ""),
+        remark: form.remark || "",
         items: activeLines.map(l => ({
           doctype: "Purchase Invoice Item",
           item_code: l.item_code,

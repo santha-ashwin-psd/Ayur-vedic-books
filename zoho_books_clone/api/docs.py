@@ -847,7 +847,7 @@ def create_debit_note():
     against_bill = fd.get("against_bill") or None
     date         = fd.get("date") or today()
     reason       = fd.get("reason") or ""
-    notes        = fd.get("notes") or ""
+    remark       = fd.get("remark") or ""
     cost_center  = fd.get("cost_center") or ""
     draft_only   = frappe.utils.cint(fd.get("draft_only") or 0)
     warehouse    = fd.get("warehouse") or ""
@@ -893,7 +893,7 @@ def create_debit_note():
         "supplier_name":    supplier_display,
         "return_against":   against_bill,
         "posting_date":     date,
-        "remarks":          reason,
+        "remark":           remark,
         "cost_center":      cost_center,
         "credit_to":        ap_account,
         "expense_account":  expense_account,

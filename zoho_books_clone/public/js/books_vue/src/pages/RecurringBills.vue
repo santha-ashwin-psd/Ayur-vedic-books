@@ -178,11 +178,27 @@
           <div v-else class="rec-fields-grid">
             <div class="rec-field" style="grid-column:1/-1">
               <label class="rec-label">Recipients <span class="rec-hint">(comma separated)</span></label>
-              <input v-model="form.recipients" type="text" class="rec-input" placeholder="finance@company.com, owner@company.com" />
+              <input v-model="form.recipients" type="text" class="rec-input" :class="{'field-error': recipientError}" placeholder="finance@company.com, owner@company.com" @blur="validateRecipients" @input="recipientError=''" />
+              <div v-if="form.recipients.trim()" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+                <span v-for="em in form.recipients.split(',').map(s=>s.trim()).filter(Boolean)" :key="em"
+                  :style="{
+                    display:'inline-flex', alignItems:'center', gap:'4px',
+                    padding:'2px 8px', borderRadius:'999px', fontSize:'12px', fontWeight:'500',
+                    background: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em) ? '#dcfce7' : '#fee2e2',
+                    color:    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em) ? '#15803d' : '#b91c1c',
+                    border:  '1px solid ' + (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em) ? '#86efac' : '#fca5a5')
+                  }">
+                  <svg v-if="/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg v-else width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  {{ em }}
+                </span>
+              </div>
+              <div v-if="recipientError" class="exp-field-hint exp-field-hint-err" style="margin-top:4px">⚠ Fix invalid email addresses above before saving</div>
             </div>
             <div class="rec-field" style="grid-column:1/-1">
               <label class="rec-label">Email Subject</label>
-              <input v-model="form.subject" type="text" class="rec-input" placeholder="Your recurring bill is ready" />
+              <input v-model="form.subject" type="text" class="rec-input" :class="{'field-error': form.subject.length > 100}" maxlength="100" placeholder="Your recurring bill is ready" />
+              <div class="exp-field-hint" :class="{'exp-field-hint-err': form.subject.length >= 100}" style="margin-top:4px;text-align:right">{{ form.subject.length }}/100</div>
             </div>
             <div class="rec-field" style="grid-column:1/-1">
               <label class="rec-label">Email Message</label>
@@ -353,6 +369,7 @@ const tabs = [
 const list = ref([]), loading = ref(false), search = ref("");
 const selected = ref([]);
 const drawerOpen = ref(false), drawerSaving = ref(false), editMode = ref(false);
+const recipientError = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const actionLoading = ref(false);
 const refDocs = ref([]);
@@ -485,7 +502,7 @@ async function openEdit(doc) {
     const d = (detail && typeof detail === "object") ? detail : {};
     Object.assign(form, {
       frequency: d.frequency || form.frequency,
-      end_date: d.end_date || form.end_date,
+      end_date: d.end_date || "",
       submit_on_creation: d.submit_on_creation ? 1 : 0,
       _notify: !!(d.recipients || d.notify_by_email),
       recipients: d.recipients || "",
@@ -549,18 +566,26 @@ async function fetchRefDocs(q = "") {
   } catch { refDocs.value = []; }
 }
 
+function validateRecipients() {
+  if (!form._notify || !form.recipients.trim()) { recipientError.value = ""; return true; }
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const bad = form.recipients.split(",").map(s => s.trim()).filter(s => s && !emailRe.test(s));
+  if (bad.length) { recipientError.value = `Invalid email${bad.length > 1 ? "s" : ""}: ${bad.join(", ")}`; return false; }
+  recipientError.value = ""; return true;
+}
+
 async function saveRec() {
   if (!form.reference_document) return toast.error("Reference bill is required");
   if (!form.start_date) return toast.error("Start date is required");
   if (form.end_date && form.end_date < form.start_date) return toast.error("End date must be after start date");
+  if (!validateRecipients()) return;
   drawerSaving.value = true;
   try {
     if (editMode.value) {
       await apiPOST("zoho_books_clone.api.recurring.update_subscription", {
         name: form._name,
         frequency: form.frequency,
-        end_date: form.end_date || null,
-        notify_by_email: form._notify ? 1 : 0,
+        end_date: form.end_date || "",
         submit_on_creation: form.submit_on_creation,
         recipients: form.recipients,
         subject: form.subject,

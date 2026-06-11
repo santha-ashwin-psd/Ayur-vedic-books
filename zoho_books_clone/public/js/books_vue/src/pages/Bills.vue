@@ -139,7 +139,7 @@
               </div>
               <div>
                 <label class="inv-lbl">Vendor Bill #</label>
-                <input v-model="form.bill_no" type="text" class="inv-fi" placeholder="Vendor's invoice number" />
+                <input v-model="form.bill_no" type="text" class="inv-fi" placeholder="Vendor's invoice number" maxlength="50" />
               </div>
               <div>
                 <label class="inv-lbl">Vendor Bill Date</label>
@@ -180,7 +180,7 @@
                 </div>
                 <div v-if="form.update_stock" class="inv-inv-wh-row">
                   <label class="inv-lbl" style="margin-bottom:6px">Receiving Warehouse <span style="color:#dc2626">*</span></label>
-                  <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where stock will be received…" @search="fetchWarehouses" />
+                  <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where stock will be received…" :createable="true" createDoctype="Warehouse" @search="fetchWarehouses" @create="fetchWarehouses('')" />
                 </div>
               </div>
             </div>
@@ -243,36 +243,41 @@
                   </span>
                   <button @click.stop="removeLine(line.id)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
                 </div>
-                            <div class="bill-item-body" v-show="!line.collapsed">
-                  <div class="bill-item-row">
-                    <div class="po-item-field bill-item-grow">
+                <div class="po-item-card-body" v-show="!line.collapsed">
+                  <div class="po-item-col po-item-col--left">
+                    <div class="po-item-field">
                       <label>Item Name</label>
                       <SearchableSelect v-model="line.item_code" :options="items"
                         placeholder="Select item…" :createable="true" createDoctype="Item"
                         @search="fetchItems" @select="v=>onItemSelect(line,v)" />
                     </div>
-                    <div class="po-item-field bill-item-tax">
+                    <div class="po-item-field" style="margin-top:14px">
+                      <label>Description</label>
+                      <textarea v-model="line.description" class="inv-fi po-item-desc-ta" :class="{'field-error': line.description && line.description.length > 500}" rows="4" maxlength="500" placeholder="Enter item description…"></textarea>
+                      <div class="exp-field-hint" :class="{'exp-field-hint-err': line.description && line.description.length >= 500}">{{ (line.description || '').length }}/500 characters</div>
+                    </div>
+                  </div>
+                  <div class="po-item-col po-item-col--right">
+                    <div class="po-item-field">
                       <label>Tax Template</label>
                       <select v-model="line.tax_code" class="inv-fi">
-                        <option value="">— No Tax —</option>
+                        <option value="">&#8212; No Tax &#8212;</option>
                         <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.name }}</option>
                       </select>
                     </div>
-                  </div>
-                  <div class="bill-item-row">
-                    <div class="po-item-field bill-item-num">
-                      <label>Qty</label>
-                      <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" @input="calcLine(line)" />
+                    <div class="po-item-num-row">
+                      <div class="po-item-field">
+                        <label>Qty</label>
+                        <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" :class="{'field-error': line.qty > 999999999}" @input="e => { if(Number(e.target.value) > 999999999){ line.qty = 999999999; e.target.value = 999999999; } calcLine(line); }" />
+                        <div v-if="line.qty > 999999999" class="exp-field-hint exp-field-hint-err">⚠ Qty cannot exceed 999,999,999</div>
+                      </div>
+                      <div class="po-item-field">
+                        <label>Rate (₹)</label>
+                        <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999}" @input="e => { if(Number(e.target.value) > 999999999){ line.rate = 999999999; e.target.value = 999999999; } calcLine(line); }" />
+                        <div v-if="line.rate > 999999999" class="exp-field-hint exp-field-hint-err">⚠ Rate cannot exceed 999,999,999</div>
+                      </div>
                     </div>
-                    <div class="po-item-field bill-item-num">
-                      <label>Rate (₹)</label>
-                      <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)" />
-                    </div>
-                  </div>
-                  <div class="po-item-field bill-item-desc">
-                    <label>Description</label>
-                    <textarea v-model="line.description" class="inv-fi po-item-desc-ta" rows="3" maxlength="500" placeholder="Enter item description…"></textarea>
-                    <div class="exp-field-hint">{{ (line.description || '').length }}/500 characters</div>
+                    <div class="po-item-hint">Pricing is calculated based on current inventory stock and regional tax policies.</div>
                   </div>
                 </div>
               </div>
@@ -310,8 +315,12 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:billCollapsed.remarks}">
-            <label class="inv-lbl">Internal Remarks <span style="color:#9ca3af;font-weight:400">(not printed)</span></label>
-            <textarea v-model="form.remarks" rows="3" class="inv-fi" placeholder="Internal notes for your team…"></textarea>
+            <label class="inv-lbl" style="display:flex;justify-content:space-between;align-items:center">
+              <span>Internal Remarks <span style="color:#9ca3af;font-weight:400">(not printed)</span></span>
+              <span :style="{color: form.remarks.length > 500 ? '#ef4444' : form.remarks.length > 450 ? '#f59e0b' : '#9ca3af', fontSize:'11px', fontWeight:'600'}">{{ form.remarks.length }}/500</span>
+            </label>
+            <textarea v-model="form.remarks" rows="3" class="inv-fi" placeholder="Internal notes for your team…" maxlength="500"></textarea>
+            <div v-if="form.remarks.length >= 500" style="font-size:11px;color:#ef4444;margin-top:3px">Character limit reached</div>
           </div>
         </div>
 
@@ -459,73 +468,85 @@
               <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading details…</div>
 
               <template v-else>
-                <!-- Line items table -->
-                <div v-if="viewItems.length" class="inv-items-wrap">
-                  <table class="inv-items-table">
-                    <thead>
-                      <tr>
-                        <th style="width:36px">#</th>
-                        <th>Item &amp; Description</th>
-                        <th class="th-r">Qty</th>
-                        <th class="th-r">Rate (₹)</th>
-                        <th>Tax</th>
-                        <th class="th-r">Amount (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(it,i) in viewItems" :key="i">
-                        <td class="inv-item-num">{{ i+1 }}</td>
-                        <td>
-                          <div class="inv-item-name">{{ it.item_name||it.item_code }}</div>
-                          <div v-if="it.description" class="inv-item-desc">{{ it.description }}</div>
-                        </td>
-                        <td class="td-r">{{ flt(it.qty) }}</td>
-                        <td class="td-r">{{ fmtCur(it.rate) }}</td>
-                        <td>
-                          <span v-if="it.tax_code" class="vi-tax-badge">{{ it.tax_code }}</span>
-                          <span v-else class="vi-notax-badge">NO TAX</span>
-                        </td>
-                        <td class="td-r" style="font-weight:600">{{ fmtCur(it.amount) }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <!-- Totals -->
-                  <div class="inv-totals-section">
-                    <div class="inv-totals-inner">
-                      <div class="inv-total-line">
-                        <span class="t-lbl">Subtotal</span>
-                        <span class="t-amt">{{ fmtCur(viewSubtotal) }}</span>
+                <!-- Line items cards -->
+                <template v-if="viewItems.length">
+                  <div class="inv-sec-lbl">Line Items <span class="po-item-count">{{ viewItems.length }} item{{ viewItems.length !== 1 ? 's' : '' }}</span></div>
+                  <div class="vi-line-cards">
+                    <div v-for="(it, idx) in viewItems" :key="idx" class="vi-line-card">
+                      <div class="vi-line-card-header">
+                        <span class="vi-line-num">#{{ idx + 1 }}</span>
+                        <span class="vi-line-name">{{ it.item_name || it.item_code }}</span>
+                        <span class="vi-line-amount">{{ fmtCur(it.amount) }}</span>
                       </div>
-                      <template v-if="viewTaxLines.length">
-                        <div v-for="tl in viewTaxLines" :key="tl.template" class="inv-total-line">
-                          <span class="t-lbl" style="display:flex;align-items:center;gap:6px">
-                            <span class="vi-tax-badge" style="font-size:9px">TAX</span>
-                            {{ tl.template }} ({{ tl.rate }}%)
-                          </span>
-                          <span class="t-amt">{{ fmtCur(tl.amount) }}</span>
+                      <div v-if="it.description" class="vi-line-desc">{{ it.description }}</div>
+                      <div class="vi-line-meta">
+                        <div class="vi-line-meta-item">
+                          <span class="vi-meta-lbl">Qty</span>
+                          <span class="vi-meta-val">{{ flt(it.qty) }}</span>
                         </div>
-                      </template>
-                      <div v-else class="inv-total-line">
-                        <span class="t-lbl">Tax</span>
-                        <span class="t-amt">{{ fmtCur(0) }}</span>
-                      </div>
-                      <div v-if="flt(viewDoc.tds_amount) > 0" class="inv-total-line" style="color:#d97706">
-                        <span class="t-lbl">TDS</span>
-                        <span class="t-amt" style="color:#d97706">− {{ fmtCur(viewDoc.tds_amount) }}</span>
-                      </div>
-                      <div class="inv-grand-total-line">
-                        <span class="inv-grand-lbl">Grand Total</span>
-                        <span class="inv-grand-amt">{{ fmtCur(viewDoc.grand_total) }}</span>
+                        <div class="vi-line-meta-item">
+                          <span class="vi-meta-lbl">Rate</span>
+                          <span class="vi-meta-val">{{ fmtCur(it.rate) }}</span>
+                        </div>
+                        <div class="vi-line-meta-item vi-line-tax" v-if="it.tax_code">
+                          <span class="vi-tax-badge">TAX</span>
+                          <span class="vi-meta-val" style="color:#4f46e5">{{ it.tax_code }}</span>
+                        </div>
+                        <div class="vi-line-meta-item vi-line-tax" v-else>
+                          <span class="vi-notax-badge">NO TAX</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+
+                  <!-- Totals -->
+                  <div class="po-view-totals">
+                    <div class="po-view-totals-inner">
+                      <div class="po-view-total-row">
+                        <span>Subtotal</span>
+                        <span>{{ fmtCur(viewSubtotal) }}</span>
+                      </div>
+                      <template v-if="viewTaxLines.length">
+                        <div v-for="tl in viewTaxLines" :key="tl.template" class="po-view-total-row po-view-tax-row">
+                          <span class="po-view-tax-label">
+                            <span class="po-view-tax-badge">TAX</span>
+                            {{ tl.template }}
+                            <span class="po-view-tax-rate">{{ tl.rate }}%</span>
+                          </span>
+                          <span>{{ fmtCur(tl.amount) }}</span>
+                        </div>
+                      </template>
+                      <div v-else class="po-view-total-row po-view-tax-row">
+                        <span class="po-view-tax-label">
+                          <span class="po-view-tax-badge po-view-tax-badge--none">NO TAX</span>
+                          No taxes applied
+                        </span>
+                        <span>{{ fmtCur(0) }}</span>
+                      </div>
+                      <div v-if="flt(viewDoc.tds_amount) > 0" class="po-view-total-row" style="color:#d97706">
+                        <span>TDS</span>
+                        <span>− {{ fmtCur(viewDoc.tds_amount) }}</span>
+                      </div>
+                      <div class="po-view-total-row po-view-grand">
+                        <span>Grand Total</span>
+                        <span>{{ fmtCur(viewDoc.grand_total) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </template>
                 <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No item details available.</div>
                 <!-- Cost Center badge -->
                 <div v-if="viewDoc.cost_center" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
                   <span style="color:#6b7280;font-weight:600">Cost Center:</span>
                   <span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:5px;padding:2px 10px;font-weight:600">{{ viewDoc.cost_center }}</span>
+                </div>
+                <!-- Internal Remark -->
+                <div v-if="viewDoc.remark" style="margin-top:12px">
+                  <div class="inv-dmeta-icon-row" style="margin-bottom:6px">
+                    <span class="inv-dmeta-icon" v-html="icon('edit',13)"></span>
+                    <span class="inv-dmeta-lbl">Internal Remark</span>
+                  </div>
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#374151;white-space:pre-wrap;word-break:break-word;line-height:1.6">{{ viewDoc.remark }}</div>
                 </div>
                 <!-- Billing Address -->
                 <div v-if="viewDoc.billing_address_name || viewDoc.billing_address" style="margin-top:14px">
@@ -906,7 +927,7 @@ function openNew() {
 }
 async function openEdit(b) {
   editingName.value = b.name;
-  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
+  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", remarks: b.remark || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
   vendorAddresses.value = [];
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
@@ -933,6 +954,7 @@ async function openEdit(b) {
       form.tds_section = secMatch ? secMatch[0].toUpperCase() : (form.tds_section || "");
       form.tds_rate = Math.abs(Number(tdsTax.rate) || 0) || (TDS_RATES[form.tds_section] ?? 10);
     }
+    if (doc?.remark) form.remarks = doc.remark;
     if (doc?.update_stock !== undefined) form.update_stock = doc.update_stock ? 1 : 0;
     if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
     if (doc?.billing_address) form.billing_address = doc.billing_address;
@@ -969,7 +991,14 @@ async function openView(b) {
     viewItems.value = doc?.items || [];
     viewTaxes.value = doc?.taxes || [];
     viewPayments.value = (payments || []).filter(p => p.docstatus === 1);
-    if (doc) viewDoc.value = { ...viewDoc.value, cost_center: doc.cost_center, billing_address: doc.billing_address, billing_address_name: doc.billing_address_name };
+    if (doc) viewDoc.value = { ...viewDoc.value,
+      outstanding_amount: doc.outstanding_amount ?? viewDoc.value.outstanding_amount,
+      grand_total: doc.grand_total ?? viewDoc.value.grand_total,
+      docstatus: doc.docstatus ?? viewDoc.value.docstatus,
+      status: doc.status ?? viewDoc.value.status,
+      due_date: doc.due_date || viewDoc.value.due_date,
+      cost_center: doc.cost_center, billing_address: doc.billing_address,
+      billing_address_name: doc.billing_address_name, remark: doc.remark || "" };
     // Resolve billing address object for card display
     if (doc?.billing_address_name && !viewAddressCache.value[doc.billing_address_name]) {
       apiGet("Address", doc.billing_address_name).then(a => { if (a) viewAddressCache.value = { ...viewAddressCache.value, [doc.billing_address_name]: a }; }).catch(() => {});
@@ -1123,7 +1152,7 @@ async function saveBill(submit) {
       doctype: "Purchase Invoice", company,
       supplier: form.supplier, posting_date: form.posting_date,
       due_date: form.due_date || null, bill_no: form.bill_no || "",
-      bill_date: form.bill_date || null, remarks: form.remarks || "",
+      bill_date: form.bill_date || null, remark: form.remarks || "",
       update_stock: form.update_stock ? 1 : 0, set_warehouse: form.set_warehouse || "",
       billing_address: form.billing_address || "",
       billing_address_name: form.billing_address_name || "",
@@ -1144,6 +1173,14 @@ async function saveBill(submit) {
     toast.success(`Bill ${saved?.name || ""} ${submit ? "submitted" : "saved"}`);
     drawerOpen.value = false;
     await load();
+    // Sync viewDoc from fresh list data so outstanding_amount/grand_total update
+    if (saved?.name) {
+      const fresh = list.value.find(x => x.name === saved.name);
+      if (fresh) {
+        if (viewDoc.value?.name === saved.name) viewDoc.value = { ...viewDoc.value, ...fresh };
+        if (viewOpen.value && viewDoc.value?.name === saved.name) await openView(fresh);
+      }
+    }
   } catch (e) { toast.error(e.message || "Failed to save bill"); }
   finally { drawerSaving.value = false; }
 }
@@ -1485,5 +1522,33 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 /* ── Tax badges (view drawer) ── */
 .vi-tax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#e0e7ff; color:#4f46e5; white-space:nowrap; }
 .vi-notax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#f3f4f6; color:#9ca3af; }
+
+/* ── Line item cards (view drawer) ── */
+.inv-sec-lbl { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#9ca3af; margin-bottom:8px; margin-top:4px; padding-top:16px; border-top:1px solid #f0f2f5; }
+.inv-sec-lbl:first-child { border-top:none; padding-top:0; margin-top:0; }
+.vi-line-cards { display:flex; flex-direction:column; gap:10px; }
+.vi-line-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; }
+.vi-line-card-header { display:flex; align-items:center; gap:10px; padding:11px 16px; background:linear-gradient(135deg,#f0f4ff 0%,#f8fafc 100%); border-bottom:1px solid #e8edf5; }
+.vi-line-num { font-size:10.5px; font-weight:800; color:#4f46e5; background:#e0e7ff; border-radius:5px; padding:2px 7px; letter-spacing:.02em; flex-shrink:0; }
+.vi-line-name { font-size:14px; font-weight:700; color:#1e293b; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vi-line-amount { font-size:16px; font-weight:800; color:#111827; font-variant-numeric:tabular-nums; flex-shrink:0; }
+.vi-line-desc { padding:8px 16px; font-size:12px; color:#6b7280; line-height:1.55; border-bottom:1px solid #f0f2f5; background:#fafbfc; word-break:break-word; overflow-wrap:anywhere; }
+.vi-line-meta { display:flex; align-items:center; gap:12px; padding:10px 16px; flex-wrap:wrap; }
+.vi-line-meta-item { display:flex; flex-direction:column; gap:2px; }
+.vi-meta-lbl { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; }
+.vi-meta-val { font-size:13px; font-weight:600; color:#1e293b; }
+.vi-line-tax { margin-left:auto; flex-direction:row; align-items:center; gap:6px; }
+
+/* ── Totals block (view drawer) ── */
+.po-view-totals { margin-top:16px; border-top:1px solid #e5e7eb; padding-top:12px; display:flex; justify-content:flex-end; }
+.po-view-totals-inner { min-width:240px; display:flex; flex-direction:column; gap:6px; }
+.po-view-total-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:#374151; }
+.po-view-tax-row { color:#6b7280; }
+.po-view-tax-label { display:flex; align-items:center; gap:6px; }
+.po-view-tax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#e0e7ff; color:#4f46e5; flex-shrink:0; }
+.po-view-tax-badge--none { background:#f3f4f6; color:#9ca3af; }
+.po-view-tax-rate { font-size:11px; color:#9ca3af; }
+.po-view-grand { font-size:15px; font-weight:800; color:#111827; border-top:1px solid #e5e7eb; padding-top:8px; margin-top:4px; }
+.po-view-grand span:last-child { color:#1a6ef7; }
 
 </style>

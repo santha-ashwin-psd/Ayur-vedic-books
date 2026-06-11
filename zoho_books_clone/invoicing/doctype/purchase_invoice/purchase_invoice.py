@@ -38,9 +38,7 @@ class PurchaseInvoice(Document):
         self.grand_total = round(net + tax_total, 2)
 
     def set_outstanding_amount(self):
-        if self.is_new() or not self.name or self.name.startswith("new-"):
-            self.outstanding_amount = self.grand_total
-        elif flt(self.outstanding_amount) == 0 and self.docstatus == 0:
+        if self.docstatus == 0:
             self.outstanding_amount = self.grand_total
 
     def validate_accounts(self):
@@ -72,8 +70,10 @@ class PurchaseInvoice(Document):
             post_debit_note(self, return_type=return_type)
             self._adjust_source_bill_outstanding(direction=-1)
         else:
-            self.status = "Submitted"
+            self.db_set("outstanding_amount", self.grand_total, update_modified=False)
+            self.db_set("status", "Submitted", update_modified=False)
             self.outstanding_amount = self.grand_total
+            self.status = "Submitted"
             post_purchase_invoice(self)
 
     def on_cancel(self):

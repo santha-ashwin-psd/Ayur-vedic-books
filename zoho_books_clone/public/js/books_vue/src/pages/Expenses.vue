@@ -140,8 +140,9 @@
                 <label class="inv-lbl">Amount <span class="inv-req">*</span></label>
                 <div class="exp-amount-wrap">
                   <span class="exp-amount-prefix">₹</span>
-                  <input v-model.number="form.total_claimed_amount" type="number" min="0" step="0.01" class="inv-fi exp-amount-input" placeholder="0.00" />
+                  <input v-model.number="form.total_claimed_amount" type="number" min="0" max="999999999.99" step="0.01" class="inv-fi exp-amount-input" placeholder="0.00" />
                 </div>
+                <div v-if="form.total_claimed_amount > 999999999.99" class="exp-field-hint exp-field-hint-err">Amount cannot exceed ₹99,99,99,999.99</div>
               </div>
               <div>
                 <label class="inv-lbl">Expense Account <span class="inv-req">*</span></label>
@@ -180,7 +181,8 @@
           <div class="add-card-body" :class="{collapsed:expCollapsed.notes}">
             <div style="margin-bottom:12px">
               <label class="inv-lbl">Description <span class="inv-req">*</span></label>
-              <textarea v-model="form.remark" rows="3" class="inv-fi exp-textarea" placeholder="What was this expense for?"></textarea>
+              <textarea v-model="form.remark" rows="3" maxlength="500" class="inv-fi exp-textarea" placeholder="What was this expense for?"></textarea>
+              <div class="exp-field-hint" :class="{'exp-field-hint-err': form.remark.length >= 500}">{{ form.remark.length }}/500 characters</div>
             </div>
             <div>
               <label class="inv-lbl">Attach Receipt</label>
@@ -284,7 +286,7 @@
 
           <div v-if="viewDoc.remark||viewDoc.notes||viewDoc.description" class="ew-section">
             <div class="ew-section-hdr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>Notes</span></div>
-            <p style="font-size:13px;color:#374151;line-height:1.6;margin:0">{{ viewDoc.remark||viewDoc.notes||viewDoc.description }}</p>
+            <p style="font-size:13px;color:#374151;line-height:1.6;margin:0;word-break:break-word;overflow-wrap:anywhere;white-space:pre-wrap">{{ viewDoc.remark||viewDoc.notes||viewDoc.description }}</p>
           </div>
 
           <div v-if="viewDoc.attach" class="ew-section">
@@ -483,10 +485,12 @@ async function openView(e) {
 
 async function saveExpense(submit){
   if(!flt(form.total_claimed_amount)) return toast.error("Enter an amount");
+  if(flt(form.total_claimed_amount) > 999999999.99) return toast.error("Amount cannot exceed ₹99,99,99,999.99");
   if(!form.expense_type)              return toast.error("Category is required");
   if(!form.expense_account)           return toast.error("Expense Account is required");
   if(!form.paid_through)              return toast.error("Paid Through is required");
   if(!form.remark)                    return toast.error("Description is required");
+  if(form.remark.length > 500)        return toast.error("Description cannot exceed 500 characters");
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();
@@ -614,6 +618,9 @@ onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseA
 .exp-vattach-link:hover { background:#dbeafe; }
 .exp-vattach-icon { width:30px;height:30px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;color:#2563eb;flex-shrink:0; }
 .exp-vattach-name { font-size:12.5px;font-weight:600;color:#1d4ed8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1; }
+
+.exp-field-hint { font-size:11.5px;color:#9ca3af;margin-top:4px;text-align:right; }
+.exp-field-hint-err { color:#dc2626;font-weight:600; }
 
 /* ── Misc ── */
 .exp-empty { text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important; }

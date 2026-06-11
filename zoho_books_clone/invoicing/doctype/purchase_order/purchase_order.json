@@ -16,6 +16,8 @@
   "company",
   "billing_address",
   "delivery_address",
+  "delivery_address_name",
+  "billing_address_name",
   "set_warehouse",
   "items",
   "taxes",
@@ -163,6 +165,20 @@
    "no_copy": 1,
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "billing_address_name",
+   "fieldtype": "Link",
+   "label": "Billing Address Name",
+   "options": "Address",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "delivery_address_name",
+   "fieldtype": "Link",
+   "label": "Delivery Address Name",
+   "options": "Address",
+   "print_hide": 1
   }
  ],
  "links": [],

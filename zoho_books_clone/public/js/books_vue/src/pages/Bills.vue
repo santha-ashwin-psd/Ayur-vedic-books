@@ -199,16 +199,17 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:billCollapsed.billing}">
-            <div v-if="vendorBillingAddrs.length > 1" style="margin-bottom:8px">
-              <label class="inv-lbl">Select Address</label>
-              <select v-model="form.selected_billing_addr_name" class="inv-fi" @change="applyVendorBillingAddr">
-                <option value="">— Select address —</option>
-                <option v-for="a in vendorBillingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
+            <label class="inv-lbl">Billing Address</label>
+            <div class="po-addr-select-wrap">
+              <select class="inv-fi po-addr-select" v-model="form.billing_address_name" @change="onBillingAddrChange">
+                <option value="">— None —</option>
+                <option v-for="a in vendorAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
+                <option value="__new__">+ Add New Address</option>
               </select>
             </div>
-            <div>
-              <label class="inv-lbl">Address <span style="color:#9ca3af;font-weight:400">(auto-filled from vendor)</span></label>
-              <textarea v-model="form.billing_address" class="inv-fi" rows="3" style="resize:vertical;width:100%;box-sizing:border-box" placeholder="Auto-filled from vendor, or enter manually"></textarea>
+            <div v-if="selectedBillingAddr" class="po-addr-card">
+              <div class="po-addr-card-type">{{ selectedBillingAddr.address_type || 'Billing' }}</div>
+              <div class="po-addr-card-text">{{ formatAddress(selectedBillingAddr) }}</div>
             </div>
           </div>
         </div>
@@ -513,6 +514,17 @@
                   <span style="color:#6b7280;font-weight:600">Cost Center:</span>
                   <span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:5px;padding:2px 10px;font-weight:600">{{ viewDoc.cost_center }}</span>
                 </div>
+                <!-- Billing Address -->
+                <div v-if="viewDoc.billing_address_name || viewDoc.billing_address" style="margin-top:14px">
+                  <div class="inv-dmeta-icon-row" style="margin-bottom:6px">
+                    <span class="inv-dmeta-icon" v-html="icon('map-pin',13)"></span>
+                    <span class="inv-dmeta-lbl">Billing Address</span>
+                  </div>
+                  <div class="po-addr-card" style="margin-top:0">
+                    <div v-if="viewBillingAddr" class="po-addr-card-type">{{ viewBillingAddr.address_type || 'Billing' }}</div>
+                    <div class="po-addr-card-text">{{ viewBillingAddr ? formatAddress(viewBillingAddr) : viewDoc.billing_address }}</div>
+                  </div>
+                </div>
               </template>
             </div>
           </template>
@@ -554,6 +566,65 @@
         </div><!-- /inv-view-body -->
 
       </template>
+    </div>
+
+    <!-- ── Add New Address Modal ── -->
+    <div v-if="addrModal.open" class="inv-drawer-bg" @click.self="addrModal.open=false" style="z-index:60"></div>
+    <div v-if="addrModal.open" class="po-apply-dialog">
+      <div class="inv-dh" style="height:auto;padding:14px 18px">
+        <div class="inv-dh-title">Add New Address</div>
+        <button class="inv-dclose" @click="addrModal.open=false"><span v-html="icon('x',16)"></span></button>
+      </div>
+      <div class="inv-dbody" style="padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <div class="add-details-grid">
+          <div>
+            <label class="inv-lbl">Address Title <span class="inv-req">*</span></label>
+            <input v-model="addrModal.address_title" type="text" class="inv-fi" placeholder="e.g. Head Office" />
+          </div>
+          <div>
+            <label class="inv-lbl">Address Type</label>
+            <select v-model="addrModal.address_type" class="inv-fi">
+              <option>Billing</option><option>Shipping</option><option>Office</option>
+              <option>Personal</option><option>Plant</option><option>Postal</option>
+              <option>Shop</option><option>Subsidiary</option><option>Warehouse</option><option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="inv-lbl">Address Line 1 <span class="inv-req">*</span></label>
+          <input v-model="addrModal.address_line1" type="text" class="inv-fi" placeholder="Street / Building" />
+        </div>
+        <div>
+          <label class="inv-lbl">Address Line 2</label>
+          <input v-model="addrModal.address_line2" type="text" class="inv-fi" placeholder="Area / Locality" />
+        </div>
+        <div class="add-details-grid">
+          <div>
+            <label class="inv-lbl">City</label>
+            <input v-model="addrModal.city" type="text" class="inv-fi" placeholder="City" />
+          </div>
+          <div>
+            <label class="inv-lbl">State</label>
+            <input v-model="addrModal.state" type="text" class="inv-fi" placeholder="State" />
+          </div>
+        </div>
+        <div class="add-details-grid">
+          <div>
+            <label class="inv-lbl">Pin Code</label>
+            <input v-model="addrModal.pincode" type="text" class="inv-fi" placeholder="PIN" />
+          </div>
+          <div>
+            <label class="inv-lbl">Country</label>
+            <input v-model="addrModal.country" type="text" class="inv-fi" placeholder="Country" />
+          </div>
+        </div>
+      </div>
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="addrModal.open=false" :disabled="addrModal.saving">Cancel</button>
+        <button class="form-btn form-btn-primary" :disabled="addrModal.saving" @click="saveNewAddress">
+          {{ addrModal.saving ? 'Saving…' : 'Save Address' }}
+        </button>
+      </div>
     </div>
 
   </div>
@@ -621,8 +692,68 @@ const copyingLast = ref(false);
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const BILL_CURRENCIES = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
-const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
-const vendorBillingAddrs = ref([]);
+const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
+const vendorAddresses = ref([]);
+const addrModal = reactive({
+  open: false, saving: false,
+  address_title: "", address_type: "Billing", address_line1: "", address_line2: "",
+  city: "", state: "", pincode: "", country: "India",
+});
+
+function formatAddress(a) {
+  return [a.address_line1, a.address_line2, a.city, a.state, a.pincode, a.country].filter(Boolean).join(", ");
+}
+const selectedBillingAddr = computed(() =>
+  vendorAddresses.value.find(a => a.name === form.billing_address_name) || null
+);
+
+async function fetchVendorAddresses(supplier) {
+  if (!supplier) { vendorAddresses.value = []; return; }
+  try {
+    const lnks = await apiList("Dynamic Link", {
+      fields: ["parent"], filters: [["link_doctype","=","Supplier"],["link_name","=",supplier],["parenttype","=","Address"]], limit: 50
+    });
+    if (!lnks?.length) { vendorAddresses.value = []; return; }
+    const addrs = await Promise.all(lnks.map(l => apiGet("Address", l.parent).catch(() => null)));
+    vendorAddresses.value = addrs.filter(Boolean).map(a => ({
+      ...a,
+      label: `${a.address_title || a.name}${a.city ? " — " + a.city : ""}${a.address_type ? " (" + a.address_type + ")" : ""}`,
+    }));
+  } catch { vendorAddresses.value = []; }
+}
+
+function onBillingAddrChange() {
+  if (form.billing_address_name === "__new__") {
+    form.billing_address_name = "";
+    Object.assign(addrModal, { open: true, saving: false, address_title: "", address_type: "Billing", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
+  } else {
+    const a = selectedBillingAddr.value;
+    form.billing_address = a ? formatAddress(a) : "";
+  }
+}
+
+async function saveNewAddress() {
+  if (!addrModal.address_title.trim()) return toast.error("Address Title is required");
+  if (!addrModal.address_line1.trim()) return toast.error("Address Line 1 is required");
+  addrModal.saving = true;
+  try {
+    const doc = {
+      doctype: "Address",
+      address_title: addrModal.address_title, address_type: addrModal.address_type,
+      address_line1: addrModal.address_line1, address_line2: addrModal.address_line2 || "",
+      city: addrModal.city || "", state: addrModal.state || "",
+      pincode: addrModal.pincode || "", country: addrModal.country || "India",
+      links: form.supplier ? [{ doctype: "Address", link_doctype: "Supplier", link_name: form.supplier }] : [],
+    };
+    const saved = await apiSave(doc);
+    toast.success("Address saved");
+    await fetchVendorAddresses(form.supplier);
+    const newAddr = vendorAddresses.value.find(a => a.name === saved?.name) || vendorAddresses.value[vendorAddresses.value.length - 1];
+    if (newAddr) { form.billing_address_name = newAddr.name; form.billing_address = formatAddress(newAddr); }
+    addrModal.open = false;
+  } catch (e) { toast.error(e.message || "Failed to save address"); }
+  addrModal.saving = false;
+}
 const warehouses = ref([]);
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name","parent_warehouse"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.parent_warehouse?`${x.parent_warehouse} / ${x.name}`:x.name,value:x.name}));}catch{warehouses.value=[];}}
 const costCenters = ref([]);
@@ -741,8 +872,8 @@ const billTlProgressWidth = computed(() => {
 });
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
-  vendorBillingAddrs.value = [];
+  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
+  vendorAddresses.value = [];
   lines.value = [blankLine()];
   Object.assign(billCollapsed, { details: false, billing: true, lines: false, remarks: true });
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
@@ -750,8 +881,8 @@ function openNew() {
 }
 async function openEdit(b) {
   editingName.value = b.name;
-  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", selected_billing_addr_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
-  vendorBillingAddrs.value = [];
+  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
+  vendorAddresses.value = [];
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
   drawerOpen.value = true;
@@ -783,24 +914,22 @@ async function openEdit(b) {
     if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
     if (doc?.billing_address) form.billing_address = doc.billing_address;
     if (doc?.cost_center) form.cost_center = doc.cost_center;
-    // Load vendor addresses
+    // Load vendor addresses and restore selected dropdown
     if (b.supplier) {
-      try {
-        const addrs = await apiList("Address", {
-          fields: ["name","address_title","address_line1","address_line2","city","state","pincode"],
-          filters:[["Dynamic Link","link_name","=",b.supplier],["Dynamic Link","link_doctype","=","Supplier"],["address_type","=","Billing"]],
-          order:"`tabAddress`.modified desc", limit:20,
-        });
-        vendorBillingAddrs.value = addrs || [];
-        if (!form.billing_address && addrs?.[0]) {
-          const a = addrs[0];
-          form.billing_address = [a.address_line1,a.address_line2,a.city,a.state,a.pincode].filter(Boolean).join(", ");
-          form.selected_billing_addr_name = a.name;
-        }
-      } catch {}
+      await fetchVendorAddresses(b.supplier);
+      if (doc?.billing_address_name) {
+        form.billing_address_name = doc.billing_address_name;
+        const a = vendorAddresses.value.find(x => x.name === doc.billing_address_name);
+        if (a) form.billing_address = formatAddress(a);
+      }
     }
   } catch {}
 }
+const viewAddressCache = ref({});
+const viewBillingAddr = computed(() =>
+  viewDoc.value?.billing_address_name ? (viewAddressCache.value[viewDoc.value.billing_address_name] || null) : null
+);
+
 async function openView(b) {
   viewDoc.value = b;
   viewOpen.value = true;
@@ -817,7 +946,11 @@ async function openView(b) {
     viewItems.value = doc?.items || [];
     viewTaxes.value = doc?.taxes || [];
     viewPayments.value = (payments || []).filter(p => p.docstatus === 1);
-    if (doc?.cost_center) viewDoc.value = { ...viewDoc.value, cost_center: doc.cost_center };
+    if (doc) viewDoc.value = { ...viewDoc.value, cost_center: doc.cost_center, billing_address: doc.billing_address, billing_address_name: doc.billing_address_name };
+    // Resolve billing address object for card display
+    if (doc?.billing_address_name && !viewAddressCache.value[doc.billing_address_name]) {
+      apiGet("Address", doc.billing_address_name).then(a => { if (a) viewAddressCache.value = { ...viewAddressCache.value, [doc.billing_address_name]: a }; }).catch(() => {});
+    }
   } catch (e) { /* keep dialog open */ }
   viewLoading.value = false;
 }
@@ -853,26 +986,13 @@ watch(() => form.supplier, async (name) => {
 });
 
 async function onVendorSelect(_opt) {
-  form.billing_address = ""; form.selected_billing_addr_name = "";
-  vendorBillingAddrs.value = [];
+  form.billing_address = ""; form.billing_address_name = "";
+  vendorAddresses.value = [];
   if (!form.supplier) return;
-  try {
-    const addrs = await apiList("Address", {
-      fields: ["name","address_title","address_line1","address_line2","city","state","pincode"],
-      filters: [["Dynamic Link","link_name","=",form.supplier],["Dynamic Link","link_doctype","=","Supplier"],["address_type","=","Billing"]],
-      order: "`tabAddress`.modified desc", limit: 20,
-    });
-    vendorBillingAddrs.value = addrs || [];
-    if (addrs?.[0]) {
-      const a = addrs[0];
-      form.billing_address = [a.address_line1,a.address_line2,a.city,a.state,a.pincode].filter(Boolean).join(", ");
-      form.selected_billing_addr_name = a.name;
-    }
-  } catch {}
-}
-function applyVendorBillingAddr() {
-  const a = vendorBillingAddrs.value.find(x=>x.name===form.selected_billing_addr_name);
-  if (a) form.billing_address = [a.address_line1,a.address_line2,a.city,a.state,a.pincode].filter(Boolean).join(", ");
+  await fetchVendorAddresses(form.supplier);
+  // Auto-select first billing-type address if available
+  const first = vendorAddresses.value.find(a => (a.address_type||"").toLowerCase() === "billing") || vendorAddresses.value[0];
+  if (first) { form.billing_address_name = first.name; form.billing_address = formatAddress(first); }
 }
 function onItemSelect(line, opt) {
   line.item_code = opt?.value ?? opt;
@@ -927,6 +1047,7 @@ async function saveBill(submit) {
       bill_date: form.bill_date || null, remarks: form.remarks || "",
       update_stock: form.update_stock ? 1 : 0, set_warehouse: form.set_warehouse || "",
       billing_address: form.billing_address || "",
+      billing_address_name: form.billing_address_name || "",
       cost_center: form.cost_center || "",
       currency: form.currency || "INR",
       conversion_rate: form.currency === "INR" ? 1 : (form.exchange_rate || 1),
@@ -1233,7 +1354,12 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .add-btn-submit:hover { background: #155fd4; }
 .add-btn-submit:disabled { opacity: .5; cursor: not-allowed; }
 
-/* ── Row actions cell ── */
-.bill-act-cell { display: flex; gap: 4px; justify-content: flex-end; cursor: default !important; }
-.bill-act-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+/* ── Address dropdown + card ── */
+.po-addr-select { appearance: none; padding-right: 28px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+.po-addr-card { margin-top: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; gap: 5px; }
+.po-addr-card-type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #2563eb; background: #dbeafe; display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; align-self: flex-start; }
+.po-addr-card-text { font-size: 12.5px; color: #374151; line-height: 1.65; }
+/* ── Add New Address modal ── */
+.po-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 520px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 70; display: flex; flex-direction: column; overflow: hidden; }
+
 </style>

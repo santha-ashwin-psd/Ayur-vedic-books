@@ -183,7 +183,7 @@
                 <label class="inv-lbl">Billing Address</label>
                 <div class="po-addr-select-wrap">
                   <select class="inv-fi po-addr-select" v-model="form.billing_address_name" @change="onBillingAddrChange">
-                    <option value="">— None —</option>
+                    <option value="">— Select —</option>
                     <option v-for="a in vendorAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
                     <option value="__new__">+ Add New Address</option>
                   </select>
@@ -198,7 +198,7 @@
                 <label class="inv-lbl">Delivery Address</label>
                 <div class="po-addr-select-wrap">
                   <select class="inv-fi po-addr-select" v-model="form.delivery_address_name" @change="onDeliveryAddrChange">
-                    <option value="">— None —</option>
+                    <option value="">— Select —</option>
                     <option v-for="a in vendorAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
                     <option value="__new__">+ Add New Address</option>
                   </select>
@@ -229,16 +229,19 @@
           <div class="add-card-body" :class="{collapsed:poCollapsed.lines}">
             <div class="po-item-cards">
               <div v-for="(line, idx) in lines" :key="line.id" class="po-item-card">
-                <div class="po-item-card-header">
+                <div class="po-item-card-header" @click="line.collapsed=!line.collapsed" style="cursor:pointer">
                   <span class="po-item-card-num">#{{ idx + 1 }}</span>
-                  <span class="po-item-card-title">Line Item Detail</span>
+                  <span class="po-item-card-title">{{ line.item_code || 'Line Item Detail' }}</span>
                   <div class="po-item-card-subtotal">
                     <span class="po-item-card-subtotal-label">SUBTOTAL</span>
                     <span class="po-item-card-amount">{{ fmtCur(line.amount) }}</span>
                   </div>
-                  <button @click="removeLine(line.id)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
+                  <span class="po-item-card-chevron" :class="{collapsed:line.collapsed}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                  <button @click.stop="removeLine(line.id)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
                 </div>
-                <div class="po-item-card-body">
+                <div class="po-item-card-body" v-show="!line.collapsed">
                   <div class="po-item-col po-item-col--left">
                     <div class="po-item-field">
                       <label>Item Name</label>
@@ -248,7 +251,8 @@
                     </div>
                     <div class="po-item-field" style="margin-top:14px">
                       <label>Description</label>
-                      <textarea v-model="line.description" class="inv-fi po-item-desc-ta" rows="4" placeholder="Enter item description…"></textarea>
+                      <textarea v-model="line.description" class="inv-fi po-item-desc-ta" :class="{'field-error': line.description && line.description.length > 500}" rows="4" maxlength="500" placeholder="Enter item description…"></textarea>
+                      <div class="exp-field-hint" :class="{'exp-field-hint-err': line.description && line.description.length >= 500}">{{ (line.description || '').length }}/500 characters</div>
                     </div>
                   </div>
                   <div class="po-item-col po-item-col--right">
@@ -262,11 +266,13 @@
                     <div class="po-item-num-row">
                       <div class="po-item-field">
                         <label>Qty</label>
-                        <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" @input="calcLine(line)" />
+                        <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" :class="{'field-error': line.qty > 999999999}" @input="calcLine(line)" />
+                        <div v-if="line.qty > 999999999" class="exp-field-hint exp-field-hint-err">Max 9 digits</div>
                       </div>
                       <div class="po-item-field">
                         <label>Rate (₹)</label>
-                        <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)" />
+                        <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999}" @input="calcLine(line)" />
+                        <div v-if="line.rate > 999999999" class="exp-field-hint exp-field-hint-err">Max 9 digits</div>
                       </div>
                     </div>
                     <div class="po-item-hint">Pricing is calculated based on current inventory stock and regional tax policies.</div>
@@ -305,7 +311,8 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:poCollapsed.terms}">
-            <textarea v-model="form.terms" rows="4" class="inv-fi" placeholder="Payment terms, delivery conditions, special notes…"></textarea>
+            <textarea v-model="form.terms" rows="4" class="inv-fi" :class="{'field-error': form.terms && form.terms.length > 500}" maxlength="500" placeholder="Payment terms, delivery conditions, special notes…"></textarea>
+            <div class="exp-field-hint" :class="{'exp-field-hint-err': form.terms && form.terms.length >= 500}">{{ (form.terms || '').length }}/500 characters</div>
           </div>
         </div>
 
@@ -350,11 +357,11 @@
               </span>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:nowrap">
             <button v-if="canBill(viewDoc)" class="inv-view-cta" @click="openBillModal(viewDoc)">
               <span v-html="icon('arrow-right',15)"></span> Convert to Bill
             </button>
-            <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
+            <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px;white-space:nowrap" @click="viewOpen=false">
               <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
             </button>
           </div>
@@ -476,38 +483,73 @@
               <!-- Line items -->
               <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
               <template v-else-if="viewItems.length">
-                <div class="inv-sec-lbl">Line Items</div>
-                <div class="inv-items-wrap">
-                  <table class="inv-items-table">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Tax Template</th>
-                        <th class="th-r">Qty</th>
-                        <th class="th-r">Rate</th>
-                        <th class="th-r">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="it in viewItems" :key="it.name">
-                        <td>
-                          <strong>{{ it.item_name || it.item_code }}</strong>
-                          <div v-if="it.description" class="text-muted" style="font-size:11px">{{ it.description }}</div>
-                        </td>
-                        <td class="text-muted" style="font-size:12px">{{ it.tax_code || '—' }}</td>
-                        <td class="td-r mono-sm">{{ it.qty }}</td>
-                        <td class="td-r mono-sm">{{ fmtCur(it.rate) }}</td>
-                        <td class="td-r mono-sm" style="font-weight:600">{{ fmtCur(it.amount) }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div class="inv-sec-lbl">Line Items <span class="po-item-count">{{ viewItems.length }} item{{ viewItems.length !== 1 ? 's' : '' }}</span></div>
+                <div class="vi-line-cards">
+                  <div v-for="(it, idx) in viewItems" :key="it.name" class="vi-line-card">
+                    <div class="vi-line-card-header">
+                      <span class="vi-line-num">#{{ idx + 1 }}</span>
+                      <span class="vi-line-name">{{ it.item_name || it.item_code }}</span>
+                      <span class="vi-line-amount">{{ fmtCur(it.amount) }}</span>
+                    </div>
+                    <div v-if="it.description" class="vi-line-desc">{{ it.description }}</div>
+                    <div class="vi-line-meta">
+                      <div class="vi-line-meta-item">
+                        <span class="vi-meta-lbl">Qty</span>
+                        <span class="vi-meta-val">{{ it.qty }}</span>
+                      </div>
+                      <div class="vi-line-meta-item">
+                        <span class="vi-meta-lbl">Rate</span>
+                        <span class="vi-meta-val">{{ fmtCur(it.rate) }}</span>
+                      </div>
+                      <div class="vi-line-meta-item vi-line-tax" v-if="it.tax_code">
+                        <span class="vi-tax-badge">TAX</span>
+                        <span class="vi-meta-val" style="color:#4f46e5">{{ it.tax_code }}</span>
+                      </div>
+                      <div class="vi-line-meta-item vi-line-tax" v-else>
+                        <span class="vi-notax-badge">NO TAX</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Tax Summary -->
+              <template v-if="viewItems.length">
+                <div class="po-view-totals">
+                  <div class="po-view-totals-inner">
+                    <div class="po-view-total-row">
+                      <span>Subtotal</span>
+                      <span>{{ fmtCur(viewSubtotal) }}</span>
+                    </div>
+                    <template v-if="viewTaxLines.length">
+                      <div v-for="tl in viewTaxLines" :key="tl.template" class="po-view-total-row po-view-tax-row">
+                        <span class="po-view-tax-label">
+                          <span class="po-view-tax-badge">TAX</span>
+                          {{ tl.template }}
+                          <span class="po-view-tax-rate">{{ tl.rate }}%</span>
+                        </span>
+                        <span>{{ fmtCur(tl.amount) }}</span>
+                      </div>
+                    </template>
+                    <div v-else class="po-view-total-row po-view-tax-row">
+                      <span class="po-view-tax-label">
+                        <span class="po-view-tax-badge po-view-tax-badge--none">NO TAX</span>
+                        No taxes applied
+                      </span>
+                      <span>{{ fmtCur(0) }}</span>
+                    </div>
+                    <div class="po-view-total-row po-view-grand">
+                      <span>Grand Total</span>
+                      <span>{{ fmtCur(viewGrandTotal) }}</span>
+                    </div>
+                  </div>
                 </div>
               </template>
 
               <!-- Terms -->
               <div v-if="viewDoc.terms" class="po-terms">
                 <div class="po-meta-lbl">Terms &amp; Conditions</div>
-                <div style="white-space:pre-wrap;font-size:12.5px;color:#374151;margin-top:4px">{{ viewDoc.terms }}</div>
+                <div style="white-space:pre-wrap;font-size:12.5px;color:#374151;margin-top:4px;word-break:break-word;overflow-wrap:anywhere">{{ viewDoc.terms }}</div>
               </div>
 
             </div>
@@ -767,7 +809,7 @@ const addrModal = reactive({
 });
 
 let _id = 1;
-const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0, tax_code: "" });
+const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0, tax_code: "", collapsed: false });
 const form = reactive({
   supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
   billing_address: "", delivery_address: "",
@@ -949,6 +991,25 @@ const taxAmount = computed(() => taxLines.value.reduce((s, t) => s + t.amount, 0
 const grandTotal = computed(() => subtotal.value + taxAmount.value);
 
 const hasUnreceived = computed(() => fulfill.lines.some(l => l.remaining_to_receive > 0));
+
+// ── View drawer tax summary ───────────────────────────────────────────────
+const viewSubtotal = computed(() => viewItems.value.reduce((s, i) => s + flt(i.amount), 0));
+
+const viewTaxLines = computed(() => {
+  const map = {};
+  for (const i of viewItems.value) {
+    if (!i.tax_code || !i.amount) continue;
+    const tmpl = taxTemplates.value.find(t => t.name === i.tax_code);
+    const rate = tmpl?.rate ?? 0;
+    if (!rate) continue;
+    if (!map[i.tax_code]) map[i.tax_code] = { template: i.tax_code, rate, amount: 0 };
+    map[i.tax_code].amount += Math.round(flt(i.amount) * rate / 100 * 100) / 100;
+  }
+  return Object.values(map);
+});
+
+const viewTaxAmount = computed(() => viewTaxLines.value.reduce((s, t) => s + t.amount, 0));
+const viewGrandTotal = computed(() => viewSubtotal.value + viewTaxAmount.value);
 
 const timelineSteps = computed(() => {
   const o = viewDoc.value;
@@ -1199,6 +1260,12 @@ async function savePO(newStatus) {
   if (!form.supplier) return toast.error("Vendor is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
   if (form.purchase_type === "Goods" && !form.set_warehouse) return toast.error("Receiving Warehouse is required for Goods orders");
+  if ((form.terms || "").length > 500) return toast.error("Terms & Conditions cannot exceed 500 characters");
+  for (const l of lines.value.filter(l => l.item_code)) {
+    if (flt(l.qty) > 999999999) return toast.error(`Qty cannot exceed 9 digits for item "${l.item_code}"`);
+    if (flt(l.rate) > 999999999) return toast.error(`Rate cannot exceed 9 digits for item "${l.item_code}"`);
+    if ((l.description || "").length > 500) return toast.error(`Description too long for item "${l.item_code}" (max 500 characters)`);
+  }
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
@@ -1405,7 +1472,7 @@ watch(() => form.supplier, (val) => {
 .inv-drawer-bg { position:fixed; inset:0; z-index:8000; background:rgba(15,23,42,.45); display:flex; justify-content:flex-end; backdrop-filter:blur(2px); }
 .inv-drawer-wide { width:800px; max-width:96vw; }
 .inv-view-page { display:flex; flex-direction:column; height:100%; background:#f5f6f8; overflow:hidden; }
-.inv-view-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:20px 24px 12px; background:#f5f6f8; flex-wrap:wrap; flex-shrink:0; }
+.inv-view-header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 24px 12px; background:#f5f6f8; flex-wrap:nowrap; flex-shrink:0; }
 .inv-view-header-left { display:flex; flex-direction:column; gap:4px; }
 .inv-view-title-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .inv-view-number { font-size:20px; font-weight:800; color:#1a1a2e; letter-spacing:-.01em; }
@@ -1428,7 +1495,7 @@ watch(() => form.supplier, (val) => {
 .inv-vtab.active { color:#1a6ef7; border-bottom-color:#1a6ef7; }
 .inv-vtab-count { font-size:10.5px; font-weight:700; padding:1px 6px; border-radius:10px; background:#e5e7eb; color:#374151; }
 .inv-tab-body { padding:20px; display:flex; flex-direction:column; gap:16px; }
-.inv-details-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; padding:16px; background:#f8fafc; border-bottom:1px solid #e5e7eb; }
+.inv-details-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; padding:16px;border-bottom:1px solid #e5e7eb; }
 .inv-dmeta-icon-row { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
 .inv-dmeta-icon { width:22px; height:22px; border-radius:5px; background:#dbeafe; color:#2563eb; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .inv-dmeta-lbl { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; }
@@ -1440,7 +1507,7 @@ watch(() => form.supplier, (val) => {
 .inv-items-wrap { border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
 .inv-items-table { width:100%; border-collapse:collapse; font-size:13px; }
 .inv-items-table th { padding:9px 14px; background:#f8fafc; border-bottom:1px solid #e8ecf0; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; text-align:left; }
-.inv-items-table td { padding:10px 14px; border-bottom:1px solid #f0f2f5; color:#374151; vertical-align:top; }
+.inv-items-table td { padding:10px 14px; border-bottom:1px solid #f0f2f5; color:#374151; vertical-align:top; word-break:break-word; overflow-wrap:anywhere; max-width:0; }
 .inv-items-table tr:last-child td { border-bottom:none; }
 .th-r { text-align:right; }
 .td-r { text-align:right; }
@@ -1470,6 +1537,8 @@ watch(() => form.supplier, (val) => {
 .po-item-card-subtotal { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; }
 .po-item-card-subtotal-label { font-size: 9.5px; font-weight: 700; color: #9ca3af; letter-spacing: .08em; }
 .po-item-card-amount { font-size: 20px; font-weight: 800; color: #111827; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.po-item-card-chevron { display:flex; align-items:center; color:#9ca3af; transition:transform .2s; margin-left:4px; }
+.po-item-card-chevron.collapsed { transform:rotate(-90deg); }
 .po-item-card-rm { background: none; border: none; cursor: pointer; color: #9ca3af; padding: 6px; border-radius: 6px; display: flex; align-items: center; margin-left: 8px; }
 .po-item-card-rm:hover { background: #fee2e2; color: #ef4444; }
 .po-item-card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
@@ -1489,7 +1558,8 @@ watch(() => form.supplier, (val) => {
 .po-fulfill-row { display: grid; grid-template-columns: 2fr 80px 100px 90px 110px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
 
 /* ── Misc view helpers ── */
-.po-terms { padding: 10px 12px; background: #f8fafc; border-radius: 6px; }
+.po-terms { padding: 10px 12px; background: #f8fafc; border-radius: 6px; overflow: hidden; word-break: break-word; overflow-wrap: anywhere; }
+.po-item-desc-clamp { font-size:11px; color:#9ca3af; margin-top:3px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; overflow-wrap:anywhere; line-height:1.5; }
 .po-link-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12.5px; align-items: center; }
 .po-act-cell { display: flex; gap: 4px; justify-content: flex-end; cursor: default !important; }
 .po-act-conv { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
@@ -1498,7 +1568,7 @@ watch(() => form.supplier, (val) => {
 .po-empty { text-align: center; color: #9ca3af; padding: 48px !important; cursor: default !important; }
 
 /* ── Convert-to-Bill modal ── */
-.po-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 560px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 70; display: flex; flex-direction: column; overflow: hidden; }
+.po-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 560px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 8100; display: flex; flex-direction: column; overflow: hidden; }
 .po-inv-tbl { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
 .po-inv-head { display: grid; grid-template-columns: 2fr 80px 90px 110px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
 .po-inv-row { display: grid; grid-template-columns: 2fr 80px 90px 110px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
@@ -1554,4 +1624,36 @@ watch(() => form.supplier, (val) => {
 .po-addr-card-type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #2563eb; background: #dbeafe; display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; align-self: flex-start; }
 .po-addr-card-text { font-size: 12.5px; color: #374151; line-height: 1.65; }
 .po-type-services { background: #f0fdf4; color: #15803d; }
+
+/* ── Inline field hints / validation ── */
+.exp-field-hint { font-size:11.5px; color:#9ca3af; margin-top:4px; text-align:right; }
+.exp-field-hint-err { color:#dc2626; font-weight:600; }
+
+/* ── View drawer tax / totals summary ── */
+.po-view-totals { display: flex; justify-content: flex-end; padding: 4px 0 8px; }
+.po-view-totals-inner { display: flex; flex-direction: column; gap: 5px; min-width: 260px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 9px; padding: 14px 18px; }
+.po-view-total-row { display: flex; justify-content: space-between; align-items: center; gap: 24px; font-size: 13px; color: #374151; padding: 2px 0; }
+.po-view-tax-row { color: #6b7280; font-size: 12.5px; }
+.po-view-tax-label { display: flex; align-items: center; gap: 7px; }
+.po-view-tax-badge { font-size: 9px; font-weight: 800; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; background: #dbeafe; color: #1d4ed8; flex-shrink: 0; }
+.po-view-tax-badge--none { background: #f3f4f6; color: #9ca3af; }
+.po-view-tax-rate { font-size: 11px; font-weight: 700; color: #1d4ed8; background: #eff6ff; border-radius: 4px; padding: 1px 5px; }
+.po-view-grand { font-weight: 800; font-size: 15px; color: #111827; border-top: 1.5px solid #e5e7eb; margin-top: 4px; padding-top: 8px; }
+
+/* ── View drawer line item cards ── */
+.vi-line-cards { display:flex; flex-direction:column; gap:10px; }
+.vi-line-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; }
+.vi-line-card-header { display:flex; align-items:center; gap:10px; padding:11px 16px; background:linear-gradient(135deg,#f0f4ff 0%,#f8fafc 100%); border-bottom:1px solid #e8edf5; }
+.vi-line-num { font-size:10.5px; font-weight:800; color:#4f46e5; background:#e0e7ff; border-radius:5px; padding:2px 7px; letter-spacing:.02em; flex-shrink:0; }
+.vi-line-name { font-size:14px; font-weight:700; color:#1e293b; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vi-line-amount { font-size:16px; font-weight:800; color:#111827; font-variant-numeric:tabular-nums; flex-shrink:0; }
+.vi-line-desc { padding:8px 16px; font-size:12px; color:#6b7280; line-height:1.55; border-bottom:1px solid #f0f2f5; background:#fafbfc; word-break:break-word; overflow-wrap:anywhere; }
+.vi-line-meta { display:flex; align-items:center; gap:12px; padding:10px 16px; flex-wrap:wrap; }
+.vi-line-meta-item { display:flex; flex-direction:column; gap:2px; }
+.vi-meta-lbl { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; }
+.vi-meta-val { font-size:13px; font-weight:600; color:#374151; font-variant-numeric:tabular-nums; }
+.vi-line-meta-sep { font-size:16px; color:#d1d5db; font-weight:300; margin-top:10px; }
+.vi-line-tax { margin-left:auto; flex-direction:row; align-items:center; gap:6px; }
+.vi-tax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#e0e7ff; color:#4f46e5; flex-shrink:0; }
+.vi-notax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#f3f4f6; color:#9ca3af; }
 </style>

@@ -116,11 +116,11 @@ function _renderClassic(doc, cfg) {
   /* ─ Items table ─ */
   .items-tbl{width:100%;border-collapse:collapse;font-size:12px}
   .items-tbl thead th{background:#f1f5f9;padding:9px 10px;font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #cbd5e1;white-space:nowrap}
-  .items-tbl tbody td{padding:10px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  .items-tbl tbody td{padding:10px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
   .items-tbl tbody tr:last-child td{border-bottom:none}
   .it-name{font-weight:600;color:#0f172a}
   .it-code{font-size:10.5px;color:#94a3b8;margin-top:1px}
-  .it-desc{font-size:11px;color:#64748b;margin-top:2px;line-height:1.4}
+  .it-desc{font-size:11px;color:#64748b;margin-top:2px;line-height:1.4;word-break:break-word;overflow-wrap:anywhere}
   .num-cell{color:#94a3b8;font-size:11px;text-align:center}
   .tc{text-align:center}.tr{text-align:right}.tl{text-align:left}
   .bld{font-weight:700;font-variant-numeric:tabular-nums}
@@ -317,12 +317,12 @@ function _renderModern(doc, cfg) {
   .sec{font-size:9.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px}
   table{width:100%;border-collapse:collapse;font-size:12.5px}
   thead th{padding:10px 12px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #e2e8f0;text-align:left;background:transparent}
-  tbody td{padding:12px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tbody td{padding:12px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
   tbody tr:last-child td{border-bottom:none}
   .num-c{color:#94a3b8;font-size:11px;text-align:center;width:28px}
   .it-n{font-weight:600;color:#0f172a}
   .it-c{font-size:10.5px;color:#94a3b8;margin-top:1px}
-  .it-d{font-size:11px;color:#64748b;margin-top:2px}
+  .it-d{font-size:11px;color:#64748b;margin-top:2px;word-break:break-word;overflow-wrap:anywhere}
   .tc{text-align:center}.tr{text-align:right}.tl{text-align:left}
   .bld{font-weight:700;font-variant-numeric:tabular-nums}
   .accent{color:${brand}}
@@ -511,12 +511,12 @@ function _renderMinimal(doc, cfg) {
   table.items thead th{padding:9px 6px;border-bottom:1.5px solid #374151;font-style:italic;font-weight:400;color:#6b7280;font-size:12px;text-align:left}
   table.items thead th.tr{text-align:right}
   table.items thead th.tc{text-align:center}
-  table.items tbody td{padding:10px 6px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+  table.items tbody td{padding:10px 6px;border-bottom:1px solid #f3f4f6;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
   table.items tbody tr:last-child td{border-bottom:none}
   .num-c{color:#9ca3af;font-style:italic;font-size:12px;width:22px}
   .it-n{font-weight:700}
   .it-c{font-size:10.5px;color:#9ca3af;margin-top:1px;font-family:'Inter',system-ui,sans-serif}
-  .it-d{font-size:11.5px;color:#6b7280;margin-top:2px;line-height:1.4}
+  .it-d{font-size:11.5px;color:#6b7280;margin-top:2px;line-height:1.4;word-break:break-word;overflow-wrap:anywhere}
   .tc{text-align:center}.tr{text-align:right}
   .bld{font-weight:700}
 

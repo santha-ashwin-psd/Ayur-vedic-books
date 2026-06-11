@@ -202,7 +202,7 @@
             <label class="inv-lbl">Billing Address</label>
             <div class="po-addr-select-wrap">
               <select class="inv-fi po-addr-select" v-model="form.billing_address_name" @change="onBillingAddrChange">
-                <option value="">— None —</option>
+                <option value="">— Select —</option>
                 <option v-for="a in vendorAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
                 <option value="__new__">+ Add New Address</option>
               </select>
@@ -218,80 +218,81 @@
         <div class="add-card">
           <div class="add-card-header" @click="billCollapsed.lines=!billCollapsed.lines">
             <div class="add-card-title">
-              <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
-              Line Items
-            </div>
-            <div style="display:flex;align-items:center;gap:8px" @click.stop>
-              <button v-if="form.supplier" class="inv-add-line-btn inv-copy-btn" @click="copyLastItems" :disabled="copyingLast">
-                <span v-html="icon('copy',12)"></span> {{ copyingLast ? 'Loading…' : 'Copy Last' }}
-              </button>
-              <button class="add-lines-add-btn" @click="addLine">
-                <span v-html="icon('plus',13)"></span> Add Item
-              </button>
-              <span class="add-card-chevron" :class="{collapsed:billCollapsed.lines}" @click.stop="billCollapsed.lines=!billCollapsed.lines">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               </span>
+              Line Items
+              <span class="po-item-count">{{ lines.length }} item{{ lines.length !== 1 ? 's' : '' }}</span>
             </div>
+            <span class="add-card-chevron" :class="{collapsed:billCollapsed.lines}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
           </div>
-          <div class="add-card-body" :class="{collapsed:billCollapsed.lines}" style="padding:0">
-            <div style="overflow-x:auto">
-              <table class="inv-lines-tbl">
-                <thead>
-                  <tr>
-                    <th style="width:28px">#</th>
-                    <th style="min-width:150px">Item</th>
-                    <th style="min-width:120px">Description</th>
-                    <th style="min-width:70px;text-align:right">Qty</th>
-                    <th style="min-width:90px;text-align:right">Rate (₹)</th>
-                    <th style="min-width:90px;text-align:right">Amount (₹)</th>
-                    <th style="width:32px"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(line, idx) in lines" :key="line.id">
-                    <td><span class="add-line-num">{{ idx+1 }}</span></td>
-                    <td>
-                      <SearchableSelect v-model="line.item_code" :options="items"
-                        placeholder="Select item…" :compact="true" :createable="true" createDoctype="Item"
-                        @search="fetchItems" @select="v=>onItemSelect(line,v)" />
-                    </td>
-                    <td><input v-model="line.description" class="inv-ci" placeholder="Description" /></td>
-                    <td><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-ci inv-ci-r" @input="calcLine(line)" /></td>
-                    <td><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-ci inv-ci-r" @input="calcLine(line)" /></td>
-                    <td class="add-line-amount">{{ fmtCur(line.amount) }}</td>
-                    <td style="padding:4px 6px">
-                      <button @click="removeLine(line.id)" class="add-line-del"><span v-html="icon('trash',12)"></span></button>
-                    </td>
-                  </tr>
-                  <tr class="add-new-line-row">
-                    <td colspan="7" style="padding:6px 14px;border-bottom:none">
-                      <button class="add-new-line-btn" @click="addLine">
-                        <span v-html="icon('plus',12)"></span> Add new line
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-if="!lines.length">
-                    <td colspan="7" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
-                      No line items — click "+ Add Item" to get started
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <!-- Totals -->
-            <div class="inv-totals-wrap">
-              <div style="max-width:160px">
-                <label class="inv-lbl">Tax Rate %</label>
-                <input v-model.number="form.tax_rate" type="number" min="0" max="100" step="0.5" class="inv-fi" />
-              </div>
-              <div class="inv-totals">
-                <div class="inv-total-row"><span>Subtotal</span><span class="inv-total-amt">{{ fmtCur(subtotal) }}</span></div>
-                <div class="inv-total-row" style="color:#6b7280;font-size:12px"><span>Tax ({{ form.tax_rate||0 }}%)</span><span class="inv-total-amt">{{ fmtCur(taxAmount) }}</span></div>
-                <div v-if="form.tds_applicable && tdsAmount > 0" class="inv-total-row" style="color:#d97706;font-size:12px">
-                  <span>TDS u/s {{ form.tds_section }} ({{ form.tds_rate }}%)</span>
-                  <span class="inv-total-amt" style="color:#d97706">− {{ fmtCur(tdsAmount) }}</span>
+          <div class="add-card-body" :class="{collapsed:billCollapsed.lines}">
+            <div class="po-item-cards">
+              <div v-for="(line, idx) in lines" :key="line.id" class="po-item-card">
+                <div class="po-item-card-header" @click="line.collapsed=!line.collapsed" style="cursor:pointer">
+                  <span class="po-item-card-num">#{{ idx + 1 }}</span>
+                  <span class="po-item-card-title">{{ line.item_code || 'Line Item Detail' }}</span>
+                  <div class="po-item-card-subtotal">
+                    <span class="po-item-card-subtotal-label">SUBTOTAL</span>
+                    <span class="po-item-card-amount">{{ fmtCur(line.amount) }}</span>
+                  </div>
+                  <span class="po-item-card-chevron" :class="{collapsed:line.collapsed}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                  <button @click.stop="removeLine(line.id)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
                 </div>
-                <div class="inv-total-row inv-grand-total"><span>Grand Total</span><span class="inv-total-amt" style="font-size:16px;color:#1565c0">{{ fmtCur(subtotal + taxAmount - tdsAmount) }}</span></div>
+                            <div class="bill-item-body" v-show="!line.collapsed">
+                  <div class="bill-item-row">
+                    <div class="po-item-field bill-item-grow">
+                      <label>Item Name</label>
+                      <SearchableSelect v-model="line.item_code" :options="items"
+                        placeholder="Select item…" :createable="true" createDoctype="Item"
+                        @search="fetchItems" @select="v=>onItemSelect(line,v)" />
+                    </div>
+                    <div class="po-item-field bill-item-tax">
+                      <label>Tax Template</label>
+                      <select v-model="line.tax_code" class="inv-fi">
+                        <option value="">— No Tax —</option>
+                        <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.name }}</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="bill-item-row">
+                    <div class="po-item-field bill-item-num">
+                      <label>Qty</label>
+                      <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" @input="calcLine(line)" />
+                    </div>
+                    <div class="po-item-field bill-item-num">
+                      <label>Rate (₹)</label>
+                      <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)" />
+                    </div>
+                  </div>
+                  <div class="po-item-field bill-item-desc">
+                    <label>Description</label>
+                    <textarea v-model="line.description" class="inv-fi po-item-desc-ta" rows="3" maxlength="500" placeholder="Enter item description…"></textarea>
+                    <div class="exp-field-hint">{{ (line.description || '').length }}/500 characters</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="inv-add-line-btn" style="margin-top:10px" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+
+            <!-- Totals -->
+            <div class="po-totals" style="margin-top:16px">
+              <div style="font-size:12px;color:#6b7280">Tax is applied per item via Item Tax Template.</div>
+              <div class="po-totals-right">
+                <div class="po-total-row"><span>Subtotal</span><span>{{ fmtCur(subtotal) }}</span></div>
+                <template v-for="tl in taxLines" :key="tl.template">
+                  <div class="po-total-row"><span>{{ tl.template }} ({{ tl.rate }}%)</span><span>{{ fmtCur(tl.amount) }}</span></div>
+                </template>
+                <div v-if="!taxLines.length" class="po-total-row"><span>Tax</span><span>{{ fmtCur(0) }}</span></div>
+                <div v-if="form.tds_applicable && tdsAmount > 0" class="po-total-row" style="color:#d97706;font-size:12px">
+                  <span>TDS u/s {{ form.tds_section }} ({{ form.tds_rate }}%)</span>
+                  <span style="color:#d97706">− {{ fmtCur(tdsAmount) }}</span>
+                </div>
+                <div class="po-total-row grand"><span>Grand Total</span><span>{{ fmtCur(grandTotal - tdsAmount) }}</span></div>
               </div>
             </div>
           </div>
@@ -467,6 +468,7 @@
                         <th>Item &amp; Description</th>
                         <th class="th-r">Qty</th>
                         <th class="th-r">Rate (₹)</th>
+                        <th>Tax</th>
                         <th class="th-r">Amount (₹)</th>
                       </tr>
                     </thead>
@@ -479,6 +481,10 @@
                         </td>
                         <td class="td-r">{{ flt(it.qty) }}</td>
                         <td class="td-r">{{ fmtCur(it.rate) }}</td>
+                        <td>
+                          <span v-if="it.tax_code" class="vi-tax-badge">{{ it.tax_code }}</span>
+                          <span v-else class="vi-notax-badge">NO TAX</span>
+                        </td>
                         <td class="td-r" style="font-weight:600">{{ fmtCur(it.amount) }}</td>
                       </tr>
                     </tbody>
@@ -489,17 +495,24 @@
                     <div class="inv-totals-inner">
                       <div class="inv-total-line">
                         <span class="t-lbl">Subtotal</span>
-                        <span class="t-amt">{{ fmtCur((viewDoc.grand_total||0)-(viewDoc.total_taxes_and_charges||0)) }}</span>
+                        <span class="t-amt">{{ fmtCur(viewSubtotal) }}</span>
                       </div>
-                      <template v-if="viewTaxes.length">
-                        <div v-for="(tx,i) in viewTaxes" :key="i" class="inv-total-line">
-                          <span class="t-lbl">{{ tx.description||tx.account_head }}</span>
-                          <span class="t-amt" :style="Number(tx.rate)<0?'color:#dc2626':''">{{ fmtCur(tx.tax_amount||tx.amount||0) }}</span>
+                      <template v-if="viewTaxLines.length">
+                        <div v-for="tl in viewTaxLines" :key="tl.template" class="inv-total-line">
+                          <span class="t-lbl" style="display:flex;align-items:center;gap:6px">
+                            <span class="vi-tax-badge" style="font-size:9px">TAX</span>
+                            {{ tl.template }} ({{ tl.rate }}%)
+                          </span>
+                          <span class="t-amt">{{ fmtCur(tl.amount) }}</span>
                         </div>
                       </template>
                       <div v-else class="inv-total-line">
-                        <span class="t-lbl">Tax (0%)</span>
+                        <span class="t-lbl">Tax</span>
                         <span class="t-amt">{{ fmtCur(0) }}</span>
+                      </div>
+                      <div v-if="flt(viewDoc.tds_amount) > 0" class="inv-total-line" style="color:#d97706">
+                        <span class="t-lbl">TDS</span>
+                        <span class="t-amt" style="color:#d97706">− {{ fmtCur(viewDoc.tds_amount) }}</span>
                       </div>
                       <div class="inv-grand-total-line">
                         <span class="inv-grand-lbl">Grand Total</span>
@@ -685,14 +698,14 @@ const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const billCollapsed = reactive({ details: false, billing: true, lines: false, remarks: true });
 const viewLoading = ref(false), viewItems = ref([]), viewPayments = ref([]), viewTaxes = ref([]);
-const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref("");
+const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref(""), taxTemplates = ref([]);
 const sortCol = ref("posting_date"), sortDir = ref("desc");
 const copyingLast = ref(false);
 
 let _id = 1;
-const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
+const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0, tax_code: "", collapsed: false });
 const BILL_CURRENCIES = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
-const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
+const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
 const vendorAddresses = ref([]);
 const addrModal = reactive({
   open: false, saving: false,
@@ -781,6 +794,18 @@ async function loadTaxAccount() {
     const r = await apiList("Account", { fields: ["name"], filters: [["account_type", "=", "Tax"], ["is_group", "=", 0]], limit: 1 });
     if (r?.length) taxAccountHead.value = r[0].name;
   } catch {}
+  try {
+    const templates = await apiList("Tax Template", { fields: ["name"], filters: [["disabled", "=", 0]], limit: 100, order: "name asc" });
+    const withRates = await Promise.all((templates || []).map(async t => {
+      try {
+        const doc = await apiGet("Tax Template", t.name);
+        const rate = doc?.taxes?.[0]?.tax_rate ?? doc?.taxes?.[0]?.rate ?? 0;
+        const account = doc?.taxes?.[0]?.account_head || taxAccountHead.value;
+        return { name: t.name, rate: Number(rate), account };
+      } catch { return { name: t.name, rate: 0, account: taxAccountHead.value }; }
+    }));
+    taxTemplates.value = withRates;
+  } catch { taxTemplates.value = []; }
 }
 
 const counts = computed(() => ({
@@ -872,7 +897,7 @@ const billTlProgressWidth = computed(() => {
 });
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", tax_rate: 0, remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
   vendorAddresses.value = [];
   lines.value = [blankLine()];
   Object.assign(billCollapsed, { details: false, billing: true, lines: false, remarks: true });
@@ -881,7 +906,7 @@ function openNew() {
 }
 async function openEdit(b) {
   editingName.value = b.name;
-  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", tax_rate: 0, remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
+  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", remarks: b.remarks || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
   vendorAddresses.value = [];
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
@@ -892,18 +917,16 @@ async function openEdit(b) {
       lines.value = doc.items.map(i => ({
         id: _id++, item_code: i.item_code || "", description: i.description || "",
         qty: i.qty || 1, rate: i.rate || 0, amount: i.amount || 0,
+        tax_code: i.tax_code || "", collapsed: false,
       }));
     }
     if (doc?.currency) form.currency = doc.currency;
     if (doc?.conversion_rate) form.exchange_rate = doc.conversion_rate;
-    // Separate TDS line from GST line so we don't accidentally use TDS rate as tax_rate
+    // Restore TDS from negative tax line
     const _TDS_RE = /tds|194[a-z]?|with.?hold|195/i;
     const tdsTax = (doc.taxes || []).find(t =>
       _TDS_RE.test(t.description || "") || _TDS_RE.test(t.tax_type || "") || Number(t.rate) < 0
     );
-    const gstTax = (doc.taxes || []).find(t => t !== tdsTax);
-    if (gstTax?.rate) form.tax_rate = gstTax.rate;
-    if (gstTax?.account_head) taxAccountHead.value = gstTax.account_head;
     if (tdsTax) {
       form.tds_applicable = true;
       const secMatch = (tdsTax.description || tdsTax.tax_type || "").match(/194[A-Z]?|192|195/i);
@@ -967,8 +990,8 @@ async function fetchItems(q = "") {
   try {
     const f = [["disabled", "=", 0]];
     if (q) f.push(["item_name", "like", "%" + q + "%"]);
-    const r = await apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom"], filters: f, limit: 30, order: "item_name asc" });
-    items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_rate || 0 }));
+    const r = await apiList("Item", { fields: ["name", "item_name", "description", "standard_rate", "stock_uom", "tax_code"], filters: f, limit: 30, order: "item_name asc" });
+    items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_rate || 0, description: x.description || "", tax_code: x.tax_code || "" }));
   } catch { items.value = []; }
 }
 watch(() => form.supplier, async (name) => {
@@ -994,16 +1017,59 @@ async function onVendorSelect(_opt) {
   const first = vendorAddresses.value.find(a => (a.address_type||"").toLowerCase() === "billing") || vendorAddresses.value[0];
   if (first) { form.billing_address_name = first.name; form.billing_address = formatAddress(first); }
 }
-function onItemSelect(line, opt) {
+async function onItemSelect(line, opt) {
   line.item_code = opt?.value ?? opt;
-  if (opt?.rate) { line.rate = Number(opt.rate) || 0; calcLine(line); }
+  if (opt?.rate !== undefined) { line.rate = Number(opt.rate) || 0; }
+  if (opt?.item_name) { line.item_name = opt.item_name; }
+  if (opt?.tax_code !== undefined) { line.tax_code = opt.tax_code || ""; }
+  if (opt?.description) { line.description = opt.description; }
+  else if (opt?.value) {
+    // description not in option cache — fetch from Item doc directly
+    try {
+      const doc = await apiGet("Item", opt.value);
+      if (doc?.description) line.description = doc.description;
+      if (doc?.item_name) line.item_name = doc.item_name;
+      if (doc?.tax_code) line.tax_code = doc.tax_code;
+    } catch {}
+  }
+  calcLine(line);
 }
 function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
 function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
 const subtotal = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
-const taxAmount = computed(() => Math.round(subtotal.value * flt(form.tax_rate) / 100 * 100) / 100);
+
+// Group tax by template name → { name, rate, amount }
+const taxLines = computed(() => {
+  const map = {};
+  for (const l of lines.value) {
+    if (!l.tax_code || !l.amount) continue;
+    const tmpl = taxTemplates.value.find(t => t.name === l.tax_code);
+    const rate = tmpl?.rate ?? 0;
+    if (!rate) continue;
+    if (!map[l.tax_code]) map[l.tax_code] = { template: l.tax_code, rate, amount: 0 };
+    map[l.tax_code].amount += Math.round(flt(l.amount) * rate / 100 * 100) / 100;
+  }
+  return Object.values(map);
+});
+const taxAmount = computed(() => taxLines.value.reduce((s, t) => s + t.amount, 0));
+const grandTotal = computed(() => subtotal.value + taxAmount.value);
 const tdsAmount = computed(() => form.tds_applicable && form.tds_rate > 0 ? Math.round(subtotal.value * form.tds_rate / 100 * 100) / 100 : 0);
+
+// View drawer tax summary
+const viewSubtotal = computed(() => viewItems.value.reduce((s, i) => s + flt(i.amount), 0));
+const viewTaxLines = computed(() => {
+  const map = {};
+  for (const i of viewItems.value) {
+    if (!i.tax_code || !i.amount) continue;
+    const tmpl = taxTemplates.value.find(t => t.name === i.tax_code);
+    const rate = tmpl?.rate ?? 0;
+    if (!rate) continue;
+    if (!map[i.tax_code]) map[i.tax_code] = { template: i.tax_code, rate, amount: 0 };
+    map[i.tax_code].amount += Math.round(flt(i.amount) * rate / 100 * 100) / 100;
+  }
+  return Object.values(map);
+});
 
 async function copyLastItems() {
   if (!form.supplier) return;
@@ -1029,9 +1095,22 @@ async function saveBill(submit) {
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
-    const taxes = form.tax_rate > 0 && taxAccountHead.value
-      ? [{ doctype: "Tax Line", charge_type: "On Net Total", account_head: taxAccountHead.value, description: taxAccountHead.value, rate: form.tax_rate }]
-      : [];
+    // Build taxes array from unique tax_code entries on lines (like PO)
+    const taxMap = {};
+    for (const l of lines.value.filter(l => l.item_code)) {
+      if (!l.tax_code) continue;
+      const tmpl = taxTemplates.value.find(t => t.name === l.tax_code);
+      if (!tmpl) continue;
+      if (!taxMap[l.tax_code]) {
+        taxMap[l.tax_code] = {
+          doctype: "Tax Line", charge_type: "On Net Total",
+          account_head: tmpl.account || taxAccountHead.value,
+          description: l.tax_code,
+          rate: tmpl.rate,
+        };
+      }
+    }
+    const taxes = Object.values(taxMap);
     if (form.tds_applicable && form.tds_rate > 0 && form.tds_section) {
       taxes.push({
         doctype: "Tax Line", charge_type: "On Net Total",
@@ -1055,6 +1134,7 @@ async function saveBill(submit) {
         doctype: "Purchase Invoice Item", item_code: l.item_code,
         description: l.description || l.item_code,
         qty: flt(l.qty) || 1, rate: flt(l.rate), amount: flt(l.amount),
+        tax_code: l.tax_code || "",
       })),
       taxes,
     };
@@ -1222,7 +1302,7 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 @import '../styles/add.css';
 
 /* ── Edit drawer ── */
-.bill-edit-drawer { width: 680px; right: -680px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; }
+.bill-edit-drawer { width: 600px; right: -600px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; max-width: 96vw; z-index: 8100; background: #fff; display: flex; flex-direction: column; }
 .bill-edit-drawer.open { right: 0; }
 
 /* ── View drawer ── */
@@ -1297,7 +1377,6 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .inv-dmeta-secondary { font-size: 12px; color: #6b7280; }
 .inv-dmeta-date-val { font-size: 14px; font-weight: 600; color: #111827; }
 .inv-dmeta-date-val.is-overdue { color: #dc2626; }
-.col-balance { background: #f8fafc; }
 .inv-balance-val { font-size: 20px; font-weight: 800; color: #dc2626; }
 .inv-balance-val.is-zero, .inv-balance-val.is-paid { color: #16a34a; }
 .inv-rec-pay-btn { margin-top: 8px; background: #1a6ef7; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
@@ -1327,9 +1406,10 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 
 /* ── Edit drawer: add-card styles ── */
 .add-card { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin-bottom: 12px; background: #fff; }
-.add-card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
+.add-card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; background: #f8fafc; }
+.add-card-header:hover { background: #f1f4f8; }
 .add-card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #374151; }
-.add-card-title-icon { color: #6b7280; display: flex; }
+.add-card-title-icon { width: 28px; height: 28px; border-radius: 7px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .add-card-chevron { color: #9ca3af; display: flex; transition: transform .2s; }
 .add-card-chevron.collapsed { transform: rotate(-90deg); }
 .add-card-body { padding: 16px; transition: all .18s ease; }
@@ -1361,5 +1441,49 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .po-addr-card-text { font-size: 12.5px; color: #374151; line-height: 1.65; }
 /* ── Add New Address modal ── */
 .po-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 520px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 8100; display: flex; flex-direction: column; overflow: hidden; }
+
+.bill-act-cell { display:flex; align-items:center; gap:6px; justify-content:flex-end; }
+
+/* ── PO-style item cards (Bills edit drawer) ── */
+.po-item-cards { display: flex; flex-direction: column; gap: 12px; }
+.po-item-card { background: #fff; border: 1px solid #dde3f0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(99,102,241,.07); }
+.po-item-card-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: linear-gradient(135deg,#eef2ff 0%,#f5f7ff 100%); border-bottom: 1px solid #dde3f0; }
+.po-item-card-num { font-size: 11px; font-weight: 800; color: #4f46e5; background: #e0e7ff; border-radius: 5px; padding: 3px 8px; letter-spacing:.02em; flex-shrink:0; }
+.po-item-card-title { font-size: 15px; font-weight: 700; color: #1e40af; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.po-item-card-subtotal { display: flex; flex-direction: column; align-items: flex-end; flex-shrink:0; }
+.po-item-card-subtotal-label { font-size: 9.5px; font-weight: 700; color: #9ca3af; letter-spacing: .08em; }
+.po-item-card-amount { font-size: 20px; font-weight: 800; color: #111827; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.po-item-card-chevron { display:flex; align-items:center; color:#9ca3af; transition:transform .2s; margin-left:4px; flex-shrink:0; }
+.po-item-card-chevron.collapsed { transform:rotate(-90deg); }
+.po-item-card-rm { background: none; border: none; cursor: pointer; color: #9ca3af; padding: 6px; border-radius: 6px; display: flex; align-items: center; margin-left: 8px; flex-shrink:0; }
+.po-item-card-rm:hover { background: #fee2e2; color: #ef4444; }
+.po-item-card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.po-item-col { padding: 16px; display: flex; flex-direction: column; }
+.po-item-col--left { border-right: 1px solid #f0f2f8; }
+.po-item-col--right { gap: 14px; }
+.po-item-field { display: flex; flex-direction: column; gap: 5px; }
+.po-item-field label { font-size: 10.5px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
+.po-item-field .inv-fi { font-size: 13.5px; }
+.po-item-desc-ta { resize: vertical; min-height: 90px; font-size: 13px; line-height: 1.5; }
+.po-item-num-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.po-item-hint { font-size: 12px; font-style: italic; color: #6b7280; background: #f0f4ff; border-radius: 8px; padding: 10px 12px; line-height: 1.5; margin-top: auto; }
+.po-item-count { font-size: 11px; font-weight: 600; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1px 8px; margin-left: 4px; }
+.po-totals { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-top: 16px; }
+.po-totals-right { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
+.po-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 3px 0; }
+.po-total-row.grand { font-weight: 700; font-size: 14px; color: #111827; border-top: 1px solid #e5e7eb; padding-top: 6px; }
+.exp-field-hint { font-size:11.5px; color:#9ca3af; margin-top:4px; text-align:right; }
+
+/* ── Bill line item card body — single-column stacked layout ── */
+.bill-item-body { display: flex; flex-direction: column; }
+.bill-item-row { display: flex; gap: 12px; padding: 14px 16px 0; }
+.bill-item-grow { flex: 1; min-width: 0; }
+.bill-item-tax { flex: 0 0 160px; min-width: 0; }
+.bill-item-num { flex: 1; min-width: 0; }
+.bill-item-desc { padding: 14px 16px 16px; }
+
+/* ── Tax badges (view drawer) ── */
+.vi-tax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#e0e7ff; color:#4f46e5; white-space:nowrap; }
+.vi-notax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#f3f4f6; color:#9ca3af; }
 
 </style>

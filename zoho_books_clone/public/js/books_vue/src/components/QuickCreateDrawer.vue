@@ -156,6 +156,47 @@
             </div>
           </template>
 
+          <!-- ── Warehouse ────────────────────────────────────────────── -->
+          <template v-else-if="state.doctype === 'Warehouse'">
+            <div class="qcd-section">Warehouse Details</div>
+            <div class="qcd-grid">
+              <div class="qcd-field qcd-full">
+                <label class="qcd-lbl">Warehouse Name <span class="qcd-req">*</span></label>
+                <input v-model="form.warehouse_name" class="qcd-input" placeholder="e.g. Main Store, Finished Goods" autofocus />
+              </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">Warehouse Type</label>
+                <select v-model="form.warehouse_type" class="qcd-input">
+                  <option value="">— Select Type —</option>
+                  <option value="Stores">Stores</option>
+                  <option value="Work In Progress">Work In Progress</option>
+                  <option value="Finished Goods">Finished Goods</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Scrap">Scrap</option>
+                </select>
+              </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">Parent Warehouse</label>
+                <select v-model="form.parent_warehouse" class="qcd-input">
+                  <option value="">— Top level —</option>
+                  <option v-for="w in parentWarehouseList" :key="w" :value="w">{{ w }}</option>
+                </select>
+              </div>
+              <div class="qcd-field qcd-full">
+                <label class="qcd-lbl">Address (optional)</label>
+                <input v-model="form.address_line_1" class="qcd-input" placeholder="Street / building" />
+              </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">City</label>
+                <input v-model="form.city" class="qcd-input" placeholder="City" />
+              </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">PIN Code</label>
+                <input v-model="form.pin" class="qcd-input" placeholder="6-digit PIN" maxlength="6" />
+              </div>
+            </div>
+          </template>
+
           <!-- ── Fallback ─────────────────────────────────────────────── -->
           <template v-else>
             <div class="qcd-grid">
@@ -192,14 +233,19 @@ const { toast } = useToast();
 const saving  = ref(false);
 const form    = reactive({});
 const uomList = ref([]);
+const parentWarehouseList = ref([]);
 const PAYMENT_TERMS = ["Due on Receipt","Net 7","Net 15","Net 30","Net 45","Net 60","Net 90"];
-const LABELS = { Customer: "Customer", Supplier: "Vendor / Supplier", Item: "Item" };
+const LABELS = { Customer: "Customer", Supplier: "Vendor / Supplier", Item: "Item", Warehouse: "Warehouse" };
 
 onMounted(async () => {
   try {
     const r = await apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 });
     uomList.value = (r || []).map(x => x.name);
   } catch { uomList.value = ["Nos","Kg","Ltr","Mtr","Box","Pcs","Set","Dozen"]; }
+  try {
+    const r = await apiList("Warehouse", { fields: ["name"], filters: [["is_group","=",1],["disabled","=",0]], order: "name asc", limit: 100 });
+    parentWarehouseList.value = (r || []).map(x => x.name);
+  } catch { parentWarehouseList.value = []; }
 });
 
 watch(() => state.open, (open) => {
@@ -223,6 +269,11 @@ watch(() => state.open, (open) => {
       item_group: "All Item Groups", item_type: "Product",
       standard_rate: 0, stock_uom: "Nos", hsn_code: "", gst_rate: 0,
     });
+  } else if (state.doctype === "Warehouse") {
+    Object.assign(form, {
+      warehouse_name: state.prefill, warehouse_type: "Stores",
+      parent_warehouse: "", address_line_1: "", city: "", pin: "",
+    });
   } else {
     form.name = state.prefill;
   }
@@ -243,6 +294,9 @@ async function onSave() {
   if (state.doctype === "Item" && !form.item_name?.trim()) {
     toast("Item Name is required", "error"); return;
   }
+  if (state.doctype === "Warehouse" && !form.warehouse_name?.trim()) {
+    toast("Warehouse Name is required", "error"); return;
+  }
   if (!state.doctype && !form.name?.trim()) {
     toast("Name is required", "error"); return;
   }
@@ -254,16 +308,18 @@ async function onSave() {
     for (const [k, v] of Object.entries(form)) {
       if (v !== "" && v !== null && v !== undefined) payload[k] = v;
     }
-    if (company && ["Customer", "Supplier", "Item"].includes(state.doctype)) {
-      payload.books_company = company;
+    if (company) {
+      if (["Customer", "Supplier", "Item"].includes(state.doctype)) payload.books_company = company;
+      if (["Warehouse"].includes(state.doctype)) payload.company = company;
     }
 
     const saved = await apiSave(payload);
     const savedName = saved?.name || saved;
     const label =
-      state.doctype === "Customer" ? (form.customer_name || savedName) :
-      state.doctype === "Supplier" ? (form.supplier_name || savedName) :
-      state.doctype === "Item"     ? (form.item_name     || savedName) :
+      state.doctype === "Customer"  ? (form.customer_name  || savedName) :
+      state.doctype === "Supplier"  ? (form.supplier_name  || savedName) :
+      state.doctype === "Item"      ? (form.item_name      || savedName) :
+      state.doctype === "Warehouse" ? (form.warehouse_name || savedName) :
       savedName;
 
     toast(`${LABELS[state.doctype] || state.doctype} "${label}" created`, "success");

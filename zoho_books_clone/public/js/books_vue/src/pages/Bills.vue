@@ -1360,6 +1360,6 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .po-addr-card-type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #2563eb; background: #dbeafe; display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; align-self: flex-start; }
 .po-addr-card-text { font-size: 12.5px; color: #374151; line-height: 1.65; }
 /* ── Add New Address modal ── */
-.po-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 520px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 70; display: flex; flex-direction: column; overflow: hidden; }
+.po-apply-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 520px; max-width: 96vw; background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.2); z-index: 8100; display: flex; flex-direction: column; overflow: hidden; }
 
 </style>

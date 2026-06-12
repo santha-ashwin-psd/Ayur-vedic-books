@@ -39,6 +39,10 @@ class ExpenseClaim(Document):
             frappe.throw(_("Only Submitted claims can be approved"))
         if not self.payable_account:
             frappe.throw(_("Please set a Payable Account before approving"))
+        
+        from zoho_books_clone.accounts.central_validator import check_budget_for_doc
+        check_budget_for_doc(self)
+
         self.db_set("status", "Approved")
         self.db_set("approved_by", frappe.session.user)
         post_expense_claim(self)

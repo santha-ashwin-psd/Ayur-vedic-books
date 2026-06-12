@@ -34,6 +34,7 @@ def on_submit(doc, _method=None):
     """Extra guards run at submit time (after validate)."""
     _check_required_accounts(doc)
     _check_credit_limit(doc)
+    check_budget_for_doc(doc)
 
 
 # ─── Individual checks ────────────────────────────────────────────────────────
@@ -207,6 +208,99 @@ def _check_required_accounts(doc):
             frappe.throw(_(
                 "'{0}' is required before submitting {1}"
             ).format(label, doc.doctype))
+
+
+def check_budget_for_doc(doc):
+    """
+    Check if this document would cause the cost center's spend to exceed its budget
+    or cross the warning threshold, based on the cost center's budget settings.
+    """
+    if doc.doctype not in ("Purchase Invoice", "Expense", "Expense Claim", "Journal Entry"):
+        return
+
+    # Debit notes / returns decrease overall spending, so they are exempt from budget enforcement
+    if getattr(doc, "is_return", 0):
+        return
+
+    from zoho_books_clone.api.books_data import get_cost_center_spend
+
+    def validate_cc_budget(cost_center, amount):
+        if not cost_center or amount <= 0:
+            return
+
+        if not frappe.db.exists("Cost Center", cost_center):
+            return
+
+        cc = frappe.get_doc("Cost Center", cost_center)
+        if cc.disabled or not cc.budget or cc.budget_action == "None":
+            return
+
+        company = getattr(doc, "company", None) or frappe.defaults.get_user_default("company")
+        current_spend = get_cost_center_spend(company).get(cost_center, 0.0)
+        new_spend = current_spend + amount
+
+        if new_spend > cc.budget:
+            msg = _(
+                "Cost Center <b>{0}</b> has exceeded its budget.<br>"
+                "Annual Budget: {1}<br>"
+                "Current Spent: {2}<br>"
+                "New Transaction Amount: {3}<br>"
+                "Total Spent would be: {4}"
+            ).format(
+                cost_center,
+                frappe.bold(frappe.format_value(cc.budget, {"fieldtype": "Currency"})),
+                frappe.bold(frappe.format_value(current_spend, {"fieldtype": "Currency"})),
+                frappe.bold(frappe.format_value(amount, {"fieldtype": "Currency"})),
+                frappe.bold(frappe.format_value(new_spend, {"fieldtype": "Currency"})),
+            )
+            if cc.budget_action == "Stop":
+                frappe.throw(msg, title=_("Budget Exceeded"))
+            elif cc.budget_action == "Warn":
+                frappe.msgprint(msg, title=_("Budget Exceeded"), indicator="orange")
+        elif cc.alert_pct and new_spend >= cc.budget * (flt(cc.alert_pct) / 100.0):
+            msg = _(
+                "Budget Warning: Cost Center <b>{0}</b> has reached {1}% of its budget.<br>"
+                "Annual Budget: {2}<br>"
+                "Current Spent: {3}<br>"
+                "New Transaction Amount: {4}<br>"
+                "Total Spent: {5}"
+            ).format(
+                cost_center,
+                cc.alert_pct,
+                frappe.bold(frappe.format_value(cc.budget, {"fieldtype": "Currency"})),
+                frappe.bold(frappe.format_value(current_spend, {"fieldtype": "Currency"})),
+                frappe.bold(frappe.format_value(amount, {"fieldtype": "Currency"})),
+                frappe.bold(frappe.format_value(new_spend, {"fieldtype": "Currency"})),
+            )
+            frappe.msgprint(msg, title=_("Budget Alert"), indicator="yellow")
+
+    # Gather cost centers and their transaction amounts
+    cc_amounts = {}
+    if doc.doctype == "Purchase Invoice":
+        cc = getattr(doc, "cost_center", None)
+        if cc:
+            cc_amounts[cc] = cc_amounts.get(cc, 0.0) + flt(doc.grand_total)
+    elif doc.doctype == "Expense":
+        cc = getattr(doc, "cost_center", None)
+        if cc:
+            cc_amounts[cc] = cc_amounts.get(cc, 0.0) + (flt(doc.total_amount) or flt(doc.amount))
+    elif doc.doctype == "Expense Claim":
+        cc = getattr(doc, "cost_center", None)
+        if cc:
+            cc_amounts[cc] = cc_amounts.get(cc, 0.0) + flt(doc.total_claimed_amount)
+    elif doc.doctype == "Journal Entry":
+        for row in getattr(doc, "accounts", []):
+            row_cc = getattr(row, "cost_center", None) or getattr(doc, "cost_center", None)
+            if row_cc:
+                account_type = frappe.db.get_value("Account", row.account, "account_type")
+                if account_type not in ('Receivable', 'Payable', 'Bank', 'Cash'):
+                    net_amount = flt(row.debit) - flt(row.credit)
+                    cc_amounts[row_cc] = cc_amounts.get(row_cc, 0.0) + net_amount
+
+    # Validate budget for each cost center
+    for cc, amt in cc_amounts.items():
+        if amt > 0:
+            validate_cc_budget(cc, amt)
 
 
 # ─── Helper ───────────────────────────────────────────────────────────────────

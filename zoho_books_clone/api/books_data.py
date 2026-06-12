@@ -895,28 +895,24 @@ def ai_chat(messages, system=None):
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_cost_center_spend(company=None):
     """
-    Actual spend per cost center, summed from posted General Ledger Entries.
-    Counts debit-side GL rows only (never credits), so:
-    - Purchase bill expense lines    -> counted (Expense account, debit)
-    - Purchase bill ITC lines        -> counted (Tax/Input account, debit)
-    - Sales invoice income lines     -> excluded (credit, debit=0)
-    - Sales invoice tax lines        -> excluded (credit, debit=0)
-    - Sales invoice receivable lines -> excluded (Receivable account type)
+    Actual net spend per cost center, summed from posted General Ledger Entries.
+    Calculates (debit - credit) for Expense and Income/Revenue accounts, so:
+    - Purchase bill expense lines    -> counted as positive spend (debit)
+    - Sales invoice income lines     -> counted as negative spend (credit)
+    - Receivables/Payables/Bank/Cash -> excluded (balance sheet asset/liability accounts)
     Returns a map { cost_center_name: spend }.
     """
     if not company:
         company = _get_company(frappe.session.user)
     rows = frappe.db.sql("""
-        SELECT gl.cost_center, SUM(gl.debit) AS spend
+        SELECT gl.cost_center, SUM(gl.debit - gl.credit) AS spend
         FROM `tabGeneral Ledger Entry` gl
         JOIN `tabAccount` a ON a.name = gl.account
         WHERE gl.company = %s
           AND IFNULL(gl.cost_center, '') <> ''
           AND IFNULL(gl.is_cancelled, 0) = 0
-          AND gl.debit > 0
           AND a.account_type NOT IN (
-                'Receivable', 'Payable', 'Bank', 'Cash',
-                'Income', 'Revenue'
+                'Receivable', 'Payable', 'Bank', 'Cash'
           )
         GROUP BY gl.cost_center
     """, (company,), as_dict=True)

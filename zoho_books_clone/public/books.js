@@ -15914,9 +15914,9 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
       async function load(){
         loading.value=true;
         try{
-          const ccs=await apiGET("frappe.client.get_list",{doctype:"Cost Center",fields:JSON.stringify(["name","cost_center_name","cost_center_number","parent_cost_center","is_group","disabled"]),order_by:"name asc",limit_page_length:200})||[];
+          const ccs=await apiGET("frappe.client.get_list",{doctype:"Cost Center",fields:JSON.stringify(["name","cost_center_name","cost_center_number","parent_cost_center","is_group","disabled","description","budget","budget_period","alert_pct","budget_action","cc_type","color_tag"]),order_by:"name asc",limit_page_length:200})||[];
           if(ccs.length){
-            allCC.value=ccs.map(c=>({name:c.name,code:c.cost_center_number||"",parent:c.parent_cost_center||"",type:"Department",color:"#3B5BDB",budget:0,budget_period:"Annual",alert_pct:80,budget_action:"Warn",is_group:c.is_group?1:0,status:c.disabled?"Inactive":"Active",desc:"",source:"frappe"}));
+            allCC.value=ccs.map(c=>({name:c.name,code:c.cost_center_number||"",parent:c.parent_cost_center||"",type:c.cc_type||"Department",color:c.color_tag||"#3B5BDB",budget:Number(c.budget)||0,budget_period:c.budget_period||"Annual",alert_pct:c.alert_pct||80,budget_action:c.budget_action||"Warn",is_group:c.is_group?1:0,status:c.disabled?"Inactive":"Active",desc:c.description||"",source:"frappe"}));
             fromFrappe.value=true;toast("Loaded "+allCC.value.length+" cost centers","info");
           } else throw new Error("none");
         }catch{
@@ -15965,7 +15965,20 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
       function openEdit(name){
         const cc=allCC.value.find(c=>c.name===name);if(!cc)return;
         editing.value=name;
-        Object.assign(fForm,{...cc,budget:cc.budget||""});
+        Object.assign(fForm,{
+          name: cc.name,
+          code: cc.code||"",
+          parent: cc.parent||"",
+          type: cc.type||"Department",
+          color: cc.color||CC_COLORS[0],
+          budget: cc.budget||"",
+          budget_period: cc.budget_period||"Annual",
+          alert_pct: cc.alert_pct||80,
+          budget_action: cc.budget_action||"Warn",
+          is_group: cc.is_group||0,
+          status: cc.status||"Active",
+          desc: cc.desc||""
+        });
         showDrawer.value=true;
       }
       function closeDrawer(){showDrawer.value=false;editing.value=null;}
@@ -15977,9 +15990,43 @@ window.addEventListener('load', function(){ setTimeout(go, 600); });
         const company=await resolveCompany();
         if(!company){toast("No company configured. Please set a default company in Books Settings.","error");saving.value=false;return;}
         try{
-          const doc={doctype:"Cost Center",cost_center_name:data.name,cost_center_number:data.code,parent_cost_center:data.parent||"",is_group:data.is_group,company};
-          if(editing.value){doc.name=editing.value;await apiPOST("frappe.client.save",{doc:JSON.stringify(doc)});}
-          else await apiPOST("frappe.client.insert",{doc:JSON.stringify(doc)});
+          if(editing.value){
+            await apiPOST("frappe.client.set_value",{
+              doctype: "Cost Center",
+              name: editing.value,
+              fieldname: JSON.stringify({
+                cost_center_number: data.code || "",
+                parent_cost_center: data.parent || "",
+                is_group: data.is_group,
+                budget: data.budget,
+                description: data.desc || "",
+                cc_type: data.type,
+                color_tag: data.color,
+                budget_period: data.budget_period,
+                alert_pct: Number(data.alert_pct) || 80,
+                budget_action: data.budget_action,
+                disabled: data.status === "Inactive" ? 1 : 0,
+              })
+            });
+          } else {
+            const doc={
+              doctype:"Cost Center",
+              cost_center_name:data.name,
+              cost_center_number:data.code||"",
+              parent_cost_center:data.parent||"",
+              is_group:data.is_group,
+              company,
+              budget:data.budget,
+              description:data.desc||"",
+              cc_type:data.type,
+              color_tag:data.color,
+              budget_period:data.budget_period,
+              alert_pct:Number(data.alert_pct)||80,
+              budget_action:data.budget_action,
+              disabled:data.status==="Inactive"?1:0
+            };
+            await apiPOST("frappe.client.insert",{doc:JSON.stringify(doc)});
+          }
           fromFrappe.value=true;
           await load();toast(editing.value?"Cost center updated":"Cost center created");
           saving.value=false;closeDrawer();

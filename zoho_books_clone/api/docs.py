@@ -1502,13 +1502,16 @@ def _quote_items_to_doc_items(quote_doc, target_item_doctype):
     for it in (quote_doc.items or []):
         rows.append({
             "doctype": target_item_doctype,
-            "item_code":   it.item_code,
-            "item_name":   it.item_name or it.item_code,
-            "description": it.description or it.item_name or it.item_code,
-            "qty":         flt(it.qty) or 1,
-            "uom":         getattr(it, "uom", "") or "Nos",
-            "rate":        flt(it.rate),
-            "amount":      flt(it.amount),
+            "item_code":           it.item_code,
+            "item_name":           it.item_name or it.item_code,
+            "description":         it.description or it.item_name or it.item_code,
+            "qty":                 flt(it.qty) or 1,
+            "uom":                 getattr(it, "uom", "") or "Nos",
+            "rate":                flt(it.rate),
+            "amount":              flt(it.amount),
+            "hsn_code":            getattr(it, "hsn_code", "") or "",
+            "discount_percentage": getattr(it, "discount_percentage", "") or "",
+            "tax_code":            getattr(it, "tax_code", "") or "",
         })
     return rows
 
@@ -1571,6 +1574,14 @@ def convert_quote_to_invoice(quotation_name, due_date=""):
         "income_account": inc,
         "notes":        f"From Quotation {qd.name}",
         "items":        items,
+        "taxes": [
+            {"doctype": "Tax Line",
+             "charge_type": getattr(t, "charge_type", "On Net Total"),
+             "account_head": getattr(t, "account_head", ""),
+             "description": getattr(t, "description", ""),
+             "rate": flt(getattr(t, "rate", 0))}
+            for t in (qd.taxes or [])
+        ],
     })
     si.flags.ignore_permissions = True
     si.flags.ignore_mandatory = True
@@ -1787,14 +1798,17 @@ def convert_sales_order_to_invoice(sales_order, line_qtys=None, due_date=""):
             continue
         si_items.append({
             "doctype": "Sales Invoice Item",
-            "item_code":   it.item_code,
-            "item_name":   it.item_name or it.item_code,
-            "description": it.description or it.item_name or it.item_code,
-            "qty":         qty_bill,
-            "uom":         getattr(it, "uom", "") or "Nos",
-            "rate":        flt(it.rate),
-            "amount":      flt(it.rate) * qty_bill,
-            "income_account": inc,
+            "item_code":           it.item_code,
+            "item_name":           it.item_name or it.item_code,
+            "description":         it.description or it.item_name or it.item_code,
+            "qty":                 qty_bill,
+            "uom":                 getattr(it, "uom", "") or "Nos",
+            "rate":                flt(it.rate),
+            "amount":              flt(it.rate) * qty_bill,
+            "income_account":      inc,
+            "hsn_code":            getattr(it, "hsn_code", "") or "",
+            "discount_percentage": getattr(it, "discount_percentage", "") or "",
+            "tax_code":            getattr(it, "tax_code", "") or "",
         })
         line_updates.append((it.name, qty_bill))
 
@@ -1814,6 +1828,14 @@ def convert_sales_order_to_invoice(sales_order, line_qtys=None, due_date=""):
         "update_stock":   1,
         "set_warehouse":  getattr(so, "set_warehouse", "") or "",
         "items":          si_items,
+        "taxes": [
+            {"doctype": "Tax Line",
+             "charge_type": getattr(t, "charge_type", "On Net Total"),
+             "account_head": getattr(t, "account_head", ""),
+             "description": getattr(t, "description", ""),
+             "rate": flt(getattr(t, "rate", 0))}
+            for t in (so.taxes or [])
+        ],
     })
     si.flags.ignore_permissions = True
     si.flags.ignore_mandatory = True

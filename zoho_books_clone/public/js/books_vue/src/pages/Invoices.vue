@@ -440,139 +440,112 @@
                 </span>
               </div>
             </div>
-            <div class="add-card-body" :class="{collapsed:collapsed.lines}" style="padding:0">
-              <div style="overflow-x:auto">
-                <table class="inv-lines-tbl">
-                  <thead>
-                    <tr>
-                      <th style="width:28px">#</th>
-                      <th style="min-width:160px">Item <span class="inv-req">*</span></th>
-                      <th style="min-width:110px">Description</th>
-                      <th style="min-width:80px">HSN/SAC</th>
-                      <th style="min-width:60px">Qty</th>
-                      <th style="min-width:70px">UOM</th>
-                      <th style="min-width:90px;text-align:right">Rate ({{ currencySymbol }})</th>
-                      <th style="min-width:60px;text-align:right">Disc %</th>
-                      <th style="min-width:90px;text-align:right">Amount ({{ currencySymbol }})</th>
-                      <th style="width:32px"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(line, idx) in lines" :key="line.id">
-                      <td><span class="add-line-num">{{ idx+1 }}</span></td>
-                      <td>
-                        <SearchableSelect v-model="line.item_code" :options="items"
-                          placeholder="Search item or service"
-                          :compact="true" :createable="true" createDoctype="Item"
-                          @update:modelValue="onItemChange(line)"/>
-                      </td>
-                      <td><input v-model="line.description" class="inv-ci" placeholder="Item description"/></td>
-                      <td><input v-model="line.hsn_code" class="inv-ci" placeholder="Enter HSN"/></td>
-                      <td><input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-ci" @input="calcLine(line)"/></td>
-                      <td>
-                        <select v-model="line.uom" class="inv-ci">
-                          <option value="Nos">Nos</option>
-                          <option value="Kg">Kg</option>
-                          <option value="Ltr">Ltr</option>
-                          <option value="Hrs">Hrs</option>
-                          <option value="Pcs">Pcs</option>
-                          <option value="Box">Box</option>
-                        </select>
-                      </td>
-                      <td><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-ci inv-ci-r" @input="calcLine(line)"/></td>
-                      <td><input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="calcLine(line)" placeholder="0"/></td>
-                      <td class="add-line-amount">{{ fmtAmt(line.amount) }}</td>
-                      <td style="padding:4px 6px">
-                        <button @click="removeLine(line.id)" class="add-line-del"><span v-html="icon('trash',12)"></span></button>
-                      </td>
-                    </tr>
-                    <!-- Add new line row -->
-                    <tr class="add-new-line-row">
-                      <td colspan="10" style="padding:6px 14px;border-bottom:none">
-                        <button class="add-new-line-btn" @click="addLine">
-                          <span v-html="icon('plus',12)"></span> Add new line
-                        </button>
-                      </td>
-                    </tr>
-                    <tr v-if="!lines.length">
-                      <td colspan="10" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
-                        No line items — click "+ Add Item" to get started
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div class="add-card-body" :class="{collapsed:collapsed.lines}" style="padding:16px 16px 8px">
+
+              <!-- Export/SEZ notices -->
+              <div v-if="isOverseas" style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:#1e40af;display:flex;align-items:flex-start;gap:8px">
+                <span style="font-size:15px;flex-shrink:0">🌐</span>
+                <div><strong>Export Invoice — Zero Rated Supply</strong><br/>GST is not applicable on exports. Ensure you have a valid LUT or pay IGST and claim refund.</div>
+              </div>
+              <div v-else-if="isSEZ" style="background:#f3f0ff;border:1px solid #c4b5fd;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:#4c1d95;display:flex;align-items:flex-start;gap:8px">
+                <span style="font-size:15px;flex-shrink:0">🏭</span>
+                <div><strong>SEZ Supply — Zero Rated</strong><br/>Apply IGST @ 0% or supply under LUT/Bond without payment of tax.</div>
               </div>
 
-              <!-- Taxes + Totals -->
-              <div class="inv-totals-wrap">
-                <!-- Tax section -->
-                <div class="inv-tax-section">
-                  <div v-if="isOverseas" style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#1e40af;display:flex;align-items:flex-start;gap:8px">
-                    <span style="font-size:15px;flex-shrink:0">🌐</span>
-                    <div><strong>Export Invoice — Zero Rated Supply</strong><br/>GST is not applicable on exports. Ensure you have a valid LUT or pay IGST and claim refund.</div>
+              <div class="po-item-cards">
+                <div v-for="(line, idx) in lines" :key="line.id" class="po-item-card">
+                  <div class="po-item-card-header" @click="line.collapsed=!line.collapsed">
+                    <span class="po-item-card-num">#{{ idx + 1 }}</span>
+                    <span class="po-item-card-title">{{ line.item_code || 'Line Item' }}</span>
+                    <div class="po-item-card-subtotal">
+                      <span class="po-item-card-subtotal-label">SUBTOTAL</span>
+                      <span class="po-item-card-amount">{{ fmtAmt(line.amount) }}</span>
+                    </div>
+                    <span class="po-item-card-chevron" :class="{collapsed:line.collapsed}">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                    <button @click.stop="removeLine(line.id)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
                   </div>
-                  <div v-else-if="isSEZ" style="background:#f3f0ff;border:1px solid #c4b5fd;border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12.5px;color:#4c1d95;display:flex;align-items:flex-start;gap:8px">
-                    <span style="font-size:15px;flex-shrink:0">🏭</span>
-                    <div><strong>SEZ Supply — Zero Rated</strong><br/>Apply IGST @ 0% or supply under LUT/Bond without payment of tax.</div>
-                  </div>
-                  <div class="inv-tax-header">
-                    <span class="inv-tax-title">Taxes</span>
-                    <div class="inv-tax-presets">
-                      <template v-if="form.currency !== 'INR'">
-                        <span style="font-size:11.5px;color:#6b7280;font-style:italic">GST presets not applicable for foreign currency invoices</span>
-                      </template>
-                      <template v-else-if="!isOverseas">
-                        <button v-for="p in TAX_PRESETS" :key="p.label" class="inv-preset-btn" @click="applyTaxPreset(p)">{{ p.label }}</button>
-                      </template>
-                      <template v-else>
-                        <span style="font-size:11.5px;color:#6b7280;font-style:italic">Tax presets disabled for overseas customer</span>
-                      </template>
-                      <button class="inv-preset-btn inv-preset-custom" @click="addTaxRow">+ Custom</button>
-                      <button v-if="taxRows.length" class="inv-preset-btn inv-preset-clear" @click="taxRows=[]">Clear</button>
+                  <div class="po-item-card-body" v-show="!line.collapsed">
+                    <div class="po-item-col po-item-col--left">
+                      <div class="po-item-field">
+                        <label>Item Name <span class="inv-req">*</span></label>
+                        <SearchableSelect v-model="line.item_code" :options="items"
+                          placeholder="Search item or service"
+                          :createable="true" createDoctype="Item"
+                          @update:modelValue="onItemChange(line)"/>
+                      </div>
+                      <div class="po-item-field" style="margin-top:14px">
+                        <label>Description</label>
+                        <textarea v-model="line.description" class="inv-fi po-item-desc-ta" rows="4" maxlength="500" placeholder="Enter item description…"></textarea>
+                        <div class="exp-field-hint" :class="{'exp-field-hint-err': (line.description||'').length >= 500}">{{ (line.description||'').length }}/500</div>
+                      </div>
+                    </div>
+                    <div class="po-item-col po-item-col--right">
+                      <div class="po-item-num-row">
+                        <div class="po-item-field">
+                          <label>HSN/SAC</label>
+                          <input v-model="line.hsn_code" class="inv-fi" placeholder="HSN code"/>
+                        </div>
+                        <div class="po-item-field">
+                          <label>UOM</label>
+                          <select v-model="line.uom" class="inv-fi">
+                            <option value="Nos">Nos</option>
+                            <option value="Kg">Kg</option>
+                            <option value="Ltr">Ltr</option>
+                            <option value="Hrs">Hrs</option>
+                            <option value="Pcs">Pcs</option>
+                            <option value="Box">Box</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="po-item-num-row">
+                        <div class="po-item-field">
+                          <label>Qty</label>
+                          <input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-fi" @input="calcLine(line)"/>
+                        </div>
+                        <div class="po-item-field">
+                          <label>Rate ({{ currencySymbol }})</label>
+                          <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)"/>
+                        </div>
+                      </div>
+                      <div class="po-item-num-row">
+                        <div class="po-item-field">
+                          <label>Discount %</label>
+                          <input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-fi" @input="calcLine(line)" placeholder="0"/>
+                        </div>
+                        <div class="po-item-field">
+                          <label>Tax Template</label>
+                          <select v-model="line.tax_code" class="inv-fi">
+                            <option value="">— No Tax —</option>
+                            <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.name }}</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <table v-if="taxRows.length" class="inv-tax-tbl">
-                    <thead><tr>
-                      <th>Description</th>
-                      <th style="width:80px;text-align:right">Rate %</th>
-                      <th style="width:100px;text-align:right">Amount</th>
-                    </tr></thead>
-                    <tbody>
-                      <tr v-for="tx in taxRows" :key="tx.id">
-                        <td>
-                          <input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/>
-                          <button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line" title="Remove"><span v-html="icon('trash',13)"></span></button>
-                        </td>
-                        <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="recalcTax(tx)"/></td>
-                        <td><span class="inv-tax-amt-val">{{ fmtAmt(tx.amount) }}</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  <div v-else style="font-size:12px;color:#9ca3af;padding:6px 0">
-                    <span v-if="isOverseas">Zero-rated export — no taxes applicable.</span>
-                    <span v-else>No taxes — use preset buttons above or add a custom row.</span>
-                  </div>
                 </div>
-                <!-- Totals -->
-                <div class="inv-totals">
-                  <div class="inv-total-row">
-                    <span>Sub Total</span>
-                    <span class="inv-total-amt">{{ fmtAmt(subtotal) }}</span>
-                  </div>
-                  <div v-for="tx in taxRows" :key="tx.id" class="inv-total-row" style="color:#6b7280;font-size:12px">
-                    <span>{{ tx.description || 'Tax' }}</span>
-                    <span class="inv-total-amt">{{ fmtAmt(tx.amount) }}</span>
-                  </div>
-                  <div class="inv-total-row inv-grand-total">
-                    <span>Grand Total</span>
-                    <span class="inv-total-amt" style="font-size:16px;color:#1565c0">{{ fmtAmt(grandTotal) }}</span>
-                  </div>
+              </div>
+
+              <button class="inv-add-line-btn" style="margin-top:12px" @click="addLine">
+                <span v-html="icon('plus',12)"></span> Add Item
+              </button>
+
+              <!-- Totals -->
+              <div class="po-totals" style="margin-top:16px">
+                <div style="font-size:12px;color:#6b7280">Tax is applied per item via Tax Template.</div>
+                <div class="po-totals-right">
+                  <div class="po-total-row"><span>Subtotal</span><span>{{ fmtAmt(subtotal) }}</span></div>
+                  <template v-for="tl in taxLines" :key="tl.template">
+                    <div class="po-total-row"><span>{{ tl.template }} ({{ tl.rate }}%)</span><span>{{ fmtAmt(tl.amount) }}</span></div>
+                  </template>
+                  <div v-if="!taxLines.length" class="po-total-row"><span>Tax</span><span>{{ fmtAmt(0) }}</span></div>
+                  <div class="po-total-row grand"><span>Grand Total</span><span>{{ fmtAmt(grandTotal) }}</span></div>
                 </div>
               </div>
 
               <!-- Add notes link -->
-              <div style="padding:6px 16px 14px">
+              <div style="padding:6px 0 6px">
                 <button class="add-notes-link" @click="collapsed.notes=false">
                   <span v-html="icon('plus',12)"></span> Add notes
                 </button>
@@ -595,11 +568,13 @@
               <div class="inv-fg inv-fg2">
                 <div>
                   <label class="inv-lbl">Customer Note <span style="color:#9ca3af;font-weight:400">(printed on invoice)</span></label>
-                  <textarea v-model="form.terms" class="inv-fi" rows="3" placeholder="Visible to customer on the invoice…"></textarea>
+                  <textarea v-model="form.terms" class="inv-fi" rows="3" maxlength="500" placeholder="Visible to customer on the invoice…"></textarea>
+                  <div class="exp-field-hint" :class="{'exp-field-hint-err': (form.terms||'').length >= 500}">{{ (form.terms||'').length }}/500 characters</div>
                 </div>
                 <div>
                   <label class="inv-lbl">Internal Remarks <span style="color:#9ca3af;font-weight:400">(not printed)</span></label>
-                  <textarea v-model="form.remarks" class="inv-fi" rows="3" placeholder="Internal notes for your team…"></textarea>
+                  <textarea v-model="form.remarks" class="inv-fi" rows="3" maxlength="500" placeholder="Internal notes for your team…"></textarea>
+                  <div class="exp-field-hint" :class="{'exp-field-hint-err': (form.remarks||'').length >= 500}">{{ (form.remarks||'').length }}/500 characters</div>
                 </div>
               </div>
               <!-- Save As status selector -->
@@ -1344,7 +1319,7 @@ const warehouses = ref([]);
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name","parent_warehouse"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.parent_warehouse?`${x.parent_warehouse} / ${x.name}`:x.name,value:x.name}));}catch{warehouses.value=[];}}
 const costCenters = ref([]);
 async function fetchCostCenters(){try{const co=await resolveCompany();const r=await apiGET("frappe.client.get_list",{doctype:"Cost Center",fields:JSON.stringify(["name"]),filters:JSON.stringify([["disabled","=",0],["company","=",co],["is_group","=",0]]),order_by:"name asc",limit_page_length:100})||[];costCenters.value=r.map(c=>c.name);}catch{costCenters.value=[];}}
-const taxRows = ref([]);
+const taxTemplates = ref([]);
 
 // ── View drawer ────────────────────────────────────────────────────────
 const viewOpen    = ref(false);
@@ -1457,9 +1432,23 @@ const sorted = computed(()=>[...filtered.value].sort((a,b)=>{
 
 const { page, pageSize, paged } = usePagination(sorted, { storageKey: "invoices" });
 
-const subtotal  = computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
-const totalTax  = computed(()=>taxRows.value.reduce((s,r)=>s+flt(r.amount),0));
-const grandTotal = computed(()=>subtotal.value+totalTax.value);
+const subtotal = computed(()=>lines.value.reduce((s,l)=>s+flt(l.amount),0));
+
+const taxLines = computed(()=>{
+  const map={};
+  for(const l of lines.value){
+    if(!l.tax_code||!l.amount) continue;
+    const tmpl=taxTemplates.value.find(t=>t.name===l.tax_code);
+    const rate=tmpl?.rate??0;
+    if(!rate) continue;
+    if(!map[l.tax_code]) map[l.tax_code]={template:l.tax_code,rate,amount:0};
+    map[l.tax_code].amount+=Math.round(flt(l.amount)*rate/100*100)/100;
+  }
+  return Object.values(map);
+});
+
+const taxAmount  = computed(()=>taxLines.value.reduce((s,t)=>s+t.amount,0));
+const grandTotal = computed(()=>subtotal.value+taxAmount.value);
 
 const previewData = computed(()=>({
   name: editingName.value||"INV-PREVIEW",
@@ -1471,9 +1460,9 @@ const previewData = computed(()=>({
   place_of_supply: form.place_of_supply,
   billing_address: form.billing_address,
   items: lines.value.filter(l=>l.item_code||l.item_name),
-  taxes: taxRows.value,
+  taxes: taxLines.value.map(tl=>({description:tl.template,rate:tl.rate,amount:tl.amount})),
   subtotal: subtotal.value,
-  totalTax: totalTax.value,
+  totalTax: taxAmount.value,
   grandTotal: grandTotal.value,
   terms: form.terms,
   company: window.__booksCompany||"",
@@ -1618,6 +1607,18 @@ async function loadTaxAccount() {
     const r=await apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Tax"],["is_group","=",0]],limit:1});
     taxAccountHead.value=r[0]?.name||"";
   } catch {}
+  try {
+    const templates=await apiList("Tax Template",{fields:["name"],filters:[["disabled","=",0]],limit:100,order:"name asc"});
+    const withRates=await Promise.all((templates||[]).map(async t=>{
+      try{
+        const doc=await apiGet("Tax Template",t.name);
+        const rate=doc?.taxes?.[0]?.tax_rate??doc?.taxes?.[0]?.rate??0;
+        const account=doc?.taxes?.[0]?.account_head||taxAccountHead.value;
+        return{name:t.name,rate:Number(rate),account};
+      }catch{return{name:t.name,rate:0,account:taxAccountHead.value};}
+    }));
+    taxTemplates.value=withRates;
+  }catch{taxTemplates.value=[];}
 }
 
 // ── Sorting & selection ────────────────────────────────────────────────
@@ -1627,9 +1628,11 @@ function toggleAll(e) { if(e.target.checked) sorted.value.forEach(i=>selectedRow
 function toggleRow(name) { const s=new Set(selectedRows.value); s.has(name)?s.delete(name):s.add(name); selectedRows.value=s; }
 
 // ── Line item helpers ──────────────────────────────────────────────────
-function addLine() { lines.value.push({id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}); }
+function addLine() { lines.value.push({id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0,tax_code:"",collapsed:false}); }
 function removeLine(id) { lines.value=lines.value.filter(l=>l.id!==id); }
 function calcLine(line) {
+  if (line.discount_percentage > 100) line.discount_percentage = 100;
+  if (line.discount_percentage < 0)   line.discount_percentage = 0;
   const base=Math.round(flt(line.qty)*flt(line.rate)*100)/100;
   const disc=Math.round(base*flt(line.discount_percentage)/100*100)/100;
   line.discount_amount=disc;
@@ -1653,18 +1656,11 @@ async function onItemChange(line) {
       if (doc?.hsn_code) line.hsn_code=doc.hsn_code;
       if (!flt(line.rate)&&doc?.standard_rate) line.rate=flt(doc.standard_rate);
       if (doc?.stock_uom) line.uom=doc.stock_uom;
+      if (doc?.tax_code) line.tax_code=doc.tax_code;
       calcLine(line);
     } catch {}
   }
 }
-
-// ── Tax helpers ────────────────────────────────────────────────────────
-function recalcTax(tx) { tx.amount=Math.round(subtotal.value*flt(tx.rate)/100*100)/100; }
-function addTaxRow() { taxRows.value.push({id:Date.now(),description:"",rate:0,account_head:taxAccountHead.value,amount:0}); }
-function applyTaxPreset(p) {
-  taxRows.value=p.rows.map((r,i)=>({id:Date.now()+i,description:r.desc,rate:r.rate,account_head:taxAccountHead.value,amount:Math.round(subtotal.value*r.rate/100*100)/100}));
-}
-watch(subtotal,()=>{ taxRows.value.forEach(r=>{ r.amount=Math.round(subtotal.value*flt(r.rate)/100*100)/100; }); });
 
 // ── Payment Terms ──────────────────────────────────────────────────────
 function applyPaymentTerms() {
@@ -1740,14 +1736,14 @@ async function onCustomerChange() {
     // Apply GST treatment
     form.gst_treatment = custDoc?.gst_treatment || "";
 
-    // Overseas: zero-rated export — clear any existing taxes
+    // Overseas: zero-rated export — clear any per-item taxes
     if (form.gst_treatment === "Overseas") {
-      taxRows.value = [];
+      lines.value.forEach(l => { l.tax_code = ""; });
       form.place_of_supply = "";
     }
-    // SEZ: zero-rated supply — clear taxes, keep place of supply
+    // SEZ: zero-rated supply — clear per-item taxes
     if (form.gst_treatment === "SEZ") {
-      taxRows.value = [];
+      lines.value.forEach(l => { l.tax_code = ""; });
     }
 
     // Auto-fill billing address from first linked record, fallback to Customer fields
@@ -1789,7 +1785,7 @@ async function copyLastItems() {
   try {
     const r=await apiGET("zoho_books_clone.api.docs.get_party_last_items",{party_type:"Customer",party:form.customer,limit:20});
     if (r?.items?.length) {
-      lines.value=[...lines.value,...r.items.map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:Math.round(flt(it.qty)*flt(it.rate)*100)/100}))];
+      lines.value=[...lines.value,...r.items.map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:Math.round(flt(it.qty)*flt(it.rate)*100)/100,tax_code:it.tax_code||"",collapsed:false}))];
       toast("Copied "+r.items.length+" items from last invoice");
     } else toast("No previous items found for this customer","info");
   } catch (e) { toast("Could not copy items: "+e.message,"error"); }
@@ -1800,8 +1796,7 @@ function openAdd() {
   editingName.value=null;
   moreActionsOpen.value=false;
   Object.assign(collapsed,{branding:false,details:false,billing:true,lines:false,notes:true});
-  lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
-  taxRows.value=[];
+  lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0,tax_code:"",collapsed:false}];
   Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:"",logo:"",cost_center:""});
   customerBillingAddrs.value=[]; customerShippingAddrs.value=[]; sameAsBillingAddr.value=false;
   fetchWarehouses("");
@@ -1810,8 +1805,7 @@ function openAdd() {
 async function openEdit(inv) {
   editingName.value=inv.name;
   Object.assign(form,{customer:inv.customer||"",currency:inv.currency||"INR",exchange_rate:inv.exchange_rate||1,posting_date:inv.posting_date||todayStr(),due_date:inv.due_date||dueDateDefault(),po_no:"",payment_terms:"",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:inv.docstatus||0,update_stock:0,set_warehouse:""});
-  lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0}];
-  taxRows.value=[];
+  lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0,tax_code:"",collapsed:false}];
   customerBillingAddrs.value=[]; customerShippingAddrs.value=[]; sameAsBillingAddr.value=false;
   fetchWarehouses("");
   drawerOpen.value=true;
@@ -1834,8 +1828,7 @@ async function openEdit(inv) {
       logo:doc.logo||"",
       cost_center:doc.cost_center||"",
     });
-    lines.value=(doc.items||[]).map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:it.hsn_code||"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:it.uom||"Nos",discount_percentage:flt(it.discount_percentage)||0,discount_amount:flt(it.discount_amount)||0,amount:flt(it.amount)||0}));
-    taxRows.value=(doc.taxes||[]).map((tx,i)=>({id:Date.now()+100+i,description:tx.description||"",rate:flt(tx.rate)||0,account_head:tx.account_head||taxAccountHead.value,amount:flt(tx.tax_amount)||0}));
+    lines.value=(doc.items||[]).map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:it.hsn_code||"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:it.uom||"Nos",discount_percentage:flt(it.discount_percentage)||0,discount_amount:flt(it.discount_amount)||0,amount:flt(it.amount)||0,tax_code:it.tax_code||"",collapsed:false}));
     if (!lines.value.length) addLine();
     // Auto-detect "same as billing"
     if (doc.shipping_address && doc.shipping_address===doc.billing_address) sameAsBillingAddr.value=true;
@@ -1851,13 +1844,27 @@ async function openView(inv) {
 async function saveInvoice(docstatus) {
   if (!form.customer) { toast("Customer is required","error"); return; }
   if (!form.posting_date) { toast("Invoice date is required","error"); return; }
+  if (lines.value.some(l => (l.description||'').length > 500)) { toast("Item description cannot exceed 500 characters","error"); return; }
+  if ((form.terms||'').length > 500) { toast("Customer Note cannot exceed 500 characters","error"); return; }
+  if ((form.remarks||'').length > 500) { toast("Internal Remarks cannot exceed 500 characters","error"); return; }
   if (!lines.value.some(l=>l.item_code&&flt(l.qty)>0)) { toast("Add at least one line item","error"); return; }
   if (form.update_stock && !form.set_warehouse) { toast("Dispatch Warehouse is required when Update Inventory is on","error"); return; }
   drawerSaving.value=true;
   try {
     const company=await resolveCompany();
-    const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0}));
-    const taxes=taxRows.value.filter(r=>r.rate>0).map(r=>{const desc=(r.description||"").toUpperCase();const tax_type=desc.startsWith("CGST")?"CGST":desc.startsWith("SGST")?"SGST":desc.startsWith("IGST")?"IGST":desc.startsWith("CESS")?"Cess":"Other";return {doctype:"Tax Line",charge_type:"On Net Total",account_head:r.account_head||taxAccountHead.value,description:r.description,rate:r.rate,tax_type};});
+    const invItems=lines.value.filter(l=>l.item_code).map(l=>({item_code:l.item_code,item_name:l.item_name||l.item_code,description:l.description||l.item_name||l.item_code,qty:flt(l.qty),rate:flt(l.rate),uom:l.uom||"Nos",amount:flt(l.amount),hsn_code:l.hsn_code||"",discount_percentage:flt(l.discount_percentage)||0,discount_amount:flt(l.discount_amount)||0,tax_code:l.tax_code||""}));
+    const taxMap={};
+    for(const l of lines.value.filter(l=>l.item_code)){
+      if(!l.tax_code) continue;
+      const tmpl=taxTemplates.value.find(t=>t.name===l.tax_code);
+      if(!tmpl) continue;
+      if(!taxMap[l.tax_code]){
+        const desc=(l.tax_code||"").toUpperCase();
+        const tax_type=desc.startsWith("CGST")?"CGST":desc.startsWith("SGST")?"SGST":desc.startsWith("IGST")?"IGST":desc.startsWith("CESS")?"Cess":"Other";
+        taxMap[l.tax_code]={doctype:"Tax Line",charge_type:"On Net Total",account_head:tmpl.account||taxAccountHead.value,description:l.tax_code,rate:tmpl.rate,tax_type};
+      }
+    }
+    const taxes=Object.values(taxMap);
     const shipAddr=sameAsBillingAddr.value?form.billing_address:form.shipping_address||"";
 
     // If form.logo is still a data URL it means the background upload failed or

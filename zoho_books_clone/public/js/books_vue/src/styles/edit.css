@@ -178,6 +178,7 @@
    }
    .inv-ci:focus { border-color: #1a6ef7; }
    .inv-ci-r { text-align: right; }
+   .inv-desc-ta { resize: vertical; min-height: 38px; line-height: 1.4; }
    
    /* Remove line button */
    .inv-rm-line {
@@ -553,3 +554,36 @@
    .inv-btn-primary:disabled { opacity:.5; cursor:not-allowed; }
    .inv-btn-ghost { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid #e2e8f0; border-radius:8px; padding:7px 12px; font-size:13px; color:#374151; cursor:pointer; font-family:inherit; }
    .inv-btn-ghost:hover { background:#f8fafc; }
+
+   /* ── Shared item-card layout (Quotes, Invoices, SalesOrders, Bills, PO) ── */
+   .po-item-cards { display: flex; flex-direction: column; gap: 12px; }
+   .po-item-card { background: #fff; border: 1px solid #dde3f0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(99,102,241,.07); }
+   .po-item-card-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: linear-gradient(135deg,#eef2ff 0%,#f5f7ff 100%); border-bottom: 1px solid #dde3f0; cursor: pointer; }
+   .po-item-card-num { font-size: 11px; font-weight: 800; color: #4f46e5; background: #e0e7ff; border-radius: 5px; padding: 3px 8px; letter-spacing:.02em; flex-shrink:0; }
+   .po-item-card-title { font-size: 14px; font-weight: 700; color: #1e40af; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+   .po-item-card-subtotal { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; flex-shrink:0; }
+   .po-item-card-subtotal-label { font-size: 9.5px; font-weight: 700; color: #9ca3af; letter-spacing: .08em; }
+   .po-item-card-amount { font-size: 20px; font-weight: 800; color: #111827; font-variant-numeric: tabular-nums; line-height: 1.1; }
+   .po-item-card-chevron { display:flex; align-items:center; color:#9ca3af; transition:transform .2s; margin-left:4px; flex-shrink:0; }
+   .po-item-card-chevron.collapsed { transform:rotate(-90deg); }
+   .po-item-card-rm { background: none; border: none; cursor: pointer; color: #9ca3af; padding: 6px; border-radius: 6px; display: flex; align-items: center; flex-shrink:0; }
+   .po-item-card-rm:hover { background: #fee2e2; color: #ef4444; }
+   .po-item-card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+   .po-item-col { padding: 16px; display: flex; flex-direction: column; }
+   .po-item-col--left { border-right: 1px solid #f0f2f8; }
+   .po-item-col--right { gap: 14px; }
+   .po-item-field { display: flex; flex-direction: column; gap: 5px; }
+   .po-item-field label { font-size: 10.5px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
+   .po-item-field .inv-fi { font-size: 13.5px; }
+   .po-item-desc-ta { resize: vertical; min-height: 80px; font-size: 13px; line-height: 1.5; }
+   .po-item-num-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+   .po-item-hint { font-size: 11.5px; font-style: italic; color: #6b7280; background: #f0f4ff; border-radius: 8px; padding: 9px 11px; line-height: 1.5; margin-top: auto; }
+   .po-item-count { font-size: 11px; font-weight: 600; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1px 8px; margin-left: 4px; }
+   .po-totals { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 0 4px; }
+   .po-totals-right { display: flex; flex-direction: column; gap: 4px; min-width: 220px; }
+   .po-total-row { display:flex; justify-content:space-between; gap:16px; font-size:13px; color:#374151; }
+   .po-total-row.grand { font-size:15px; font-weight:800; color:#1e40af; border-top:2px solid #dde3f0; padding-top:6px; margin-top:4px; }
+   @media(max-width:600px) {
+     .po-item-card-body { grid-template-columns: 1fr; }
+     .po-item-col--left { border-right: none; border-bottom: 1px solid #f0f2f8; }
+   }

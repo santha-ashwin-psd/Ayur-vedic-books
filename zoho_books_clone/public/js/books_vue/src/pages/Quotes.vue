@@ -403,110 +403,95 @@
                 </span>
               </div>
             </div>
-            <div class="add-card-body" :class="{collapsed:collapsed.lines}" style="padding:0">
-              <div style="overflow-x:auto">
-                <table class="inv-lines-tbl">
-                  <thead>
-                    <tr>
-                      <th style="width:28px">#</th>
-                      <th style="min-width:160px">Item <span class="inv-req">*</span></th>
-                      <th style="min-width:110px">Description</th>
-                      <th style="min-width:80px">HSN/SAC</th>
-                      <th style="min-width:60px">Qty</th>
-                      <th style="min-width:70px">UOM</th>
-                      <th style="min-width:90px;text-align:right">Rate ({{ CURRENCY_SYMBOLS[form.currency] || '₹' }})</th>
-                      <th style="min-width:60px;text-align:right">Disc %</th>
-                      <th style="min-width:90px;text-align:right">Amount ({{ CURRENCY_SYMBOLS[form.currency] || '₹' }})</th>
-                      <th style="width:32px"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(line, idx) in lines" :key="line.id">
-                      <td><span class="add-line-num">{{ idx+1 }}</span></td>
-                      <td>
+            <div class="add-card-body" :class="{collapsed:collapsed.lines}" style="padding:16px 16px 8px">
+              <div class="po-item-cards">
+                <div v-for="(line, idx) in lines" :key="line.id" class="po-item-card">
+                  <div class="po-item-card-header" @click="line.collapsed=!line.collapsed">
+                    <span class="po-item-card-num">#{{ idx + 1 }}</span>
+                    <span class="po-item-card-title">{{ line.item_code || 'Line Item' }}</span>
+                    <div class="po-item-card-subtotal">
+                      <span class="po-item-card-subtotal-label">SUBTOTAL</span>
+                      <span class="po-item-card-amount">{{ fmtCur(line.amount) }}</span>
+                    </div>
+                    <span class="po-item-card-chevron" :class="{collapsed:line.collapsed}">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                    <button @click.stop="removeLine(line.id)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
+                  </div>
+                  <div class="po-item-card-body" v-show="!line.collapsed">
+                    <div class="po-item-col po-item-col--left">
+                      <div class="po-item-field">
+                        <label>Item Name <span class="inv-req">*</span></label>
                         <SearchableSelect v-model="line.item_code" :options="items"
                           placeholder="Search item or service"
-                          :compact="true" :createable="true" createDoctype="Item"
+                          :createable="true" createDoctype="Item"
                           @search="fetchItems" @select="opt => onItemSelect(line, opt)"/>
-                      </td>
-                      <td><input v-model="line.description" class="inv-ci" placeholder="Item description"/></td>
-                      <td><input v-model="line.hsn_code" class="inv-ci" placeholder="Enter HSN"/></td>
-                      <td><input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-ci" @input="calcLine(line)"/></td>
-                      <td>
-                        <select v-model="line.uom" class="inv-ci">
-                          <option v-for="u in uomList" :key="u" :value="u">{{ u }}</option>
-                        </select>
-                      </td>
-                      <td><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-ci inv-ci-r" @input="calcLine(line)"/></td>
-                      <td><input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="calcLine(line)" placeholder="0"/></td>
-                      <td class="add-line-amount">{{ fmtCur(line.amount) }}</td>
-                      <td style="padding:4px 6px">
-                        <button @click="removeLine(line.id)" class="add-line-del"><span v-html="icon('trash',12)"></span></button>
-                      </td>
-                    </tr>
-                    <tr class="add-new-line-row">
-                      <td colspan="10" style="padding:6px 14px;border-bottom:none">
-                        <button class="add-new-line-btn" @click="addLine">
-                          <span v-html="icon('plus',12)"></span> Add new line
-                        </button>
-                      </td>
-                    </tr>
-                    <tr v-if="!lines.length">
-                      <td colspan="10" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
-                        No line items — click "+ Add Item" to get started
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Taxes + Totals -->
-              <div class="inv-totals-wrap">
-                <div class="inv-tax-section">
-                  <div class="inv-tax-header">
-                    <span class="inv-tax-title">Taxes</span>
-                    <div class="inv-tax-presets">
-                      <button v-for="p in TAX_PRESETS" :key="p.label" class="inv-preset-btn" @click="applyTaxPreset(p)">{{ p.label }}</button>
-                      <button class="inv-preset-btn inv-preset-custom" @click="addTaxRow">+ Custom</button>
-                      <button v-if="taxRows.length" class="inv-preset-btn inv-preset-clear" @click="taxRows=[]">Clear</button>
+                      </div>
+                      <div class="po-item-field" style="margin-top:14px">
+                        <label>Description</label>
+                        <textarea v-model="line.description" class="inv-fi po-item-desc-ta" rows="4" maxlength="500" placeholder="Enter item description…"></textarea>
+                        <div class="exp-field-hint" :class="{'exp-field-hint-err': (line.description||'').length >= 500}">{{ (line.description||'').length }}/500</div>
+                      </div>
+                    </div>
+                    <div class="po-item-col po-item-col--right">
+                      <div class="po-item-num-row">
+                        <div class="po-item-field">
+                          <label>HSN/SAC</label>
+                          <input v-model="line.hsn_code" class="inv-fi" placeholder="HSN code"/>
+                        </div>
+                        <div class="po-item-field">
+                          <label>UOM</label>
+                          <select v-model="line.uom" class="inv-fi">
+                            <option v-for="u in uomList" :key="u" :value="u">{{ u }}</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="po-item-num-row">
+                        <div class="po-item-field">
+                          <label>Qty</label>
+                          <input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-fi" @input="calcLine(line)"/>
+                        </div>
+                        <div class="po-item-field">
+                          <label>Rate ({{ CURRENCY_SYMBOLS[form.currency] || '₹' }})</label>
+                          <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)"/>
+                        </div>
+                      </div>
+                      <div class="po-item-num-row">
+                        <div class="po-item-field">
+                          <label>Discount %</label>
+                          <input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-fi" @input="calcLine(line)" placeholder="0"/>
+                        </div>
+                        <div class="po-item-field">
+                          <label>Tax Template</label>
+                          <select v-model="line.tax_code" class="inv-fi">
+                            <option value="">— No Tax —</option>
+                            <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.name }}</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <table v-if="taxRows.length" class="inv-tax-tbl">
-                    <thead><tr>
-                      <th>Description</th>
-                      <th style="width:80px;text-align:right">Rate %</th>
-                      <th style="width:100px;text-align:right">Amount</th>
-                    </tr></thead>
-                    <tbody>
-                      <tr v-for="tx in taxRows" :key="tx.id">
-                        <td>
-                          <input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/>
-                          <button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line" title="Remove"><span v-html="icon('trash',13)"></span></button>
-                        </td>
-                        <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="recalcTax(tx)"/></td>
-                        <td><span class="inv-tax-amt-val">{{ fmtCur(tx.amount) }}</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div v-else style="font-size:12px;color:#9ca3af;padding:6px 0">No taxes — use preset buttons above or add a custom row.</div>
-                </div>
-                <div class="inv-totals">
-                  <div class="inv-total-row">
-                    <span>Sub Total</span>
-                    <span class="inv-total-amt">{{ fmtCur(subtotal) }}</span>
-                  </div>
-                  <div v-for="tx in taxRows" :key="tx.id" class="inv-total-row" style="color:#6b7280;font-size:12px">
-                    <span>{{ tx.description || 'Tax' }}</span>
-                    <span class="inv-total-amt">{{ fmtCur(tx.amount) }}</span>
-                  </div>
-                  <div class="inv-total-row inv-grand-total">
-                    <span>Grand Total</span>
-                    <span class="inv-total-amt" style="font-size:16px;color:#1565c0">{{ fmtCur(grandTotal) }}</span>
-                  </div>
                 </div>
               </div>
 
-              <div style="padding:6px 16px 14px">
+              <button class="inv-add-line-btn" style="margin-top:12px" @click="addLine">
+                <span v-html="icon('plus',12)"></span> Add Item
+              </button>
+
+              <!-- Totals -->
+              <div class="po-totals" style="margin-top:16px">
+                <div style="font-size:12px;color:#6b7280">Tax is applied per item via Tax Template.</div>
+                <div class="po-totals-right">
+                  <div class="po-total-row"><span>Subtotal</span><span>{{ fmtCur(subtotal) }}</span></div>
+                  <template v-for="tl in taxLines" :key="tl.template">
+                    <div class="po-total-row"><span>{{ tl.template }} ({{ tl.rate }}%)</span><span>{{ fmtCur(tl.amount) }}</span></div>
+                  </template>
+                  <div v-if="!taxLines.length" class="po-total-row"><span>Tax</span><span>{{ fmtCur(0) }}</span></div>
+                  <div class="po-total-row grand"><span>Grand Total</span><span>{{ fmtCur(grandTotal) }}</span></div>
+                </div>
+              </div>
+
+              <div style="padding:6px 0 6px">
                 <button class="add-notes-link" @click="collapsed.notes=false">
                   <span v-html="icon('plus',12)"></span> Add notes
                 </button>
@@ -529,11 +514,13 @@
               <div class="inv-fg inv-fg2">
                 <div>
                   <label class="inv-lbl">Terms &amp; Conditions <span style="color:#9ca3af;font-weight:400">(printed on quote)</span></label>
-                  <textarea v-model="form.terms" class="inv-fi" rows="3" placeholder="Payment terms, delivery terms, validity…"></textarea>
+                  <textarea v-model="form.terms" class="inv-fi" rows="3" maxlength="500" placeholder="Payment terms, delivery terms, validity…"></textarea>
+                  <div class="exp-field-hint" :class="{'exp-field-hint-err': (form.terms||'').length >= 500}">{{ (form.terms||'').length }}/500 characters</div>
                 </div>
                 <div>
                   <label class="inv-lbl">Internal Remarks <span style="color:#9ca3af;font-weight:400">(not printed)</span></label>
-                  <textarea v-model="form.remarks" class="inv-fi" rows="3" placeholder="Internal notes for your team…"></textarea>
+                  <textarea v-model="form.remarks" class="inv-fi" rows="3" maxlength="500" placeholder="Internal notes for your team…"></textarea>
+                  <div class="exp-field-hint" :class="{'exp-field-hint-err': (form.remarks||'').length >= 500}">{{ (form.remarks||'').length }}/500 characters</div>
                 </div>
               </div>
             </div>
@@ -988,8 +975,8 @@ const conv        = reactive({ sales_orders: [], sales_invoices: [] });
 const customers   = ref([]);
 const items       = ref([]);
 const lines       = ref([]);
-const taxRows     = ref([]);
-const uomList     = ref([]);
+const taxTemplates   = ref([]);
+const uomList        = ref([]);
 const taxAccountHead = ref("");
 const sortCol     = ref("transaction_date");
 const sortDir     = ref("desc");
@@ -1060,6 +1047,8 @@ function blankLine() {
     discount_percentage: 0,
     discount_amount: 0,
     amount: 0,
+    tax_code: "",
+    collapsed: false,
   };
 }
 
@@ -1173,6 +1162,18 @@ async function loadTaxAccount() {
     });
     if (r?.length) taxAccountHead.value = r[0].name;
   } catch {}
+  try {
+    const templates = await apiList("Tax Template", { fields: ["name"], filters: [["disabled", "=", 0]], limit: 100, order: "name asc" });
+    const withRates = await Promise.all((templates || []).map(async t => {
+      try {
+        const doc = await apiGet("Tax Template", t.name);
+        const rate = doc?.taxes?.[0]?.tax_rate ?? doc?.taxes?.[0]?.rate ?? 0;
+        const account = doc?.taxes?.[0]?.account_head || taxAccountHead.value;
+        return { name: t.name, rate: Number(rate), account };
+      } catch { return { name: t.name, rate: 0, account: taxAccountHead.value }; }
+    }));
+    taxTemplates.value = withRates;
+  } catch { taxTemplates.value = []; }
 }
 
 // ── Counts & filters ──────────────────────────────────────────────────
@@ -1278,15 +1279,23 @@ function toggleAll(e) {
 }
 
 // ── Totals ────────────────────────────────────────────────────────────
-const subtotal  = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
-const totalTax  = computed(() => taxRows.value.reduce((s, r) => s + flt(r.amount), 0));
-const grandTotal = computed(() => subtotal.value + totalTax.value);
+const subtotal = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
 
-watch(subtotal, () => {
-  taxRows.value.forEach(r => {
-    r.amount = Math.round(subtotal.value * flt(r.rate) / 100 * 100) / 100;
-  });
+const taxLines = computed(() => {
+  const map = {};
+  for (const l of lines.value) {
+    if (!l.tax_code || !l.amount) continue;
+    const tmpl = taxTemplates.value.find(t => t.name === l.tax_code);
+    const rate = tmpl?.rate ?? 0;
+    if (!rate) continue;
+    if (!map[l.tax_code]) map[l.tax_code] = { template: l.tax_code, rate, amount: 0 };
+    map[l.tax_code].amount += Math.round(flt(l.amount) * rate / 100 * 100) / 100;
+  }
+  return Object.values(map);
 });
+
+const taxAmount  = computed(() => taxLines.value.reduce((s, t) => s + t.amount, 0));
+const grandTotal = computed(() => subtotal.value + taxAmount.value);
 
 // ── Fetch helpers ─────────────────────────────────────────────────────
 async function fetchCustomers(q = "") {
@@ -1323,6 +1332,8 @@ async function fetchItems(q = "") {
 function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { lines.value = lines.value.filter(l => l.id !== id); }
 function calcLine(line) {
+  if (line.discount_percentage > 100) line.discount_percentage = 100;
+  if (line.discount_percentage < 0)   line.discount_percentage = 0;
   const base = Math.round(flt(line.qty) * flt(line.rate) * 100) / 100;
   const disc = Math.round(base * flt(line.discount_percentage) / 100 * 100) / 100;
   line.discount_amount = disc;
@@ -1339,6 +1350,7 @@ async function onItemSelect(line, opt) {
     line.uom        = found.stock_uom || found.uom || "Nos";
     if (found.hsn_code)    line.hsn_code    = found.hsn_code;
     if (found.description) line.description = found.description;
+    if (found.tax_code !== undefined) line.tax_code = found.tax_code || "";
     calcLine(line);
   }
   if (code) {
@@ -1347,6 +1359,7 @@ async function onItemSelect(line, opt) {
       if (doc?.item_name)    line.item_name  = doc.item_name;
       if (doc?.hsn_code)     line.hsn_code   = doc.hsn_code;
       if (doc?.description)  line.description = doc.description;
+      if (doc?.tax_code)     line.tax_code   = doc.tax_code;
       if (!found) {
         line.rate = flt(doc.standard_rate || 0);
         line.uom  = doc.stock_uom || "Nos";
@@ -1354,24 +1367,6 @@ async function onItemSelect(line, opt) {
       calcLine(line);
     } catch {}
   }
-}
-
-// ── Tax helpers ───────────────────────────────────────────────────────
-function addTaxRow() {
-  taxRows.value.push({
-    id: Date.now(), description: "", rate: 0,
-    account_head: taxAccountHead.value, amount: 0,
-  });
-}
-function recalcTax(tx) {
-  tx.amount = Math.round(subtotal.value * flt(tx.rate) / 100 * 100) / 100;
-}
-function applyTaxPreset(preset) {
-  taxRows.value = preset.rows.map((r, i) => ({
-    id: Date.now() + i, description: r.desc, rate: r.rate,
-    account_head: taxAccountHead.value,
-    amount: Math.round(subtotal.value * r.rate / 100 * 100) / 100,
-  }));
 }
 
 // ── Customer change ───────────────────────────────────────────────────
@@ -1510,7 +1505,6 @@ function openNew() {
   });
   showPreview.value = false;
   lines.value = [blankLine()];
-  taxRows.value = [];
   fetchCustomers("");
   fetchItems("");
   drawerOpen.value = true;
@@ -1529,7 +1523,6 @@ async function openEdit(q) {
     logo:  q.logo || q.logo_attach ||"",
   });
   lines.value = [blankLine()];
-  taxRows.value = [];
   fetchCustomers("");
   fetchItems("");
   drawerOpen.value = true;
@@ -1542,13 +1535,7 @@ async function openEdit(q) {
         qty: flt(it.qty) || 1, rate: flt(it.rate) || 0, uom: it.uom || "Nos",
         discount_percentage: flt(it.discount_percentage) || 0,
         discount_amount: flt(it.discount_amount) || 0, amount: flt(it.amount) || 0,
-      }));
-    }
-    if (doc?.taxes?.length) {
-      taxRows.value = doc.taxes.map((tx, i) => ({
-        id: Date.now() + 100 + i, description: tx.description || "",
-        rate: flt(tx.rate) || 0, account_head: tx.account_head || taxAccountHead.value,
-        amount: flt(tx.tax_amount) || flt(tx.amount) || 0,
+        tax_code: it.tax_code || "", collapsed: false,
       }));
     }
     if (doc?.terms)           form.terms           = doc.terms;
@@ -1597,6 +1584,9 @@ async function saveQT(newStatus) {
   if (!form.customer) return toast.error("Customer is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0))
     return toast.error("At least one item required");
+  if (lines.value.some(l => (l.description||'').length > 500)) return toast.error("Item description cannot exceed 500 characters");
+  if ((form.terms||'').length > 500) return toast.error("Terms & Conditions cannot exceed 500 characters");
+  if ((form.remarks||'').length > 500) return toast.error("Internal Remarks cannot exceed 500 characters");
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
@@ -1607,12 +1597,28 @@ async function saveQT(newStatus) {
       qty: flt(l.qty) || 1, rate: flt(l.rate), uom: l.uom || "Nos",
       amount: flt(l.amount), hsn_code: l.hsn_code || "",
       discount_percentage: flt(l.discount_percentage) || 0,
+      tax_code: l.tax_code || "",
     }));
-    const taxes = taxRows.value.filter(r => r.rate > 0).map(r => ({
-      doctype: "Sales Taxes and Charges", charge_type: "On Net Total",
-      account_head: r.account_head || taxAccountHead.value,
-      description: r.description, rate: r.rate,
-    }));
+    const taxMap = {};
+    for (const l of lines.value.filter(l => l.item_code)) {
+      if (!l.tax_code) continue;
+      const tmpl = taxTemplates.value.find(t => t.name === l.tax_code);
+      if (!tmpl) continue;
+      if (!taxMap[l.tax_code]) {
+        const desc = (l.tax_code || "").toUpperCase();
+        const tax_type = desc.startsWith("CGST") ? "CGST"
+          : desc.startsWith("SGST") ? "SGST"
+          : desc.startsWith("IGST") ? "IGST"
+          : desc.startsWith("CESS") ? "Cess"
+          : "Other";
+        taxMap[l.tax_code] = {
+          doctype: "Tax Line", charge_type: "On Net Total",
+          account_head: tmpl.account || taxAccountHead.value,
+          description: l.tax_code, rate: tmpl.rate, tax_type,
+        };
+      }
+    }
+    const taxes = Object.values(taxMap);
     // If form.logo is still a data URL it means the file hasn't been uploaded to
     // Frappe yet (new quote with no docname, or prior upload failed).
     // Strip it from the initial save — Frappe rejects base64 in an Attach field.
@@ -1844,9 +1850,9 @@ const previewData = computed(() => ({
   billing_address: form.billing_address,
   currency: form.currency,
   items: lines.value.filter(l => l.item_code || l.item_name),
-  taxes: taxRows.value,
+  taxes: taxLines.value.map(tl => ({ description: tl.template, rate: tl.rate, amount: tl.amount })),
   subtotal: subtotal.value,
-  totalTax: totalTax.value,
+  totalTax: taxAmount.value,
   grandTotal: grandTotal.value,
   terms: form.terms,
   company: window.__booksCompany || "",

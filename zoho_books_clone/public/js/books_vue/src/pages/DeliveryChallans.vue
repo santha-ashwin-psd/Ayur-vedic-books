@@ -376,7 +376,8 @@
                 </div>
                 <div style="grid-column:1/-1">
                   <label class="inv-lbl">Remarks</label>
-                  <input class="inv-fi" v-model="form.remarks" placeholder="Optional remarks"/>
+                  <textarea class="inv-fi" v-model="form.remarks" rows="2" maxlength="500" placeholder="Optional remarks" style="resize:vertical"></textarea>
+                  <div class="exp-field-hint" :class="{'exp-field-hint-err': (form.remarks||'').length >= 500}">{{ (form.remarks||'').length }}/500 characters</div>
                 </div>
               </div>
             </div>
@@ -418,7 +419,7 @@
                   />
                 </div>
                 <div>
-                  <input class="inv-fi" v-model="it.description" placeholder="Description"/>
+                  <input class="inv-fi" v-model="it.description" maxlength="500" placeholder="Description"/>
                 </div>
                 <div>
                   <input class="inv-fi ta-r" type="number" v-model.number="it.qty" placeholder="Qty" min="0.01" step="0.01"/>
@@ -1061,6 +1062,8 @@ async function saveChallan(submit) {
   if (!form.customer) { toast.error("Customer is required"); return; }
   const validItems = form.items.filter(it => it.item_code && flt(it.qty) > 0);
   if (!validItems.length) { toast.error("At least one item with qty > 0 is required"); return; }
+  if (form.items.some(it => (it.description||'').length > 500)) { toast.error("Item description cannot exceed 500 characters"); return; }
+  if ((form.remarks||'').length > 500) { toast.error("Remarks cannot exceed 500 characters"); return; }
 
   saving.value = true;
   try {

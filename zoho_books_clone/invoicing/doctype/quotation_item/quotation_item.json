@@ -13,7 +13,8 @@
   "rate",
   "amount",
   "hsn_code",
-  "discount_percentage"
+  "discount_percentage",
+  "tax_code"
  ],
  "fields": [
   {
@@ -66,6 +67,12 @@
    "fieldname": "discount_percentage",
    "fieldtype": "Data",
    "label": "Discount Percentage"
+  },
+  {
+   "fieldname": "tax_code",
+   "fieldtype": "Link",
+   "label": "Tax Code",
+   "options": "Tax Template"
   }
  ],
  "istable": 1,

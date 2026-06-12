@@ -1467,7 +1467,7 @@ watch(() => form.supplier, (val) => {
   transition: right .22s ease;
 }
 .inv-drawer-panel.open { right: 0; }
-.po-edit-drawer { width: 800px; right: -800px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; max-width: 96vw; z-index: 8100; background: #fff; display: flex; flex-direction: column; }
+.po-edit-drawer { width: 720px; right: -720px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; max-width: 96vw; z-index: 8100; background: #fff; display: flex; flex-direction: column; }
 
 /* ── View drawer: Invoice-style full panel ── */
 .inv-drawer-bg { position:fixed; inset:0; z-index:8000; background:rgba(15,23,42,.45); display:flex; justify-content:flex-end; backdrop-filter:blur(2px); }

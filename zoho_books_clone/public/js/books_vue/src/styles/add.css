@@ -718,3 +718,128 @@
   .add-tmpl-bar { gap: 14px; }
   .add-footer-actions { flex-wrap: wrap; gap: 7px; }
 }
+
+/* ══════════════════════════════════════════════════════
+   MOBILE DRAWER — 375px and 425px (Zoho Books style)
+   Full-width panel, Zoho Books footer layout
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 425px) {
+  /* Drawer fills full screen */
+  .inv-drawer-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  /* Header compact */
+  .inv-drawer-panel.is-add .inv-dh {
+    padding: 12px 16px;
+  }
+  .inv-drawer-panel.is-add .inv-dh-title {
+    font-size: 17px;
+  }
+
+  /* Body padding */
+  .inv-drawer-panel.is-add .inv-dbody {
+    padding: 10px 10px 20px;
+    gap: 10px;
+  }
+
+  /* Card header padding */
+  .add-card-header {
+    padding: 11px 14px;
+  }
+  .add-card-body {
+    padding: 14px 14px;
+  }
+
+  /* Footer: status text + 3 buttons in a row */
+  .inv-drawer-panel.is-add .inv-dfooter {
+    padding: 10px 12px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .add-footer-status {
+    font-size: 11px;
+    text-align: center;
+    width: 100%;
+  }
+  .add-footer-actions {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  /* Cancel button */
+  .add-btn-cancel {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 13px;
+    justify-content: center;
+    text-align: center;
+  }
+  /* Save Draft button */
+  .add-btn-draft {
+    flex: 1.2;
+    padding: 10px 8px;
+    font-size: 13px;
+    justify-content: center;
+    text-align: center;
+  }
+  /* More Actions button */
+  .add-btn-more {
+    flex: 1.3;
+    padding: 10px 8px;
+    font-size: 13px;
+    justify-content: center;
+  }
+
+  /* GST preset tabs — wrap on small screens */
+  .inv-tax-presets {
+    gap: 5px !important;
+  }
+  .inv-preset-btn {
+    padding: 4px 10px !important;
+    font-size: 11.5px !important;
+  }
+
+  /* Tax card row */
+  .inv-totals-wrap {
+    padding: 12px 12px !important;
+  }
+
+  /* Totals section full width */
+  .inv-total-row {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 375px) {
+  /* Even more compact on smallest screens */
+  .inv-drawer-panel.is-add .inv-dbody {
+    padding: 8px 8px 16px;
+  }
+  .add-card-header {
+    padding: 10px 12px;
+  }
+  .add-card-body {
+    padding: 12px 12px;
+  }
+  .add-btn-cancel,
+  .add-btn-draft,
+  .add-btn-more {
+    font-size: 12.5px !important;
+    padding: 9px 6px !important;
+  }
+  .inv-preset-btn {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+  .add-footer-actions {
+    gap: 5px;
+  }
+}

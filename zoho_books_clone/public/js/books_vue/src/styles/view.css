@@ -1028,8 +1028,8 @@
   .inv-view-footer   { padding: 6px 0 0; }
 }
 
-/* ── Mobile ≤ 475px — Invoice detail view inside drawer ── */
-@media (max-width: 475px) {
+/* ── Mobile ≤ 425px — Card layout for ALL tabs ── */
+@media (max-width: 425px) {
 
   /* Drawer fills full screen */
   .inv-drawer-panel,
@@ -1064,96 +1064,182 @@
   .inv-details-meta-col:last-child { border-bottom: none !important; }
   .inv-balance-val  { font-size: 17px !important; }
 
-  /* ── Items table: remove min-width so it fits the drawer ── */
+  /* ══════════════════════════════════════════════
+     LINE ITEMS TABLE → CARD LAYOUT
+     Each tbody tr becomes a white card.
+     thead is hidden; labels shown via ::before.
+     Works for ALL tabs: Invoices, Quotes, Bills,
+     Sales Orders, etc.
+     ══════════════════════════════════════════════ */
   .inv-items-wrap {
-    overflow-x: hidden !important;       /* no horizontal scroll */
-    border-radius: 6px !important;
+    overflow-x: hidden !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
   }
-  .inv-items-table {
-    display: table !important;
-    min-width: 0 !important;             /* override the 560px min-width */
-    width: 100% !important;
-    table-layout: fixed !important;      /* columns respect defined widths */
-    font-size: 12px !important;
-  }
+
+  /* Hide the table header row */
   .inv-items-table thead {
-    display: table-header-group !important;
+    display: none !important;
   }
+
+  /* Table itself: block container */
+  .inv-items-table {
+    display: block !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    font-size: 13px !important;
+  }
+
   .inv-items-table tbody {
-    display: table-row-group !important;
+    display: block !important;
   }
+
+  /* Each row = white card */
   .inv-items-table tbody tr {
-    display: table-row !important;
-    padding: 0 !important;
+    display: block !important;
+    background: #fff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06) !important;
+    margin-bottom: 8px !important;
+    padding: 12px 14px !important;
+    overflow: hidden !important;
   }
+
+  /* All td: block by default, reset padding */
   .inv-items-table tbody td {
-    display: table-cell !important;
-    margin: 0 !important;
-    flex: none !important;
+    display: block !important;
+    padding: 0 !important;
+    border: none !important;
+    text-align: left !important;
     vertical-align: top !important;
   }
 
-  /* Compress column widths to fit ~370px */
-  .inv-items-table th,
-  .inv-items-table td { padding: 8px 6px !important; }
-
-  /* Column width hints via nth-child:
-     col1 = # (narrow), col2 = item+desc (flex), col3–6 = numeric (narrow) */
-  .inv-items-table th:nth-child(1),
-  .inv-items-table td:nth-child(1) {
-    width: 28px !important;
-    text-align: center !important;
+  /* ── Col 1: row number — hide, merged into item name ── */
+  .inv-items-table tbody td:nth-child(1) {
+    display: none !important;
   }
 
-  .inv-items-table th:nth-child(2),
-  .inv-items-table td:nth-child(2) {
-    width: auto !important;
-    text-align: left !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: normal !important;
+  /* ── Col 2: Item & Description — full width, top of card ── */
+  .inv-items-table tbody td:nth-child(2) {
+    display: block !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid #f0f2f5 !important;
+    margin-bottom: 8px !important;
   }
-  .inv-item-name,
-  .inv-item-desc { text-align: left !important; }
+  .inv-item-name { font-size: 14px !important; font-weight: 700 !important; color: #1a1a2e !important; }
+  .inv-item-desc { font-size: 12px !important; color: #9ca3af !important; margin-top: 3px !important; }
 
-  /* HSN / Qty / Rate — hide on very small screens, keep Amount */
-  .inv-items-table th:nth-child(3),
-  .inv-items-table td:nth-child(3),
-  .inv-items-table th:nth-child(4),
-  .inv-items-table td:nth-child(4),
-  .inv-items-table th:nth-child(5),
-  .inv-items-table td:nth-child(5) {
-    display: none !important;            /* hide HSN / Qty / Rate */
+  /* ── Col 3: HSN/SAC — show as small pill ── */
+  .inv-items-table tbody td:nth-child(3) {
+    display: inline-block !important;
+    font-size: 11px !important;
+    color: #6b7280 !important;
+    background: #f3f4f6 !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    margin-bottom: 8px !important;
+  }
+  .inv-items-table tbody td:nth-child(3)::before {
+    content: 'HSN: ';
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  /* Hide HSN col if it's a dash */
+  .inv-items-table tbody td:nth-child(3).inv-dash {
+    display: none !important;
   }
 
-  /* Discount */
-  .inv-items-table th:nth-child(6),
-  .inv-items-table td:nth-child(6) { display: none !important; }
+  /* ── Cols 4–6 (Qty, Rate, Discount): 3-col mini grid ── */
+  .inv-items-table tbody td:nth-child(4),
+  .inv-items-table tbody td:nth-child(5),
+  .inv-items-table tbody td:nth-child(6) {
+    display: inline-flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+    width: calc(33.33% - 4px) !important;
+    font-size: 12.5px !important;
+    color: #374151 !important;
+    font-weight: 600 !important;
+    vertical-align: top !important;
+    padding: 0 !important;
+    margin-right: 4px !important;
+  }
+  /* Labels via ::before */
+  .inv-items-table tbody td:nth-child(4)::before { content: 'QTY'; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+  .inv-items-table tbody td:nth-child(5)::before { content: 'RATE'; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+  .inv-items-table tbody td:nth-child(6)::before { content: 'DISC'; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
 
-  /* Amount (last visible column) */
-  .inv-items-table th:nth-child(7),
-  .inv-items-table td:nth-child(7) {
-    width: 104px !important;
+  /* ── Col 7: Amount — right-aligned, prominent ── */
+  .inv-items-table tbody td:nth-child(7) {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 8px 0 0 0 !important;
+    margin-top: 8px !important;
+    border-top: 1px solid #f0f2f5 !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #1a1a2e !important;
     text-align: right !important;
-    white-space: nowrap !important;
-    padding-right: 10px !important;
+  }
+  .inv-items-table tbody td:nth-child(7)::before {
+    content: 'AMOUNT';
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #9ca3af;
+    font-style: normal;
   }
 
-  /* Totals section */
-  .inv-totals-section { justify-content: stretch !important; padding: 10px 0 !important; }
-  .inv-totals-inner   {
+  /* ── Totals section: full width ── */
+  .inv-totals-section {
+    justify-content: stretch !important;
+    padding: 0 !important;
+    border-top: none !important;
+  }
+  .inv-totals-inner {
     min-width: 0 !important;
     width: 100% !important;
-    padding: 0 10px 0 34px !important;
+    padding: 12px 14px !important;
+    background: #f8fafc !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    gap: 7px !important;
   }
-  .inv-total-line     { font-size: 12.5px !important; gap: 12px !important; }
-  .inv-total-line .t-lbl,
-  .inv-grand-lbl     { text-align: left !important; }
-  .inv-total-line .t-amt,
-  .inv-grand-amt     { min-width: 104px !important; text-align: right !important; }
-  .inv-grand-lbl      { font-size: 14px !important; }
-  .inv-grand-amt      { font-size: 15px !important; }
+  .inv-total-line {
+    font-size: 13px !important;
+    gap: 12px !important;
+  }
+  .inv-total-line .t-lbl { color: #6b7280 !important; }
+  .inv-total-line .t-amt { font-weight: 600 !important; text-align: right !important; }
+  .inv-grand-total-line {
+    padding-top: 10px !important;
+    margin-top: 4px !important;
+  }
+  .inv-grand-lbl  { font-size: 14px !important; font-weight: 800 !important; }
+  .inv-grand-amt  { font-size: 16px !important; font-weight: 800 !important; color: #1a6ef7 !important; }
 
   /* Bottom grid */
-  .inv-bottom-grid    { grid-template-columns: 1fr !important; padding: 0 8px 8px !important; }
+  .inv-bottom-grid { grid-template-columns: 1fr !important; padding: 0 8px 8px !important; }
+}
+
+/* ── 375px: extra compact tweaks ── */
+@media (max-width: 375px) {
+  .inv-items-table tbody tr { padding: 10px 12px !important; }
+  .inv-item-name { font-size: 13.5px !important; }
+  .inv-items-table tbody td:nth-child(4),
+  .inv-items-table tbody td:nth-child(5),
+  .inv-items-table tbody td:nth-child(6) { font-size: 12px !important; }
+  .inv-items-table tbody td:nth-child(7) { font-size: 14px !important; }
+  .inv-grand-amt { font-size: 15px !important; }
+  .inv-totals-inner { padding: 10px 12px !important; }
 }

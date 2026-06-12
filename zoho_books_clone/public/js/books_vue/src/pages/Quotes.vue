@@ -476,14 +476,15 @@
                       <th>Description</th>
                       <th style="width:80px;text-align:right">Rate %</th>
                       <th style="width:100px;text-align:right">Amount</th>
-                      <th style="width:28px"></th>
                     </tr></thead>
                     <tbody>
                       <tr v-for="tx in taxRows" :key="tx.id">
-                        <td><input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/></td>
+                        <td>
+                          <input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/>
+                          <button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line" title="Remove"><span v-html="icon('trash',13)"></span></button>
+                        </td>
                         <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="recalcTax(tx)"/></td>
-                        <td style="text-align:right;padding:4px 10px;font-size:12.5px">{{ fmtCur(tx.amount) }}</td>
-                        <td><button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></td>
+                        <td><span class="inv-tax-amt-val">{{ fmtCur(tx.amount) }}</span></td>
                       </tr>
                     </tbody>
                   </table>

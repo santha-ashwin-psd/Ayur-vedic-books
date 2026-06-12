@@ -536,17 +536,19 @@
                       <th>Description</th>
                       <th style="width:80px;text-align:right">Rate %</th>
                       <th style="width:100px;text-align:right">Amount</th>
-                      <th style="width:28px"></th>
                     </tr></thead>
                     <tbody>
                       <tr v-for="tx in taxRows" :key="tx.id">
-                        <td><input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/></td>
+                        <td>
+                          <input v-model="tx.description" class="inv-ci" placeholder="e.g. CGST @ 9%"/>
+                          <button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line" title="Remove"><span v-html="icon('trash',13)"></span></button>
+                        </td>
                         <td><input v-model.number="tx.rate" type="number" min="0" max="100" step="0.1" class="inv-ci inv-ci-r" @input="recalcTax(tx)"/></td>
-                        <td style="text-align:right;padding:4px 10px;font-size:12.5px">{{ fmtAmt(tx.amount) }}</td>
-                        <td><button @click="taxRows=taxRows.filter(r=>r.id!==tx.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></td>
+                        <td><span class="inv-tax-amt-val">{{ fmtAmt(tx.amount) }}</span></td>
                       </tr>
                     </tbody>
                   </table>
+
                   <div v-else style="font-size:12px;color:#9ca3af;padding:6px 0">
                     <span v-if="isOverseas">Zero-rated export — no taxes applicable.</span>
                     <span v-else>No taxes — use preset buttons above or add a custom row.</span>
@@ -999,7 +1001,7 @@
             <div v-if="viewPaymentsLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading payments…</div>
             <template v-else>
               <div v-if="viewPayments.length" class="inv-items-wrap">
-                <table class="inv-items-table">
+                <table class="inv-items-table inv-payments-tbl">
                   <thead>
                     <tr>
                       <th>Payment #</th>
@@ -2527,27 +2529,39 @@ watch(() => route.query, (q) => {
 .inv-ci { width:100%; border:1px solid #e2e8f0; border-radius:5px; padding:5px 7px; font-size:12.5px; font-family:inherit; outline:none; }
 .inv-ci:focus { border-color:#1a6ef7; }
 .inv-ci-r { text-align:right; }
-.inv-rm-line { background:none; border:1px solid rgba(220,38,38,.3); border-radius:4px; padding:3px 5px; cursor:pointer; color:#dc2626; display:inline-flex; align-items:center; }
+.inv-rm-line { background:#fff0f0; border:1px solid #fecaca; border-radius:6px; width:30px; height:30px; cursor:pointer; color:#dc2626; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; }
+.inv-rm-line:hover { background:#fee2e2; border-color:#dc2626; }
 
 /* ── Tax section ── */
-.inv-totals-wrap { border-top:1px solid #e8ecf0; padding:12px 14px; background:#f8fafc; display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap; }
-.inv-tax-section { flex:1; min-width:280px; }
-.inv-tax-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
-.inv-tax-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af; }
-.inv-tax-presets { display:flex; gap:5px; flex-wrap:wrap; }
-.inv-preset-btn { border:1px solid #e8ecf0; background:#fff; color:#374151; border-radius:5px; padding:3px 8px; font-size:11.5px; font-weight:600; cursor:pointer; white-space:nowrap; }
-.inv-preset-btn:hover { border-color:#1a6ef7; color:#1a6ef7; }
-.inv-preset-custom { border-color:rgba(26,110,247,.3); color:#1a6ef7; }
-.inv-preset-clear { border-color:rgba(220,38,38,.3); color:#dc2626; }
-.inv-tax-tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
-.inv-tax-tbl th { padding:5px 8px; font-size:10px; font-weight:700; text-transform:uppercase; color:#9ca3af; text-align:left; border-bottom:1px solid #e8ecf0; }
-.inv-tax-tbl td { padding:4px 6px; border-bottom:1px solid #f0f2f5; }
+.inv-totals-wrap { border-top:1px solid #e8ecf0; padding:14px 16px; background:#f5f7fa; display:flex; flex-direction:column; gap:0; }
+.inv-tax-section { width:100%; }
+.inv-tax-header { display:flex; align-items:flex-start; flex-direction:column; gap:8px; margin-bottom:12px; }
+.inv-tax-title { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; margin-bottom:2px; }
+.inv-tax-presets { display:flex; gap:6px; flex-wrap:wrap; width:100%; }
+.inv-preset-btn { border:1px solid #d1d5db; background:#fff; color:#374151; border-radius:20px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:border-color .15s,color .15s,background .15s; line-height:1.3; }
+.inv-preset-btn:hover { border-color:#1a6ef7; color:#1a6ef7; background:#eef4ff; }
+.inv-preset-btn.active { background:#1a6ef7; border-color:#1a6ef7; color:#fff; }
+.inv-preset-custom { border-color:#1a6ef7; color:#1a6ef7; background:#fff; }
+.inv-preset-custom:hover { background:#eef4ff; }
+.inv-preset-clear { border-color:#dc2626; color:#dc2626; background:#fff; }
+.inv-preset-clear:hover { background:#fef2f2; }
+/* Tax row cards */
+.inv-tax-tbl { width:100%; border-collapse:separate; border-spacing:0 8px; font-size:13px; }
+.inv-tax-tbl thead { display:none; }
+.inv-tax-tbl tbody tr { background:#fff; border:1px solid #e3e8ef; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:block; padding:12px 14px; margin-bottom:8px; }
+.inv-tax-tbl tbody tr td:nth-child(1) { display:flex; align-items:center; gap:8px; padding:0 0 8px 0; border:none; }
+.inv-tax-tbl tbody tr td:nth-child(1) .inv-ci { flex:1; min-width:0; }
+.inv-tax-tbl tbody tr td:nth-child(2) { display:block; padding:0 0 8px 0; border:none; }
+.inv-tax-tbl tbody tr td:nth-child(2) .inv-ci { text-align:right; width:100%; }
+.inv-tax-tbl tbody tr td:nth-child(3) { display:flex; justify-content:space-between; align-items:center; padding:6px 0 0 0; border-top:1px solid #f0f2f5; border-left:none; border-right:none; border-bottom:none; }
+.inv-tax-tbl tbody tr td:nth-child(3)::before { content:'AMOUNT'; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; }
+.inv-tax-amt-val { font-size:14px; font-weight:700; color:#1a1a2e; text-align:right; }
 
 /* ── Totals ── */
-.inv-totals { min-width:240px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
-.inv-total-row { display:flex; justify-content:space-between; align-items:center; width:240px; font-size:13px; color:#374151; }
-.inv-total-amt { font-weight:600; font-size:13px; }
-.inv-grand-total { border-top:1px solid #e8ecf0; padding-top:7px; margin-top:2px; font-weight:700; }
+.inv-totals { width:100%; display:flex; flex-direction:column; gap:5px; align-items:stretch; margin-top:14px; padding-top:14px; border-top:1px solid #e3e8ef; }
+.inv-total-row { display:flex; justify-content:space-between; align-items:center; width:100%; font-size:13px; color:#374151; padding:3px 0; }
+.inv-total-amt { font-weight:600; font-size:13px; text-align:right; }
+.inv-grand-total { border-top:1px solid #e8ecf0; padding-top:10px; margin-top:5px; font-weight:700; font-size:14px; }
 
 /* ══ Record Payment ══ */
 

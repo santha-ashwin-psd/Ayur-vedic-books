@@ -446,7 +446,8 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:dnCollapsed.notes}">
-            <textarea v-model="form.remark" rows="3" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
+            <textarea v-model="form.remark" rows="3" maxlength="500" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
+              <div class="exp-field-hint" :class="{'exp-field-hint-err': form.remark.length >= 500}">{{ form.remark.length }}/500 characters</div>
           </div>
         </div>
 
@@ -995,6 +996,7 @@ async function saveDN(submit) {
   if (!form.supplier) return toast.error("Vendor is required");
   const activeLines = lines.value.filter(l => l.included && (l.item_code || l.item_name) && effectiveAmount(l) > 0);
   if (!activeLines.length) return toast.error("At least one included item with amount > 0 is required");
+  if (form.remark.length > 500) return toast.error("Internal note cannot exceed 500 characters");
   // Set return_against to first selected bill
   form.return_against = selectedBillDocs.value[0]?.name || "";
   drawerSaving.value = true;
@@ -1174,10 +1176,9 @@ onMounted(load);
 /* ── Drawer slide-in transition ── */
 .dn-drawer {
   position: fixed;
-  top: 0; right: -720px; bottom: 0;
-  width: 720px; max-width: 96vw;
+  top: 0; right: -625px; bottom: 0;
+  width: 625px; max-width: 96vw;
   background: #fff;
-  border-left: 1px solid #e5e7eb;
   box-shadow: -8px 0 24px rgba(0,0,0,.08);
   z-index: 9001;
   display: flex; flex-direction: column;
@@ -1559,4 +1560,6 @@ onMounted(load);
   text-transform: uppercase; letter-spacing: .04em;
 }
 .dn-bill-group-total { font-size: 11.5px; font-weight: 600; color: #7c2d12; }
+.exp-field-hint { font-size:11.5px;color:#9ca3af;margin-top:4px;text-align:right; }
+.exp-field-hint-err { color:#dc2626;font-weight:600; }
 </style>

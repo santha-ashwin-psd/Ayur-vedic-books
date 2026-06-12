@@ -8,6 +8,486 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lato:wght@400;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/zoho_books_clone/books.css?v=2">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   COLOR-CODED STATUS PILLS — All tabs & pages
+   Matches the Zoho Books design: active = solid fill, inactive = colored outline.
+   Classes are: pill-{status-key} added dynamically by Vue.
+   Works for: Invoices, Quotes, Bills, Recurring, Payments, Sales Orders, etc.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Base pill style ── */
+.sales-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s ease;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #374151;
+}
+.sales-pill:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+/* Active = solid blue (default for "All") */
+.sales-pill.active {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #fff !important;
+}
+.sales-pill.active .sales-pill-count {
+  background: rgba(255,255,255,.25) !important;
+  color: #fff !important;
+}
+
+/* Count badge */
+.sales-pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* ── Draft / Open / Pending — slate gray ── */
+.sales-pill.pill-draft,
+.sales-pill.pill-open,
+.sales-pill.pill-pending,
+.sales-pill.pill-Pending {
+  border-color: #94a3b8; color: #475569;
+}
+.sales-pill.pill-draft:hover, .sales-pill.pill-open:hover,
+.sales-pill.pill-pending:hover { background: #f8fafc; }
+.sales-pill.pill-draft.active, .sales-pill.pill-open.active,
+.sales-pill.pill-pending.active, .sales-pill.pill-Pending.active {
+  background: #475569 !important; border-color: #475569 !important;
+}
+
+/* ── Sent / Submitted — cyan/teal ── */
+.sales-pill.pill-sent,
+.sales-pill.pill-Sent {
+  border-color: #06b6d4; color: #0891b2;
+}
+.sales-pill.pill-sent.active, .sales-pill.pill-Sent.active {
+  background: #0891b2 !important; border-color: #0891b2 !important;
+}
+
+/* ── Accepted / Approved / Completed ── green ── */
+.sales-pill.pill-accepted,
+.sales-pill.pill-Accepted,
+.sales-pill.pill-approved,
+.sales-pill.pill-Completed,
+.sales-pill.pill-completed {
+  border-color: #16a34a; color: #16a34a;
+}
+.sales-pill.pill-accepted.active, .sales-pill.pill-Accepted.active,
+.sales-pill.pill-approved.active, .sales-pill.pill-Completed.active,
+.sales-pill.pill-completed.active {
+  background: #16a34a !important; border-color: #16a34a !important;
+}
+
+/* ── Declined / Cancelled / Rejected — red ── */
+.sales-pill.pill-declined,
+.sales-pill.pill-Declined,
+.sales-pill.pill-cancelled,
+.sales-pill.pill-Cancelled,
+.sales-pill.pill-rejected,
+.sales-pill.pill-overdue,
+.sales-pill.pill-Overdue {
+  border-color: #dc2626; color: #dc2626;
+}
+
+/* ── To Deliver — blue ── */
+.sales-pill.pill-toDeliver {
+  border-color: #2563eb; color: #2563eb;
+}
+.sales-pill.pill-toDeliver.active {
+  background: #2563eb !important; border-color: #2563eb !important;
+}
+
+/* ── Delivered — green ── */
+.sales-pill.pill-delivered {
+  border-color: #16a34a; color: #16a34a;
+}
+.sales-pill.pill-delivered.active {
+  background: #16a34a !important; border-color: #16a34a !important;
+}
+
+
+.sales-pill.pill-declined.active, .sales-pill.pill-Declined.active,
+.sales-pill.pill-cancelled.active, .sales-pill.pill-Cancelled.active,
+.sales-pill.pill-rejected.active, .sales-pill.pill-overdue.active,
+.sales-pill.pill-Overdue.active {
+  background: #dc2626 !important; border-color: #dc2626 !important;
+}
+
+/* ── Expired / Paused / On Hold — amber/yellow ── */
+.sales-pill.pill-expired,
+.sales-pill.pill-Expired,
+.sales-pill.pill-paused,
+.sales-pill.pill-Paused,
+.sales-pill.pill-on_hold {
+  border-color: #d97706; color: #b45309;
+}
+.sales-pill.pill-expired.active, .sales-pill.pill-Expired.active,
+.sales-pill.pill-paused.active, .sales-pill.pill-Paused.active,
+.sales-pill.pill-on_hold.active {
+  background: #d97706 !important; border-color: #d97706 !important;
+}
+
+/* ── Converted / Active / Running — purple ── */
+.sales-pill.pill-converted,
+.sales-pill.pill-Converted {
+  border-color: #7c3aed; color: #7c3aed;
+}
+.sales-pill.pill-converted.active, .sales-pill.pill-Converted.active {
+  background: #7c3aed !important; border-color: #7c3aed !important;
+}
+
+/* ── Active (Recurring) — green ── */
+.sales-pill.pill-Active {
+  border-color: #16a34a; color: #16a34a;
+}
+.sales-pill.pill-Active.active {
+  background: #16a34a !important; border-color: #16a34a !important;
+}
+
+/* ── Unpaid / Due — orange ── */
+.sales-pill.pill-unpaid,
+.sales-pill.pill-Unpaid,
+.sales-pill.pill-due,
+.sales-pill.pill-Due {
+  border-color: #ea580c; color: #c2410c;
+}
+.sales-pill.pill-unpaid.active, .sales-pill.pill-Unpaid.active,
+.sales-pill.pill-due.active, .sales-pill.pill-Due.active {
+  background: #ea580c !important; border-color: #ea580c !important;
+}
+
+/* ── Paid — emerald ── */
+.sales-pill.pill-paid,
+.sales-pill.pill-Paid {
+  border-color: #059669; color: #059669;
+}
+.sales-pill.pill-paid.active, .sales-pill.pill-Paid.active {
+  background: #059669 !important; border-color: #059669 !important;
+}
+
+/* ── Ordered / Received ── indigo ── */
+.sales-pill.pill-ordered,
+.sales-pill.pill-Ordered,
+.sales-pill.pill-received,
+.sales-pill.pill-Received {
+  border-color: #4f46e5; color: #4f46e5;
+}
+.sales-pill.pill-ordered.active, .sales-pill.pill-Ordered.active,
+.sales-pill.pill-received.active, .sales-pill.pill-Received.active {
+  background: #4f46e5 !important; border-color: #4f46e5 !important;
+}
+
+/* ── v2 ──────────────────────────────────────────────── */
+
+/* Pills container: flex wrap on mobile */
+@media(max-width:640px){
+  .sales-pills {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    overflow: visible !important;
+    order: 3 !important;       /* pills always last in column toolbar */
+  }
+  .sales-pill {
+    flex-shrink: 0 !important;
+    font-size: 12px !important;
+    padding: 5px 11px !important;
+  }
+
+  /* ── All toolbars: stack as column ── */
+  .sales-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  /* Search bar always first */
+  .sales-toolbar .sales-search { order: 1 !important; }
+
+  /* Action bars (sales-actions or the inline div in DC/Recurring) → row 2 */
+  .sales-toolbar .sales-actions,
+  .sales-toolbar > div:not(.sales-search):not(.sales-pills) {
+    order: 2 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 6px !important;
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* In pages with .sales-actions (Invoices/Quotes/Bills),
+     selects fill space and primary button goes below */
+  .sales-toolbar .sales-actions {
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+  }
+  .sales-toolbar .sales-actions .sales-select {
+    flex: 1 1 auto !important;
+    min-width: 100px !important;
+  }
+  .sales-toolbar .sales-actions .sales-btn-primary {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 12px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+    order: 10 !important;
+  }
+}
+
+/* ── 375px tweaks ── */
+@media(max-width:375px){
+  .sales-pill { font-size: 11.5px !important; padding: 4px 9px !important; }
+  .sales-toolbar .sales-actions .sales-btn-primary {
+    padding: 11px !important; font-size: 13.5px !important;
+  }
+}
+
+
+
+/* ── INVOICES: colored summary stat cards ── */
+/* These use classes: inv-stat-revenue / inv-stat-receivable / inv-stat-average */
+/* Replaces the default compact bk-stat-card with large colored-bg cards */
+
+
+
+/* Hide the KPI count cards on mobile (replaced by the colored cards below) */
+@media(max-width:640px){
+  .bk-kpi-grid { display: none !important; }
+
+  /* Stat grid: single column stacked */
+  .inv-mobile-summary.bk-stat-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+  }
+
+  /* Base: override the bk-stat-card compact style */
+  .inv-mobile-summary .bk-stat-card {
+    border-radius: 14px !important;
+    padding: 18px 20px !important;
+    border: none !important;
+    box-shadow: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+
+  /* bk-stat-content: label on top, value below */
+  .inv-mobile-summary .bk-stat-content {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  /* Hide icon on mobile summary cards */
+  .inv-mobile-summary .bk-stat-icon { display: none !important; }
+
+  /* Label: small uppercase */
+  .inv-mobile-summary .bk-stat-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: .08em !important;
+    color: inherit !important;
+    opacity: .65 !important;
+    margin-bottom: 2px !important;
+  }
+
+  /* Value: large bold */
+  .inv-mobile-summary .bk-stat-value {
+    font-size: 26px !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+    color: inherit !important;
+  }
+
+  /* ── GREEN — This Month Revenue ── */
+  .inv-mobile-summary .inv-stat-revenue {
+    background: #d1fae5 !important;
+    color: #065f46 !important;
+  }
+
+  /* ── YELLOW — Total Receivable ── */
+  .inv-mobile-summary .inv-stat-receivable {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+  }
+
+  /* ── BLUE — Avg Invoice Value ── */
+  .inv-mobile-summary .inv-stat-average {
+    background: #dbeafe !important;
+    color: #1e3a8a !important;
+  }
+
+  /* ── NEUTRAL — This Month count card ── */
+  .inv-mobile-summary .inv-stat-count {
+    display: none !important;  /* hide the count card; KPI grid already shows it */
+  }
+
+  /* Fix value font-size override from inline style */
+  .inv-mobile-summary .bk-stat-value[style] {
+    font-size: 26px !important;
+    color: inherit !important;
+  }
+}
+
+/* Smaller tweaks at 375px */
+@media(max-width:375px){
+  .inv-mobile-summary .bk-stat-card { padding: 16px !important; }
+  .inv-mobile-summary .bk-stat-value { font-size: 22px !important; }
+  .sales-btn-primary { padding: 11px !important; font-size: 13.5px !important; }
+}
+
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   KPI CARDS — show on all screen sizes (override the mobile hide)
+   ═══════════════════════════════════════════════════════════════════ */
+.bk-kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.bk-kpi-grid.bk-kpi-grid-4 {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media(min-width:900px){
+  .bk-kpi-grid { grid-template-columns: repeat(4, 1fr); }
+  .bk-kpi-grid.bk-kpi-grid-4 { grid-template-columns: repeat(4, 1fr); }
+}
+
+.bk-kpi-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: box-shadow .15s;
+}
+.bk-kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+
+.bk-kpi-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.bk-kpi-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.bk-kpi-body { flex: 1; min-width: 0; }
+.bk-kpi-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+.bk-kpi-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.1;
+}
+.bk-kpi-trend {
+  font-size: 11px;
+  margin-top: 3px;
+  color: #9ca3af;
+}
+.bk-trend-up   { color: #16a34a !important; }
+.bk-trend-down { color: #dc2626 !important; }
+.bk-kpi-green  { color: #16a34a !important; }
+.bk-kpi-amber  { color: #d97706 !important; }
+.bk-kpi-blue   { color: #2563eb !important; }
+.bk-kpi-red    { color: #dc2626 !important; }
+
+@media(max-width:480px){
+  .bk-kpi-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .bk-kpi-inner { padding: 10px 12px !important; gap: 8px !important; }
+  .bk-kpi-icon { width: 32px !important; height: 32px !important; border-radius: 8px !important; }
+  .bk-kpi-value { font-size: 18px !important; }
+  .bk-kpi-label { font-size: 9.5px !important; }
+  .bk-kpi-trend { display: none !important; }
+}
+
+/* ── Stat grid (row-list below KPI cards) ── */
+.bk-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+@media(min-width:640px){
+  .bk-stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.bk-stat-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.bk-stat-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.bk-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+.bk-stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+.bk-stat-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+@media(max-width:480px){
+  .bk-stat-card { padding: 8px 10px !important; }
+  .bk-stat-value { font-size: 16px !important; }
+  .bk-stat-icon { width: 26px !important; height: 26px !important; }
+}
+</style>
+
+
 <style>
 /* ===== MORE ACTIONS DROPDOWN — FIXED INSIDE VIEWPORT at ≤480px =====
    position:fixed pins the dropdown to the viewport edges.
@@ -245,143 +725,212 @@
   .add-card-body table tbody tr:last-child{display:block !important;background:transparent !important;border:none !important;box-shadow:none !important;padding:3px 0 !important;}
 }
 
-/* ===== PAYMENTS TAB TABLE → CARD LAYOUT at ≤480px =====
-   Applies to the Payments tab table inside the Invoice VIEW drawer.
-   5 columns: Payment #, Date, Mode, Reference, Amount.
-   Uses .inv-drawer-panel:not(.is-add) to target view-only drawer.
-   Same card approach as the line items table.
+/* ===== LINE ITEMS + PAYMENTS → CARD LAYOUT at ≤480px =====
+   Uses CSS :has() to tell the two tables apart by column count:
+   • Line items = 7-column table  → :has(th:nth-child(7))
+   • Payments   = 5-column table  → :not(:has(th:nth-child(6)))
+   No Vue build required — pure DOM-based selection.
    ===================================================== */
 @media(max-width:480px){
-  /* View drawer: stop overflow-x on the payments table wrapper */
-  .inv-drawer-panel:not(.is-add) { overflow-x:hidden !important; }
 
-  /* Payments table: hide headers, become flex stack */
-  .inv-drawer-panel:not(.is-add) table {
-    display:flex !important;
-    flex-direction:column !important;
-    width:100% !important;
-    min-width:0 !important;
-    overflow:visible !important;
-  }
-  .inv-drawer-panel:not(.is-add) table thead {
-    display:none !important;
-  }
-  .inv-drawer-panel:not(.is-add) table tbody {
-    display:flex !important;
-    flex-direction:column !important;
-    gap:10px !important;
-    width:100% !important;
-    overflow:visible !important;
+  .inv-items-wrap {
+    overflow-x: hidden !important;
+    border: none !important;
+    background: transparent !important;
   }
 
-  /* Each payment row → card */
-  .inv-drawer-panel:not(.is-add) table tbody tr {
-    display:grid !important;
-    grid-template-columns:1fr 1fr !important;
-    gap:6px 10px !important;
-    background:#fff !important;
-    border:1.5px solid #e3e8ef !important;
-    border-radius:10px !important;
-    padding:12px !important;
-    box-shadow:0 1px 4px rgba(0,0,0,.07) !important;
-    width:100% !important;
-    min-width:0 !important;
+  /* Both tables: hide thead, stack as blocks */
+  .inv-items-table thead { display: none !important; }
+  .inv-items-table,
+  .inv-items-table tbody {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
   }
 
-  /* All td: flex column, no border/padding */
-  .inv-drawer-panel:not(.is-add) table tbody tr td {
-    display:flex !important;
-    flex-direction:column !important;
-    gap:2px !important;
-    padding:0 !important;
-    border:none !important;
-    min-width:0 !important;
-    font-size:13px !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    white-space:nowrap !important;
+  /* Base card for all rows */
+  .inv-items-table tbody tr {
+    background: #fff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06) !important;
+    margin-bottom: 8px !important;
+    padding: 12px 14px !important;
+    overflow: hidden !important;
+  }
+  .inv-items-table tbody tr:last-child { margin-bottom: 0 !important; }
+
+  /* ═══════════════════════════════════════════════════
+     LINE ITEMS TABLE  (7 columns — has th:nth-child(7))
+     Layout: # hidden | Item | HSN pill | Qty/Rate/Disc | Amount
+     ═══════════════════════════════════════════════════ */
+
+  /* Row: block layout */
+  .inv-items-table:has(th:nth-child(7)) tbody tr { display: block !important; }
+
+  /* All td: block */
+  .inv-items-table:has(th:nth-child(7)) tbody td {
+    display: block !important;
+    padding: 0 !important;
+    border: none !important;
+    text-align: left !important;
   }
 
-  /* Col 1: Payment # — full width top, blue link */
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(1) {
-    grid-column:1/3 !important;
-    flex-direction:row !important;
-    align-items:center !important;
-    font-size:13px !important;
-    font-weight:700 !important;
-  }
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(1)::before {
-    content:'PMT #' !important;
-    font-size:9.5px !important;
-    font-weight:700 !important;
-    text-transform:uppercase !important;
-    letter-spacing:.05em !important;
-    color:#9ca3af !important;
-    margin-right:6px !important;
-    flex-shrink:0 !important;
+  /* Col 1: # — hide */
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(1) { display: none !important; }
+
+  /* Col 2: Item & Description */
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(2) {
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #f0f2f5 !important;
+    margin-bottom: 8px !important;
   }
 
-  /* Col 2: Date — left col */
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(2) {
-    grid-column:1/2 !important;
-    font-size:12px !important;
-    color:#6b7280 !important;
-    white-space:nowrap !important;
+  /* Col 3: HSN/SAC — gray pill */
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(3) {
+    display: inline-block !important;
+    font-size: 11px !important; color: #6b7280 !important;
+    background: #f3f4f6 !important; border-radius: 4px !important;
+    padding: 2px 6px !important; margin-bottom: 8px !important;
   }
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(2)::before {
-    content:'Date' !important;
-    font-size:9.5px !important; font-weight:700 !important;
-    text-transform:uppercase !important; letter-spacing:.05em !important;
-    color:#9ca3af !important;
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(3)::before {
+    content: 'HSN: '; font-size: 10px; font-weight: 700;
+    color: #9ca3af; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(3).inv-dash { display: none !important; }
+
+  /* Cols 4/5/6: Qty, Rate, Discount — 3-col inline row */
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(4),
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(5),
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(6) {
+    display: inline-flex !important; flex-direction: column !important;
+    gap: 1px !important; width: calc(33.33% - 4px) !important;
+    font-size: 13px !important; color: #374151 !important;
+    font-weight: 600 !important; vertical-align: top !important; margin-right: 4px !important;
+  }
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(4)::before { content: 'QTY';  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(5)::before { content: 'RATE'; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(6)::before { content: 'DISC'; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+
+  /* Col 7: Amount — AMOUNT label left, value right */
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(7) {
+    display: flex !important; justify-content: space-between !important;
+    align-items: center !important; width: 100% !important;
+    padding: 8px 0 0 0 !important; margin-top: 8px !important;
+    border-top: 1px solid #f0f2f5 !important;
+    font-size: 15px !important; font-weight: 700 !important; color: #1a1a2e !important;
+  }
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(7)::before {
+    content: 'AMOUNT'; font-size: 9.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em; color: #9ca3af;
   }
 
-  /* Col 3: Mode — right col */
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(3) {
-    grid-column:2/3 !important;
-    font-size:12px !important;
+  /* ═══════════════════════════════════════════════════
+     PAYMENTS TABLE  (5 columns — no th:nth-child(6))
+     Layout: PMT# full | Date / Mode | Ref # | AMOUNT green
+     ═══════════════════════════════════════════════════ */
+
+  /* Row: 2-col grid */
+  .inv-items-table:not(:has(th:nth-child(6))) tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px 10px !important;
   }
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(3)::before {
-    content:'Mode' !important;
-    font-size:9.5px !important; font-weight:700 !important;
-    text-transform:uppercase !important; letter-spacing:.05em !important;
-    color:#9ca3af !important;
+
+  /* All td: flex-column */
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td {
+    display: flex !important; flex-direction: column !important;
+    gap: 2px !important; padding: 0 !important;
+    border: none !important; min-width: 0 !important;
+    font-size: 13px !important; overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Col 1: PMT # — full width, bold blue */
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(1) {
+    grid-column: 1 / 3 !important; flex-direction: row !important;
+    align-items: center !important; gap: 6px !important;
+    font-size: 13px !important; font-weight: 700 !important; color: #1a6ef7 !important;
+    white-space: nowrap !important;
+  }
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(1)::before {
+    content: 'PMT #' !important; font-size: 9.5px !important; font-weight: 700 !important;
+    text-transform: uppercase !important; letter-spacing: .05em !important;
+    color: #9ca3af !important; flex-shrink: 0 !important;
+  }
+
+  /* Col 2: Date — left */
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(2) {
+    grid-column: 1 / 2 !important; font-size: 12px !important; color: #374151 !important;
+  }
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(2)::before {
+    content: 'DATE' !important; font-size: 9px !important; font-weight: 700 !important;
+    text-transform: uppercase !important; letter-spacing: .05em !important; color: #9ca3af !important;
+  }
+
+  /* Col 3: Mode — right */
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(3) {
+    grid-column: 2 / 3 !important; font-size: 12px !important; color: #374151 !important;
+  }
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(3)::before {
+    content: 'MODE' !important; font-size: 9px !important; font-weight: 700 !important;
+    text-transform: uppercase !important; letter-spacing: .05em !important; color: #9ca3af !important;
   }
 
   /* Col 4: Reference — full width, muted */
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(4) {
-    grid-column:1/3 !important;
-    font-size:11px !important;
-    color:#9ca3af !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(4) {
+    grid-column: 1 / 3 !important; font-size: 11.5px !important; color: #6b7280 !important;
   }
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(4)::before {
-    content:'Ref #' !important;
-    font-size:9.5px !important; font-weight:700 !important;
-    text-transform:uppercase !important; letter-spacing:.05em !important;
-    color:#9ca3af !important;
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(4)::before {
+    content: 'REF #' !important; font-size: 9px !important; font-weight: 700 !important;
+    text-transform: uppercase !important; letter-spacing: .05em !important; color: #9ca3af !important;
   }
 
-  /* Col 5: Amount — full-width footer, green & bold */
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(5) {
-    grid-column:1/3 !important;
-    flex-direction:row !important;
-    justify-content:space-between !important;
-    align-items:center !important;
-    border-top:1px solid #f0f3f7 !important;
-    padding-top:8px !important;
-    margin-top:4px !important;
-    font-weight:700 !important;
-    font-size:15px !important;
-    color:#16a34a !important;
+  /* Col 5: Amount — full width, AMOUNT label + green value */
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(5) {
+    grid-column: 1 / 3 !important; flex-direction: row !important;
+    justify-content: space-between !important; align-items: center !important;
+    border-top: 1px solid #f0f2f5 !important; padding-top: 8px !important;
+    margin-top: 4px !important; font-weight: 700 !important;
+    font-size: 15px !important; color: #059669 !important;
   }
-  .inv-drawer-panel:not(.is-add) table tbody tr td:nth-child(5)::before {
-    content:'Amount' !important;
-    font-size:9.5px !important; font-weight:700 !important;
-    text-transform:uppercase !important; letter-spacing:.05em !important;
-    color:#9ca3af !important;
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(5)::before {
+    content: 'AMOUNT' !important; font-size: 9.5px !important; font-weight: 700 !important;
+    text-transform: uppercase !important; letter-spacing: .06em !important; color: #9ca3af !important;
   }
+
+  /* ── Totals section: full-width card ── */
+  .inv-totals-section { justify-content: stretch !important; padding: 0 !important; border-top: none !important; }
+  .inv-totals-inner {
+    min-width: 0 !important; width: 100% !important;
+    padding: 12px 14px !important; background: #f8fafc !important;
+    border: 1px solid #e5e7eb !important; border-radius: 10px !important; gap: 7px !important;
+  }
+  .inv-total-line { font-size: 13px !important; gap: 12px !important; }
+  .inv-total-line .t-lbl { color: #6b7280 !important; }
+  .inv-total-line .t-amt { font-weight: 600 !important; text-align: right !important; }
+  .inv-grand-total-line { padding-top: 10px !important; margin-top: 4px !important; }
+  .inv-grand-lbl { font-size: 14px !important; font-weight: 800 !important; }
+  .inv-grand-amt { font-size: 16px !important; font-weight: 800 !important; color: #1a6ef7 !important; }
 }
+
+/* ── 375px compact tweaks ── */
+@media(max-width:375px){
+  /* Line items */
+  .inv-items-table:has(th:nth-child(7)) tbody tr { padding: 10px 12px !important; }
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(4),
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(5),
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(6) { font-size: 12px !important; }
+  .inv-items-table:has(th:nth-child(7)) tbody td:nth-child(7) { font-size: 14px !important; }
+  /* Payments */
+  .inv-items-table:not(:has(th:nth-child(6))) tbody tr { padding: 10px 12px !important; }
+  .inv-items-table:not(:has(th:nth-child(6))) tbody td:nth-child(5) { font-size: 14px !important; }
+  /* Totals */
+  .inv-totals-inner { padding: 10px 12px !important; }
+  .inv-grand-amt { font-size: 15px !important; }
+}
+
+
 </style>
 
 <style>
@@ -2079,6 +2628,13 @@ window.__booksCompany = "";
     gap: 8px;
     padding: 12px 12px 0;
   }
+
+/* Hide mobile-only summary on desktop (768px and above) */
+@media(min-width:768px){
+  .dc-mob-summary { display: none !important; }
+}
+
+
   .dc-mob-kpi {
     border-radius: 10px;
     padding: 14px 16px;
@@ -2230,4 +2786,274 @@ window.__booksCompany = "";
   .dc-mob-date { font-size: 11.5px; }
 }
 </style>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   E-WAY BILLS TABLE → CARD LAYOUT at ≤480px (375px & 425px)
+   Table has 11 columns:
+     1=checkbox  2=EWB#  3=Invoice#  4=Inv.Date  5=Customer
+     6=Transporter  7=Vehicle  8=Valid Until  9=Amount  10=Status  11=Actions
+   Card layout:
+     [ EWB# ……………………… Status Badge ]
+     [ Invoice #: INV-001             ]
+     [ Customer name (bold)           ]
+     [ Inv.Date        | Transporter  ]
+     [ Vehicle         | Valid Until  ]
+     [ AMOUNT ……… ₹1,00,000          ]
+     [ 👁  ⬇  ✕  🗑  (action buttons) ]
+   ═══════════════════════════════════════════════════════════════════ */
+@media(max-width:480px){
+
+  /* Outer card shell: no overflow, so inner cards stay visible */
+  .ew-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Hide the table header */
+  .ew-table thead { display: none !important; }
+
+  /* Table + tbody: block stacks */
+  .ew-table,
+  .ew-table tbody {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Each row = a white card */
+  .ew-table tbody tr.ew-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px 10px !important;
+    background: #fff !important;
+    border: 1.5px solid #e3e8ef !important;
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 10px !important;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07) !important;
+    cursor: pointer !important;
+    transition: box-shadow .12s !important;
+  }
+  .ew-table tbody tr.ew-row:last-child { margin-bottom: 0 !important; }
+  .ew-table tbody tr.ew-row:hover { box-shadow: 0 4px 16px rgba(0,0,0,.11) !important; }
+
+  /* All cells: flex-column by default, no border */
+  .ew-table tbody tr.ew-row td {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    padding: 0 !important;
+    border: none !important;
+    font-size: 13px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Col 1: Checkbox — hide on mobile ── */
+  .ew-table tbody tr.ew-row td:nth-child(1) {
+    display: none !important;
+  }
+
+  /* ── Col 2: EWB # — top-left, bold blue mono ── */
+  .ew-table tbody tr.ew-row td:nth-child(2) {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: #2563eb !important;
+    font-family: monospace !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .ew-table tbody tr.ew-row td:nth-child(2)::before {
+    content: 'EWB #' !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+    color: #9ca3af !important;
+    font-family: inherit !important;
+  }
+
+  /* ── Col 10: Status badge — top-right ── */
+  .ew-table tbody tr.ew-row td:nth-child(10) {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 !important;
+    align-items: flex-end !important;
+    justify-content: flex-start !important;
+  }
+
+  /* ── Col 3: Invoice # — full width, row 2 ── */
+  .ew-table tbody tr.ew-row td:nth-child(3) {
+    grid-column: 1 / 3 !important;
+    grid-row: 2 !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+  }
+  .ew-table tbody tr.ew-row td:nth-child(3)::before {
+    content: 'INV #' !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+    color: #9ca3af !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── Col 5: Customer — full width, row 3, bold ── */
+  .ew-table tbody tr.ew-row td:nth-child(5) {
+    grid-column: 1 / 3 !important;
+    grid-row: 3 !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #111827 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+  }
+
+  /* ── Col 4: Inv.Date — left, row 4 ── */
+  .ew-table tbody tr.ew-row td:nth-child(4) {
+    grid-column: 1 / 2 !important;
+    grid-row: 4 !important;
+    font-size: 12px !important;
+    color: #6b7280 !important;
+  }
+  .ew-table tbody tr.ew-row td:nth-child(4)::before {
+    content: 'DATE' !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+    color: #9ca3af !important;
+  }
+
+  /* ── Col 6: Transporter — right, row 4 ── */
+  .ew-table tbody tr.ew-row td:nth-child(6) {
+    grid-column: 2 / 3 !important;
+    grid-row: 4 !important;
+    font-size: 12px !important;
+    color: #6b7280 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .ew-table tbody tr.ew-row td:nth-child(6)::before {
+    content: 'TRANSPORTER' !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+    color: #9ca3af !important;
+  }
+
+  /* ── Col 7: Vehicle — left, row 5 ── */
+  .ew-table tbody tr.ew-row td:nth-child(7) {
+    grid-column: 1 / 2 !important;
+    grid-row: 5 !important;
+    font-size: 12px !important;
+    color: #374151 !important;
+    font-family: monospace !important;
+    font-weight: 600 !important;
+  }
+  .ew-table tbody tr.ew-row td:nth-child(7)::before {
+    content: 'VEHICLE' !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+    color: #9ca3af !important;
+    font-family: inherit !important;
+  }
+
+  /* ── Col 8: Valid Until — right, row 5 ── */
+  .ew-table tbody tr.ew-row td:nth-child(8) {
+    grid-column: 2 / 3 !important;
+    grid-row: 5 !important;
+    font-size: 12px !important;
+  }
+  .ew-table tbody tr.ew-row td:nth-child(8)::before {
+    content: 'VALID UNTIL' !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+    color: #9ca3af !important;
+  }
+
+  /* ── Col 9: Amount — full width, row 6, prominent ── */
+  .ew-table tbody tr.ew-row td:nth-child(9) {
+    grid-column: 1 / 3 !important;
+    grid-row: 6 !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-top: 1px solid #f0f2f5 !important;
+    padding-top: 8px !important;
+    margin-top: 4px !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    color: #111827 !important;
+    text-align: right !important;
+  }
+  .ew-table tbody tr.ew-row td:nth-child(9)::before {
+    content: 'AMOUNT' !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .06em !important;
+    color: #9ca3af !important;
+  }
+
+  /* ── Col 11: Actions — full width, row 7 ── */
+  .ew-table tbody tr.ew-row td:nth-child(11) {
+    grid-column: 1 / 3 !important;
+    grid-row: 7 !important;
+    flex-direction: row !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 8px !important;
+    text-align: right !important;
+    padding-top: 6px !important;
+    border-top: 1px solid #f8fafc !important;
+  }
+
+  /* Empty state row: don't card-ify */
+  .ew-table tbody tr:not(.ew-row) {
+    display: block !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .ew-table tbody tr:not(.ew-row) td {
+    display: block !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+}
+
+/* ── 375px compact tweaks ── */
+@media(max-width:375px){
+  .ew-table tbody tr.ew-row {
+    padding: 10px 12px !important;
+    gap: 5px 8px !important;
+  }
+  .ew-table tbody tr.ew-row td:nth-child(5) { font-size: 13px !important; }
+  .ew-table tbody tr.ew-row td:nth-child(9) { font-size: 15px !important; }
+}
+</style>
+
 </html>
+

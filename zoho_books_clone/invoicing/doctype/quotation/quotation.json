@@ -147,7 +147,26 @@
   {
    "fieldname": "billing_address",
    "fieldtype": "Small Text",
-   "label": "Address"
+   "label": "Billing Address"
+  },
+  {
+   "fieldname": "billing_address_name",
+   "fieldtype": "Link",
+   "label": "Billing Address Name",
+   "options": "Address",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "shipping_address",
+   "fieldtype": "Small Text",
+   "label": "Shipping Address"
+  },
+  {
+   "fieldname": "shipping_address_name",
+   "fieldtype": "Link",
+   "label": "Shipping Address Name",
+   "options": "Address",
+   "print_hide": 1
   },
   {
    "fieldname": "logo",

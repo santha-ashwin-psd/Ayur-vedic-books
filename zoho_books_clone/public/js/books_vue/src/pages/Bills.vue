@@ -550,13 +550,13 @@
                 </div>
                 <!-- Billing Address -->
                 <div v-if="viewDoc.billing_address_name || viewDoc.billing_address" style="margin-top:14px">
-                  <div class="inv-dmeta-icon-row" style="margin-bottom:6px">
-                    <span class="inv-dmeta-icon" v-html="icon('map-pin',13)"></span>
-                    <span class="inv-dmeta-lbl">Billing Address</span>
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                    <span v-html="icon('map-pin',12)" style="color:#6b7280"></span>
+                    <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:0.5px">Billing Address</span>
                   </div>
-                  <div class="po-addr-card" style="margin-top:0">
-                    <div v-if="viewBillingAddr" class="po-addr-card-type">{{ viewBillingAddr.address_type || 'Billing' }}</div>
-                    <div class="po-addr-card-text">{{ viewBillingAddr ? formatAddress(viewBillingAddr) : viewDoc.billing_address }}</div>
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px">
+                    <span style="display:inline-block;background:#dbeafe;color:#2563eb;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:20px;letter-spacing:0.4px;margin-bottom:8px">Billing</span>
+                    <div style="font-size:13px;color:#374151;line-height:1.65;white-space:pre-line">{{ displayAddr(viewBillingAddr ? formatAddress(viewBillingAddr) : viewDoc.billing_address) }}</div>
                   </div>
                 </div>
               </template>
@@ -735,7 +735,12 @@ const addrModal = reactive({
 });
 
 function formatAddress(a) {
-  return [a.address_line1, a.address_line2, a.city, a.state, a.pincode, a.country].filter(Boolean).join(", ");
+  if (!a) return "";
+  return [a.address_line1, a.address_line2, a.city, a.state, a.pincode, a.country].filter(Boolean).join("\n");
+}
+function displayAddr(text) {
+  if (!text) return "";
+  return text.includes("\n") ? text : text.split(", ").join("\n");
 }
 const selectedBillingAddr = computed(() =>
   vendorAddresses.value.find(a => a.name === form.billing_address_name) || null
@@ -749,10 +754,13 @@ async function fetchVendorAddresses(supplier) {
     });
     if (!lnks?.length) { vendorAddresses.value = []; return; }
     const addrs = await Promise.all(lnks.map(l => apiGet("Address", l.parent).catch(() => null)));
-    vendorAddresses.value = addrs.filter(Boolean).map(a => ({
-      ...a,
-      label: `${a.address_title || a.name}${a.city ? " — " + a.city : ""}${a.address_type ? " (" + a.address_type + ")" : ""}`,
-    }));
+    vendorAddresses.value = addrs.filter(Boolean).map(a => {
+      const rawTitle = a.address_title || a.name || "";
+      const escaped  = supplier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const cleaned  = rawTitle.replace(new RegExp("^" + escaped + "[-\\s]*", "i"), "").trim() || rawTitle;
+      const title    = cleaned || a.address_type || "Address";
+      return { ...a, label: `${title}${a.city ? " — " + a.city : ""}${a.address_type ? " (" + a.address_type + ")" : ""}` };
+    });
   } catch { vendorAddresses.value = []; }
 }
 
@@ -1343,7 +1351,7 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .bill-edit-drawer.open { right: 0; }
 
 /* ── View drawer ── */
-.bill-view-drawer { width: 680px; right: -680px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; background: #f5f6f8; display: flex; flex-direction: column; overflow-y: auto; }
+.bill-view-drawer { width: 900px; right: -900px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; background: #f5f6f8; display: flex; flex-direction: column; overflow-y: auto; }
 .bill-view-drawer.open { right: 0; }
 
 /* ── View page header ── */

@@ -1159,8 +1159,9 @@ const viewDeliveryAddr = computed(() =>
 );
 
 function formatAddress(a) {
+  if (!a) return "";
   return [a.address_line1, a.address_line2, a.city, a.state, a.pincode, a.country]
-    .filter(Boolean).join(", ");
+    .filter(Boolean).join("\n");
 }
 
 function onBillingAddrChange() {
@@ -1629,7 +1630,7 @@ watch(() => form.supplier, (val) => {
 /* ── Inline field hints / validation ── */
 .exp-field-hint { font-size:11.5px; color:#9ca3af; margin-top:4px; text-align:right; }
 .exp-field-hint-err { color:#dc2626; font-weight:600; }
-
+.po-view-drawer { width: 900px; right: -900px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; background: #f5f6f8; display: flex; flex-direction: column; overflow-y: auto; }
 /* ── View drawer tax / totals summary ── */
 .po-view-totals { display: flex; justify-content: flex-end; padding: 4px 0 8px; }
 .po-view-totals-inner { display: flex; flex-direction: column; gap: 5px; min-width: 260px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 9px; padding: 14px 18px; }

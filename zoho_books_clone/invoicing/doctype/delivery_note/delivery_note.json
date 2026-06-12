@@ -370,6 +370,9 @@
         },
         {"fieldname": "set_warehouse", "fieldtype": "Data", "label": "Default Warehouse", "creation": "2026-05-29 00:00:00.000000", "modified": "2026-05-29 00:00:00.000000", "modified_by": "Administrator", "owner": "Administrator", "docstatus": 0, "idx": 0, "permlevel": 0},
         {"fieldname": "shipping_address", "fieldtype": "Small Text", "label": "Delivery Address", "creation": "2026-06-08 00:00:00.000000", "modified": "2026-06-08 00:00:00.000000", "modified_by": "Administrator", "owner": "Administrator", "docstatus": 0, "idx": 0, "permlevel": 0},
+        {"fieldname": "shipping_address_name", "fieldtype": "Link", "label": "Shipping Address Name", "options": "Address", "creation": "2026-06-12 00:00:00.000000", "modified": "2026-06-12 00:00:00.000000", "modified_by": "Administrator", "owner": "Administrator", "docstatus": 0, "idx": 0, "permlevel": 0},
+        {"fieldname": "billing_address", "fieldtype": "Small Text", "label": "Billing Address", "creation": "2026-06-12 00:00:00.000000", "modified": "2026-06-12 00:00:00.000000", "modified_by": "Administrator", "owner": "Administrator", "docstatus": 0, "idx": 0, "permlevel": 0},
+        {"fieldname": "billing_address_name", "fieldtype": "Link", "label": "Billing Address Name", "options": "Address", "creation": "2026-06-12 00:00:00.000000", "modified": "2026-06-12 00:00:00.000000", "modified_by": "Administrator", "owner": "Administrator", "docstatus": 0, "idx": 0, "permlevel": 0},
         {
             "fieldname": "items",
             "fieldtype": "Table",

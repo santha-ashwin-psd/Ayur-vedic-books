@@ -393,31 +393,38 @@
               </span>
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.billing}">
-              <div v-if="customerBillingAddrs.length > 1" style="margin-bottom:12px">
-                <label class="inv-lbl">Select Billing Address</label>
-                <select v-model="form.selected_billing_addr_name" class="inv-fi" @change="applySelectedBillingAddr">
-                  <option v-for="a in customerBillingAddrs" :key="a.name" :value="a.name">{{ a.address_title || a.address_line1 }}, {{ a.city }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="inv-lbl">Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
-                <textarea v-model="form.billing_address" class="inv-fi" rows="3" placeholder="Auto-filled from customer, or enter manually"></textarea>
-              </div>
-              <!-- Shipping address toggle -->
-              <div style="margin-top:14px">
-                <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer">
-                  <input type="checkbox" v-model="sameAsBillingAddr" @change="onSameAsBillingChange" style="accent-color:#1565c0"/>
-                  Use same address as billing (shipping)
-                </label>
-              </div>
-              <template v-if="!sameAsBillingAddr">
-                <div class="inv-sec-lbl" style="margin-top:14px">Shipping Address</div>
-                
+              <div class="inv-fg inv-fg2">
+                <!-- Billing Address -->
+                <div>
+                  <label class="inv-lbl">Billing Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
+                  <div class="po-addr-select-wrap">
+                    <select class="inv-fi po-addr-select" v-model="form.billing_address_name" @change="onBillingAddrChange">
+                      <option value="">— Select —</option>
+                      <option v-for="a in customerAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
+                      <option value="__new__">+ Add New Address</option>
+                    </select>
+                  </div>
+                  <div v-if="selectedBillingAddr" class="po-addr-card">
+                    <div class="po-addr-card-type">{{ selectedBillingAddr.address_type || 'Billing' }}</div>
+                    <div class="po-addr-card-text">{{ formatAddress(selectedBillingAddr) }}</div>
+                  </div>
+                </div>
+                <!-- Shipping Address -->
                 <div>
                   <label class="inv-lbl">Shipping Address</label>
-                  <textarea v-model="form.shipping_address" class="inv-fi" rows="3" placeholder="Shipping address (optional)"></textarea>
+                  <div class="po-addr-select-wrap">
+                    <select class="inv-fi po-addr-select" v-model="form.shipping_address_name" @change="onShippingAddrChange">
+                      <option value="">— Select —</option>
+                      <option v-for="a in customerAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
+                      <option value="__new__">+ Add New Address</option>
+                    </select>
+                  </div>
+                  <div v-if="selectedShippingAddr" class="po-addr-card">
+                    <div class="po-addr-card-type">{{ selectedShippingAddr.address_type || 'Shipping' }}</div>
+                    <div class="po-addr-card-text">{{ formatAddress(selectedShippingAddr) }}</div>
+                  </div>
                 </div>
-              </template>
+              </div>
             </div>
           </div>
 
@@ -902,63 +909,95 @@
           </div>
 
           <!-- Activity + Notes bottom grid -->
-          <div class="inv-bottom-grid">
-            <!-- Activity Timeline -->
-            <div class="inv-bottom-card">
+          <div >
+            <!-- Address card -->
+            <div v-if="viewInv.billing_address||viewInv.shipping_address" class="inv-bottom-card" style="margin:5px">
               <div class="inv-bottom-card-header">
-                <div class="inv-bottom-card-title">
-                  <span v-html="icon('activity',14)"></span> Activity Timeline
-                </div>
+                <div class="inv-bottom-card-title"><span v-html="icon('map-pin',14)"></span> Addresses</div>
               </div>
               <div class="inv-bottom-card-body">
-                <div class="inv-log-list">
-                  <template v-if="viewInv.comments&&viewInv.comments.length">
-                    <div v-for="(c,i) in viewInv.comments" :key="i" class="inv-log-item">
-                      <div class="inv-log-icon" v-html="icon('message-circle',13)"></div>
-                      <div class="inv-log-content">
-                        <div class="inv-log-text">{{ c.comment_by || c.subject }}</div>
-                        <div class="inv-log-by">{{ c.comment_by }}</div>
-                      </div>
-                      <div class="inv-log-time">{{ fmtDateTime(c.creation) }}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                  <div v-if="viewInv.billing_address">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                      <span v-html="icon('map-pin',12)" style="color:#6b7280"></span>
+                      <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:0.5px">Billing Address</span>
                     </div>
-                  </template>
-                  <template v-else-if="viewInv._activity&&viewInv._activity.length">
-                    <div v-for="(a,i) in viewInv._activity" :key="i" class="inv-log-item">
-                      <div class="inv-log-icon" v-html="icon(a.icon||'file-text',13)"></div>
-                      <div class="inv-log-content">
-                        <div class="inv-log-text">{{ a.text }}</div>
-                        <div class="inv-log-by">{{ a.by }}</div>
-                      </div>
-                      <div class="inv-log-time">{{ a.time }}</div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px">
+                      <span style="display:inline-block;background:#dbeafe;color:#2563eb;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:20px;letter-spacing:0.4px;margin-bottom:8px">Billing</span>
+                      <div style="font-size:13px;color:#374151;line-height:1.65;">{{ displayAddr(viewInv.billing_address) }}</div>
                     </div>
-                  </template>
-                  <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No activity yet.</div>
+                  </div>
+                  <div v-if="viewInv.shipping_address">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                      <span v-html="icon('map-pin',12)" style="color:#6b7280"></span>
+                      <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:0.5px">Shipping Address</span>
+                    </div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px">
+                      <span style="display:inline-block;background:#dbeafe;color:#2563eb;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:20px;letter-spacing:0.4px;margin-bottom:8px">Shipping</span>
+                      <div style="font-size:13px;color:#374151;line-height:1.65;">{{ displayAddr(viewInv.shipping_address) }}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <!-- Notes -->
-            <div class="inv-bottom-card">
-              <div class="inv-bottom-card-header">
-                <div class="inv-bottom-card-title">
-                  <span class="inv-bottom-card-title-icon" v-html="icon('sticky-note',14)"></span> Notes
+            <div style="display:flex;margin:5px">
+            <!-- Activity Timeline -->
+              <div class="inv-bottom-card" style="margin-right:5px;">
+                <div class="inv-bottom-card-header">
+                  <div class="inv-bottom-card-title">
+                    <span v-html="icon('activity',14)"></span> Activity Timeline
+                  </div>
+                </div>
+                <div class="inv-bottom-card-body">
+                  <div class="inv-log-list">
+                    <template v-if="viewInv.comments&&viewInv.comments.length">
+                      <div v-for="(c,i) in viewInv.comments" :key="i" class="inv-log-item">
+                        <div class="inv-log-icon" v-html="icon('message-circle',13)"></div>
+                        <div class="inv-log-content">
+                          <div class="inv-log-text">{{ c.comment_by || c.subject }}</div>
+                          <div class="inv-log-by">{{ c.comment_by }}</div>
+                        </div>
+                        <div class="inv-log-time">{{ fmtDateTime(c.creation) }}</div>
+                      </div>
+                    </template>
+                    <template v-else-if="viewInv._activity&&viewInv._activity.length">
+                      <div v-for="(a,i) in viewInv._activity" :key="i" class="inv-log-item">
+                        <div class="inv-log-icon" v-html="icon(a.icon||'file-text',13)"></div>
+                        <div class="inv-log-content">
+                          <div class="inv-log-text">{{ a.text }}</div>
+                          <div class="inv-log-by">{{ a.by }}</div>
+                        </div>
+                        <div class="inv-log-time">{{ a.time }}</div>
+                      </div>
+                    </template>
+                    <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No activity yet.</div>
+                  </div>
                 </div>
               </div>
-              <div class="inv-bottom-card-body">
-                <div v-if="viewInv.terms||viewInv.remarks">
-                  <div v-if="viewInv.terms" style="font-size:13px;color:#374151;margin-bottom:10px">
-                    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Customer Note</div>
-                    {{ viewInv.terms }}
-                  </div>
-                  <div v-if="viewInv.remarks" style="font-size:13px;color:#374151">
-                    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Internal Remarks</div>
-                    {{ viewInv.remarks }}
+
+              <!-- Notes -->
+              <div class="inv-bottom-card">
+                <div class="inv-bottom-card-header">
+                  <div class="inv-bottom-card-title">
+                    <span class="inv-bottom-card-title-icon" v-html="icon('sticky-note',14)"></span> Notes
                   </div>
                 </div>
-                <div v-else class="inv-notes-empty">
-                  <div class="inv-notes-empty-icon" v-html="icon('file-text',36)"></div>
-                  <div class="inv-notes-empty-text">No notes added yet</div>
-                  <div class="inv-notes-empty-sub">Add internal notes for this invoice.</div>
+                <div class="inv-bottom-card-body">
+                  <div v-if="viewInv.terms||viewInv.remarks">
+                    <div v-if="viewInv.terms" style="font-size:13px;color:#374151;margin-bottom:10px">
+                      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Customer Note</div>
+                      {{ viewInv.terms }}
+                    </div>
+                    <div v-if="viewInv.remarks" style="font-size:13px;color:#374151">
+                      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Internal Remarks</div>
+                      {{ viewInv.remarks }}
+                    </div>
+                  </div>
+                  <div v-else class="inv-notes-empty">
+                    <div class="inv-notes-empty-icon" v-html="icon('file-text',36)"></div>
+                    <div class="inv-notes-empty-text">No notes added yet</div>
+                    <div class="inv-notes-empty-sub">Add internal notes for this invoice.</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1107,6 +1146,52 @@
     <!-- Phase 0.9 purge: Payment / Email / Credit Note inline modals removed. Handled by globally mounted PaymentDialog / EmailDialog / ReturnNoteDialog. -->
 
     <!-- ── Confirm Modal (cancel / delete) ── -->
+    <!-- ── Add New Address Modal ── -->
+    <div v-if="addrModal.open" class="inv-drawer-bg" @click.self="addrModal.open=false" style="z-index:60"></div>
+    <div v-if="addrModal.open" class="po-apply-dialog">
+      <div class="inv-dh" style="height:auto;padding:14px 18px">
+        <div class="inv-dh-title">Add New Address</div>
+        <button class="inv-dclose" @click="addrModal.open=false"><span v-html="icon('x',16)"></span></button>
+      </div>
+      <div class="inv-dbody" style="padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <div class="inv-fg inv-fg2">
+          <div>
+            <label class="inv-lbl">Address Title <span class="inv-req">*</span></label>
+            <input v-model="addrModal.address_title" type="text" class="inv-fi" placeholder="e.g. Head Office" />
+          </div>
+          <div>
+            <label class="inv-lbl">Address Type</label>
+            <select v-model="addrModal.address_type" class="inv-fi">
+              <option>Billing</option><option>Shipping</option><option>Office</option>
+              <option>Postal</option><option>Warehouse</option><option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="inv-lbl">Address Line 1 <span class="inv-req">*</span></label>
+          <input v-model="addrModal.address_line1" type="text" class="inv-fi" placeholder="Street / Building" />
+        </div>
+        <div>
+          <label class="inv-lbl">Address Line 2</label>
+          <input v-model="addrModal.address_line2" type="text" class="inv-fi" placeholder="Area / Locality" />
+        </div>
+        <div class="inv-fg inv-fg2">
+          <div><label class="inv-lbl">City</label><input v-model="addrModal.city" type="text" class="inv-fi" placeholder="City" /></div>
+          <div><label class="inv-lbl">State</label><input v-model="addrModal.state" type="text" class="inv-fi" placeholder="State" /></div>
+        </div>
+        <div class="inv-fg inv-fg2">
+          <div><label class="inv-lbl">Pin Code</label><input v-model="addrModal.pincode" type="text" class="inv-fi" placeholder="PIN" /></div>
+          <div><label class="inv-lbl">Country</label><input v-model="addrModal.country" type="text" class="inv-fi" placeholder="Country" /></div>
+        </div>
+      </div>
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="addrModal.open=false" :disabled="addrModal.saving">Cancel</button>
+        <button class="form-btn form-btn-primary" :disabled="addrModal.saving" @click="saveNewAddress">
+          {{ addrModal.saving ? 'Saving…' : 'Save Address' }}
+        </button>
+      </div>
+    </div>
+
     <div v-if="confirmModal.open" class="rp-backdrop" @click.self="confirmModal.open=false">
       <div class="rp-dialog" style="max-width:440px">
         <div class="rp-dialog-header">
@@ -1304,7 +1389,7 @@ const collapsed = reactive({ branding: false, details: false, billing: true, lin
 const form = reactive({
   customer:"", posting_date:"", due_date:"", po_no:"",
   payment_terms:"", place_of_supply:"", billing_address:"",
-  shipping_address:"", selected_billing_addr_name:"", selected_shipping_addr_name:"",
+  billing_address_name:"", shipping_address:"", shipping_address_name:"",
   terms:"", remarks:"", docstatus:0,
   currency:"INR", exchange_rate:1, gst_treatment:"",
   update_stock:1, set_warehouse:"",
@@ -1314,6 +1399,14 @@ const form = reactive({
 const customerBillingAddrs  = ref([]);
 const customerShippingAddrs = ref([]);
 const sameAsBillingAddr     = ref(false);
+const customerAddresses     = ref([]);
+const addrModal = reactive({
+  open: false, saving: false, forField: "billing",
+  address_title: "", address_type: "Billing",
+  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India",
+});
+const selectedBillingAddr  = computed(() => customerAddresses.value.find(a => a.name === form.billing_address_name) || null);
+const selectedShippingAddr = computed(() => customerAddresses.value.find(a => a.name === form.shipping_address_name) || null);
 const lines   = ref([]);
 const warehouses = ref([]);
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name","parent_warehouse"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30});warehouses.value=r.map(x=>({label:x.parent_warehouse?`${x.parent_warehouse} / ${x.name}`:x.name,value:x.name}));}catch{warehouses.value=[];}}
@@ -1693,90 +1786,104 @@ async function fetchExchangeRate(currency) {
 
 // ── Customer change: auto-fill address, currency, GST treatment ───────
 async function onCustomerChange() {
-  form.billing_address=""; form.shipping_address="";
-  form.selected_billing_addr_name=""; form.selected_shipping_addr_name="";
-  sameAsBillingAddr.value=false;
-  customerBillingAddrs.value=[]; customerShippingAddrs.value=[];
+  form.billing_address=""; form.billing_address_name="";
+  form.shipping_address=""; form.shipping_address_name="";
+  customerAddresses.value=[];
   if (!form.customer) return;
   addressLoading.value=true;
   try {
-    const [custDoc, billingAddrs, shippingAddrs] = await Promise.all([
-      apiGet("Customer", form.customer),
-      apiList("Address",{
-        fields:["name","address_title","address_line1","address_line2","city","state","pincode"],
-        filters:[["Dynamic Link","link_name","=",form.customer],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Billing"]],
-        order:"`tabAddress`.modified desc", limit:20,
-      }),
-      apiList("Address",{
-        fields:["name","address_title","address_line1","address_line2","city","state","pincode"],
-        filters:[["Dynamic Link","link_name","=",form.customer],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Shipping"]],
-        order:"`tabAddress`.modified desc", limit:20,
-      }),
-    ]);
-
-    customerBillingAddrs.value  = billingAddrs  || [];
-    customerShippingAddrs.value = shippingAddrs || [];
-
-    // Apply currency from customer, and fetch exchange rate if foreign
+    const custDoc = await apiGet("Customer", form.customer);
+    // Apply currency
     if (custDoc?.default_currency) {
       form.currency = custDoc.default_currency;
-      if (form.currency !== "INR") {
-        form.exchange_rate = await fetchExchangeRate(form.currency) || 1;
-      } else {
-        form.exchange_rate = 1;
-      }
+      form.exchange_rate = form.currency !== "INR" ? (await fetchExchangeRate(form.currency) || 1) : 1;
     }
-
-    // Apply payment terms from customer (only if user hasn't changed it yet)
-    if (custDoc?.payment_terms && !form.payment_terms) {
-      form.payment_terms = custDoc.payment_terms;
-      applyPaymentTerms();
-    }
-
+    // Apply payment terms
+    if (custDoc?.payment_terms && !form.payment_terms) { form.payment_terms = custDoc.payment_terms; applyPaymentTerms(); }
     // Apply GST treatment
     form.gst_treatment = custDoc?.gst_treatment || "";
-
-    // Overseas: zero-rated export — clear any per-item taxes
-    if (form.gst_treatment === "Overseas") {
+    if (form.gst_treatment === "Overseas" || form.gst_treatment === "SEZ") {
       lines.value.forEach(l => { l.tax_code = ""; });
-      form.place_of_supply = "";
+      if (form.gst_treatment === "Overseas") form.place_of_supply = "";
     }
-    // SEZ: zero-rated supply — clear per-item taxes
-    if (form.gst_treatment === "SEZ") {
-      lines.value.forEach(l => { l.tax_code = ""; });
-    }
-
-    // Auto-fill billing address from first linked record, fallback to Customer fields
-    const addrSrc = billingAddrs?.[0] || null;
-    const addrFields = addrSrc
-      ? [addrSrc.address_line1, addrSrc.address_line2, addrSrc.city, addrSrc.state, addrSrc.pincode]
-      : [custDoc?.address_line1, custDoc?.address_line2, custDoc?.city, custDoc?.state, custDoc?.pincode];
-    const builtAddr = addrFields.filter(Boolean).join(", ");
-    if (builtAddr) {
-      form.billing_address = builtAddr;
-      if (addrSrc) form.selected_billing_addr_name = addrSrc.name;
-    }
-    // Auto-fill shipping from first shipping address if present
-    if (shippingAddrs?.[0]) {
-      const s = shippingAddrs[0];
-      form.shipping_address = [s.address_line1,s.address_line2,s.city,s.state,s.pincode].filter(Boolean).join(", ");
-      form.selected_shipping_addr_name = s.name;
-    }
+    // Load addresses from master
+    await fetchCustomerAddresses(form.customer);
+    const firstBilling = customerAddresses.value.find(a => a.address_type === "Billing") || customerAddresses.value[0];
+    if (firstBilling) { form.billing_address_name = firstBilling.name; form.billing_address = formatAddress(firstBilling); }
+    const firstShipping = customerAddresses.value.find(a => a.address_type === "Shipping");
+    if (firstShipping) { form.shipping_address_name = firstShipping.name; form.shipping_address = formatAddress(firstShipping); }
   } catch {}
   addressLoading.value=false;
 }
 
-function applySelectedBillingAddr() {
-  const addr = customerBillingAddrs.value.find(a=>a.name===form.selected_billing_addr_name);
-  if (addr) form.billing_address=[addr.address_line1,addr.address_line2,addr.city,addr.state,addr.pincode].filter(Boolean).join(", ");
+async function fetchCustomerAddresses(customer) {
+  if (!customer) { customerAddresses.value = []; return; }
+  try {
+    const links = await apiList("Dynamic Link", {
+      fields: ["parent"], filters: [["link_doctype","=","Customer"],["link_name","=",customer],["parenttype","=","Address"]], limit: 50
+    });
+    if (!links?.length) { customerAddresses.value = []; return; }
+    const names = links.map(l => l.parent).filter(Boolean);
+    const addrs = await Promise.all(names.map(n => apiGet("Address", n).catch(() => null)));
+    customerAddresses.value = addrs.filter(Boolean).map(a => {
+      const rawTitle = a.address_title || a.name || "";
+      const escaped  = customer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const cleaned  = rawTitle.replace(new RegExp("^" + escaped + "[-\\s]*", "i"), "").trim() || rawTitle;
+      const title    = cleaned || a.address_type || "Address";
+      return { ...a, label: `${title}${a.city ? " — " + a.city : ""}${a.address_type ? " (" + a.address_type + ")" : ""}` };
+    });
+  } catch { customerAddresses.value = []; }
 }
-function applySelectedShippingAddr() {
-  const addr = customerShippingAddrs.value.find(a=>a.name===form.selected_shipping_addr_name);
-  if (addr) form.shipping_address=[addr.address_line1,addr.address_line2,addr.city,addr.state,addr.pincode].filter(Boolean).join(", ");
+function formatAddress(a) {
+  if (!a) return "";
+  return [a.address_line1, a.address_line2, a.city, a.state, a.pincode, a.country].filter(Boolean).join("\n");
 }
-function onSameAsBillingChange() {
-  if (sameAsBillingAddr.value) form.shipping_address = form.billing_address;
-  else form.shipping_address = "";
+function displayAddr(text) {
+  if (!text) return "";
+  return text.includes("\n") ? text : text.split(", ").join("\n");
+}
+function onBillingAddrChange() {
+  if (form.billing_address_name === "__new__") {
+    form.billing_address_name = "";
+    Object.assign(addrModal, { open: true, saving: false, forField: "billing", address_title: "", address_type: "Billing", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
+    return;
+  }
+  const a = customerAddresses.value.find(x => x.name === form.billing_address_name);
+  form.billing_address = a ? formatAddress(a) : "";
+}
+function onShippingAddrChange() {
+  if (form.shipping_address_name === "__new__") {
+    form.shipping_address_name = "";
+    Object.assign(addrModal, { open: true, saving: false, forField: "shipping", address_title: "", address_type: "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
+    return;
+  }
+  const a = customerAddresses.value.find(x => x.name === form.shipping_address_name);
+  form.shipping_address = a ? formatAddress(a) : "";
+}
+async function saveNewAddress() {
+  if (!addrModal.address_title.trim()) return toast.error("Address Title is required");
+  if (!addrModal.address_line1.trim()) return toast.error("Address Line 1 is required");
+  addrModal.saving = true;
+  try {
+    const doc = {
+      doctype: "Address",
+      address_title: addrModal.address_title, address_type: addrModal.address_type,
+      address_line1: addrModal.address_line1, address_line2: addrModal.address_line2 || "",
+      city: addrModal.city || "", state: addrModal.state || "",
+      pincode: addrModal.pincode || "", country: addrModal.country || "India",
+      links: form.customer ? [{ doctype: "Address", link_doctype: "Customer", link_name: form.customer }] : [],
+    };
+    const saved = await apiSave(doc);
+    toast.success("Address saved");
+    await fetchCustomerAddresses(form.customer);
+    const newAddr = customerAddresses.value.find(a => a.name === saved?.name) || customerAddresses.value[customerAddresses.value.length - 1];
+    if (newAddr) {
+      if (addrModal.forField === "billing") { form.billing_address_name = newAddr.name; form.billing_address = formatAddress(newAddr); }
+      else { form.shipping_address_name = newAddr.name; form.shipping_address = formatAddress(newAddr); }
+    }
+    addrModal.open = false;
+  } catch (e) { toast.error(e.message || "Failed to save address"); }
+  addrModal.saving = false;
 }
 
 // ── Copy last items ────────────────────────────────────────────────────
@@ -1797,41 +1904,36 @@ function openAdd() {
   moreActionsOpen.value=false;
   Object.assign(collapsed,{branding:false,details:false,billing:true,lines:false,notes:true});
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0,tax_code:"",collapsed:false}];
-  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:"",logo:"",cost_center:""});
+  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",billing_address_name:"",shipping_address:"",shipping_address_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",update_stock:0,set_warehouse:"",logo:"",cost_center:""});
+  customerAddresses.value=[];
   customerBillingAddrs.value=[]; customerShippingAddrs.value=[]; sameAsBillingAddr.value=false;
   fetchWarehouses("");
   drawerOpen.value=true;
 }
 async function openEdit(inv) {
   editingName.value=inv.name;
-  Object.assign(form,{customer:inv.customer||"",currency:inv.currency||"INR",exchange_rate:inv.exchange_rate||1,posting_date:inv.posting_date||todayStr(),due_date:inv.due_date||dueDateDefault(),po_no:"",payment_terms:"",place_of_supply:"",billing_address:"",shipping_address:"",selected_billing_addr_name:"",selected_shipping_addr_name:"",terms:"",remarks:"",docstatus:inv.docstatus||0,update_stock:0,set_warehouse:""});
+  Object.assign(form,{customer:inv.customer||"",currency:inv.currency||"INR",exchange_rate:inv.exchange_rate||1,posting_date:inv.posting_date||todayStr(),due_date:inv.due_date||dueDateDefault(),po_no:"",payment_terms:"",place_of_supply:"",billing_address:"",billing_address_name:"",shipping_address:"",shipping_address_name:"",terms:"",remarks:"",docstatus:inv.docstatus||0,update_stock:0,set_warehouse:""});
+  customerAddresses.value=[];
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0,tax_code:"",collapsed:false}];
-  customerBillingAddrs.value=[]; customerShippingAddrs.value=[]; sameAsBillingAddr.value=false;
   fetchWarehouses("");
   drawerOpen.value=true;
-  // Load addresses in parallel with doc fetch
-  const [doc, billingAddrs, shippingAddrs] = await Promise.all([
+  const [doc] = await Promise.all([
     apiGet("Sales Invoice",inv.name).catch(()=>({})),
-    apiList("Address",{fields:["name","address_title","address_line1","address_line2","city","state","pincode"],filters:[["Dynamic Link","link_name","=",inv.customer||""],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Billing"]],order:"`tabAddress`.modified desc",limit:20}).catch(()=>[]),
-    apiList("Address",{fields:["name","address_title","address_line1","address_line2","city","state","pincode"],filters:[["Dynamic Link","link_name","=",inv.customer||""],["Dynamic Link","link_doctype","=","Customer"],["address_type","=","Shipping"]],order:"`tabAddress`.modified desc",limit:20}).catch(()=>[]),
+    fetchCustomerAddresses(inv.customer||""),
   ]);
-  customerBillingAddrs.value  = billingAddrs  || [];
-  customerShippingAddrs.value = shippingAddrs || [];
   if (doc && doc.name) {
     Object.assign(form,{
       customer:doc.customer||"",posting_date:doc.posting_date||todayStr(),due_date:doc.due_date||dueDateDefault(),
       po_no:doc.po_no||"",payment_terms:doc.payment_terms||"",place_of_supply:doc.place_of_supply||"",
-      billing_address:doc.billing_address||"",shipping_address:doc.shipping_address||"",
+      billing_address:doc.billing_address||"",billing_address_name:doc.billing_address_name||"",
+      shipping_address:doc.shipping_address||"",shipping_address_name:doc.shipping_address_name||"",
       terms:doc.terms||"",remarks:doc.remarks||"",docstatus:doc.docstatus||0,
       currency:doc.currency||"INR",exchange_rate:doc.exchange_rate||1,gst_treatment:doc.gst_category||"",
       update_stock:doc.update_stock||0,set_warehouse:doc.set_warehouse||"",
-      logo:doc.logo||"",
-      cost_center:doc.cost_center||"",
+      logo:doc.logo||"",cost_center:doc.cost_center||"",
     });
     lines.value=(doc.items||[]).map((it,i)=>({id:Date.now()+i,item_code:it.item_code||"",item_name:it.item_name||"",description:it.description||"",hsn_code:it.hsn_code||"",qty:flt(it.qty)||1,rate:flt(it.rate)||0,uom:it.uom||"Nos",discount_percentage:flt(it.discount_percentage)||0,discount_amount:flt(it.discount_amount)||0,amount:flt(it.amount)||0,tax_code:it.tax_code||"",collapsed:false}));
     if (!lines.value.length) addLine();
-    // Auto-detect "same as billing"
-    if (doc.shipping_address && doc.shipping_address===doc.billing_address) sameAsBillingAddr.value=true;
   }
 }
 async function openView(inv) {
@@ -1873,7 +1975,7 @@ async function saveInvoice(docstatus) {
     const pendingDataUrl = (form.logo||"").startsWith("data:") ? form.logo : "";
     const resolvedLogoPath = pendingDataUrl ? "" : (form.logo || "");
 
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",shipping_address:shipAddr,place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:form.update_stock?1:0,set_warehouse:form.set_warehouse||"",logo:resolvedLogoPath,cost_center:form.cost_center||""};
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",billing_address_name:form.billing_address_name||"",shipping_address:shipAddr,shipping_address_name:form.shipping_address_name||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:form.update_stock?1:0,set_warehouse:form.set_warehouse||"",logo:resolvedLogoPath,cost_center:form.cost_center||""};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
 

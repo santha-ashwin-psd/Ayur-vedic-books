@@ -215,11 +215,33 @@
                   <div class="dc-info-lbl">Sales Order</div>
                   <div class="dc-info-val dc-info-link"><DocLink doctype="Sales Order" :name="viewDoc.sales_order" /></div>
                 </div>
-                <div class="dc-info-item dc-info-full">
-                  <div class="dc-info-lbl">Delivery Address</div>
-                  <div class="dc-info-val" style="white-space:pre-line" :class="(viewDoc.shipping_address||viewDoc.customer_address)?'':'dc-info-empty'">
-                    {{ viewDoc.shipping_address||viewDoc.customer_address||'—' }}
+                <div v-if="viewDoc.billing_address||viewDoc.shipping_address" class="dc-info-item dc-info-full">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px">
+                    <div v-if="viewDoc.billing_address">
+                      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                        <span v-html="icon('map-pin',12)" style="color:#6b7280"></span>
+                        <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:0.5px">Billing Address</span>
+                      </div>
+                      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px">
+                        <span style="display:inline-block;background:#dbeafe;color:#2563eb;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:20px;letter-spacing:0.4px;margin-bottom:8px">Billing</span>
+                        <div style="font-size:13px;color:#374151;line-height:1.65;">{{ displayAddr(viewDoc.billing_address) }}</div>
+                      </div>
+                    </div>
+                    <div v-if="viewDoc.shipping_address">
+                      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                        <span v-html="icon('map-pin',12)" style="color:#6b7280"></span>
+                        <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:0.5px">Delivery Address</span>
+                      </div>
+                      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px">
+                        <span style="display:inline-block;background:#dbeafe;color:#2563eb;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:20px;letter-spacing:0.4px;margin-bottom:8px">Shipping</span>
+                        <div style="font-size:13px;color:#374151;line-height:1.65;">{{ displayAddr(viewDoc.shipping_address) }}</div>
+                      </div>
+                    </div>
                   </div>
+                </div>
+                <div v-else class="dc-info-item dc-info-full">
+                  <div class="dc-info-lbl">Delivery Address</div>
+                  <div class="dc-info-val dc-info-empty">—</div>
                 </div>
                 <div v-if="viewDoc.remarks" class="dc-info-item dc-info-full">
                   <div class="dc-info-lbl">Remarks</div>
@@ -370,9 +392,29 @@
                   <label class="inv-lbl">Transporter</label>
                   <input class="inv-fi" v-model="form.transporter_name" placeholder="e.g. BlueDart, VRL"/>
                 </div>
-                <div style="grid-column:1/-1">
-                  <label class="inv-lbl">Delivery Address</label>
-                  <input class="inv-fi" v-model="form.shipping_address" :placeholder="addressLoading?'Loading…':'Shipping address'"/>
+                <!-- Billing Address -->
+                <div>
+                  <label class="inv-lbl">Billing Address</label>
+                  <select class="inv-fi po-addr-select" v-model="form.billing_address_name" @change="onBillingAddrChange">
+                    <option value="">— None —</option>
+                    <option v-for="a in customerAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
+                    <option value="__new__">+ Add New Address</option>
+                  </select>
+                  <div v-if="selectedBillingAddr" class="po-addr-card">
+                    <div class="po-addr-card-body">{{ formatAddress(selectedBillingAddr) }}</div>
+                  </div>
+                </div>
+                <!-- Shipping / Delivery Address -->
+                <div>
+                  <label class="inv-lbl">Delivery / Shipping Address</label>
+                  <select class="inv-fi po-addr-select" v-model="form.shipping_address_name" @change="onShippingAddrChange">
+                    <option value="">— None —</option>
+                    <option v-for="a in customerAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
+                    <option value="__new__">+ Add New Address</option>
+                  </select>
+                  <div v-if="selectedShippingAddr" class="po-addr-card">
+                    <div class="po-addr-card-body">{{ formatAddress(selectedShippingAddr) }}</div>
+                  </div>
                 </div>
                 <div style="grid-column:1/-1">
                   <label class="inv-lbl">Remarks</label>
@@ -463,6 +505,66 @@
     </div>
 
 
+    <!-- ADD NEW ADDRESS MODAL -->
+    <div v-if="addrModal.open" class="inv-drawer-bg" style="z-index:70" @click.self="addrModal.open=false"></div>
+    <div v-if="addrModal.open" class="po-addr-modal" style="z-index:71">
+      <div class="po-addr-modal-header">
+        <span>Add New Address</span>
+        <button class="po-addr-modal-close" @click="addrModal.open=false" v-html="icon('x',16)"></button>
+      </div>
+      <div class="po-addr-modal-body">
+        <div class="po-addr-form-grid">
+          <div style="grid-column:1/-1">
+            <label class="inv-lbl">Address Title <span class="inv-req">*</span></label>
+            <input class="inv-fi" v-model="addrModal.title" placeholder="e.g. Head Office, Warehouse"/>
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="inv-lbl">Address Line 1 <span class="inv-req">*</span></label>
+            <input class="inv-fi" v-model="addrModal.line1" placeholder="Street / Building"/>
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="inv-lbl">Address Line 2</label>
+            <input class="inv-fi" v-model="addrModal.line2" placeholder="Area / Landmark"/>
+          </div>
+          <div>
+            <label class="inv-lbl">City</label>
+            <input class="inv-fi" v-model="addrModal.city" placeholder="City"/>
+          </div>
+          <div>
+            <label class="inv-lbl">State</label>
+            <input class="inv-fi" v-model="addrModal.state" placeholder="State"/>
+          </div>
+          <div>
+            <label class="inv-lbl">PIN / Postal Code</label>
+            <input class="inv-fi" v-model="addrModal.pincode" placeholder="PIN"/>
+          </div>
+          <div>
+            <label class="inv-lbl">Country</label>
+            <input class="inv-fi" v-model="addrModal.country" placeholder="Country"/>
+          </div>
+          <div>
+            <label class="inv-lbl">Address Type</label>
+            <select class="inv-fi" v-model="addrModal.address_type">
+              <option value="Shipping">Shipping</option>
+              <option value="Billing">Billing</option>
+              <option value="Office">Office</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="inv-lbl">GST / Tax ID</label>
+            <input class="inv-fi" v-model="addrModal.gstin" placeholder="GSTIN (optional)"/>
+          </div>
+        </div>
+      </div>
+      <div class="po-addr-modal-footer">
+        <button class="add-btn-cancel" @click="addrModal.open=false">Cancel</button>
+        <button class="add-btn-draft" @click="saveNewAddress" :disabled="addrModal.saving">
+          {{ addrModal.saving ? 'Saving…' : 'Save Address' }}
+        </button>
+      </div>
+    </div>
+
     <!-- DELETE / CANCEL CONFIRM DIALOG -->
     <div v-if="deleteTarget" class="inv-drawer-bg" style="z-index:60" @click.self="deleteTarget=null"></div>
     <div v-if="deleteTarget" class="dc-confirm" style="z-index:61">
@@ -537,8 +639,15 @@ const deleting     = ref(false);
 const formOpen    = ref(false);
 const editingName = ref("");
 const saving      = ref(false);
-const addressLoading = ref(false);
 const collapsed   = reactive({ details: false, transport: false, items: false });
+const customerAddresses = ref([]);
+const addrModal = reactive({
+  open: false, forField: "shipping", saving: false,
+  title: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "India", address_type: "Shipping", gstin: "",
+});
+
+const selectedBillingAddr  = computed(() => customerAddresses.value.find(a => a.name === form.billing_address_name) || null);
+const selectedShippingAddr = computed(() => customerAddresses.value.find(a => a.name === form.shipping_address_name) || null);
 
 // Dropdown option lists
 const customers  = ref([]);
@@ -557,7 +666,10 @@ const form = reactive({
   set_warehouse: "",
   lr_no: "",
   transporter_name: "",
+  billing_address: "",
+  billing_address_name: "",
   shipping_address: "",
+  shipping_address_name: "",
   remarks: "",
   items: [],
 });
@@ -728,13 +840,16 @@ async function openView(r) {
       const doc = await apiGet("Delivery Note", r.name);
       viewDoc.value = {
         ...r,
-        items:            doc?.items || [],
-        remarks:          doc?.remarks || r.remarks || "",
-        set_warehouse:    doc?.set_warehouse || "",
-        shipping_address: doc?.shipping_address || doc?.customer_address || "",
-        contact_display:  doc?.contact_display || "",
-        vehicle_no:       doc?.vehicle_no || "",
-        lr_date:          doc?.lr_date || "",
+        items:                doc?.items || [],
+        remarks:              doc?.remarks || r.remarks || "",
+        set_warehouse:        doc?.set_warehouse || "",
+        shipping_address:     doc?.shipping_address || doc?.customer_address || "",
+        shipping_address_name:doc?.shipping_address_name || "",
+        billing_address:      doc?.billing_address || "",
+        billing_address_name: doc?.billing_address_name || "",
+        contact_display:      doc?.contact_display || "",
+        vehicle_no:           doc?.vehicle_no || "",
+        lr_date:              doc?.lr_date || "",
       };
     } else {
       // Sales Order — fetch delivered lines
@@ -858,10 +973,14 @@ function resetForm() {
     set_warehouse: "",
     lr_no: "",
     transporter_name: "",
+    billing_address: "",
+    billing_address_name: "",
     shipping_address: "",
+    shipping_address_name: "",
     remarks: "",
     items: [blankItem()],
   });
+  customerAddresses.value = [];
 }
 
 function openNew() {
@@ -885,15 +1004,18 @@ async function openEdit(r) {
 
   // Pre-fill from existing doc
   Object.assign(form, {
-    customer:          r.customer || "",
-    customer_name:     r.customer_name || r.customer || "",
-    posting_date:      r.posting_date || new Date().toISOString().slice(0, 10),
-    sales_order:       r.sales_order || "",
-    lr_no:             r.lr_no || "",
-    transporter_name:  r.transporter_name || "",
-    shipping_address:  r.shipping_address || "",
-    remarks:           r.remarks || "",
-    items:             [],
+    customer:              r.customer || "",
+    customer_name:         r.customer_name || r.customer || "",
+    posting_date:          r.posting_date || new Date().toISOString().slice(0, 10),
+    sales_order:           r.sales_order || "",
+    lr_no:                 r.lr_no || "",
+    transporter_name:      r.transporter_name || "",
+    billing_address:       r.billing_address || "",
+    billing_address_name:  r.billing_address_name || "",
+    shipping_address:      r.shipping_address || "",
+    shipping_address_name: r.shipping_address_name || "",
+    remarks:               r.remarks || "",
+    items:                 [],
   });
 
   if (r._source === "dn") {
@@ -907,11 +1029,18 @@ async function openEdit(r) {
         qty:         flt(it.qty) || 1,
         uom:         it.uom || "Nos",
       }));
-      if (doc?.remarks)          form.remarks = doc.remarks;
-      if (doc?.set_warehouse)    form.set_warehouse = doc.set_warehouse;
-      if (doc?.shipping_address) form.shipping_address = doc.shipping_address;
-      if (doc?.lr_no)            form.lr_no = doc.lr_no;
-      if (doc?.transporter_name) form.transporter_name = doc.transporter_name;
+      if (doc?.remarks)               form.remarks = doc.remarks;
+      if (doc?.set_warehouse)         form.set_warehouse = doc.set_warehouse;
+      if (doc?.shipping_address)      form.shipping_address = doc.shipping_address;
+      if (doc?.shipping_address_name) form.shipping_address_name = doc.shipping_address_name;
+      if (doc?.billing_address)       form.billing_address = doc.billing_address;
+      if (doc?.billing_address_name)  form.billing_address_name = doc.billing_address_name;
+      if (doc?.lr_no)                 form.lr_no = doc.lr_no;
+      if (doc?.transporter_name)      form.transporter_name = doc.transporter_name;
+      // Fetch customer addresses after restoring link fields
+      if (form.customer) {
+        await fetchCustomerAddresses(form.customer);
+      }
     } catch {}
   } else if (r._source === "so") {
     try {
@@ -989,30 +1118,104 @@ async function fetchSalesOrders(q = "") {
   } catch { salesOrders.value = []; }
 }
 
-// ── Customer select: auto-fill address + filter SO list ───────────────────────
+// ── Customer select: fetch linked addresses + filter SO list ──────────────────
 async function onCustomerSelect(opt) {
   const custName = opt?.value ?? opt;
   form.customer_name = opt?.label ?? opt?.customer_name ?? custName ?? "";
   form.sales_order = "";
   salesOrders.value = [];
+  form.billing_address = ""; form.billing_address_name = "";
+  form.shipping_address = ""; form.shipping_address_name = "";
   if (!custName) return;
 
-  addressLoading.value = true;
   fetchSalesOrders("");
+  await fetchCustomerAddresses(custName);
+  // Auto-select first billing and shipping addresses
+  const firstBilling  = customerAddresses.value.find(a => a.address_type === "Billing")  || customerAddresses.value[0];
+  const firstShipping = customerAddresses.value.find(a => a.address_type === "Shipping") || null;
+  if (firstBilling)  { form.billing_address_name  = firstBilling.name;  form.billing_address  = formatAddress(firstBilling); }
+  if (firstShipping) { form.shipping_address_name = firstShipping.name; form.shipping_address = formatAddress(firstShipping); }
+  else if (firstBilling) { form.shipping_address_name = firstBilling.name; form.shipping_address = formatAddress(firstBilling); }
+}
+
+async function fetchCustomerAddresses(customer) {
+  if (!customer) { customerAddresses.value = []; return; }
   try {
-    const custDoc = await apiGet("Customer", custName);
-    const shipFields = [
-      custDoc?.ship_address_line1, custDoc?.ship_address_line2,
-      custDoc?.ship_city, custDoc?.ship_state, custDoc?.ship_pincode, custDoc?.ship_country,
-    ];
-    const billFields = [
-      custDoc?.address_line1, custDoc?.address_line2,
-      custDoc?.city, custDoc?.state, custDoc?.pincode, custDoc?.country,
-    ];
-    const built = shipFields.filter(Boolean).join(", ") || billFields.filter(Boolean).join(", ");
-    if (built) form.shipping_address = built;
-  } catch {}
-  addressLoading.value = false;
+    const links = await apiList("Dynamic Link", {
+      fields: ["parent"], filters: [["link_doctype","=","Customer"],["link_name","=",customer],["parenttype","=","Address"]], limit: 50
+    });
+    if (!links?.length) { customerAddresses.value = []; return; }
+    const names = links.map(l => l.parent).filter(Boolean);
+    const addrs = await Promise.all(names.map(n => apiGet("Address", n).catch(() => null)));
+    customerAddresses.value = addrs.filter(Boolean).map(a => {
+      const rawTitle = a.address_title || a.name || "";
+      const escaped  = customer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const cleaned  = rawTitle.replace(new RegExp("^" + escaped + "[-\\s]*", "i"), "").trim() || rawTitle;
+      const title    = cleaned || a.address_type || "Address";
+      return { ...a, label: `${title}${a.city ? " — " + a.city : ""}${a.address_type ? " (" + a.address_type + ")" : ""}` };
+    });
+  } catch { customerAddresses.value = []; }
+}
+
+function formatAddress(a) {
+  if (!a) return "";
+  return [a.address_line1, a.address_line2, a.city, a.state, a.pincode, a.country].filter(Boolean).join("\n");
+}
+function displayAddr(text) {
+  if (!text) return "";
+  return text.includes("\n") ? text : text.split(", ").join("\n");
+}
+
+function onBillingAddrChange() {
+  if (form.billing_address_name === "__new__") {
+    form.billing_address_name = "";
+    addrModal.forField = "billing"; addrModal.address_type = "Billing";
+    Object.assign(addrModal, { open: true, saving: false, title: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "India", gstin: "" });
+    return;
+  }
+  const a = customerAddresses.value.find(x => x.name === form.billing_address_name);
+  form.billing_address = a ? formatAddress(a) : "";
+}
+
+function onShippingAddrChange() {
+  if (form.shipping_address_name === "__new__") {
+    form.shipping_address_name = "";
+    addrModal.forField = "shipping"; addrModal.address_type = "Shipping";
+    Object.assign(addrModal, { open: true, saving: false, title: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "India", gstin: "" });
+    return;
+  }
+  const a = customerAddresses.value.find(x => x.name === form.shipping_address_name);
+  form.shipping_address = a ? formatAddress(a) : "";
+}
+
+async function saveNewAddress() {
+  if (!addrModal.title || !addrModal.line1) { toast.error("Title and Address Line 1 are required"); return; }
+  addrModal.saving = true;
+  try {
+    const addrDoc = {
+      doctype: "Address",
+      address_title: addrModal.title,
+      address_type:  addrModal.address_type || "Shipping",
+      address_line1: addrModal.line1,
+      address_line2: addrModal.line2 || "",
+      city:          addrModal.city || "",
+      state:         addrModal.state || "",
+      pincode:       addrModal.pincode || "",
+      country:       addrModal.country || "India",
+      gstin:         addrModal.gstin || "",
+      links: [{ doctype: "Address", link_doctype: "Customer", link_name: form.customer }],
+    };
+    const saved = await apiSave(addrDoc);
+    addrModal.open = false;
+    await fetchCustomerAddresses(form.customer);
+    const newAddr = customerAddresses.value.find(a => a.name === saved?.name) || customerAddresses.value[customerAddresses.value.length - 1];
+    if (newAddr) {
+      if (addrModal.forField === "billing") { form.billing_address_name = newAddr.name; form.billing_address = formatAddress(newAddr); }
+      else { form.shipping_address_name = newAddr.name; form.shipping_address = formatAddress(newAddr); }
+    }
+    toast.success("Address saved");
+  } catch (e) { toast.error(e.message || "Failed to save address"); }
+  finally { addrModal.saving = false; }
 }
 
 // ── SO select: pull items from Sales Order ────────────────────────────────────
@@ -1025,7 +1228,12 @@ async function onSOSelect(opt) {
       form.customer = so.customer;
       form.customer_name = so.customer_name || so.customer;
       await onCustomerSelect({ value: so.customer, label: so.customer_name || so.customer });
+    } else if (form.customer && !customerAddresses.value.length) {
+      await fetchCustomerAddresses(form.customer);
     }
+    // Copy addresses from Sales Order if available
+    if (so?.billing_address_name) { form.billing_address_name = so.billing_address_name; form.billing_address = so.billing_address || ""; }
+    if (so?.shipping_address_name) { form.shipping_address_name = so.shipping_address_name; form.shipping_address = so.shipping_address || ""; }
     if (so?.items?.length) {
       form.items = so.items.map(it => ({
         _id:         _lineId++,
@@ -1069,17 +1277,20 @@ async function saveChallan(submit) {
   try {
     const company = await resolveCompany();
     const doc = {
-      doctype:          "Delivery Note",
+      doctype:               "Delivery Note",
       company,
-      customer:         form.customer,
-      customer_name:    form.customer_name || form.customer,
-      posting_date:     form.posting_date,
-      sales_order:      form.sales_order || undefined,
-      set_warehouse:    form.set_warehouse || "",
-      lr_no:            form.lr_no || "",
-      transporter_name: form.transporter_name || "",
-      shipping_address: form.shipping_address || "",
-      remarks:          form.remarks || "",
+      customer:              form.customer,
+      customer_name:         form.customer_name || form.customer,
+      posting_date:          form.posting_date,
+      sales_order:           form.sales_order || undefined,
+      set_warehouse:         form.set_warehouse || "",
+      lr_no:                 form.lr_no || "",
+      transporter_name:      form.transporter_name || "",
+      billing_address:       form.billing_address || "",
+      billing_address_name:  form.billing_address_name || "",
+      shipping_address:      form.shipping_address || "",
+      shipping_address_name: form.shipping_address_name || "",
+      remarks:               form.remarks || "",
       items: validItems.map(it => ({
         doctype:    "Delivery Note Item",
         item_code:  it.item_code,

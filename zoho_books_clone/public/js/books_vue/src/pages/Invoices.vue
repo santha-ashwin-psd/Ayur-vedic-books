@@ -1177,11 +1177,24 @@
         </div>
         <div class="inv-fg inv-fg2">
           <div><label class="inv-lbl">City</label><input v-model="addrModal.city" type="text" class="inv-fi" placeholder="City" /></div>
-          <div><label class="inv-lbl">State</label><input v-model="addrModal.state" type="text" class="inv-fi" placeholder="State" /></div>
+          <div>
+            <label class="inv-lbl">Country</label>
+            <select v-model="addrModal.country" class="inv-fi" @change="addrModal.state = ''">
+              <option value="">— Select Country —</option>
+              <option v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
         </div>
         <div class="inv-fg inv-fg2">
+          <div>
+            <label class="inv-lbl">State</label>
+            <select v-if="statesFor(addrModal.country).length" v-model="addrModal.state" class="inv-fi">
+              <option value="">— Select State —</option>
+              <option v-for="s in statesFor(addrModal.country)" :key="s" :value="s">{{ s }}</option>
+            </select>
+            <input v-else v-model="addrModal.state" type="text" class="inv-fi" placeholder="State" />
+          </div>
           <div><label class="inv-lbl">Pin Code</label><input v-model="addrModal.pincode" type="text" class="inv-fi" placeholder="PIN" /></div>
-          <div><label class="inv-lbl">Country</label><input v-model="addrModal.country" type="text" class="inv-fi" placeholder="Country" /></div>
         </div>
       </div>
       <div class="inv-dfooter">
@@ -1230,6 +1243,7 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany, refreshCsrfToken } from "../api/client.js";
+import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { usePaymentDialog } from "../composables/usePaymentDialog.js";

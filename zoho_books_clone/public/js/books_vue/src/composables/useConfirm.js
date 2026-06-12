@@ -4,23 +4,25 @@
 import { reactive } from "vue";
 
 const state = reactive({
-  open:    false,
-  title:   "",
-  body:    "",
-  okLabel: "Confirm",
-  okStyle: "danger",     // "danger" | "primary"
-  resolve: null,
+  open:        false,
+  title:       "",
+  body:        "",
+  okLabel:     "Confirm",
+  cancelLabel: "Cancel",
+  okStyle:     "danger",     // "danger" | "primary"
+  resolve:     null,
 });
 
 export function useConfirm() {
-  function confirm({ title = "Are you sure?", body = "", okLabel = "Confirm", okStyle = "danger" } = {}) {
+  function confirm({ title = "Are you sure?", body = "", okLabel = "Confirm", cancelLabel = "Cancel", okStyle = "danger" } = {}) {
     return new Promise((resolve) => {
-      state.title   = title;
-      state.body    = body;
-      state.okLabel = okLabel;
-      state.okStyle = okStyle;
-      state.resolve = resolve;
-      state.open    = true;
+      state.title       = title;
+      state.body        = body;
+      state.okLabel     = okLabel;
+      state.cancelLabel = cancelLabel;
+      state.okStyle     = okStyle;
+      state.resolve     = resolve;
+      state.open        = true;
     });
   }
 

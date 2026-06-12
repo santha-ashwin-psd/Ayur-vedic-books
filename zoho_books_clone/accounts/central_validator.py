@@ -256,7 +256,8 @@ def check_budget_for_doc(doc):
             if cc.budget_action == "Stop":
                 frappe.throw(msg, title=_("Budget Exceeded"))
             elif cc.budget_action == "Warn":
-                frappe.msgprint(msg, title=_("Budget Exceeded"), indicator="orange")
+                if not getattr(doc.flags, "ignore_budget_warning", False):
+                    frappe.throw("BUDGET_WARNING: " + msg, title=_("Budget Warning"))
         elif cc.alert_pct and new_spend >= cc.budget * (flt(cc.alert_pct) / 100.0):
             msg = _(
                 "Budget Warning: Cost Center <b>{0}</b> has reached {1}% of its budget.<br>"
@@ -272,7 +273,8 @@ def check_budget_for_doc(doc):
                 frappe.bold(frappe.format_value(amount, {"fieldtype": "Currency"})),
                 frappe.bold(frappe.format_value(new_spend, {"fieldtype": "Currency"})),
             )
-            frappe.msgprint(msg, title=_("Budget Alert"), indicator="yellow")
+            if not getattr(doc.flags, "ignore_budget_warning", False):
+                frappe.throw("BUDGET_WARNING: " + msg, title=_("Budget Alert"))
 
     # Gather cost centers and their transaction amounts
     cc_amounts = {}

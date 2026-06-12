@@ -1,4 +1,18 @@
-import { useToast } from "../composables/useToast.js";
+import { useConfirm } from "../composables/useConfirm.js";
+
+function _parseServerMessage(msg) {
+  if (!msg) return "";
+  let obj = msg;
+  if (typeof msg === "string") {
+    const trimmed = msg.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try { obj = JSON.parse(trimmed); } catch {}
+    }
+  }
+  const text = (typeof obj === "object" ? obj.message : String(obj) || "");
+  return text.replace(/<[^>]*>/g, "")
+             .replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/^\s+|\s+$/g, "");
+}
 
 function _parseResponse(json, status) {
   if (status === 401) {
@@ -27,8 +41,7 @@ function _parseResponse(json, status) {
       try {
         const msgs = JSON.parse(json._server_messages);
         const first = Array.isArray(msgs) ? msgs[0] : msgs;
-        const text = (typeof first === "object" ? first.message : String(first) || "")
-          .replace(/\\n/g, "").replace(/\\"/g, '"').replace(/^\s+|\s+$/g, "");
+        const text = _parseServerMessage(first);
         if (text) throw new Error(text);
       } catch (inner) {
         if (inner instanceof Error && !inner.message.startsWith("{")) throw inner;
@@ -41,11 +54,9 @@ function _parseResponse(json, status) {
       const msgs = JSON.parse(json._server_messages);
       const list = Array.isArray(msgs) ? msgs : [msgs];
       for (const m of list) {
-        const text = (typeof m === "object" ? m.message : String(m) || "")
-          .replace(/<[^>]*>/g, "")
-          .replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/^\s+|\s+$/g, "");
+        const text = _parseServerMessage(m);
         if (text) {
-          useToast().warn(text);
+          alert(text);
         }
       }
     } catch (e) {}
@@ -140,8 +151,28 @@ export async function apiSave(doc) {
   return await apiPOST("zoho_books_clone.api.docs.save_doc", { doc: JSON.stringify(doc) });
 }
 
-export async function apiSubmit(doctype, name) {
-  return await apiPOST("zoho_books_clone.api.docs.submit_doc", { doctype, name });
+export async function apiSubmit(doctype, name, ignore_budget_warning = 0) {
+  try {
+    return await apiPOST("zoho_books_clone.api.docs.submit_doc", { doctype, name, ignore_budget_warning });
+  } catch (err) {
+    if (err.message && err.message.startsWith("BUDGET_WARNING: ")) {
+      const warningText = err.message.replace("BUDGET_WARNING: ", "");
+      const { confirm } = useConfirm();
+      const approved = await confirm({
+        title: "Budget Limit Exceeded",
+        body: warningText,
+        okLabel: "Submit anyway",
+        cancelLabel: "Go back",
+        okStyle: "primary",
+      });
+      if (approved) {
+        return await apiSubmit(doctype, name, 1);
+      } else {
+        throw new Error("Submission cancelled by user");
+      }
+    }
+    throw err;
+  }
 }
 
 export async function apiDelete(doctype, name) {

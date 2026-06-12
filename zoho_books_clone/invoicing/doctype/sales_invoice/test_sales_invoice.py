@@ -179,12 +179,26 @@ class TestSalesInvoice(FrappeTestCase):
             }]
         }).insert(ignore_permissions=True)
 
-        # Assert it raises ValidationError when exceeding budget on submit
+        # Assert it raises ValidationError when exceeding budget on submit (action is Stop)
         self.assertRaises(frappe.ValidationError, pi.submit)
 
-        # 2. Change budget action to "Warn" and verify it allows submission
+        # Reset docstatus back to 0 since the failed submit left docstatus=1 in the uncommitted DB transaction
+        frappe.db.set_value("Purchase Invoice", pi.name, "docstatus", 0)
+        frappe.clear_document_cache("Purchase Invoice", pi.name)
+
+        # 2. Change budget action to "Warn" and verify it throws validation error initially
         frappe.db.set_value("Cost Center", self.cc.name, "budget_action", "Warn")
+        frappe.clear_document_cache("Cost Center", self.cc.name)
+        pi = frappe.get_doc("Purchase Invoice", pi.name)
+        self.assertRaises(frappe.ValidationError, pi.submit)
+
+        # Reset docstatus back to 0 again
+        frappe.db.set_value("Purchase Invoice", pi.name, "docstatus", 0)
+        frappe.clear_document_cache("Purchase Invoice", pi.name)
+
+        # 3. Verify it allows submission with the ignore flag
+        pi = frappe.get_doc("Purchase Invoice", pi.name)
+        pi.flags.ignore_budget_warning = True
         pi.submit()
         
-        # Should succeed since action is Warn
         self.assertEqual(pi.docstatus, 1)

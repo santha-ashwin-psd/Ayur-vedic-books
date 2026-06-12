@@ -63,6 +63,20 @@
      GET  → read operations  (no CSRF needed in Frappe)
      POST → write operations (CSRF required)
   ──────────────────────────────────────────────────────────── */
+  function _parseServerMessage(msg) {
+    if (!msg) return "";
+    let obj = msg;
+    if (typeof msg === "string") {
+      const trimmed = msg.trim();
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        try { obj = JSON.parse(trimmed); } catch {}
+      }
+    }
+    const text = (typeof obj === "object" ? obj.message : String(obj) || "");
+    return text.replace(/<[^>]*>/g, "")
+               .replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/^\s+|\s+$/g, "");
+  }
+
   function _parseResponse(json, status) {
     // Session expired or unauthorized — redirect to login
     if (status === 401) {
@@ -90,8 +104,7 @@
         try {
           const msgs = JSON.parse(json._server_messages);
           const first = Array.isArray(msgs) ? msgs[0] : msgs;
-          const text = (typeof first === "object" ? first.message : String(first) || "")
-            .replace(/\\n/g, "").replace(/\\"/g, '"').replace(/^\s+|\s+$/g, "");
+          const text = _parseServerMessage(first);
           if (text) throw new Error(text);
         } catch (inner) {
           if (inner instanceof Error && !inner.message.startsWith("{")) throw inner;
@@ -104,11 +117,9 @@
         const msgs = JSON.parse(json._server_messages);
         const list = Array.isArray(msgs) ? msgs : [msgs];
         for (const m of list) {
-          const text = (typeof m === "object" ? m.message : String(m) || "")
-            .replace(/<[^>]*>/g, "")
-            .replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/^\s+|\s+$/g, "");
+          const text = _parseServerMessage(m);
           if (text) {
-            toast(text, "warning");
+            alert(text);
           }
         }
       } catch (e) {}
@@ -214,9 +225,22 @@
     return await apiPOST("zoho_books_clone.api.docs.save_doc", { doc: JSON.stringify(doc) });
   }
 
-  async function apiSubmit(doctype, name) {
-    // Use our custom GET endpoint — no CSRF token needed
-    return await apiGET("zoho_books_clone.api.docs.submit_doc", { doctype, name });
+  async function apiSubmit(doctype, name, ignore_budget_warning = 0) {
+    try {
+      // Use our custom GET endpoint — no CSRF token needed
+      return await apiGET("zoho_books_clone.api.docs.submit_doc", { doctype, name, ignore_budget_warning });
+    } catch (err) {
+      if (err.message && err.message.startsWith("BUDGET_WARNING: ")) {
+        const warningText = err.message.replace("BUDGET_WARNING: ", "");
+        const cleanedMsg = warningText.replace(/<br>/g, "\n").replace(/<[^>]*>/g, "");
+        if (confirm(cleanedMsg + "\n\nDo you want to submit anyway?")) {
+          return await apiSubmit(doctype, name, 1);
+        } else {
+          throw new Error("Submission cancelled by user");
+        }
+      }
+      throw err;
+    }
   }
 
   async function apiDelete(doctype, name) {

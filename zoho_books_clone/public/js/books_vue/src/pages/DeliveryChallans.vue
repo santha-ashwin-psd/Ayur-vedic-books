@@ -531,16 +531,23 @@
             <input class="inv-fi" v-model="addrModal.city" placeholder="City"/>
           </div>
           <div>
+            <label class="inv-lbl">Country</label>
+            <select class="inv-fi" v-model="addrModal.country" @change="addrModal.state = ''">
+              <option value="">— Select Country —</option>
+              <option v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
+          <div>
             <label class="inv-lbl">State</label>
-            <input class="inv-fi" v-model="addrModal.state" placeholder="State"/>
+            <select v-if="statesFor(addrModal.country).length" class="inv-fi" v-model="addrModal.state">
+              <option value="">— Select State —</option>
+              <option v-for="s in statesFor(addrModal.country)" :key="s" :value="s">{{ s }}</option>
+            </select>
+            <input v-else class="inv-fi" v-model="addrModal.state" placeholder="State"/>
           </div>
           <div>
             <label class="inv-lbl">PIN / Postal Code</label>
             <input class="inv-fi" v-model="addrModal.pincode" placeholder="PIN"/>
-          </div>
-          <div>
-            <label class="inv-lbl">Country</label>
-            <input class="inv-fi" v-model="addrModal.country" placeholder="Country"/>
           </div>
           <div>
             <label class="inv-lbl">Address Type</label>
@@ -598,6 +605,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
+import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useRoute } from "vue-router";
 import { useToast } from "../composables/useToast.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";

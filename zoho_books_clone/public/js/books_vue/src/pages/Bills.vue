@@ -638,18 +638,25 @@
             <input v-model="addrModal.city" type="text" class="inv-fi" placeholder="City" />
           </div>
           <div>
-            <label class="inv-lbl">State</label>
-            <input v-model="addrModal.state" type="text" class="inv-fi" placeholder="State" />
+            <label class="inv-lbl">Country</label>
+            <select v-model="addrModal.country" class="inv-fi" @change="addrModal.state = ''">
+              <option value="">— Select Country —</option>
+              <option v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</option>
+            </select>
           </div>
         </div>
         <div class="add-details-grid">
           <div>
-            <label class="inv-lbl">Pin Code</label>
-            <input v-model="addrModal.pincode" type="text" class="inv-fi" placeholder="PIN" />
+            <label class="inv-lbl">State</label>
+            <select v-if="statesFor(addrModal.country).length" v-model="addrModal.state" class="inv-fi">
+              <option value="">— Select State —</option>
+              <option v-for="s in statesFor(addrModal.country)" :key="s" :value="s">{{ s }}</option>
+            </select>
+            <input v-else v-model="addrModal.state" type="text" class="inv-fi" placeholder="State" />
           </div>
           <div>
-            <label class="inv-lbl">Country</label>
-            <input v-model="addrModal.country" type="text" class="inv-fi" placeholder="Country" />
+            <label class="inv-lbl">Pin Code</label>
+            <input v-model="addrModal.pincode" type="text" class="inv-fi" placeholder="PIN" />
           </div>
         </div>
       </div>
@@ -667,6 +674,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiSubmit, apiDelete, apiPOST, resolveCompany } from "../api/client.js";
+import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";

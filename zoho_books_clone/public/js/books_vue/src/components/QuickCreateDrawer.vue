@@ -53,7 +53,18 @@
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Country</label>
-                <input v-model="form.country" class="qcd-input" placeholder="India" />
+                <select v-model="form.country" class="qcd-input" @change="form.state = ''">
+                  <option value="">— Select Country —</option>
+                  <option v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</option>
+                </select>
+              </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">State</label>
+                <select v-if="statesFor(form.country).length" v-model="form.state" class="qcd-input">
+                  <option value="">— Select State —</option>
+                  <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{ s }}</option>
+                </select>
+                <input v-else v-model="form.state" class="qcd-input" placeholder="State" />
               </div>
               <div>
               <div class="qcd-field">
@@ -96,7 +107,18 @@
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Country</label>
-                <input v-model="form.country" class="qcd-input" placeholder="India" />
+                <select v-model="form.country" class="qcd-input" @change="form.state = ''">
+                  <option value="">— Select Country —</option>
+                  <option v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</option>
+                </select>
+              </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">State</label>
+                <select v-if="statesFor(form.country).length" v-model="form.state" class="qcd-input">
+                  <option value="">— Select State —</option>
+                  <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{ s }}</option>
+                </select>
+                <input v-else v-model="form.state" class="qcd-input" placeholder="State" />
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Payment Terms</label>
@@ -194,6 +216,21 @@
                 <label class="qcd-lbl">PIN Code</label>
                 <input v-model="form.pin" class="qcd-input" placeholder="6-digit PIN" maxlength="6" />
               </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">Country</label>
+                <select v-model="form.country" class="qcd-input" @change="form.state = ''">
+                  <option value="">— Select Country —</option>
+                  <option v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</option>
+                </select>
+              </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">State</label>
+                <select v-if="statesFor(form.country).length" v-model="form.state" class="qcd-input">
+                  <option value="">— Select State —</option>
+                  <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{ s }}</option>
+                </select>
+                <input v-else v-model="form.state" class="qcd-input" placeholder="State" />
+              </div>
             </div>
           </template>
 
@@ -226,6 +263,7 @@ import { reactive, ref, watch, onMounted } from "vue";
 import { apiSave, apiList, resolveCompany } from "../api/client.js";
 import { useQuickCreate } from "../composables/useQuickCreate.js";
 import { useToast } from "../composables/useToast.js";
+import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 
 const { state, complete, cancel } = useQuickCreate();
 const { toast } = useToast();
@@ -256,12 +294,12 @@ watch(() => state.open, (open) => {
     Object.assign(form, {
       customer_name: state.prefill, customer_type: "Company",
       gst_treatment: "Registered Business",
-      email_id: "", mobile_no: "", tax_id: "", country: "India", payment_terms: "",
+      email_id: "", mobile_no: "", tax_id: "", country: "India", state: "", payment_terms: "",
     });
   } else if (state.doctype === "Supplier") {
     Object.assign(form, {
       supplier_name: state.prefill, supplier_type: "Company",
-      email_id: "", mobile_no: "", tax_id: "", country: "India", payment_terms: "",
+      email_id: "", mobile_no: "", tax_id: "", country: "India", state: "", payment_terms: "",
     });
   } else if (state.doctype === "Item") {
     Object.assign(form, {
@@ -272,7 +310,7 @@ watch(() => state.open, (open) => {
   } else if (state.doctype === "Warehouse") {
     Object.assign(form, {
       warehouse_name: state.prefill, warehouse_type: "Stores",
-      parent_warehouse: "", address_line_1: "", city: "", pin: "",
+      parent_warehouse: "", address_line_1: "", city: "", state: "", pin: "", country: "India",
     });
   } else {
     form.name = state.prefill;

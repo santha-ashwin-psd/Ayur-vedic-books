@@ -78,16 +78,23 @@
           <input v-model="form.city" class="am-input" placeholder="City" />
         </div>
         <div class="am-form-field">
+          <label class="am-lbl">Country</label>
+          <select v-model="form.country" class="am-input" @change="form.state = ''">
+            <option value="">— Select Country —</option>
+            <option v-for="c in COUNTRIES" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+        <div class="am-form-field">
           <label class="am-lbl">State</label>
-          <input v-model="form.state" class="am-input" placeholder="State" />
+          <select v-if="statesFor(form.country).length" v-model="form.state" class="am-input">
+            <option value="">— Select State —</option>
+            <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{ s }}</option>
+          </select>
+          <input v-else v-model="form.state" class="am-input" placeholder="State" />
         </div>
         <div class="am-form-field">
           <label class="am-lbl">Pincode</label>
           <input v-model="form.pincode" class="am-input" placeholder="Pincode" />
-        </div>
-        <div class="am-form-field">
-          <label class="am-lbl">Country</label>
-          <input v-model="form.country" class="am-input" placeholder="India" />
         </div>
         <div class="am-form-field am-span2">
           <label class="am-lbl">Phone</label>
@@ -107,6 +114,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { apiList, apiSave, apiDelete } from "../api/client.js";
+import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 
 const props = defineProps({
   partyDoctype: { type: String, required: true },

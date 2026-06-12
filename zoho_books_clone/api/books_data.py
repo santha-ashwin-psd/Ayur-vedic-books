@@ -204,11 +204,13 @@ def save_doc(doc):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def submit_doc(doctype, name):
+def submit_doc(doctype, name, ignore_budget_warning=0):
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     d = frappe.get_doc(doctype, name)
     d.flags.ignore_permissions = True
+    if int(ignore_budget_warning or 0) == 1:
+        d.flags.ignore_budget_warning = True
     d.submit()
     frappe.db.commit()
     return d.as_dict()

@@ -63,7 +63,6 @@
      GET  → read operations  (no CSRF needed in Frappe)
      POST → write operations (CSRF required)
   ──────────────────────────────────────────────────────────── */
-
   function _parseResponse(json, status) {
     // Session expired or unauthorized — redirect to login
     if (status === 401) {
@@ -99,6 +98,20 @@
         }
       }
       throw new Error(json.exc_type || json.message || "Server error " + status);
+    }
+    if (json._server_messages) {
+      try {
+        const msgs = JSON.parse(json._server_messages);
+        const list = Array.isArray(msgs) ? msgs : [msgs];
+        for (const m of list) {
+          const text = (typeof m === "object" ? m.message : String(m) || "")
+            .replace(/<[^>]*>/g, "")
+            .replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/^\s+|\s+$/g, "");
+          if (text) {
+            toast(text, "warning");
+          }
+        }
+      } catch (e) {}
     }
     return json.message;
   }

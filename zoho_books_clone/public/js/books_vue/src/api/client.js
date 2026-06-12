@@ -1,5 +1,4 @@
-// Frappe API client. Ported from public/books.js:67-271 with the same
-// function names + signatures so module ports remain mechanical.
+import { useToast } from "../composables/useToast.js";
 
 function _parseResponse(json, status) {
   if (status === 401) {
@@ -36,6 +35,20 @@ function _parseResponse(json, status) {
       }
     }
     throw new Error(json.exc_type || json.message || "Server error " + status);
+  }
+  if (json._server_messages) {
+    try {
+      const msgs = JSON.parse(json._server_messages);
+      const list = Array.isArray(msgs) ? msgs : [msgs];
+      for (const m of list) {
+        const text = (typeof m === "object" ? m.message : String(m) || "")
+          .replace(/<[^>]*>/g, "")
+          .replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/^\s+|\s+$/g, "");
+        if (text) {
+          useToast().warn(text);
+        }
+      }
+    } catch (e) {}
   }
   return json.message;
 }

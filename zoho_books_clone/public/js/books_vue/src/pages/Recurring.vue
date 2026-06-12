@@ -56,6 +56,7 @@
           <tr>
             <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th>
             <th @click="sort('name')" class="sortable">SUBSCRIPTION # <span v-html="sortArrow('name')"></span></th>
+            <th @click="sort('party')" class="sortable">CUSTOMER <span v-html="sortArrow('party')"></span></th>
             <th @click="sort('reference_doctype')" class="sortable">TYPE <span v-html="sortArrow('reference_doctype')"></span></th>
             <th @click="sort('reference_document')" class="sortable">REFERENCE <span v-html="sortArrow('reference_document')"></span></th>
             <th @click="sort('frequency')" class="sortable">FREQUENCY <span v-html="sortArrow('frequency')"></span></th>
@@ -66,7 +67,7 @@
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="10"><div class="shimmer"></div></td></tr>
+            <tr v-for="n in 6" :key="n"><td colspan="9"><div class="shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="r in paged" :key="r.name" class="inv-row" :class="{selected:selected.includes(r.name)}" @click="openView(r)">
@@ -74,6 +75,10 @@
                 <input type="checkbox" :checked="selected.includes(r.name)" @change="toggleOne(r.name)" />
               </td>
               <td><span class="inv-link">{{ r.name }}</span></td>
+              <td>
+                <span v-if="r.party" class="rec-party-cell">{{ r.party }}</span>
+                <span v-else class="text-muted">—</span>
+              </td>
               <td class="text-muted">{{ r.reference_doctype||'—' }}</td>
               <td @click.stop><DocLink :doctype="r.reference_doctype" :name="r.reference_document" /></td>
               <td>{{ freqLabel(r.frequency) }}</td>
@@ -89,7 +94,7 @@
                 <button class="inv-act-btn rec-act-danger" @click="quickAction(r,'delete')" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="10" class="rec-empty">
+            <tr v-if="!sorted.length"><td colspan="9" class="rec-empty">
               <div class="rec-empty-wrap">
                 <div class="rec-empty-icon" v-html="icon('repeat',32)"></div>
                 <div class="rec-empty-title">No subscriptions yet</div>
@@ -154,6 +159,17 @@
               <div class="add-card-body" :class="{collapsed:collapsed.reference}">
                 <div class="inv-fg inv-fg2">
                   <div style="grid-column:1/-1">
+                    <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
+                    <SearchableSelect
+                      v-model="form.customer"
+                      :options="customers"
+                      :disabled="editMode"
+                      placeholder="Select a customer…"
+                      @update:modelValue="onCustomerChange"
+                    />
+                    <div class="rec-field-help" v-if="!form.customer">Select a customer to filter documents below.</div>
+                  </div>
+                  <div style="grid-column:1/-1">
                     <label class="inv-lbl">Document Type <span class="inv-req">*</span></label>
                     <select v-model="form.reference_doctype" class="inv-fi" :disabled="editMode" @change="onTypeChange">
                       <option value="Sales Invoice">Sales Invoice</option>
@@ -165,12 +181,12 @@
                     <SearchableSelect
                       v-model="form.reference_document"
                       :options="refDocs"
-                      :disabled="editMode"
-                      placeholder="Search a saved document…"
+                      :disabled="editMode || !form.customer"
+                      placeholder="Select a customer first…"
                       @search="fetchRefDocs"
                     />
-                    <div class="rec-field-help" v-if="!form.reference_document">
-                      Pick an existing {{ form.reference_doctype.toLowerCase() }} to use as the template.
+                    <div class="rec-field-help" v-if="form.customer && !form.reference_document">
+                      Pick an existing {{ form.reference_doctype.toLowerCase() }} for <strong>{{ customers.find(c=>c.value===form.customer)?.label || form.customer }}</strong>.
                     </div>
                   </div>
                 </div>
@@ -413,7 +429,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
-import { apiSave, apiGET, apiPOST, resolveCompany } from "../api/client.js";
+import { apiSave, apiGET, apiPOST, apiList, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
 import { useConfirm } from "../composables/useConfirm.js";
@@ -446,10 +462,12 @@ const drawerOpen = ref(false);
 const drawerSaving = ref(false);
 const editMode = ref(false);
 const refDocs = ref([]);
+const customers = ref([]);
 const collapsed = reactive({ reference: false, schedule: false, notification: false });
 const referenceMeta = reactive({ party_label: "", party: "", amount: 0 });
 const form = reactive({
   _name: "",
+  customer: "",
   reference_doctype: "Sales Invoice",
   reference_document: "",
   frequency: "Monthly",
@@ -702,6 +720,7 @@ function openNew() {
   editMode.value = false;
   Object.assign(form, {
     _name: "",
+    customer: "",
     reference_doctype: "Sales Invoice",
     reference_document: "",
     frequency: "Monthly",
@@ -715,17 +734,17 @@ function openNew() {
   });
   Object.assign(referenceMeta, { party_label: "", party: "", amount: 0 });
   drawerOpen.value = true;
-  // Pre-load submitted docs for the default doctype
+  fetchCustomers();
   fetchRefDocs("");
 }
 
 function openEdit(doc) {
   if (!doc?.name) return;
   editMode.value = true;
-  // Close view drawer so edit drawer is the only visible one
   viewOpen.value = false;
   Object.assign(form, {
     _name: doc.name,
+    customer: doc.customer || doc.party || "",
     reference_doctype: doc.reference_doctype,
     reference_document: doc.reference_document,
     frequency: doc.frequency,
@@ -739,6 +758,7 @@ function openEdit(doc) {
   });
   refDocs.value = doc.reference_document ? [{ label: doc.reference_document, value: doc.reference_document }] : [];
   Object.assign(referenceMeta, { party_label: doc.party_label || "", party: doc.party || "", amount: doc.template_amount || 0 });
+  fetchCustomers();
   drawerOpen.value = true;
 }
 
@@ -751,8 +771,21 @@ function onTypeChange() {
   form.reference_document = "";
   refDocs.value = [];
   Object.assign(referenceMeta, { party_label: "", party: "", amount: 0 });
-  // Immediately load submitted docs for the newly selected doctype
   fetchRefDocs("");
+}
+
+function onCustomerChange() {
+  form.reference_document = "";
+  refDocs.value = [];
+  Object.assign(referenceMeta, { party_label: "", party: "", amount: 0 });
+  fetchRefDocs("");
+}
+
+async function fetchCustomers() {
+  try {
+    const r = await apiList("Customer", { fields: ["name", "customer_name"], filters: [["disabled", "=", 0]], limit: 500, order: "customer_name asc" }) || [];
+    customers.value = r.map(x => ({ value: x.name, label: x.customer_name || x.name }));
+  } catch { customers.value = []; }
 }
 
 async function fetchRefDocs(q = "") {
@@ -761,17 +794,18 @@ async function fetchRefDocs(q = "") {
     // Sales Invoices: only submitted (docstatus=1) — must be posted to ledger.
     // Quotations: all statuses (draft, submitted, etc.) are valid templates.
     const filters = doctype === "Sales Invoice" ? [["docstatus", "=", 1]] : [];
+    if (form.customer) filters.push(["customer", "=", form.customer]);
     if (q) filters.push(["name", "like", `%${q}%`]);
 
     const r = await apiGET("frappe.client.get_list", {
       doctype,
       filters: JSON.stringify(filters),
-      fields: JSON.stringify(["name"]),
+      fields: JSON.stringify(["name", "customer_name"]),
       limit: 50,
       order_by: "name asc",
     });
     const rows = Array.isArray(r) ? r : (r?.message ?? []);
-    refDocs.value = rows.map((x) => ({ label: x.name, value: x.name }));
+    refDocs.value = rows.map((x) => ({ label: x.customer_name ? `${x.name} — ${x.customer_name}` : x.name, value: x.name }));
   } catch {
     refDocs.value = [];
   }
@@ -807,6 +841,7 @@ watch(() => form.reference_document, async (v) => {
 });
 
 async function saveRec() {
+  if (!form.customer) return toast.error("Customer is required");
   if (!form.reference_document) return toast.error("Reference document is required");
   if (!form.start_date) return toast.error("Start date is required");
   if (form.end_date && form.end_date < form.start_date) return toast.error("End date must be after start date");
@@ -953,6 +988,7 @@ function exportCSV() {
 .rec-upcoming-idx { background:#dbeafe;color:#1d4ed8;font-weight:700;padding:2px 8px;border-radius:8px;font-size:11.5px;}
 
 /* ── Misc ── */
+.rec-party-cell { font-size:13px;color:#111827;font-weight:500; }
 .rec-due-dot { display:inline-block;width:6px;height:6px;background:#2563eb;border-radius:50%;margin-left:6px;vertical-align:middle; }
 .rec-act-danger:hover { color:#dc2626;background:#fef2f2; }
 .rec-empty { text-align:center;padding:0!important;cursor:default!important; }
@@ -991,5 +1027,10 @@ function exportCSV() {
 @media (max-width: 480px) {
   .rec-timeline { display:none; }
   .rec-va-btn-text { display: none; }
+}
+.rec-meta-value {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 500;
 }
 </style>

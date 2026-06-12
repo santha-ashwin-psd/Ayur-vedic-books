@@ -502,7 +502,7 @@
 .inv-items-table tr:last-child td { border-bottom: none; }
 
 .inv-item-name { font-weight: 700; color: #1a1a2e; }
-.inv-item-desc { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+.inv-item-desc { font-size: 12px; color: #9ca3af; margin-top: 2px;word-break: break-word; }
 .inv-item-num  { font-size: 12px; color: #6b7280; font-weight: 600; }
 
 /* Dash placeholder */
@@ -568,6 +568,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
+  width: -webkit-fill-available;
 }
 .inv-bottom-card-header {
   display: flex;

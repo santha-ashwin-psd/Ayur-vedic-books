@@ -736,4 +736,12 @@ function actDotClass(dt) {
   animation: shimmer 1.4s infinite;
 }
 @keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+
+@media (max-width: 480px) {
+.db-table td {
+border-bottom: none !important;
+text-align: left !important;
+padding: 4px 0px !important;
+}
+}
 </style>

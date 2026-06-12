@@ -1339,7 +1339,7 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 @import '../styles/add.css';
 
 /* ── Edit drawer ── */
-.bill-edit-drawer { width: 600px; right: -600px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; max-width: 96vw; z-index: 8100; background: #fff; display: flex; flex-direction: column; }
+.bill-edit-drawer { width: 800px;right: -800px;max-width: 96vw; transition: right .22s ease; position: fixed; top: 0; bottom: 0; max-width: 96vw; z-index: 8100; background: #fff; display: flex; flex-direction: column; }
 .bill-edit-drawer.open { right: 0; }
 
 /* ── View drawer ── */

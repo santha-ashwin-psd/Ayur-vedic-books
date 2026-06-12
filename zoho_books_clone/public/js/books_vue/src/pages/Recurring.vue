@@ -288,17 +288,17 @@
       <template v-if="viewDoc">
         <!-- header -->
         <div class="inv-view-header rec-view-head" :class="viewDoc.ui_status==='Paused'?'paused':viewDoc.ui_status==='Completed'?'completed':''">
-          <div>
-            <div class="inv-view-number">{{ viewDoc.name }}</div>
+          <div class="rec-vhead-content">
+            <div class="rec-vhead-title-row">
+              <div class="inv-view-number">{{ viewDoc.name }}</div>
+              <span class="inv-hdr-badge rec-badge-lg" :class="statusClass(viewDoc.ui_status)">{{ viewDoc.ui_status }}</span>
+            </div>
             <div class="inv-view-subtitle">
               {{ viewDoc.reference_doctype }} · {{ freqLabel(viewDoc.frequency) }}
               <span v-if="viewDoc.party"> · {{ viewDoc.party }}</span>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="inv-hdr-badge rec-badge-lg" :class="statusClass(viewDoc.ui_status)">{{ viewDoc.ui_status }}</span>
-            <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-          </div>
+          <button class="inv-dclose rec-vhead-close" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
         </div>
         <!-- subscription stats strip -->
         <div class="rec-view-stats-strip">
@@ -309,12 +309,12 @@
 
         <!-- action bar -->
         <div class="rec-view-actbar">
-          <button class="rec-va-btn" @click="openEdit(viewDoc)" :disabled="viewDoc.ui_status==='Completed'"><span v-html="icon('edit',13)"></span> Edit</button>
-          <button class="rec-va-btn" @click="runNow(viewDoc)" :disabled="viewDoc.ui_status!=='Active' || actionLoading"><span v-html="icon('play',13)"></span> Run Now</button>
-          <button v-if="viewDoc.ui_status==='Active'" class="rec-va-btn" @click="actionOn(viewDoc,'pause')" :disabled="actionLoading"><span v-html="icon('pause',13)"></span> Pause</button>
-          <button v-else-if="viewDoc.ui_status==='Paused'" class="rec-va-btn" @click="actionOn(viewDoc,'resume')" :disabled="actionLoading"><span v-html="icon('play',13)"></span> Resume</button>
-          <button class="rec-va-btn rec-va-warn" @click="actionOn(viewDoc,'cancel')" :disabled="actionLoading || viewDoc.ui_status==='Completed'"><span v-html="icon('x',13)"></span> Cancel</button>
-          <button class="rec-va-btn rec-va-danger" @click="actionOn(viewDoc,'delete')" :disabled="actionLoading"><span v-html="icon('trash',13)"></span> Delete</button>
+          <button class="rec-va-btn" @click="openEdit(viewDoc)" :disabled="viewDoc.ui_status==='Completed'"><span v-html="icon('edit',13)"></span><div class="rec-va-btn-text"> Edit</div></button>
+          <button class="rec-va-btn" @click="runNow(viewDoc)" :disabled="viewDoc.ui_status!=='Active' || actionLoading"><span v-html="icon('play',13)"></span><div class="rec-va-btn-text"> Run Now</div></button>
+          <button v-if="viewDoc.ui_status==='Active'" class="rec-va-btn" @click="actionOn(viewDoc,'pause')" :disabled="actionLoading"><span v-html="icon('pause',13)"></span><div class="rec-va-btn-text"> Pause</div></button>
+          <button v-else-if="viewDoc.ui_status==='Paused'" class="rec-va-btn" @click="actionOn(viewDoc,'resume')" :disabled="actionLoading"><span v-html="icon('play',13)"></span><div class="rec-va-btn-text"> Resume</div></button>
+          <button class="rec-va-btn rec-va-warn" @click="actionOn(viewDoc,'cancel')" :disabled="actionLoading || viewDoc.ui_status==='Completed'"><span v-html="icon('x',13)"></span><div class="rec-va-btn-text"> Cancel</div></button>
+          <button class="rec-va-btn rec-va-danger" @click="actionOn(viewDoc,'delete')" :disabled="actionLoading"><span v-html="icon('trash',13)"></span><div class="rec-va-btn-text"> Delete</div></button>
         </div>
 
         <!-- timeline -->
@@ -970,4 +970,26 @@ function exportCSV() {
 .badge-grey { background:#e5e7eb;color:#6b7280; }
 .badge-red { background:#fee2e2;color:#dc2626; }
 .rec-view-drawer { width: 625px; right: -625px; }
+
+/* ── View header layout ── */
+.rec-view-head { position: relative; }
+.rec-vhead-content { flex: 1; min-width: 0; }
+.rec-vhead-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+.rec-vhead-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .rec-timeline { display:none; }
+  .rec-va-btn-text { display: none; }
+}
 </style>

@@ -11,7 +11,7 @@
           {{ t.l }}<span v-if="t.count!=null" class="ew-pill-count">{{ t.count }}</span>
         </button>
       </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div class="ew-btn-group">
         <button class="ew-btn-ghost" @click="exportCSV" :disabled="!sortedRows.length">
           <span v-html="icon('download',14)"></span> CSV
         </button>
@@ -272,19 +272,19 @@
 
         <div class="ew-view-actbar">
           <button class="ew-va-btn" @click="downloadJson(viewDoc)" :disabled="!viewDoc.ewb_no || actionLoading">
-            <span v-html="icon('download',13)"></span> Download JSON
+            <span v-html="icon('download',13)"></span><div class="ew-va-btn-text"> Download JSON</div>
           </button>
           <button class="ew-va-btn" @click="printEwb(viewDoc)" :disabled="actionLoading">
-            <span v-html="icon('mail',13)"></span> Print
+            <span v-html="icon('mail',13)"></span> <div class="ew-va-btn-text">Print</div>
           </button>
           <button class="ew-va-btn" @click="openVehicleEdit(viewDoc)" :disabled="actionLoading || viewDoc.ui_status!=='Generated'">
-            <span v-html="icon('edit',13)"></span> Update Vehicle
+            <span v-html="icon('edit',13)"></span> <div class="ew-va-btn-text">Update Vehicle</div>
           </button>
           <button class="ew-va-btn" @click="openExtend(viewDoc)" :disabled="actionLoading || viewDoc.ui_status!=='Generated'">
-            <span v-html="icon('refresh',13)"></span> Extend
+            <span v-html="icon('refresh',13)"></span> <div class="ew-va-btn-text">Extend</div>
           </button>
           <button class="ew-va-btn ew-va-danger" @click="doCancel(viewDoc)" :disabled="actionLoading || viewDoc.ui_status==='Cancelled'">
-            <span v-html="icon('x',13)"></span> Cancel EWB
+            <span v-html="icon('x',13)"></span> <div class="ew-va-btn-text">Cancel EWB</div>
           </button>
         </div>
 
@@ -991,4 +991,143 @@ function exportCSV() {
 .ew-kv-row:last-child{border-bottom:none;}
 .ew-kv-lbl{font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0;}
 .ew-kv-val{font-size:13px;color:#374151;text-align:right;}
+
+/* Toolbar button group */
+.ew-btn-group{display:flex;gap:8px;margin-left:auto;}
+
+/* ── Mobile card layout ── */
+@media(max-width:475px) {
+  .ew-view-actbar{
+    display: flex;justify-content: space-between;
+  }
+  .ew-va-btn-text{display: none;}
+  .ew-page{padding:12px 10px 20px !important;gap:14px !important;box-sizing:border-box !important;background:#fff !important;}
+  .ew-view-stats{display: flex}
+  /* Toolbar */
+  .ew-actions{flex-wrap:wrap !important;gap:8px !important;margin-bottom: 0 !important;background: #f7f8fa !important;padding: 10px 12px !important;}
+  .ew-search-wrap{flex:1 1 100% !important;min-width:0 !important;width:100% !important;box-sizing:border-box !important;border: 1px solid #e2e8f0;}
+  .ew-pills{flex-wrap:wrap !important;}
+  .ew-btn-group{margin-left:0 !important;flex-wrap:wrap !important;width:100% !important;}
+  .ew-btn-group .ew-btn-primary{flex:1 !important;justify-content:center !important;}
+
+  /* Table → card view */
+  .ew-card{overflow:visible !important;border:none !important;background:transparent !important;box-shadow:none !important;}
+  .ew-table{display:block !important;width:100% !important;min-width:0 !important;}
+  .ew-table thead{display:none !important;}
+  .ew-table tbody{display:flex !important;flex-direction:column !important;gap:14px !important;}
+
+  .ew-table tbody tr.ew-row{
+    position:relative !important;
+    display:grid !important;
+    grid-template-columns:56% 44% !important;
+    grid-template-rows:auto auto 1fr auto !important;
+    min-height:180px !important;
+    background:#fff !important;
+    border:1.5px solid #d1d5db !important;
+    border-radius:16px !important;
+    padding:17px 16px 14px !important;
+    box-shadow:none !important;
+    box-sizing:border-box !important;
+    gap:0 !important;
+    overflow:hidden !important;
+  }
+  .ew-table tbody tr.ew-row::after{
+    content:"" !important;
+    position:absolute !important;
+    top:16px !important;bottom:16px !important;
+    left:56% !important;width:1px !important;
+    background:#d7dbe1 !important;
+    pointer-events:none !important;
+  }
+  .ew-table tbody tr.ew-row td{
+    border:none !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    box-sizing:border-box !important;
+  }
+
+  /* Hide: checkbox(1), EWB#(2), TRANSPORTER(6), VEHICLE(7), VALID UNTIL(8) */
+  .ew-table tbody td:nth-child(1),
+  .ew-table tbody td:nth-child(2),
+  .ew-table tbody td:nth-child(6),
+  .ew-table tbody td:nth-child(7),
+  .ew-table tbody td:nth-child(8){display:none !important;}
+
+  /* Invoice # (col 3) → top-left title */
+  .ew-table tbody td:nth-child(3){
+    grid-column:1 !important;grid-row:1 !important;
+    display:block !important;width:auto !important;
+    padding:0 14px 7px 0 !important;
+    font-size:16px !important;font-weight:700 !important;color:#0b0f17 !important;
+    overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;
+  }
+
+  /* Customer (col 5) → row 2 left */
+  .ew-table tbody td:nth-child(5){
+    grid-column:1 !important;grid-row:2 !important;
+    display:block !important;width:auto !important;
+    padding:0 14px 7px 0 !important;
+    font-size:14px !important;font-weight:600 !important;color:#111827 !important;
+    overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;
+  }
+
+  /* Inv. Date (col 4) → row 3 left */
+  .ew-table tbody td:nth-child(4){
+    grid-column:1 !important;grid-row:3 !important;
+    display:block !important;align-self:start !important;width:auto !important;
+    padding:0 14px 12px 0 !important;
+    font-size:12.5px !important;color:#111827 !important;
+    overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;
+  }
+  .ew-table tbody td:nth-child(4)::before{
+    content:"Date: " !important;display:inline !important;
+    color:#111827 !important;font-size:12.5px !important;font-weight:500 !important;
+    text-transform:none !important;letter-spacing:0 !important;
+  }
+
+  /* Amount (col 9) → top-right large */
+  .ew-table tbody td:nth-child(9){
+    grid-column:2 !important;grid-row:1 !important;
+    display:block !important;width:auto !important;
+    padding:0 0 8px 18px !important;
+    text-align:right !important;
+    font-size:19px !important;font-weight:800 !important;color:#070b12 !important;
+    white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;
+  }
+  .ew-table tbody td:nth-child(9)::before{display:none !important;content:none !important;}
+
+  /* Status (col 10) → row 2 right */
+  .ew-table tbody td:nth-child(10){
+    grid-column:2 !important;grid-row:2 !important;
+    display:flex !important;justify-content:flex-end !important;
+    align-items:center !important;align-self:start !important;
+    width:auto !important;padding:3px 0 0 18px !important;
+  }
+
+  /* Actions (col 11) → row 4 bottom-left */
+  .ew-table tbody td:nth-child(11){
+    grid-column:1 !important;grid-row:4 !important;
+    display:block !important;align-self:end !important;
+    width:auto !important;padding:6px 14px 0 0 !important;
+    border:none !important;overflow:visible !important;white-space:normal !important;
+  }
+  .ew-table tbody .ew-actions-row{display:flex !important;justify-content:flex-start !important;gap:8px !important;}
+  .ew-table tbody .ew-act-btn{
+    border:none !important;background:transparent !important;
+    width:30px !important;height:30px !important;padding:5px !important;
+    color:#30343b !important;
+  }
+  .ew-table tbody .ew-act-btn:hover{color:#374151 !important;background:#f3f4f6 !important;border-radius:6px !important;}
+
+  /* Non-data rows (empty state, shimmer) */
+  .ew-table tbody tr:not(.ew-row){display:block !important;}
+  .ew-table tbody tr:not(.ew-row) td{display:block !important;white-space:normal !important;overflow:visible !important;}
+
+  /* Drawers full-width */
+  .ew-drawer{width:100% !important;right:-100% !important;}
+  .ew-drawer.open{right:0 !important;}
+  .ew-view-drawer{width:100% !important;right:-100% !important;}
+  .ew-view-drawer.open{right:0 !important;}
+}
 </style>

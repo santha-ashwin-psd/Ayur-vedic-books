@@ -157,15 +157,15 @@
         <template v-if="viewDoc">
 
           <!-- Header -->
-          <div class="inv-view-header">
-            <div>
-              <div class="inv-view-number">{{ viewDoc.name }}</div>
+          <div class="inv-view-header dc-view-head">
+            <div class="dc-vhead-content">
+              <div class="dc-vhead-title-row">
+                <div class="inv-view-number">{{ viewDoc.name }}</div>
+                <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+              </div>
               <div class="inv-view-subtitle">Delivery Challan · {{ viewDoc.posting_date }}</div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
-              <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-            </div>
+            <button class="inv-dclose dc-vhead-close" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
           </div>
 
           <!-- Action bar -->
@@ -267,7 +267,7 @@
           </div>
 
           <!-- Footer -->
-          <div class="inv-dfooter">
+          <div class="inv-dfooter delivery-challan-footer">
             <span class="inv-hdr-badge" :class="statusClass(viewDoc)" style="margin-right:auto">{{ statusLabel(viewDoc) }}</span>
             <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
             <button v-if="canEdit(viewDoc)" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
@@ -1200,7 +1200,9 @@ onMounted(async () => {
    Matches reference screenshot exactly.
    ══════════════════════════════════════════════ */
 @media (max-width: 480px) {
-
+  .delivery-challan-footer{
+    display: none !important;
+  }
   /* ── Hide the 5-column desktop header ── */
   .dc-items-head { display: none; }
 
@@ -1388,15 +1390,15 @@ onMounted(async () => {
    Visible only at ≤ 480px
    ═══════════════════════════════════════════════════ */
 
-/* Hide mobile elements on desktop */
+/* Hide mobile elements on desktop — must use !important to beat global CSS */
 .dc-mob-summary,
-.dc-mob-list { display: none; }
+.dc-mob-list { display: none !important; }
 
 @media (max-width: 480px) {
 
   /* ── KPI summary strip ── */
   .dc-mob-summary {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
     gap: 8px;
     padding: 12px 12px 0;
@@ -1427,7 +1429,7 @@ onMounted(async () => {
 
   /* ── Card list wrapper ── */
   .dc-mob-list {
-    display: block;
+    display: block !important;
     padding: 10px 12px 80px;
   }
 
@@ -1565,5 +1567,22 @@ onMounted(async () => {
   .dc-mob-challan-no { font-size: 13px; }
   .dc-mob-customer { font-size: 12.5px; }
   .dc-mob-date { font-size: 11.5px; }
+}
+
+/* ── View drawer header layout ── */
+.dc-view-head { position: relative; }
+.dc-vhead-content { flex: 1; min-width: 0; }
+.dc-vhead-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+.dc-vhead-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  flex-shrink: 0;
 }
 </style>

@@ -9,7 +9,7 @@
       <div class="sales-pills">
         <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">{{ t.label }}</button>
       </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div class="pmt-btn-group">
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
         <button class="sales-btn-primary" @click="openNew"><span ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg></span> {{ defaultTab === 'Receive' ? 'New Received Payment' : 'New Payment Made' }}</button>
       </div>
@@ -1178,4 +1178,149 @@ onMounted(async () => {
   transition: background .15s;
 }
 .pmt-vd-btn-cancel:hover { background: #fee2e2; }
+
+/* Toolbar button group */
+.pmt-btn-group { display:flex; gap:8px; margin-left:auto; }
+
+/* ── Mobile card layout ── */
+@media(max-width:475px) {
+  .list-page { padding:12px 10px 20px !important; gap:14px !important; box-sizing:border-box !important; background:#fff !important; }
+
+  /* Toolbar */
+  .sales-toolbar { flex-wrap:wrap !important; gap:8px !important; }
+  .sales-search { flex:1 1 100% !important; min-width:0 !important; width:100% !important; box-sizing:border-box !important; }
+  .sales-pills { flex-wrap:wrap !important; }
+  .pmt-btn-group { margin-left:0 !important; flex-wrap:wrap !important; width:100% !important; }
+  .pmt-btn-group .sales-btn-primary { flex:1 !important; justify-content:center !important; }
+
+  /* Table → card view */
+  .inv-table-wrap { border:none !important; background:transparent !important; overflow:visible !important; box-shadow:none !important; }
+  .inv-table { display:block !important; width:100% !important; min-width:0 !important; }
+  .inv-table thead { display:none !important; }
+  .inv-table tbody { display:flex !important; flex-direction:column !important; gap:14px !important; }
+
+  .inv-table tbody tr.inv-row {
+    position:relative !important;
+    display:grid !important;
+    grid-template-columns:56% 44% !important;
+    grid-template-rows:auto auto 1fr auto !important;
+    min-height:180px !important;
+    background:#fff !important;
+    border:1.5px solid #d1d5db !important;
+    border-radius:16px !important;
+    padding:17px 16px 14px !important;
+    box-shadow:none !important;
+    box-sizing:border-box !important;
+    gap:0 !important;
+    overflow:hidden !important;
+  }
+  .inv-table tbody tr.inv-row::after {
+    content:"" !important;
+    position:absolute !important;
+    top:16px !important; bottom:16px !important;
+    left:56% !important; width:1px !important;
+    background:#d7dbe1 !important;
+    pointer-events:none !important;
+  }
+  .inv-table tbody tr.inv-row td {
+    border:none !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    box-sizing:border-box !important;
+  }
+
+  /* Hide: checkbox(1), MODE(4), REFERENCE(5) */
+  .inv-table tbody td:nth-child(1),
+  .inv-table tbody td:nth-child(4),
+  .inv-table tbody td:nth-child(5) { display:none !important; }
+
+  /* Payment # (col 2) → top-left title */
+  .inv-table tbody td:nth-child(2) {
+    grid-column:1 !important; grid-row:1 !important;
+    display:block !important; width:auto !important;
+    padding:0 14px 7px 0 !important;
+    font-size:16px !important; font-weight:700 !important; color:#0b0f17 !important;
+    overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+  }
+  .inv-table tbody td:nth-child(2) .inv-link { color:inherit !important; }
+
+  /* Party (col 3) → row 2 left */
+  .inv-table tbody td:nth-child(3) {
+    grid-column:1 !important; grid-row:2 !important;
+    display:block !important; width:auto !important;
+    padding:0 14px 7px 0 !important;
+    font-size:14px !important; font-weight:600 !important; color:#111827 !important;
+    overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+  }
+
+  /* Date (col 6) → row 3 left */
+  .inv-table tbody td:nth-child(6) {
+    grid-column:1 !important; grid-row:3 !important;
+    display:block !important; align-self:start !important; width:auto !important;
+    padding:0 14px 12px 0 !important;
+    font-size:12.5px !important; color:#111827 !important;
+    overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+  }
+  .inv-table tbody td:nth-child(6)::before {
+    content:"Date: " !important; display:inline !important;
+    color:#111827 !important; font-size:12.5px !important; font-weight:500 !important;
+    text-transform:none !important; letter-spacing:0 !important;
+  }
+
+  /* Amount (col 8) → top-right large */
+  .inv-table tbody td:nth-child(8) {
+    grid-column:2 !important; grid-row:1 !important;
+    display:block !important; width:auto !important;
+    padding:0 0 8px 18px !important;
+    text-align:right !important;
+    font-size:19px !important; font-weight:800 !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+  }
+  .inv-table tbody td:nth-child(8)::before { display:none !important; content:none !important; }
+
+  /* Type badge (col 7) → row 2 right */
+  .inv-table tbody td:nth-child(7) {
+    grid-column:2 !important; grid-row:2 !important;
+    display:flex !important; justify-content:flex-end !important;
+    align-items:center !important; align-self:start !important;
+    width:auto !important; padding:3px 0 0 18px !important;
+  }
+  .inv-table tbody td:nth-child(7) .inv-status-badge {
+    margin:0 !important; float:none !important;
+    border-radius:999px !important; font-size:11.5px !important;
+    letter-spacing:0 !important; text-transform:capitalize !important;
+  }
+
+  /* Actions (col 9) → row 4 bottom-left */
+  .inv-table tbody td:nth-child(9) {
+    grid-column:1 !important; grid-row:4 !important;
+    display:block !important; align-self:end !important;
+    width:auto !important; padding:6px 14px 0 0 !important;
+    border:none !important; overflow:visible !important; white-space:normal !important;
+  }
+  .inv-table tbody .pmt-act-cell {
+    justify-content:flex-start !important; gap:8px !important;
+  }
+  .inv-table tbody .inv-act-btn {
+    border:none !important; background:transparent !important;
+    width:30px !important; height:30px !important; padding:5px !important;
+    color:#30343b !important;
+  }
+  .inv-table tbody .inv-act-btn:hover { color:#374151 !important; background:#f3f4f6 !important; border-radius:6px !important; }
+
+  /* Non-data rows (empty, shimmer) */
+  .inv-table tbody tr:not(.inv-row) { display:block !important; }
+  .inv-table tbody tr:not(.inv-row) td { display:block !important; white-space:normal !important; overflow:visible !important; }
+
+  /* Drawers full-width */
+  .pmt-edit-drawer { width:100% !important; right:-100% !important; }
+  .pmt-edit-drawer.open { right:0 !important; }
+  .pmt-view-drawer { width:100% !important; right:-100% !important; }
+  .pmt-view-drawer.open { right:0 !important; }
+
+  /* View drawer internals */
+  .pmt-vd-meta-grid { grid-template-columns:1fr !important; gap:14px !important; }
+  .pmt-radio-group { grid-template-columns:1fr !important; }
+}
 </style>

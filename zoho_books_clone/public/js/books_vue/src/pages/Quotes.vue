@@ -605,7 +605,7 @@
               </span>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;">
             <button v-if="canConvert(viewDoc)" class="inv-view-cta" @click="openConvertModal(viewDoc)">
               <span v-html="icon('repeat',14)"></span> Convert
             </button>
@@ -660,8 +660,8 @@
             <button v-if="canConvert(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="openConvertModal(viewDoc)">
               <span v-html="icon('repeat',13)"></span> <span class="ab-label">Convert</span>
             </button>
-            <button class="inv-ab-btn inv-ab-danger" @click="deleteQT(viewDoc)">
-              <span v-html="icon('trash',13)"></span> <span class="ab-label">Delete</span>
+            <button class="inv-ab-btn quote-delete-btn" @click="deleteQT(viewDoc)">
+              <span v-html="icon('trash',13)"></span> <span class="ab-label quote-delete-lbl">Delete</span>
             </button>
           </div>
 
@@ -2000,8 +2000,19 @@ onMounted(async () => {
 
 /* ── Spin animation for logo upload ── */
 @keyframes inv-spin { to { transform: rotate(360deg); } }
-
+.quote-delete-btn{color: #dc2626 !important;
+    border-color: #dc262638;
+    background: #fff;}
+.quote-delete-lbl{    color: #dc2626;
+    border-color: #dc262638;
+    background: #fff;}
 /* ── dl menu item (for any download dropdown) ── */
 .inv-dl-menu-item { display:flex; align-items:center; gap:8px; width:100%; padding:8px 14px; font-size:13px; font-family:inherit; background:none; border:none; cursor:pointer; color:#111827; white-space:nowrap; text-align:left; }
 .inv-dl-menu-item:hover { background:#f3f4f6; }
+@media (max-width: 480px)   {
+  .quote-delete-lbl{display: none !important;}
+}
+@media (max-width: 320px)   {
+  .quote-delete-lbl{display: none !important;}
+}
 </style>

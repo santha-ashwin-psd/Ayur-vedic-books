@@ -1003,7 +1003,7 @@ input[type=date].b-input { color-scheme: light; }
     overflow-x:hidden!important;
   }
 }
-
+}
 /* ════════════════════════════════════
    375px — tighter padding
    ════════════════════════════════════ */
@@ -1258,7 +1258,6 @@ input[type=date].b-input { color-scheme: light; }
   }
   .inv-table tbody .inv-row td:nth-child(2) .inv-date-icon { display: none !important; }
   .inv-table tbody .inv-row td:nth-child(2)::before {
-    content: "Date: " !important;
     font-size: 12px !important;
     color: #6b7280 !important;
   }

@@ -696,7 +696,7 @@
    Single-column KPI; condensed everything
    ───────────────────────────────────────────── */
 @media (max-width: 479px) {
-  .list-page { padding: 8px; gap: 8px; }
+  .list-page { padding: 8px; gap: 8px;background: #fff !important; }
 
   /* KPI: 1-up on very small phones */
   .bk-kpi-grid  { grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -737,7 +737,7 @@
    Absolute minimum — everything single column
    ───────────────────────────────────────────── */
 @media (max-width: 359px) {
-  .list-page { padding: 6px; gap: 6px; }
+  .list-page { padding: 6px; gap: 6px;background: #fff !important; }
 
   /* KPI: true 1-up */
   .bk-kpi-grid  { grid-template-columns: 1fr; gap: 6px; }

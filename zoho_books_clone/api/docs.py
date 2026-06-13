@@ -1136,6 +1136,7 @@ def get_credit_note_applications(credit_note_name):
                 "amount": abs(flt(s.cr or s.dr)),
                 "date": jea.posting_date,
                 "payment_entry": jea.parent,
+                "ref_doctype": "Journal Entry",
             })
     pe_refs = frappe.get_all(
         "Payment Entry Reference",
@@ -1159,6 +1160,7 @@ def get_credit_note_applications(credit_note_name):
                     "amount": abs(flt(s.allocated_amount)),
                     "date": pe.posting_date,
                     "payment_entry": pe.name,
+                    "ref_doctype": "Payment Entry",
                 })
     return apps
 
@@ -1366,9 +1368,9 @@ def create_credit_note():
         "items":            cn_items,
         "taxes":            cn_taxes,
     })
-    cn.name = "CN-" + frappe.generate_hash(
-        txt=f"{customer}{frappe.utils.now()}", length=8
-    ).upper()
+    from datetime import date as _date
+    _year = _date.today().year
+    cn.name = frappe.model.naming.make_autoname(f"CN-{_year}-.#####")
     cn.flags.ignore_permissions = True
     cn.flags.ignore_links = True
     cn.flags.ignore_mandatory = True
@@ -1437,6 +1439,87 @@ def create_credit_note():
         "stock_entry": se_name,
         "return_type": "inventory" if reason == "Goods Returned" else "adjustment",
     }
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def save_credit_note_draft():
+    """Create or update a Credit Note draft with sequential CN- naming."""
+    fd = frappe.form_dict
+    name        = fd.get("name") or ""
+    customer    = fd.get("customer") or ""
+    against_inv = fd.get("against_invoice") or None
+    date        = fd.get("date") or today()
+    reason      = fd.get("reason") or ""
+    notes       = fd.get("notes") or ""
+    items_raw   = json.loads(fd.get("items") or "[]")
+
+    if not customer:
+        frappe.throw(_("Customer is required"))
+
+    company = _get_company(frappe.session.user)
+    ar_account = frappe.db.get_value(
+        "Account", {"account_type": "Receivable", "company": company, "is_group": 0}, "name"
+    )
+    income_account = frappe.db.get_value(
+        "Account", {"account_type": "Income", "company": company, "is_group": 0}, "name"
+    )
+    customer_display = frappe.db.get_value("Customer", customer, "customer_name") or customer
+
+    cn_items = [
+        {
+            "item_code":      it.get("item_code") or "",
+            "item_name":      it.get("item_name") or it.get("item_code") or "",
+            "description":    it.get("description") or it.get("item_code") or "",
+            "qty":            -abs(flt(it.get("qty", 1))),
+            "rate":           flt(it.get("rate", 0)),
+            "income_account": income_account,
+        }
+        for it in items_raw if (it.get("item_code") or it.get("item_name"))
+    ]
+
+    remarks = (reason + (" — " + notes if notes else ""))
+
+    if name and frappe.db.exists("Sales Invoice", name):
+        cn = frappe.get_doc("Sales Invoice", name)
+        if cn.docstatus != 0:
+            frappe.throw(_("Cannot edit a submitted credit note"))
+        cn.customer = customer
+        cn.customer_name = customer_display
+        cn.return_against = against_inv or None
+        cn.posting_date = date
+        cn.remarks = remarks
+        cn.debit_to = cn.debit_to or ar_account
+        cn.income_account = cn.income_account or income_account
+        cn.items = []
+        for it in cn_items:
+            cn.append("items", it)
+        cn.flags.ignore_permissions = True
+        cn.flags.ignore_mandatory = True
+        cn.save()
+    else:
+        cn = frappe.get_doc({
+            "doctype":        "Sales Invoice",
+            "is_return":      1,
+            "company":        company,
+            "customer":       customer,
+            "customer_name":  customer_display,
+            "return_against": against_inv or None,
+            "posting_date":   date,
+            "remarks":        remarks,
+            "debit_to":       ar_account,
+            "income_account": income_account,
+            "items":          cn_items,
+        })
+        from datetime import date as _date
+        _year = _date.today().year
+        cn.name = frappe.model.naming.make_autoname(f"CN-{_year}-.#####")
+        cn.flags.ignore_permissions = True
+        cn.flags.ignore_links = True
+        cn.flags.ignore_mandatory = True
+        cn.insert()
+
+    frappe.db.commit()
+    return {"ok": True, "name": cn.name}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

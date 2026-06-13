@@ -262,6 +262,7 @@
             <div class="cn-meta-grid">
               <div><div class="cn-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}</div></div>
               <div><div class="cn-meta-lbl">Against Invoice</div><div><DocLink doctype="Sales Invoice" :name="viewDoc.return_against" /></div></div>
+              <div><div class="cn-meta-lbl">Reason</div><div class="mono-sm" style="color:#374151">{{ viewReason || '—' }}</div></div>
               <div><div class="cn-meta-lbl">Total Credit</div><div class="mono-sm" style="color:#7f1d1d;font-weight:600">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div></div>
               <div><div class="cn-meta-lbl">Available Balance</div>
                 <div class="mono-sm" :class="viewBalance>0?'text-danger':'text-success'">{{ fmtCur(viewBalance) }}</div>
@@ -285,21 +286,52 @@
 
           <template v-if="viewTab==='applied'">
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <div v-else-if="viewApplications.length">
-              <div class="cn-app-head"><span>Invoice</span><span>Date</span><span>Journal Entry</span><span class="ta-r">Amount Applied</span></div>
-              <div v-for="a in viewApplications" :key="a.payment_entry+'_'+a.invoice" class="cn-app-row">
-                <DocLink doctype="Sales Invoice" :name="a.invoice" />
-                <span class="mono-sm">{{ fmtDate(a.date) }}</span>
-                <DocLink doctype="Payment Entry" :name="a.payment_entry" />
-                <span class="ta-r mono-sm" style="font-weight:600;color:#059669">{{ fmtCur(a.amount) }}</span>
+            <template v-else>
+              <!-- Balance summary strip -->
+              <div class="cn-applied-summary">
+                <div class="cn-applied-summ-item">
+                  <div class="cn-applied-summ-lbl">Total Credit</div>
+                  <div class="cn-applied-summ-val" style="color:#7f1d1d">{{ fmtCur(Math.abs(viewDoc?.grand_total||0)) }}</div>
+                </div>
+                <div class="cn-applied-summ-sep">—</div>
+                <div class="cn-applied-summ-item">
+                  <div class="cn-applied-summ-lbl">Applied</div>
+                  <div class="cn-applied-summ-val" style="color:#059669">{{ fmtCur(appliedTotal) }}</div>
+                </div>
+                <div class="cn-applied-summ-sep">=</div>
+                <div class="cn-applied-summ-item">
+                  <div class="cn-applied-summ-lbl">Available</div>
+                  <div class="cn-applied-summ-val" :class="viewBalance>0?'text-danger':'text-success'">{{ fmtCur(viewBalance) }}</div>
+                </div>
               </div>
-            </div>
-            <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
-              No applications yet.
-              <div v-if="viewBalance>0 && viewDoc.docstatus===1" style="margin-top:8px">
-                <button class="form-btn form-btn-primary" @click="applyCN(viewDoc)" style="font-size:12px;padding:6px 12px">↳ Apply to Invoice</button>
+
+              <!-- Invoice-wise groups -->
+              <template v-if="groupedApplications.length">
+                <div v-for="grp in groupedApplications" :key="grp.invoice" class="cn-inv-group">
+                  <div class="cn-inv-group-header">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <DocLink doctype="Sales Invoice" :name="grp.invoice" />
+                      <span class="cn-inv-grp-count">{{ grp.entries.length }} allocation{{ grp.entries.length!==1?'s':'' }}</span>
+                    </div>
+                    <span class="cn-inv-grp-total">{{ fmtCur(grp.total) }}</span>
+                  </div>
+                  <div class="cn-inv-entry-row cn-inv-entry-head">
+                    <span>Date</span><span>Reference</span><span class="ta-r">Amount Applied</span>
+                  </div>
+                  <div v-for="a in grp.entries" :key="a.payment_entry" class="cn-inv-entry-row">
+                    <span class="mono-sm text-muted">{{ fmtDate(a.date) }}</span>
+                    <DocLink :doctype="a.ref_doctype||'Journal Entry'" :name="a.payment_entry" />
+                    <span class="ta-r mono-sm" style="font-weight:600;color:#059669">{{ fmtCur(a.amount) }}</span>
+                  </div>
+                </div>
+              </template>
+              <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
+                No applications yet.
+                <div v-if="viewBalance>0 && viewDoc.docstatus===1" style="margin-top:8px">
+                  <button class="form-btn form-btn-primary" @click="applyCN(viewDoc)" style="font-size:12px;padding:6px 12px">↳ Apply to Invoice</button>
+                </div>
               </div>
-            </div>
+            </template>
           </template>
         </div>
 
@@ -315,7 +347,7 @@
             🖨 Print
           </button>
           <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-primary" @click="applyCN(viewDoc)">↳ Apply to Invoice</button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-outline" @click="refundCN(viewDoc)">↩ Refund</button>
+          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-outline" @click="refundCN(viewDoc)">↩ Refund Credit</button>
           <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="cancelCN(viewDoc)">Cancel</button>
           <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="form-btn form-btn-danger" @click="deleteCN(viewDoc)">Delete</button>
         </div>
@@ -440,7 +472,7 @@ const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const cnCollapsed = reactive({ customer: false, items: false, notes: true });
-const viewLoading = ref(false), viewItems = ref([]), viewApplications = ref([]), viewBalance = ref(0);
+const viewLoading = ref(false), viewItems = ref([]), viewApplications = ref([]), viewBalance = ref(0), viewReason = ref("");
 const customers = ref([]), items = ref([]), invoices = ref([]), lines = ref([]);
 const sortCol = ref("posting_date"), sortDir = ref("desc");
 const _balances = ref({});
@@ -540,6 +572,17 @@ function toggleAll(e) { selected.value = e.target.checked ? new Set(sorted.value
 
 const subtotal = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
 
+const appliedTotal = computed(() => viewApplications.value.reduce((s, a) => s + flt(a.amount), 0));
+const groupedApplications = computed(() => {
+  const groups = {};
+  for (const a of viewApplications.value) {
+    if (!groups[a.invoice]) groups[a.invoice] = { invoice: a.invoice, total: 0, entries: [] };
+    groups[a.invoice].total += flt(a.amount);
+    groups[a.invoice].entries.push(a);
+  }
+  return Object.values(groups);
+});
+
 const timelineSteps = computed(() => {
   const c = viewDoc.value;
   if (!c) return [];
@@ -595,9 +638,15 @@ async function openView(c) {
   viewItems.value = [];
   viewApplications.value = [];
   viewBalance.value = 0;
+  viewReason.value = "";
   try {
     const doc = await apiGet("Sales Invoice", c.name);
     viewItems.value = doc?.items || [];
+    viewDoc.value = { ...c, ...doc };
+    // Extract reason from remarks: stored as "reason — notes"
+    if (doc?.remarks) {
+      viewReason.value = doc.remarks.split(" — ")[0].trim();
+    }
     if (c.docstatus === 1) {
       const [bal, apps] = await Promise.all([
         apiGET("zoho_books_clone.api.docs.get_credit_note_balance", { credit_note_name: c.name }).catch(() => null),
@@ -662,13 +711,12 @@ async function saveCN(submit) {
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
   drawerSaving.value = true;
   try {
-    const company = await resolveCompany();
+    const itemsPayload = lines.value
+      .filter(l => l.item_code)
+      .map(l => ({ item_code: l.item_code, item_name: l.item_code, description: l.description, qty: flt(l.qty), rate: flt(l.rate) }));
 
     if (!editingName.value && submit === 1) {
-      // New + submit → use the backend API which wires GL accounts and naming
-      const itemsPayload = lines.value
-        .filter(l => l.item_code)
-        .map(l => ({ item_code: l.item_code, item_name: l.item_code, description: l.description, qty: flt(l.qty), rate: flt(l.rate) }));
+      // New + submit → backend API which wires GL accounts and CN- naming
       const r = await apiPOST("zoho_books_clone.api.docs.create_credit_note", {
         customer: form.customer,
         against_invoice: form.return_against || "",
@@ -680,28 +728,18 @@ async function saveCN(submit) {
       });
       toast.success(`Credit Note ${r?.credit_note || ""} submitted`);
     } else {
-      // Draft (new or edit) or edit+submit → apiSave keeps docstatus=0
-      const doc = {
-        doctype: "Sales Invoice",
-        company,
+      // Draft (new or edit) or edit+submit → save_credit_note_draft preserves CN- naming
+      const r = await apiPOST("zoho_books_clone.api.docs.save_credit_note_draft", {
+        name: editingName.value || "",
         customer: form.customer,
-        posting_date: form.posting_date,
-        is_return: 1,
-        return_against: form.return_against || null,
-        remarks: (form.reason || "") + (form.notes ? " — " + form.notes : ""),
-        items: lines.value.filter(l => l.item_code).map(l => ({
-          doctype: "Sales Invoice Item",
-          item_code: l.item_code,
-          description: l.description || l.item_code,
-          qty: -Math.abs(flt(l.qty)),
-          rate: flt(l.rate),
-          amount: -Math.abs(flt(l.amount)),
-        })),
-      };
-      if (editingName.value) doc.name = editingName.value;
-      const saved = await apiSave(doc);
-      if (submit) await apiSubmit("Sales Invoice", saved.name);
-      toast.success(`Credit Note ${saved?.name || ""} ${submit ? "submitted" : "saved as draft"}`);
+        against_invoice: form.return_against || "",
+        date: form.posting_date,
+        reason: form.reason,
+        notes: form.notes || "",
+        items: JSON.stringify(itemsPayload),
+      });
+      if (submit) await apiSubmit("Sales Invoice", r?.name || editingName.value);
+      toast.success(`Credit Note ${r?.name || ""} ${submit ? "submitted" : "saved as draft"}`);
     }
     drawerOpen.value = false;
     await load();
@@ -992,4 +1030,39 @@ onMounted(async () => {
 
 /* ── Timeline stepper wrapper ── */
 .cn-stepper-wrap { background: #fff; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
+
+/* ── Applied-to balance summary strip ── */
+.cn-applied-summary {
+  display: flex; align-items: center; gap: 12px;
+  background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px;
+  padding: 12px 16px; margin-bottom: 16px;
+}
+.cn-applied-summ-item { display: flex; flex-direction: column; gap: 2px; flex: 1; text-align: center; }
+.cn-applied-summ-lbl { font-size: 10.5px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; }
+.cn-applied-summ-val { font-size: 15px; font-weight: 700; color: #111827; }
+.cn-applied-summ-sep { font-size: 16px; color: #d1d5db; font-weight: 400; flex-shrink: 0; }
+
+/* ── Invoice-wise allocation groups ── */
+.cn-inv-group {
+  border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 12px;
+}
+.cn-inv-group-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: #f9fafb; padding: 10px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.cn-inv-grp-count {
+  font-size: 11px; font-weight: 600; color: #6b7280;
+  background: #e5e7eb; border-radius: 10px; padding: 1px 7px;
+}
+.cn-inv-grp-total { font-size: 13px; font-weight: 700; color: #059669; }
+.cn-inv-entry-row {
+  display: grid; grid-template-columns: 1fr 1.5fr 1fr;
+  gap: 8px; padding: 7px 14px; border-top: 1px solid #f3f4f6;
+  align-items: center; font-size: 12.5px;
+}
+.cn-inv-entry-head {
+  background: #fff; border-top: none; border-bottom: 1px solid #f3f4f6;
+  font-size: 10.5px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em;
+}
 </style>

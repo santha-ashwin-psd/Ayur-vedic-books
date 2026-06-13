@@ -42,27 +42,30 @@
           <tr>
             <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th>
             <th @click="sort('name')" class="sortable">Subscription # <span v-html="sortArrow('name')"></span></th>
+            <th @click="sort('party')" class="sortable">Vendor <span v-html="sortArrow('party')"></span></th>
             <th @click="sort('reference_document')" class="sortable">Reference Bill <span v-html="sortArrow('reference_document')"></span></th>
             <th @click="sort('frequency')" class="sortable">Frequency <span v-html="sortArrow('frequency')"></span></th>
-            <th @click="sort('start_date')" class="sortable">Start Date <span v-html="sortArrow('start_date')"></span></th>
-            <th @click="sort('next_schedule_date')" class="sortable">Next Run <span v-html="sortArrow('next_schedule_date')"></span></th>
+            <th @click="sort('next_schedule_date')" class="sortable">Next Billing Date <span v-html="sortArrow('next_schedule_date')"></span></th>
             <th>Status</th>
             <th style="width:120px;text-align:right">Actions</th>
           </tr>
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="8"><div class="rec-shimmer"></div></td></tr>
+            <tr v-for="n in 6" :key="n"><td colspan="9"><div class="rec-shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="r in paged" :key="r.name" class="rec-row" :class="{selected:selected.includes(r.name)}" @click="openView(r)">
               <td @click.stop><input type="checkbox" :checked="selected.includes(r.name)" @change="toggleOne(r.name)" /></td>
               <td><span class="rec-num">{{ r.name }}</span></td>
+              <td>
+                <span v-if="r.party" style="font-size:13px;color:#111827;font-weight:500">{{ r.party }}</span>
+                <span v-else class="text-muted">—</span>
+              </td>
               <td><span class="rec-ref">{{ r.reference_document||'—' }}</span></td>
               <td>{{ r.frequency||'—' }}</td>
-              <td class="text-muted mono-sm">{{ fmtDate(r.start_date) }}</td>
               <td class="mono-sm" :class="isDue(r)?'text-accent':''">{{ fmtDate(r.next_schedule_date)||'—' }}</td>
-              <td><span class="rec-badge" :class="statusClass(r.status)">{{ r.status||'Active' }}</span></td>
+              <td><span class="rec-badge" :class="statusClass(r.ui_status||r.status)">{{ r.ui_status||r.status||'Active' }}</span></td>
               <td @click.stop style="text-align:right">
                 <button class="rec-act-btn" @click="openView(r)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="(r.ui_status||r.status||'Active')==='Active'" class="rec-act-btn" @click="quickAction(r,'pause')" title="Pause"><span v-html="icon('pause',13)"></span></button>
@@ -71,7 +74,7 @@
               </td>
             </tr>
             <tr v-if="!sorted.length">
-              <td colspan="8" class="rec-empty">
+              <td colspan="9" class="rec-empty">
                 <div class="rec-empty-wrap">
                   <div class="rec-empty-icon" v-html="icon('repeat',32)"></div>
                   <div class="rec-empty-title">No recurring bills found</div>
@@ -109,6 +112,33 @@
       </div>
 
       <div class="rec-dbody">
+
+        <!-- Subscription Info Card (edit mode) -->
+        <div v-if="editMode" class="rb-info-card">
+          <div class="rb-info-row">
+            <div class="rb-info-item">
+              <div class="rb-info-lbl">Subscription Name</div>
+              <div class="rb-info-val rb-info-name">{{ form._name }}</div>
+            </div>
+            <div class="rb-info-item">
+              <div class="rb-info-lbl">Status</div>
+              <span class="rec-badge" :class="statusClass(form._status)">{{ form._status || 'Active' }}</span>
+            </div>
+          </div>
+          <div class="rb-info-row">
+            <div class="rb-info-item">
+              <div class="rb-info-lbl">Vendor</div>
+              <div class="rb-info-val">{{ form.vendor_name || form.vendor || '—' }}</div>
+            </div>
+            <div class="rb-info-item">
+              <div class="rb-info-lbl">Next Billing Date</div>
+              <div class="rb-info-val" :class="form.next_billing_date && form.next_billing_date <= new Date().toISOString().slice(0,10) ? 'text-accent' : ''">
+                {{ fmtDate(form.next_billing_date) || '—' }}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Section: Reference -->
         <div class="rec-section">
           <div class="rec-section-hdr">
@@ -118,9 +148,17 @@
           <div class="rec-fields-grid">
             <div class="rec-field" style="grid-column:1/-1">
               <label class="rec-label">Reference Bill <span class="req">*</span></label>
-              <SearchableSelect v-model="form.reference_document" :options="refDocs" placeholder="Search a saved bill…" @search="fetchRefDocs" />
+              <SearchableSelect v-model="form.reference_document" :options="refDocs" placeholder="Search a saved bill…" @search="fetchRefDocs" :disabled="editMode" />
               <div class="rec-field-help" v-if="!form.reference_document">
                 Pick an existing bill to use as the template for this recurring schedule.
+              </div>
+            </div>
+            <!-- Vendor (read-only, auto-filled from selected bill) -->
+            <div v-if="form.vendor_name || form.vendor" class="rec-field" style="grid-column:1/-1">
+              <label class="rec-label">Vendor</label>
+              <div class="rb-readonly-field">
+                <span v-html="icon('user',13)" style="color:#6b7280;flex-shrink:0"></span>
+                <span>{{ form.vendor_name || form.vendor }}</span>
               </div>
             </div>
           </div>
@@ -225,25 +263,28 @@
           <div class="rec-view-head-row">
             <div>
               <div class="rec-view-num">{{ viewDoc.name }}</div>
-              <div class="rec-view-sub">Reference Bill · {{ viewDoc.frequency }}</div>
+              <div class="rec-view-sub">
+                {{ viewDoc.party || viewDoc.vendor_name || 'Recurring Bill' }}
+                <span v-if="viewDoc.frequency"> · {{ viewDoc.frequency }}</span>
+              </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span class="rec-badge rec-badge-lg" :class="statusClass(viewDoc.status)">{{ viewDoc.status||'Active' }}</span>
+              <span class="rec-badge rec-badge-lg" :class="statusClass(viewDoc.ui_status||viewDoc.status)">{{ viewDoc.ui_status||viewDoc.status||'Active' }}</span>
               <button class="rec-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
             </div>
           </div>
           <div class="rec-view-stats">
             <div>
-              <div class="vh-lbl">Start Date</div>
-              <div class="vh-val">{{ fmtDate(viewDoc.start_date)||'—' }}</div>
+              <div class="vh-lbl">Vendor</div>
+              <div class="vh-val">{{ viewDoc.party || viewDoc.vendor_name || '—' }}</div>
             </div>
             <div>
-              <div class="vh-lbl">Next Run</div>
+              <div class="vh-lbl">Next Billing Date</div>
               <div class="vh-val" :class="isDue(viewDoc)?'text-accent':''">{{ fmtDate(viewDoc.next_schedule_date)||'—' }}</div>
             </div>
             <div>
-              <div class="vh-lbl">End Date</div>
-              <div class="vh-val">{{ fmtDate(viewDoc.end_date)||'No end' }}</div>
+              <div class="vh-lbl">Status</div>
+              <div class="vh-val"><span class="rec-badge" :class="statusClass(viewDoc.ui_status||viewDoc.status)">{{ viewDoc.ui_status||viewDoc.status||'Active' }}</span></div>
             </div>
           </div>
         </div>
@@ -294,11 +335,14 @@
             <div class="rec-section">
               <div class="rec-section-hdr"><span v-html="icon('folder',13)"></span><span>Details</span></div>
               <div class="rec-meta-grid">
+                <div><div class="rec-meta-lbl">Subscription Name</div><div class="mono-sm" style="font-weight:600">{{ viewDoc.name }}</div></div>
+                <div><div class="rec-meta-lbl">Status</div><span class="rec-badge" :class="statusClass(viewDoc.ui_status||viewDoc.status)">{{ viewDoc.ui_status||viewDoc.status||'Active' }}</span></div>
+                <div><div class="rec-meta-lbl">Vendor</div><div style="font-weight:500;color:#111827">{{ viewDoc.party || viewDoc.vendor_name || '—' }}</div></div>
+                <div><div class="rec-meta-lbl">Next Billing Date</div><div class="mono-sm" :class="isDue(viewDoc)?'text-accent':''">{{ fmtDate(viewDoc.next_schedule_date)||'—' }}</div></div>
                 <div><div class="rec-meta-lbl">Reference Bill</div><div class="mono-sm">{{ viewDoc.reference_document||'—' }}</div></div>
                 <div><div class="rec-meta-lbl">Frequency</div><div>{{ viewDoc.frequency }}</div></div>
                 <div><div class="rec-meta-lbl">Start Date</div><div class="mono-sm">{{ fmtDate(viewDoc.start_date) }}</div></div>
                 <div><div class="rec-meta-lbl">End Date</div><div class="mono-sm">{{ fmtDate(viewDoc.end_date)||'No end' }}</div></div>
-                <div><div class="rec-meta-lbl">Next Run</div><div class="mono-sm" :class="isDue(viewDoc)?'text-accent':''">{{ fmtDate(viewDoc.next_schedule_date)||'—' }}</div></div>
                 <div><div class="rec-meta-lbl">Submit on Creation</div><div>{{ viewDoc.submit_on_creation?'Yes':'No (Draft)' }}</div></div>
               </div>
             </div>
@@ -357,7 +401,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { apiList, apiSave, apiLinkValues, apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
@@ -388,6 +432,10 @@ const refDocs = ref([]);
 const sortCol = ref("next_schedule_date"), sortDir = ref("asc");
 const form = reactive({
   _name: "",
+  vendor: "",
+  vendor_name: "",
+  next_billing_date: "",
+  _status: "",
   reference_document: "",
   frequency: "Monthly",
   start_date: new Date().toISOString().slice(0, 10),
@@ -402,11 +450,10 @@ const form = reactive({
 async function load() {
   loading.value = true;
   try {
-    list.value = await apiList("Auto Repeat", {
-      fields: ["name","reference_doctype","reference_document","frequency","start_date","end_date","next_schedule_date","status"],
-      filters: [["reference_doctype","=","Purchase Invoice"]],
-      limit: 500, order: "next_schedule_date asc",
-    }) || [];
+    const rows = await apiGET("zoho_books_clone.api.recurring.get_subscriptions", {
+      reference_doctype: "Purchase Invoice", limit: 200,
+    });
+    list.value = Array.isArray(rows) ? rows : (rows?.message ?? []);
   } catch (e) {
     console.warn("Auto Repeat load failed:", e.message);
     list.value = [];
@@ -457,16 +504,11 @@ function toggleOne(n) { selected.value = selected.value.includes(n) ? selected.v
 function openNew() {
   editMode.value = false;
   Object.assign(form, {
-    _name: "",
-    reference_document: "",
-    frequency: "Monthly",
+    _name: "", vendor: "", vendor_name: "", next_billing_date: "", _status: "",
+    reference_document: "", frequency: "Monthly",
     start_date: new Date().toISOString().slice(0, 10),
-    end_date: "",
-    submit_on_creation: 1,
-    _notify: false,
-    recipients: "",
-    subject: "",
-    message: "",
+    end_date: "", submit_on_creation: 1, _notify: false,
+    recipients: "", subject: "", message: "",
   });
   refDocs.value = [];
   drawerOpen.value = true;
@@ -496,6 +538,10 @@ async function openEdit(doc) {
   // Populate from what we have immediately so drawer opens fast
   Object.assign(form, {
     _name: doc.name,
+    vendor: doc.vendor || doc.party || "",
+    vendor_name: doc.vendor_name || doc.party || "",
+    next_billing_date: doc.next_schedule_date || "",
+    _status: doc.ui_status || doc.status || "Active",
     reference_document: doc.reference_document || "",
     frequency: doc.frequency || "Monthly",
     start_date: doc.start_date || "",
@@ -513,6 +559,10 @@ async function openEdit(doc) {
     const detail = await apiGET("zoho_books_clone.api.recurring.get_subscription", { name: doc.name });
     const d = (detail && typeof detail === "object") ? detail : {};
     Object.assign(form, {
+      vendor: d.vendor || d.party || form.vendor,
+      vendor_name: d.vendor_name || d.party || form.vendor_name,
+      next_billing_date: d.next_schedule_date || form.next_billing_date,
+      _status: d.ui_status || d.status || form._status,
       frequency: d.frequency || form.frequency,
       end_date: d.end_date || "",
       submit_on_creation: d.submit_on_creation ? 1 : 0,
@@ -577,6 +627,20 @@ async function fetchRefDocs(q = "") {
     refDocs.value = r.map(x => ({ label: x.name, value: x.name }));
   } catch { refDocs.value = []; }
 }
+
+watch(() => form.reference_document, async (v) => {
+  if (!v) { form.vendor = ""; form.vendor_name = ""; return; }
+  try {
+    const r = await apiGET("frappe.client.get_value", {
+      doctype: "Purchase Invoice",
+      filters: JSON.stringify({ name: v }),
+      fieldname: JSON.stringify(["supplier", "supplier_name"]),
+    });
+    const row = r?.message || {};
+    form.vendor = row.supplier || "";
+    form.vendor_name = row.supplier_name || row.supplier || "";
+  } catch { form.vendor = ""; form.vendor_name = ""; }
+});
 
 function validateRecipients() {
   if (!form._notify || !form.recipients.trim()) { recipientError.value = ""; return true; }
@@ -775,4 +839,14 @@ textarea.rec-input{resize:vertical;min-height:72px;}
 .vh-val{font-size:15px;font-weight:700;color:#0f172a;margin-top:2px;}
 .rec-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .rec-meta-lbl{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}
+
+/* ── Subscription info card (edit form) ── */
+.rb-info-card{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 16px;margin-bottom:4px;display:flex;flex-direction:column;gap:10px;}
+.rb-info-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.rb-info-item{display:flex;flex-direction:column;gap:3px;}
+.rb-info-lbl{font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.04em;}
+.rb-info-val{font-size:13px;color:#0f172a;font-weight:500;}
+.rb-info-name{font-weight:700;color:#1d4ed8;font-size:14px;}
+/* ── Vendor readonly field ── */
+.rb-readonly-field{display:flex;align-items:center;gap:8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:13px;color:#374151;font-weight:500;}
 </style>

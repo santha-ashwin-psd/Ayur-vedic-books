@@ -56,6 +56,7 @@
           <tr>
             <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th>
             <th @click="sort('name')" class="sortable">SUBSCRIPTION # <span v-html="sortArrow('name')"></span></th>
+            <th @click="sort('subscription_name')" class="sortable">NAME <span v-html="sortArrow('subscription_name')"></span></th>
             <th @click="sort('party')" class="sortable">CUSTOMER <span v-html="sortArrow('party')"></span></th>
             <th @click="sort('reference_doctype')" class="sortable">TYPE <span v-html="sortArrow('reference_doctype')"></span></th>
             <th @click="sort('reference_document')" class="sortable">REFERENCE <span v-html="sortArrow('reference_document')"></span></th>
@@ -76,6 +77,10 @@
               </td>
               <td><span class="inv-link">{{ r.name }}</span></td>
               <td>
+                <span v-if="r.subscription_name" style="font-size:13px;color:#111827;font-weight:500">{{ r.subscription_name }}</span>
+                <span v-else class="text-muted">—</span>
+              </td>
+              <td>
                 <span v-if="r.party" class="rec-party-cell">{{ r.party }}</span>
                 <span v-else class="text-muted">—</span>
               </td>
@@ -94,7 +99,7 @@
                 <button class="inv-act-btn rec-act-danger" @click="quickAction(r,'delete')" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="9" class="rec-empty">
+            <tr v-if="!sorted.length"><td colspan="10" class="rec-empty">
               <div class="rec-empty-wrap">
                 <div class="rec-empty-icon" v-html="icon('repeat',32)"></div>
                 <div class="rec-empty-title">No subscriptions yet</div>
@@ -132,8 +137,34 @@
           <div class="inv-content-row">
           <div class="inv-dbody">
 
-            <!-- Intro/context card when a reference is selected -->
-            <div v-if="form.reference_document && referenceMeta.party" class="rec-ctx-card">
+            <!-- Subscription Info Card (edit mode) -->
+            <div v-if="editMode" class="rb-info-card">
+              <div class="rb-info-row">
+                <div class="rb-info-item">
+                  <div class="rb-info-lbl">Subscription Name</div>
+                  <div class="rb-info-val rb-info-name">{{ form._name }}</div>
+                </div>
+                <div class="rb-info-item">
+                  <div class="rb-info-lbl">Status</div>
+                  <span class="inv-status-badge" :class="recStatusClass(form._editStatus)">{{ form._editStatus || 'Active' }}</span>
+                </div>
+              </div>
+              <div class="rb-info-row">
+                <div class="rb-info-item">
+                  <div class="rb-info-lbl">Customer</div>
+                  <div class="rb-info-val">{{ form.customer_name || form.customer || '—' }}</div>
+                </div>
+                <div class="rb-info-item">
+                  <div class="rb-info-lbl">Next Billing Date</div>
+                  <div class="rb-info-val" :class="form._nextBillingDate && form._nextBillingDate <= new Date().toISOString().slice(0,10) ? 'text-accent' : ''">
+                    {{ fmtDate(form._nextBillingDate) || '—' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Intro/context card when a reference is selected (create mode) -->
+            <div v-if="!editMode && form.reference_document && referenceMeta.party" class="rec-ctx-card">
               <div class="rec-ctx-ico"><span v-html="icon('folder',16)"></span></div>
               <div style="flex:1;min-width:0">
                 <div class="rec-ctx-doctype">{{ form.reference_doctype }}</div>
@@ -159,6 +190,11 @@
               <div class="add-card-body" :class="{collapsed:collapsed.reference}">
                 <div class="inv-fg inv-fg2">
                   <div style="grid-column:1/-1">
+                    <label class="inv-lbl">Subscription Name</label>
+                    <input v-model="form.subscription_name" type="text" class="inv-fi" placeholder="e.g. Monthly SaaS — Acme Corp" maxlength="140" />
+                    <div class="rec-field-help">A friendly label to identify this subscription in the list.</div>
+                  </div>
+                  <div style="grid-column:1/-1">
                     <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
                     <SearchableSelect
                       v-model="form.customer"
@@ -173,7 +209,6 @@
                     <label class="inv-lbl">Document Type <span class="inv-req">*</span></label>
                     <select v-model="form.reference_doctype" class="inv-fi" :disabled="editMode" @change="onTypeChange">
                       <option value="Sales Invoice">Sales Invoice</option>
-                      <option value="Quotation">Quotation</option>
                     </select>
                   </div>
                   <div style="grid-column:1/-1">
@@ -367,6 +402,7 @@
           <!-- Details tab -->
           <div v-if="viewTab==='details'">
             <div class="rec-meta-grid">
+              <div><div class="rec-meta-lbl">Subscription Name</div><div class="rec-meta-value">{{ viewDoc.subscription_name || '—' }}</div></div>
               <div><div class="rec-meta-lbl">Reference</div><div><DocLink :doctype="viewDoc.reference_doctype" :name="viewDoc.reference_document" /></div></div>
               <div><div class="rec-meta-lbl">{{ viewDoc.party_label||'Party' }}</div><div class="rec-meta-value">{{ viewDoc.party||'—' }}</div></div>
               <div><div class="rec-meta-lbl">Frequency</div><div class="rec-meta-value">{{ freqLabel(viewDoc.frequency) }}</div></div>
@@ -468,6 +504,10 @@ const referenceMeta = reactive({ party_label: "", party: "", amount: 0 });
 const form = reactive({
   _name: "",
   customer: "",
+  customer_name: "",
+  _editStatus: "",
+  _nextBillingDate: "",
+  subscription_name: "",
   reference_doctype: "Sales Invoice",
   reference_document: "",
   frequency: "Monthly",
@@ -545,6 +585,11 @@ function statusClass(s) {
   if (s === "Paused") return "badge-orange";
   return "badge-green";
 }
+function recStatusClass(s) {
+  if (s === "Cancelled" || s === "Completed") return "badge-grey";
+  if (s === "Paused") return "badge-orange";
+  return "badge-green";
+}
 function isDue(r) {
   const t = new Date().toISOString().slice(0, 10);
   return r.next_schedule_date && r.next_schedule_date <= t && r.ui_status === "Active";
@@ -578,9 +623,7 @@ async function load() {
     const allRows = Array.isArray(rows) ? rows : (rows?.message ?? []);
 
     const filteredRows = allRows.filter(
-      (r) =>
-        r.reference_doctype === "Sales Invoice" ||
-        r.reference_doctype === "Quotation"
+      (r) => r.reference_doctype === "Sales Invoice"
     );
 
     list.value = filteredRows;
@@ -719,18 +762,12 @@ async function bulkDo(action) {
 function openNew() {
   editMode.value = false;
   Object.assign(form, {
-    _name: "",
-    customer: "",
-    reference_doctype: "Sales Invoice",
-    reference_document: "",
-    frequency: "Monthly",
-    start_date: new Date().toISOString().slice(0, 10),
-    end_date: "",
-    submit_on_creation: 1,
-    _notify: false,
-    recipients: "",
-    subject: "",
-    message: "",
+    _name: "", customer: "", customer_name: "", _editStatus: "", _nextBillingDate: "",
+    subscription_name: "",
+    reference_doctype: "Sales Invoice", reference_document: "",
+    frequency: "Monthly", start_date: new Date().toISOString().slice(0, 10),
+    end_date: "", submit_on_creation: 1, _notify: false,
+    recipients: "", subject: "", message: "",
   });
   Object.assign(referenceMeta, { party_label: "", party: "", amount: 0 });
   drawerOpen.value = true;
@@ -745,6 +782,10 @@ function openEdit(doc) {
   Object.assign(form, {
     _name: doc.name,
     customer: doc.customer || doc.party || "",
+    customer_name: doc.customer_name || doc.party || "",
+    _editStatus: doc.ui_status || doc.status || "Active",
+    _nextBillingDate: doc.next_schedule_date || "",
+    subscription_name: doc.subscription_name || "",
     reference_doctype: doc.reference_doctype,
     reference_document: doc.reference_document,
     frequency: doc.frequency,
@@ -792,8 +833,7 @@ async function fetchRefDocs(q = "") {
   const doctype = form.reference_doctype || "Sales Invoice";
   try {
     // Sales Invoices: only submitted (docstatus=1) — must be posted to ledger.
-    // Quotations: all statuses (draft, submitted, etc.) are valid templates.
-    const filters = doctype === "Sales Invoice" ? [["docstatus", "=", 1]] : [];
+    const filters = [["docstatus", "=", 1]];
     if (form.customer) filters.push(["customer", "=", form.customer]);
     if (q) filters.push(["name", "like", `%${q}%`]);
 
@@ -820,7 +860,6 @@ watch(() => form.reference_document, async (v) => {
   try {
     const fieldsByType = {
       "Sales Invoice": ["customer_name", "grand_total"],
-      "Quotation": ["customer_name", "grand_total"],
     };
     const fields = fieldsByType[form.reference_doctype];
     if (!fields) return;
@@ -851,6 +890,7 @@ async function saveRec() {
     if (editMode.value) {
       await apiPOST("zoho_books_clone.api.recurring.update_subscription", {
         name: form._name,
+        subscription_name: form.subscription_name,
         frequency: form.frequency,
         end_date: form.end_date || null,
         notify_by_email: form._notify ? 1 : 0,
@@ -864,6 +904,7 @@ async function saveRec() {
       const saved = await apiPOST("zoho_books_clone.api.recurring.make_recurring_from_doc", {
         reference_doctype:  form.reference_doctype,
         reference_document: form.reference_document,
+        subscription_name:  form.subscription_name,
         frequency:          form.frequency,
         start_date:         form.start_date,
         end_date:           form.end_date || "",
@@ -990,6 +1031,13 @@ function exportCSV() {
 /* ── Misc ── */
 .rec-party-cell { font-size:13px;color:#111827;font-weight:500; }
 .rec-due-dot { display:inline-block;width:6px;height:6px;background:#2563eb;border-radius:50%;margin-left:6px;vertical-align:middle; }
+/* ── Subscription info card (edit form) ── */
+.rb-info-card{background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 16px;margin-bottom:4px;display:flex;flex-direction:column;gap:10px;}
+.rb-info-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.rb-info-item{display:flex;flex-direction:column;gap:3px;}
+.rb-info-lbl{font-size:11px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.04em;}
+.rb-info-val{font-size:13px;color:#0f172a;font-weight:500;}
+.rb-info-name{font-weight:700;color:#1d4ed8;font-size:14px;}
 .rec-act-danger:hover { color:#dc2626;background:#fef2f2; }
 .rec-empty { text-align:center;padding:0!important;cursor:default!important; }
 .rec-empty-wrap { padding:48px 20px;display:flex;flex-direction:column;align-items:center;gap:6px;color:#6b7280; }

@@ -631,7 +631,7 @@
                 <button class="add-more-menu-item" @click="saveInvoice(1);moreActionsOpen=false">
                   <span v-html="icon('check',13)"></span> Submit Invoice
                 </button>
-                <button class="add-more-menu-item" @click="saveInvoice(0);moreActionsOpen=false">
+                <button class="add-more-menu-item" @click="saveInvoice(0, true);moreActionsOpen=false">
                   Save &amp; New
                 </button>
                 <button class="add-more-menu-item" @click="printInvoice(previewData);moreActionsOpen=false">
@@ -1957,7 +1957,7 @@ async function openView(inv) {
 }
 
 // ── Save invoice ───────────────────────────────────────────────────────
-async function saveInvoice(docstatus) {
+async function saveInvoice(docstatus, andNew = false) {
   if (!form.customer) { toast("Customer is required","error"); return; }
   if (!form.posting_date) { toast("Invoice date is required","error"); return; }
   if (lines.value.some(l => (l.description||'').length > 500)) { toast("Item description cannot exceed 500 characters","error"); return; }
@@ -2035,8 +2035,13 @@ async function saveInvoice(docstatus) {
 
     if (docstatus===1) await apiSubmit("Sales Invoice",saved.name);
     await load();
-    toast(docstatus===1?"Invoice submitted":"Invoice saved as draft");
-    drawerOpen.value=false;
+    if (andNew) {
+      toast("Invoice saved as draft — opening new invoice");
+      openAdd();
+    } else {
+      toast(docstatus===1?"Invoice submitted":"Invoice saved as draft");
+      drawerOpen.value=false;
+    }
   } catch(e) { toast("Save failed: "+e.message,"error"); }
   drawerSaving.value=false;
 }

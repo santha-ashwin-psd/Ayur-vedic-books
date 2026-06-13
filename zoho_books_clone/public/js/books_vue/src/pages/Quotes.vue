@@ -587,7 +587,7 @@
                 <button class="add-more-menu-item" @click="saveQT('Sent');moreActionsOpen=false">
                   <span v-html="icon('check',13)"></span> Submit Quote
                 </button>
-                <button class="add-more-menu-item" @click="saveQT('Draft');moreActionsOpen=false">
+                <button class="add-more-menu-item" @click="saveQT('Draft', true);moreActionsOpen=false">
                   Save &amp; New
                 </button>
                 <button class="add-more-menu-item" @click="printQuote(previewData);moreActionsOpen=false">
@@ -659,6 +659,9 @@
           <div class="inv-action-bar">
             <button v-if="viewDoc.docstatus!==1" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
               <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
+            </button>
+            <button v-if="viewDoc.docstatus!==1" class="inv-ab-btn inv-ab-submit" :disabled="viewSubmitting" @click="submitFromView(viewDoc)">
+              <span v-html="icon('check',13)"></span> <span class="ab-label">{{ viewSubmitting ? 'Submitting…' : 'Submit' }}</span>
             </button>
             <button class="inv-ab-btn" @click="printQuote(viewDoc)">
               <span v-html="icon('printer',13)"></span> <span class="ab-label">Print PDF</span>
@@ -1013,7 +1016,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from "vue";
-import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
+import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, resolveCompany } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
@@ -1085,9 +1088,10 @@ const editingName = ref("");
 const moreActionsOpen = ref(false);
 const collapsed = reactive({ branding: false, details: false, billing: true, lines: false, notes: true });
 const viewOpen    = ref(false);
-const viewDoc     = ref(null);
-const viewTab     = ref("details");
-const viewLoading = ref(false);
+const viewDoc        = ref(null);
+const viewTab        = ref("details");
+const viewLoading    = ref(false);
+const viewSubmitting = ref(false);
 const viewItems   = ref([]);
 const addressLoading = ref(false);
 const conv        = reactive({ sales_orders: [], sales_invoices: [] });
@@ -1796,7 +1800,7 @@ async function openView(q) {
 }
 
 // ── Save ──────────────────────────────────────────────────────────────
-async function saveQT(newStatus) {
+async function saveQT(newStatus, andNew = false) {
   if (!form.customer) return toast.error("Customer is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0))
     return toast.error("At least one item required");
@@ -1898,8 +1902,17 @@ async function saveQT(newStatus) {
       }
     }
 
-    toast.success(`Quotation ${saved?.name || ""} saved`);
-    drawerOpen.value = false;
+    if (newStatus === 'Sent' && saved?.name) {
+      await apiSubmit("Quotation", saved.name);
+      toast.success(`Quotation ${saved.name} submitted`);
+      drawerOpen.value = false;
+    } else if (andNew) {
+      toast.success(`Quotation ${saved?.name || ""} saved — opening new quote`);
+      openNew();
+    } else {
+      toast.success(`Quotation ${saved?.name || ""} saved`);
+      drawerOpen.value = false;
+    }
     await load();
   } catch (e) {
     toast.error(e.message || "Failed to save quotation");
@@ -1965,6 +1978,22 @@ async function deleteQT(q) {
     viewOpen.value = false;
     await load();
   } catch (e) { toast.error(e.message || "Delete failed"); }
+}
+
+async function submitFromView(q) {
+  if (!q?.name) return;
+  if (!await confirm({ title: "Submit Quotation", body: `Submit ${q.name}? It cannot be edited after submission.`, okLabel: "Submit", okStyle: "primary" })) return;
+  viewSubmitting.value = true;
+  try {
+    await apiSubmit("Quotation", q.name);
+    toast.success(`Quotation ${q.name} submitted`);
+    await openView(q);
+    await load();
+  } catch (e) {
+    toast.error(e.message || "Failed to submit quotation");
+  } finally {
+    viewSubmitting.value = false;
+  }
 }
 
 // ── Bulk actions ──────────────────────────────────────────────────────
@@ -2224,6 +2253,9 @@ onMounted(async () => {
 
 /* ── Spin animation for logo upload ── */
 @keyframes inv-spin { to { transform: rotate(360deg); } }
+.inv-ab-submit { color:#2563eb !important; border-color:rgba(37,99,235,.3) !important; }
+.inv-ab-submit:hover:not(:disabled) { background:#eff6ff !important; }
+.inv-ab-submit:disabled { opacity:.55; cursor:not-allowed; }
 .quote-delete-btn{color: #dc2626 !important;
     border-color: #dc262638;
     background: #fff;}

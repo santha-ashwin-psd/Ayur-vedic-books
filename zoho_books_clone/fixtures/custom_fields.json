@@ -1,0 +1,22 @@
+[
+  {
+    "doctype": "Custom Field",
+    "name": "Auto Repeat-subscription_name",
+    "dt": "Auto Repeat",
+    "fieldname": "subscription_name",
+    "fieldtype": "Data",
+    "label": "Subscription Name",
+    "insert_after": "naming_series",
+    "in_list_view": 0,
+    "in_standard_filter": 1,
+    "search_index": 1,
+    "no_copy": 0,
+    "permlevel": 0,
+    "unique": 0,
+    "bold": 0,
+    "hidden": 0,
+    "print_hide": 0,
+    "report_hide": 0,
+    "description": "A human-friendly label for this recurring subscription"
+  }
+]

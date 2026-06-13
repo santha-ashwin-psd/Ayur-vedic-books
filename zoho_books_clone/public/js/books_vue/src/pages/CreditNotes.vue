@@ -143,7 +143,7 @@
                 <input v-model="form.posting_date" type="date" class="inv-fi" />
               </div>
               <div class="cn-field">
-                <label class="inv-lbl">Return Against Invoice</label>
+                <label class="inv-lbl">Against Invoice</label>
                 <SearchableSelect v-model="form.return_against" :options="invoices"
                   placeholder="Select invoice (optional)…" @search="fetchInvoices" @select="onInvoiceSelect" />
               </div>

@@ -184,7 +184,7 @@
               <td style="text-align:center" @click.stop>
                 <div style="display:flex;gap:4px;justify-content:center">
                   <button class="inv-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
-                  <button class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                  <button v-if="isDraft(o)" class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                   <button v-if="canInvoice(o)" class="inv-act-btn inv-act-pay" @click="openInvoiceModal(o)" title="Invoice"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
                   <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteSO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
                 </div>
@@ -309,7 +309,7 @@
                   <div style="grid-column:1/-1">
                     <label class="inv-lbl">Dispatch Warehouse <span class="inv-req">*</span></label>
                     <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse stock will be dispatched from…" @search="fetchWarehouses" />
-                    <div style="font-size:11px;color:#6b7280;margin-top:4px">Stock will be deducted from this warehouse when invoiced</div>
+                    <div v-if="form.set_warehouse" style="font-size:11px;color:#6b7280;margin-top:4px">Stock will be deducted from this warehouse when invoiced</div>
                   </div>
                 </div>
               </div>
@@ -365,6 +365,28 @@
                       <div class="po-item-col po-item-col--right">
                         <div class="po-item-num-row">
                           <div class="po-item-field">
+                            <label>UOM</label>
+                            <select v-model="line.uom" class="inv-fi">
+                              <option value="Nos">Nos</option>
+                              <option value="Kg">Kg</option>
+                              <option value="Ltr">Ltr</option>
+                              <option value="Hrs">Hrs</option>
+                              <option value="Pcs">Pcs</option>
+                              <option value="Box">Box</option>
+                              <option value="Mtr">Mtr</option>
+                              <option value="Set">Set</option>
+                            </select>
+                          </div>
+                          <div class="po-item-field">
+                            <label>Available Stock</label>
+                            <div class="so-stock-badge" :class="line.available_stock === null ? 'so-stock-na' : line.available_stock <= 0 ? 'so-stock-zero' : 'so-stock-ok'">
+                              <span v-if="line.available_stock === null">—</span>
+                              <span v-else>{{ line.available_stock }} {{ line.uom || 'Nos' }}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="po-item-num-row">
+                          <div class="po-item-field">
                             <label>Qty</label>
                             <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" @input="calcLine(line)"/>
                           </div>
@@ -373,12 +395,18 @@
                             <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)"/>
                           </div>
                         </div>
-                        <div class="po-item-field">
-                          <label>Tax Template</label>
-                          <select v-model="line.tax_code" class="inv-fi">
-                            <option value="">— No Tax —</option>
-                            <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.name }}</option>
-                          </select>
+                        <div class="po-item-num-row">
+                          <div class="po-item-field">
+                            <label>Discount %</label>
+                            <input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-fi" @input="calcLine(line)" placeholder="0"/>
+                          </div>
+                          <div class="po-item-field">
+                            <label>Tax Template</label>
+                            <select v-model="line.tax_code" class="inv-fi">
+                              <option value="">— No Tax —</option>
+                              <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.name }}</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -501,7 +529,7 @@
 
             <!-- Action buttons bar -->
             <div class="inv-action-bar">
-              <button class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
+              <button v-if="isDraft(viewDoc)" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
                 <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
               </button>
               <button class="inv-ab-btn" @click="printSO(viewDoc)">
@@ -820,7 +848,7 @@
     </div>
 
       <div v-if="invModal.open" class="rp-backdrop" @click.self="invModal.open=false">
-        <div class="rp-dialog" style="max-width:560px">
+        <div class="rp-dialog" style="max-width:640px">
           <div class="rp-dialog-header">
             <span class="rp-dialog-title">Convert to Invoice — {{ invModal.soName }}</span>
             <button class="rp-close-btn" @click="invModal.open=false">✕</button>
@@ -828,11 +856,33 @@
           <div class="rp-body">
             <div style="font-size:12.5px;color:#374151;margin-bottom:12px">Enter the quantity to invoice for each line:</div>
             <div style="border:1px solid #e8ecf0;border-radius:8px;overflow:hidden;margin-bottom:14px">
-              <div style="display:grid;grid-template-columns:2fr 100px 110px;gap:8px;background:#f8fafc;padding:8px 12px;font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase">
-                <span>Item</span><span class="ta-r">Remaining</span><span class="ta-r">Invoice</span>
+              <!-- Header -->
+              <div class="inv-ci-grid inv-ci-header">
+                <span>Item</span>
+                <span class="ta-r">Already Invoiced</span>
+                <span class="ta-r">Remaining</span>
+                <span class="ta-r">Invoice Qty</span>
               </div>
-              <div v-for="l in invModal.lines" :key="l.name" style="display:grid;grid-template-columns:2fr 100px 110px;gap:8px;padding:8px 12px;border-top:1px solid #f3f4f6;align-items:center;font-size:12.5px">
-                <span>{{ l.item_name||l.item_code }}</span>
+              <!-- Fully-invoiced lines (read-only) -->
+              <div v-for="l in invModal.allLines.filter(l => l.remaining_to_bill <= 0)" :key="'done-'+l.name"
+                class="inv-ci-grid inv-ci-row inv-ci-done">
+                <div>
+                  <div style="font-weight:600;color:#374151;font-size:12.5px">{{ l.item_code }}</div>
+                  <div v-if="l.item_name && l.item_name !== l.item_code" style="font-size:11.5px;color:#6b7280;margin-top:1px">{{ l.item_name }}</div>
+                </div>
+                <div class="ta-r">
+                  <span class="inv-ci-done-badge">✓ Already Invoiced</span>
+                </div>
+                <span class="ta-r mono-sm" style="color:#9ca3af">{{ l.qty }}</span>
+                <span class="ta-r mono-sm" style="color:#9ca3af">—</span>
+              </div>
+              <!-- Pending lines (editable) -->
+              <div v-for="l in invModal.lines" :key="l.name" class="inv-ci-grid inv-ci-row">
+                <div>
+                  <div style="font-weight:600;color:#111827;font-size:12.5px">{{ l.item_code }}</div>
+                  <div v-if="l.item_name && l.item_name !== l.item_code" style="font-size:11.5px;color:#6b7280;margin-top:1px">{{ l.item_name }}</div>
+                </div>
+                <span class="ta-r mono-sm" style="color:#6b7280">{{ l.billed_qty > 0 ? l.billed_qty : '—' }}</span>
                 <span class="ta-r mono-sm text-muted">{{ l.remaining_to_bill }}</span>
                 <input v-model.number="l.toInvoice" type="number" min="0" :max="l.remaining_to_bill" step="0.001"
                   class="inv-ci" style="width:100%;text-align:right"/>
@@ -860,7 +910,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
@@ -909,7 +959,7 @@ const actionRunning = ref(false);
 const collapsed = reactive({ details: false, lines: false, notes: true });
 
 let _id = 1;
-const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0, tax_code: "", collapsed: false });
+const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, uom: "Nos", discount_percentage: 0, discount_amount: 0, amount: 0, tax_code: "", available_stock: null, collapsed: false });
 const form = reactive({
   customer: "", transaction_date: todayStr(), delivery_date: deliveryDefault(),
   po_number: "",
@@ -938,7 +988,7 @@ async function fetchWarehouses(q = "") {
   } catch { warehouses.value = []; }
 }
 
-const invModal = reactive({ open: false, saving: false, soName: "", lines: [], dueDate: "" });
+const invModal = reactive({ open: false, saving: false, soName: "", lines: [], allLines: [], dueDate: "" });
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function deliveryDefault() { const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().slice(0, 10); }
@@ -975,6 +1025,10 @@ function headerBg(o) {
 function canInvoice(o) {
   const s = (o?.status||"").toLowerCase();
   return s !== "cancelled" && s !== "closed" && s !== "invoiced";
+}
+function isDraft(o) {
+  const s = (o?.status||"").toLowerCase();
+  return !s || s === "draft";
 }
 
 async function load() {
@@ -1158,8 +1212,15 @@ async function openEdit(o) {
     if (doc?.items?.length) {
       lines.value = doc.items.map(i => ({
         id: _id++, item_code: i.item_code || "", description: i.description || "",
-        qty: i.qty || 1, rate: i.rate || 0, amount: i.amount || 0, tax_code: i.tax_code || "", collapsed: false,
+        qty: i.qty || 1, rate: i.rate || 0, amount: i.amount || 0,
+        uom: i.uom || "Nos",
+        discount_percentage: flt(i.discount_percentage) || 0,
+        discount_amount: flt(i.discount_amount) || 0,
+        tax_code: i.tax_code || "", collapsed: false, available_stock: null,
       }));
+      if (doc?.set_warehouse) {
+        for (const l of lines.value) fetchStockForLine(l);
+      }
     }
     if (doc?.terms) form.terms = doc.terms;
     if (doc?.billing_address)  form.billing_address  = doc.billing_address;
@@ -1316,6 +1377,7 @@ async function onItemSelect(line, opt) {
     line.rate = flt(found.standard_rate ?? found.rate);
     if (found.description) line.description = found.description;
     if (found.tax_code !== undefined) line.tax_code = found.tax_code || "";
+    line.uom = found.uom || found.stock_uom || "Nos";
     calcLine(line);
   }
   if (code) {
@@ -1323,14 +1385,34 @@ async function onItemSelect(line, opt) {
       const doc = await apiGet("Item", code);
       if (doc?.description)  line.description = doc.description;
       if (doc?.tax_code)     line.tax_code    = doc.tax_code;
+      if (doc?.stock_uom)    line.uom         = doc.stock_uom;
       if (!found) line.rate = flt(doc.standard_rate || 0);
       calcLine(line);
     } catch {}
+    fetchStockForLine(line);
   }
 }
 function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
-function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
+function calcLine(l) {
+  if (l.discount_percentage > 100) l.discount_percentage = 100;
+  if (l.discount_percentage < 0)   l.discount_percentage = 0;
+  const base = flt(l.qty) * flt(l.rate);
+  const disc = Math.round(base * flt(l.discount_percentage) / 100 * 100) / 100;
+  l.discount_amount = disc;
+  l.amount = Math.round((base - disc) * 100) / 100;
+}
+
+async function fetchStockForLine(line) {
+  if (!line.item_code || !form.set_warehouse) { line.available_stock = null; return; }
+  try {
+    const r = await apiList("Bin", {
+      filters: [["item_code", "=", line.item_code], ["warehouse", "=", form.set_warehouse]],
+      fields: ["actual_qty"], limit: 1,
+    });
+    line.available_stock = r?.length ? flt(r[0].actual_qty) : 0;
+  } catch { line.available_stock = null; }
+}
 
 async function saveSO(newStatus) {
   if (!form.customer) return toast.error("Customer is required");
@@ -1370,18 +1452,23 @@ async function saveSO(newStatus) {
       shipping_address: form.shipping_address || "", shipping_address_name: form.shipping_address_name || "",
       set_warehouse: form.set_warehouse || "",
       status: newStatus || "Draft",
+      docstatus: newStatus === "Draft" ? 0 : 1,
       terms: form.terms || "",
       items: lines.value.filter(l => l.item_code).map(l => ({
         doctype: "Sales Order Item", item_code: l.item_code,
         description: l.description || l.item_code,
         qty: flt(l.qty) || 1, rate: flt(l.rate), amount: flt(l.amount),
+        uom: l.uom || "Nos",
+        discount_percentage: flt(l.discount_percentage) || 0,
+        discount_amount: flt(l.discount_amount) || 0,
         tax_code: l.tax_code || "",
       })),
       taxes,
     };
     if (editingName.value) doc.name = editingName.value;
     const saved = await apiSave(doc);
-    toast.success(`Sales Order ${saved?.name || ""} saved`);
+    const msg = newStatus === "Draft" ? "saved as Draft" : "confirmed";
+    toast.success(`Sales Order ${saved?.name || ""} ${msg}`);
     drawerOpen.value = false;
     await load();
   } catch (e) { toast.error(e.message || "Failed to save order"); }
@@ -1402,10 +1489,12 @@ function openInvoiceModal(o) {
   apiGET("zoho_books_clone.api.docs.get_sales_order_fulfillment", { sales_order: o.name })
     .then(r => {
       const ful = r?.lines || [];
+      const pending = ful.filter(l => l.remaining_to_bill > 0)
+                        .map(l => ({ ...l, toInvoice: l.remaining_to_bill }));
       Object.assign(invModal, {
         open: true, saving: false, soName: o.name,
-        lines: ful.filter(l => l.remaining_to_bill > 0)
-                  .map(l => ({ ...l, toInvoice: l.remaining_to_bill })),
+        allLines: ful,
+        lines: pending,
         dueDate: o.delivery_date || todayStr(),
       });
       if (!invModal.lines.length) { invModal.open = false; toast.info("Nothing left to invoice"); }
@@ -1507,6 +1596,10 @@ function exportCSV() {
   toast.success(`CSV exported — ${rows.length} order(s)`);
 }
 
+watch(() => form.set_warehouse, () => {
+  for (const l of lines.value) fetchStockForLine(l);
+});
+
 onMounted(async () => {
   await load();
   loadTaxAccount();
@@ -1522,4 +1615,56 @@ onMounted(async () => {
 @import '../styles/view.css';
 @import '../styles/edit.css';
 @import '../styles/add.css';
+</style>
+
+<style scoped>
+.inv-ci-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 130px 100px 110px;
+  gap: 10px;
+  padding: 8px 14px;
+  align-items: center;
+}
+.inv-ci-header {
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e8ecf0;
+}
+.inv-ci-row {
+  border-top: 1px solid #f3f4f6;
+  font-size: 12.5px;
+}
+.inv-ci-done {
+  background: #f9fafb;
+  opacity: 0.8;
+}
+.inv-ci-done-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+.so-stock-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  min-width: 60px;
+}
+.so-stock-ok   { background: #d1fae5; color: #065f46; }
+.so-stock-zero { background: #fee2e2; color: #991b1b; }
+.so-stock-na   { background: #f3f4f6; color: #9ca3af; }
 </style>

@@ -69,7 +69,7 @@ def get_subscriptions(status=None, reference_doctype=None, limit=200):
         "Auto Repeat",
         filters=filters,
         fields=[
-            "name", "reference_doctype", "reference_document",
+            "name", "subscription_name", "reference_doctype", "reference_document",
             "frequency", "start_date", "end_date",
             "next_schedule_date", "status", "disabled",
             "notify_by_email", "submit_on_creation", "creation",
@@ -143,6 +143,7 @@ def get_subscription(name):
 
     return {
         "name": doc.name,
+        "subscription_name": doc.subscription_name or "",
         "reference_doctype": doc.reference_doctype,
         "reference_document": doc.reference_document,
         "frequency": doc.frequency,
@@ -246,8 +247,11 @@ def run_subscription_now(name):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def update_subscription(name, frequency=None, end_date=None, notify_by_email=None,
-                       submit_on_creation=None, recipients=None, subject=None, message=None):
+                       submit_on_creation=None, recipients=None, subject=None, message=None,
+                       subscription_name=None):
     doc = _get_ar(name)
+    if subscription_name is not None:
+        doc.subscription_name = subscription_name
     if frequency is not None:
         doc.frequency = frequency
     if end_date is not None:
@@ -338,7 +342,8 @@ def get_subscription_stats():
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def make_recurring_from_doc(reference_doctype, reference_document, frequency,
                             start_date, end_date=None, submit_on_creation=1,
-                            notify_by_email="", recipients="", subject="", message=""):
+                            notify_by_email="", recipients="", subject="", message="",
+                            subscription_name=""):
     """Create an Auto Repeat attached to an existing document.
     Used by 'Make Recurring' button on Invoice/PO/etc. drawers."""
     if not frappe.db.exists(reference_doctype, reference_document):
@@ -390,6 +395,7 @@ def make_recurring_from_doc(reference_doctype, reference_document, frequency,
 
     doc = frappe.get_doc({
         "doctype": "Auto Repeat",
+        "subscription_name": subscription_name or "",
         "reference_doctype": reference_doctype,
         "reference_document": reference_document,
         "frequency": frequency,

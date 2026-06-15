@@ -1,6 +1,12 @@
 <template>
 <div class="b-page">
 
+  <!-- Company context banner -->
+  <div v-if="currentCompany" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:12.5px;color:#1d4ed8">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><rect x="9" y="10" width="6" height="11"/><path d="M5 21V7l7-4 7 4v14"/></svg>
+    <span>Showing fiscal years for <strong>{{ currentCompany }}</strong></span>
+  </div>
+
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
     <div class="b-card" style="padding:13px 16px">
       <div style="font-size:10.5px;color:#868E96;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Total Years</div>
@@ -327,7 +333,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiGET, apiPOST } from "../api/client.js";
+import { apiGET, apiPOST, apiList, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 
@@ -347,6 +353,7 @@ const saving         = ref(false);
 const fromFrappe     = ref(false);
 const drawerError    = ref("");
 const nameManuallyEdited = ref(false);
+const currentCompany = ref("");
 
 const fForm = reactive({ name: "", start: "", end: "", period_type: "Monthly", closing_acct: "Retained Earnings", auto_close: 0, is_default: 0 });
 
@@ -425,18 +432,31 @@ async function load() {
   loading.value = true;
   let loadedFromFrappe = false;
   try {
-    const yrs = await apiGET("frappe.client.get_list", {
-      doctype: "Fiscal Year",
-      fields: JSON.stringify(["name", "year_start_date", "year_end_date", "is_closed"]),
-      order_by: "year_start_date desc", limit_page_length: 20,
-    }) || [];
-    loadedFromFrappe = true;
-    fromFrappe.value = true;
-    if (yrs.length) {
-      allYears.value = yrs.map((y) => ({
+    // Resolve the current user's company so we only load/manage that company's years
+    const co = await resolveCompany().catch(() => "");
+    currentCompany.value = co;
+
+    // Fetch fiscal years for this company (also include rows with empty/null company
+    // which are global/legacy fiscal years created without a company stamp)
+    const allFY = await apiList("Fiscal Year", {
+      fields: ["name", "year_start_date", "year_end_date", "is_closed", "company"],
+      limit: 50,
+      order: "year_start_date desc",
+    }).catch(() => null);
+
+    if (allFY && allFY.length) {
+      loadedFromFrappe = true;
+      fromFrappe.value = true;
+      // Show years belonging to this company OR years with no company (global)
+      const relevant = allFY.filter(y =>
+        !y.company || y.company === co ||
+        (co && y.company.toLowerCase() === co.toLowerCase())
+      );
+      allYears.value = relevant.map((y) => ({
         name: y.name, start: y.year_start_date, end: y.year_end_date,
         period_type: "Monthly", closing_acct: "Retained Earnings",
         auto_close: 0, is_default: 0, is_closed: y.is_closed ? 1 : 0,
+        company: y.company || "",
         periods: generatePeriods(y.year_start_date, y.year_end_date, "Monthly"),
         source: "frappe",
       }));
@@ -516,8 +536,16 @@ function validateForm() {
   if (!fForm.start) return "Start date is required.";
   if (!fForm.end) return "End date is required.";
   if (fForm.start >= fForm.end) return "End date must be after start date.";
+  const co = currentCompany.value || "";
   for (const y of allYears.value) {
     if (editingName.value && y.name === editingName.value) continue;
+    // Skip years from a different company for overlap checks
+    if (y.company && co && y.company.toLowerCase() !== co.toLowerCase()) continue;
+    // Duplicate name check
+    if (y.name === fForm.name.trim()) {
+      return `A fiscal year named "${fForm.name}" already exists. Use Edit to modify it.`;
+    }
+    // Date overlap check
     if (fForm.start <= y.end && fForm.end >= y.start) {
       return `Dates overlap with existing fiscal year "${y.name}" (${fmtDate(y.start)} – ${fmtDate(y.end)}).`;
     }
@@ -532,13 +560,24 @@ async function saveYear() {
   saving.value = true;
   if (fromFrappe.value) {
     try {
-      const doc = { doctype: "Fiscal Year", year: fForm.name, year_start_date: fForm.start, year_end_date: fForm.end };
-      if (editingName.value) doc.name = editingName.value;
-      await apiPOST("frappe.client.save", { doc: JSON.stringify(doc) });
+      const co = currentCompany.value || await resolveCompany().catch(() => "");
+      // For Fiscal Year, name = year field value (autoname="field:year").
+      // Always pass name so save_doc can detect an existing record and
+      // call db_update() instead of insert() — avoids duplicate-key errors.
+      const docName = editingName.value || fForm.name;
+      const doc = {
+        doctype: "Fiscal Year",
+        name: docName,
+        year: fForm.name,
+        year_start_date: fForm.start,
+        year_end_date: fForm.end,
+        company: co,
+      };
+      await apiPOST("zoho_books_clone.api.docs.save_doc", { doc: JSON.stringify(doc) });
       await load();
       toast(editingName.value ? "Fiscal year updated" : "Fiscal year created");
       closeDrawer();
-    } catch (e) { drawerError.value = "Frappe error: " + (e.message || "could not save"); }
+    } catch (e) { drawerError.value = "Save error: " + (e.message || "could not save"); }
   } else {
     const periods = generatePeriods(
       fForm.start, fForm.end, fForm.period_type,

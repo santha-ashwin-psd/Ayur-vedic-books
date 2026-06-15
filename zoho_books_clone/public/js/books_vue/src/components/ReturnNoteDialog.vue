@@ -47,18 +47,49 @@
                 <span style="text-align:right">Amount</span>
               </div>
               <div v-for="(line, i) in lines" :key="i" class="rnd-tr">
-                <span class="rnd-item">{{ line.item_name || line.item_code }}</span>
-                <input
-                  v-model.number="line.qty" type="number" :max="line.maxQty" min="0" step="0.001"
-                  class="rnd-qty" @input="recalc(line)"
-                />
+                <div>
+                  <div class="rnd-item">{{ line.item_name || line.item_code }}</div>
+                  <div class="rnd-max-hint">max {{ line.maxQty }}</div>
+                </div>
+                <div>
+                  <input
+                    v-model.number="line.qty" type="number" :max="line.maxQty" min="0" step="0.001"
+                    class="rnd-qty" :class="{ 'rnd-qty-warn': line.qty > line.maxQty }"
+                    @input="recalc(line)"
+                  />
+                </div>
                 <span class="rnd-num">{{ fmt(line.rate) }}</span>
                 <span class="rnd-num rnd-amt">{{ fmt(line.amount) }}</span>
               </div>
             </div>
             <div class="rnd-total">
-              {{ state.kind === "debit" ? "Debit" : "Credit" }} Total:
-              <strong :style="`color:${state.kind === 'debit' ? '#7c2d12' : '#dc2626'}`">{{ fmt(grandTotal) }}</strong>
+              Subtotal:
+              <strong style="color:#374151">{{ fmt(grandTotal) }}</strong>
+            </div>
+            <template v-if="state.taxes && state.taxes.length">
+              <div v-for="(tx, i) in state.taxes" :key="i" class="rnd-tax-row">
+                <span>{{ tx.description || tx.tax_type }} ({{ tx.rate }}%)</span>
+                <span>{{ fmt(grandTotal * tx.rate / 100) }}</span>
+              </div>
+              <div class="rnd-total rnd-total-grand">
+                {{ state.kind === "debit" ? "Debit" : "Credit" }} Total (incl. tax):
+                <strong :style="`color:${state.kind === 'debit' ? '#7c2d12' : '#dc2626'}`">
+                  {{ fmt(grandTotal + state.taxes.reduce((s, tx) => s + grandTotal * tx.rate / 100, 0)) }}
+                </strong>
+              </div>
+            </template>
+            <template v-else>
+              <div class="rnd-total">
+                {{ state.kind === "debit" ? "Debit" : "Credit" }} Total:
+                <strong :style="`color:${state.kind === 'debit' ? '#7c2d12' : '#dc2626'}`">{{ fmt(grandTotal) }}</strong>
+              </div>
+            </template>
+            <div v-if="maxInvoiceAmt > 0" class="rnd-cap-bar">
+              <div class="rnd-cap-used" :style="`width:${Math.min(100, (grandTotal/maxInvoiceAmt)*100)}%`"
+                :class="exceedsInvoice ? 'rnd-cap-over' : 'rnd-cap-ok'"></div>
+            </div>
+            <div v-if="exceedsInvoice" class="rnd-cap-warn">
+              ⚠ Credit total {{ fmt(grandTotal) }} exceeds invoice outstanding {{ fmt(maxInvoiceAmt) }}
             </div>
           </div>
 
@@ -71,7 +102,7 @@
           <button class="rnd-btn rnd-btn-ghost" @click="onCancel" :disabled="saving">Cancel</button>
           <button
             class="rnd-btn rnd-btn-danger"
-            :disabled="saving || grandTotal <= 0"
+            :disabled="saving || grandTotal <= 0 || exceedsInvoice"
             @click="onSave"
           >
             {{ saving ? "Creating…" : `Issue ${state.kind === "debit" ? "Debit" : "Credit"} Note  ${fmt(grandTotal)}` }}
@@ -102,11 +133,15 @@ const headerBg = computed(() =>
     : "linear-gradient(135deg,#7f1d1d,#dc2626)"
 );
 const grandTotal = computed(() => lines.value.reduce((s, l) => s + Number(l.amount || 0), 0));
+const maxInvoiceAmt = computed(() => Number(state.maxInvoiceAmt || 0));
+const exceedsInvoice = computed(() => maxInvoiceAmt.value > 0 && grandTotal.value > maxInvoiceAmt.value + 0.005);
 
 function fmt(v) {
   return "₹" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function recalc(line) {
+  if (line.qty > line.maxQty) line.qty = line.maxQty;
+  if (line.qty < 0) line.qty = 0;
   line.amount = Math.round(Number(line.qty || 0) * Number(line.rate || 0) * 100) / 100;
 }
 
@@ -158,7 +193,7 @@ async function onSave() {
       reason: form.reason,
       notes: form.notes || "",
       items: JSON.stringify(items),
-      taxes: "[]",
+      taxes: JSON.stringify(state.taxes || []),
     };
     const r = await apiPOST(state.createEndpoint, payload);
     const noteName = r?.credit_note || r?.debit_note || r?.name || "";
@@ -230,13 +265,28 @@ function onCancel() { if (saving.value) return; cancel(); }
 .rnd-item { color: #374151; }
 .rnd-qty {
   border: 1px solid #e2e8f0; border-radius: 4px; padding: 3px 6px;
-  font-size: 12px; text-align: center; outline: none; font-family: inherit;
+  font-size: 12px; text-align: center; outline: none; font-family: inherit; width: 100%;
 }
 .rnd-qty:focus { border-color: #2563eb; }
-.rnd-num { text-align: right;color: #6b7280; }
+.rnd-qty-warn { border-color: #ef4444 !important; background: #fff1f1; }
+.rnd-max-hint { font-size: 10px; color: #9ca3af; margin-top: 1px; }
+.rnd-num { text-align: right; color: #6b7280; }
 .rnd-amt { font-weight: 600; color: #111827; }
-.rnd-total {
-  text-align: right; padding: 8px 12px 0; font-size: 13px;
+.rnd-total { text-align: right; padding: 6px 12px 0; font-size: 13px; }
+.rnd-tax-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 12px; font-size: 12px; color: #6b7280;
+}
+.rnd-total-grand { border-top: 1px solid #e5e7eb; margin-top: 4px; padding-top: 8px; }
+.rnd-cap-bar {
+  height: 4px; background: #e5e7eb; border-radius: 2px;
+  margin: 6px 12px 0; overflow: hidden;
+}
+.rnd-cap-used { height: 100%; border-radius: 2px; transition: width 0.2s; }
+.rnd-cap-ok   { background: #22c55e; }
+.rnd-cap-over { background: #ef4444; }
+.rnd-cap-warn {
+  margin: 6px 12px 0; font-size: 11.5px; color: #dc2626; font-weight: 600;
 }
 .rnd-footer {
   display: flex; justify-content: flex-end; gap: 8px;

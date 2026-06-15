@@ -1,7 +1,52 @@
 import frappe
 import json
-from frappe.utils import flt, today
+from frappe.utils import flt, today, getdate
 from zoho_books_clone.api.session import _get_company
+
+
+def _recalculate_invoice_outstanding(invoice_name):
+    """Recalculate and persist outstanding_amount for a submitted Sales Invoice.
+
+    Called after editing items on a submitted invoice so that outstanding_amount
+    reflects the new grand_total minus any payments already recorded.
+    """
+    try:
+        inv = frappe.db.get_value(
+            "Sales Invoice", invoice_name,
+            ["grand_total", "outstanding_amount", "due_date", "docstatus"],
+            as_dict=True,
+        )
+        if not inv or inv.docstatus != 1:
+            return
+
+        total_paid = flt(frappe.db.sql("""
+            SELECT COALESCE(SUM(per.allocated_amount), 0)
+            FROM `tabPayment Entry Reference` per
+            JOIN `tabPayment Entry` pe ON pe.name = per.parent
+            WHERE per.reference_name = %s AND pe.docstatus = 1
+        """, (invoice_name,))[0][0])
+
+        new_outstanding = max(0.0, round(flt(inv.grand_total) - total_paid, 2))
+
+        if new_outstanding <= 0:
+            new_status = "Paid"
+        elif new_outstanding < flt(inv.grand_total):
+            new_status = "Partly Paid"
+        elif inv.due_date and getdate(str(inv.due_date)) < getdate(today()):
+            new_status = "Overdue"
+        else:
+            new_status = "Submitted"
+
+        frappe.db.set_value(
+            "Sales Invoice", invoice_name,
+            {"outstanding_amount": new_outstanding, "status": new_status},
+            update_modified=False,
+        )
+    except Exception as exc:
+        frappe.log_error(
+            f"_recalculate_invoice_outstanding: {invoice_name} — {exc}",
+            "Invoice Outstanding Recalc",
+        )
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
@@ -253,6 +298,11 @@ def save_doc(doc):
             # validate_update_after_submit would throw DoesNotExistError on them.
             d.flags.ignore_validate_update_after_submit = True
         d.save(ignore_permissions=True)
+        # For submitted Sales Invoices, recalculate outstanding_amount after the
+        # items have been updated (grand_total changes but outstanding_amount is
+        # only auto-synced during on_submit for first-time submissions).
+        if is_submitted and doctype == "Sales Invoice" and not getattr(d, "is_return", 0):
+            _recalculate_invoice_outstanding(d.name)
     else:
         # New document: must call insert() explicitly.
         # frappe.get_doc(dict) with name already set does NOT mark the doc as
@@ -288,7 +338,51 @@ def submit_doc(doctype, name, ignore_budget_warning=0):
         d.flags.ignore_budget_warning = True
     d.submit()
     frappe.db.commit()
+
+    # After submitting a return Sales Invoice (Credit Note), update the parent
+    # invoice's outstanding_amount and status. This mirrors what create_credit_note
+    # does for the direct-submit path so the draft→submit path stays consistent.
+    if doctype == "Sales Invoice" and getattr(d, "is_return", 0) and getattr(d, "return_against", None):
+        _sync_parent_invoice_after_cn_submit(d.name, d.return_against, d.grand_total)
+
     return d.as_dict()
+
+
+def _sync_parent_invoice_after_cn_submit(cn_name, against_inv, cn_grand_total):
+    """Reduce the parent invoice outstanding by the CN's grand total and update its status."""
+    if not against_inv or not frappe.db.exists("Sales Invoice", against_inv):
+        return
+    try:
+        parent = frappe.db.get_value(
+            "Sales Invoice", against_inv,
+            ["outstanding_amount", "grand_total", "due_date", "docstatus"], as_dict=True,
+        )
+        if not parent or parent.docstatus != 1:
+            return
+        cn_total        = abs(flt(cn_grand_total))
+        if cn_total <= 0:
+            # grand_total may not be in memory yet — reload from DB
+            cn_total = abs(flt(frappe.db.get_value("Sales Invoice", cn_name, "grand_total")))
+        new_outstanding = max(0.0, round(flt(parent.outstanding_amount) - cn_total, 2))
+        if new_outstanding <= 0:
+            new_status = "Paid"
+        elif new_outstanding < flt(parent.grand_total):
+            new_status = "Partly Paid"
+        elif parent.due_date and getdate(str(parent.due_date)) < getdate(today()):
+            new_status = "Overdue"
+        else:
+            new_status = "Submitted"
+        frappe.db.set_value(
+            "Sales Invoice", against_inv,
+            {"outstanding_amount": new_outstanding, "status": new_status},
+            update_modified=False,
+        )
+        frappe.db.commit()
+    except Exception as exc:
+        frappe.log_error(
+            f"_sync_parent_invoice_after_cn_submit: CN={cn_name} parent={against_inv} — {exc}",
+            "CN Submit Sync",
+        )
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def cancel_doc(doctype, name):
@@ -314,6 +408,51 @@ def delete_doc(doctype, name):
     frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
     frappe.db.commit()
     return {"message": "deleted"}
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_invoice_apply_summary(invoice_name):
+    """Return a breakdown of Amount, Paid, Previous Credits, and Outstanding for an invoice."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+    inv = frappe.db.get_value(
+        "Sales Invoice", invoice_name,
+        ["grand_total", "outstanding_amount", "customer", "customer_name",
+         "posting_date", "due_date", "status"],
+        as_dict=True,
+    )
+    if not inv:
+        frappe.throw(f"Invoice {invoice_name} not found")
+
+    grand_total = flt(inv.grand_total)
+    outstanding = flt(inv.outstanding_amount)
+
+    # Total paid via Payment Entries
+    pe_refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_name": invoice_name, "reference_doctype": "Sales Invoice"},
+        fields=["parent", "allocated_amount"],
+    )
+    total_paid = 0.0
+    for ref in pe_refs:
+        docstatus = frappe.db.get_value("Payment Entry", ref.parent, "docstatus")
+        if docstatus == 1:
+            total_paid += flt(ref.allocated_amount)
+
+    # Previous credits = total reduction minus payments
+    total_credits = max(0.0, round(grand_total - outstanding - total_paid, 2))
+
+    return {
+        "grand_total":      round(grand_total, 2),
+        "total_paid":       round(total_paid, 2),
+        "total_credits":    total_credits,
+        "outstanding":      round(outstanding, 2),
+        "customer_name":    inv.customer_name or inv.customer,
+        "posting_date":     str(inv.posting_date or ""),
+        "due_date":         str(inv.due_date or ""),
+        "status":           inv.status or "",
+    }
+
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_invoice_payments(invoice_name):
@@ -1047,8 +1186,20 @@ def apply_credit_note_to_invoice(credit_note, invoice, amount):
         frappe.throw("Credit note and invoice must be for the same customer")
 
     balance_info = get_credit_note_balance(credit_note)
-    if amount > flt(balance_info["balance"]) + 0.01:
-        frappe.throw(f"Cannot apply more than available balance ({balance_info['balance']})")
+    cn_balance = flt(balance_info["balance"])
+    if amount > cn_balance + 0.01:
+        frappe.throw(f"Cannot apply more than available credit balance ({cn_balance})")
+
+    inv_outstanding = flt(inv.outstanding_amount)
+    if inv_outstanding <= 0:
+        frappe.throw(f"Invoice {invoice} has no outstanding amount to apply credit against")
+    if amount > inv_outstanding + 0.01:
+        frappe.throw(
+            f"Amount {amount} exceeds invoice outstanding {inv_outstanding}. "
+            f"Maximum applicable: {inv_outstanding}"
+        )
+    # Cap to the lesser of credit balance and invoice outstanding
+    amount = round(min(amount, cn_balance, inv_outstanding), 2)
 
     company = inv.company
     ar = (inv.debit_to or cn.debit_to
@@ -1082,6 +1233,14 @@ def apply_credit_note_to_invoice(credit_note, invoice, amount):
     je.flags.ignore_mandatory = True
     je.insert()
     je.submit()
+
+    # ── Step 1: Direct outstanding update (guaranteed, no silent failures) ──
+    # Do this first so the invoice is always updated even if recompute fails.
+    direct_outstanding = max(0.0, round(inv_outstanding - amount, 2))
+    frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount",
+                        direct_outstanding, update_modified=False)
+
+    # ── Step 2: Recompute from GL/JEA for accuracy (e.g. multiple applies) ──
     try:
         from zoho_books_clone.accounts.doctype.general_ledger_entry.general_ledger_entry import recompute_outstanding_from_gl
         recompute_outstanding_from_gl("Sales Invoice", invoice)
@@ -1089,18 +1248,21 @@ def apply_credit_note_to_invoice(credit_note, invoice, amount):
         frappe.log_error(f"recompute_outstanding failed for {invoice}: {exc}",
                          "apply_credit_note_to_invoice")
 
-    # Recompute the invoice status based on the updated outstanding_amount.
-    # recompute_outstanding_from_gl only updates the numeric field; the status
-    # field ("Unpaid" / "Partly Paid" / "Paid") must be set explicitly.
+    # ── Step 3: Refresh status based on updated outstanding ─────────────────
+    new_status = None
+    outstanding_now = None
     try:
         outstanding_now = flt(frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount"))
-        inv_doc = frappe.get_doc("Sales Invoice", invoice)
+        inv_grand_total = flt(frappe.db.get_value("Sales Invoice", invoice, "grand_total"))
+        inv_due_date    = frappe.db.get_value("Sales Invoice", invoice, "due_date")
         if outstanding_now <= 0:
             new_status = "Paid"
-        elif outstanding_now < flt(inv_doc.grand_total):
+        elif outstanding_now < inv_grand_total:
             new_status = "Partly Paid"
+        elif inv_due_date and getdate(inv_due_date) < getdate(today()):
+            new_status = "Overdue"
         else:
-            new_status = "Unpaid"
+            new_status = "Submitted"
         frappe.db.set_value("Sales Invoice", invoice, "status", new_status, update_modified=True)
     except Exception as exc:
         frappe.log_error(f"status update failed for {invoice}: {exc}",
@@ -1108,12 +1270,12 @@ def apply_credit_note_to_invoice(credit_note, invoice, amount):
 
     frappe.db.commit()
     return {
-        "journal_entry": je.name,
-        "credit_note": credit_note,
-        "invoice": invoice,
-        "applied": amount,
-        "invoice_status": new_status if 'new_status' in dir() else None,
-        "invoice_outstanding": outstanding_now if 'outstanding_now' in dir() else None,
+        "journal_entry":       je.name,
+        "credit_note":         credit_note,
+        "invoice":             invoice,
+        "applied":             amount,
+        "invoice_status":      new_status,
+        "invoice_outstanding": outstanding_now if outstanding_now is not None else direct_outstanding,
     }
 
 
@@ -1162,6 +1324,150 @@ def get_credit_note_applications(credit_note_name):
                     "payment_entry": pe.name,
                     "ref_doctype": "Payment Entry",
                 })
+    return apps
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def cancel_credit_note(name):
+    """Cancel a submitted credit note and restore the against invoice's outstanding amount.
+
+    Steps:
+      1. Cancel any JE-based applications (JEs that reference this CN).
+      2. Cancel the credit note itself (reverse GL entries).
+      3. Add back the CN's grand_total to the parent invoice's outstanding_amount.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+    cn = frappe.get_doc("Sales Invoice", name)
+    if cn.docstatus != 1:
+        frappe.throw(f"Credit note {name} is not in a submitted state")
+
+    against_inv = cn.return_against
+    cn_total    = abs(flt(cn.grand_total))
+
+    # ── Step 1: cancel any JE-based applications that reference this CN ──────
+    je_refs = frappe.db.sql("""
+        SELECT DISTINCT jea.parent
+        FROM `tabJournal Entry Account` jea
+        JOIN `tabJournal Entry` je ON je.name = jea.parent
+        WHERE jea.reference_type = 'Sales Invoice'
+          AND jea.reference_name = %s
+          AND je.docstatus = 1
+    """, (name,), as_dict=True)
+
+    for row in je_refs:
+        try:
+            je_doc = frappe.get_doc("Journal Entry", row.parent)
+            je_doc.cancel()
+        except Exception as exc:
+            frappe.log_error(
+                f"cancel_credit_note: could not cancel JE {row.parent} for CN {name}: {exc}",
+                "CN Cancel JE",
+            )
+
+    # ── Step 2: cancel the credit note itself ─────────────────────────────────
+    cn.reload()  # refresh after JE cancellations
+    cn.cancel()
+
+    # ── Step 3: restore the parent invoice's outstanding ─────────────────────
+    if against_inv and frappe.db.exists("Sales Invoice", against_inv):
+        parent = frappe.db.get_value(
+            "Sales Invoice", against_inv,
+            ["outstanding_amount", "grand_total", "due_date", "docstatus"], as_dict=True,
+        )
+        if parent and parent.docstatus == 1:
+            new_outstanding = min(
+                flt(parent.grand_total),
+                round(flt(parent.outstanding_amount) + cn_total, 2),
+            )
+            if new_outstanding <= 0:
+                new_status = "Paid"
+            elif new_outstanding < flt(parent.grand_total):
+                new_status = "Partly Paid"
+            elif parent.due_date and getdate(str(parent.due_date)) < getdate(today()):
+                new_status = "Overdue"
+            else:
+                new_status = "Submitted"
+            frappe.db.set_value(
+                "Sales Invoice", against_inv,
+                {"outstanding_amount": new_outstanding, "status": new_status},
+                update_modified=False,
+            )
+
+    frappe.db.commit()
+    return {"status": "cancelled", "name": name, "invoice_restored": against_inv}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_invoice_credit_applications(invoice_name):
+    """Return all credit notes that have been applied to a specific invoice.
+
+    Covers two cases:
+    1. Direct creation — CN created with return_against = invoice_name
+       (no JE exists; the CN itself is the credit entry).
+    2. JE-based application — CN applied after creation via apply_credit_note_to_invoice,
+       which creates a Journal Entry referencing both the CN and the invoice.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+    seen_cn = set()
+    apps = []
+
+    # ── Case 1: direct creation (return_against) ──────────────────────────────
+    direct_cns = frappe.db.sql("""
+        SELECT name, grand_total, posting_date
+        FROM `tabSales Invoice`
+        WHERE return_against = %s AND is_return = 1 AND docstatus = 1
+    """, (invoice_name,), as_dict=True)
+
+    for cn in direct_cns:
+        seen_cn.add(cn.name)
+        apps.append({
+            "credit_note":   cn.name,
+            "amount":        abs(flt(cn.grand_total)),
+            "date":          cn.posting_date,
+            "journal_entry": None,
+            "type":          "direct",
+        })
+
+    # ── Case 2: JE-based applications ─────────────────────────────────────────
+    je_rows = frappe.db.sql("""
+        SELECT jea.parent, je.posting_date
+        FROM `tabJournal Entry Account` jea
+        JOIN `tabJournal Entry` je ON je.name = jea.parent
+        WHERE jea.reference_type = 'Sales Invoice' AND jea.reference_name = %s
+          AND je.docstatus = 1
+    """, (invoice_name,), as_dict=True)
+
+    seen_je = set()
+    for row in je_rows:
+        if row.parent in seen_je:
+            continue
+        seen_je.add(row.parent)
+        siblings = frappe.db.sql("""
+            SELECT jea.reference_name, jea.debit AS dr, jea.credit AS cr
+            FROM `tabJournal Entry Account` jea
+            WHERE jea.parent = %s
+              AND jea.reference_type = 'Sales Invoice'
+              AND jea.reference_name != %s
+        """, (row.parent, invoice_name), as_dict=True)
+        for s in siblings:
+            if s.reference_name in seen_cn:
+                continue  # already captured via direct creation
+            is_cn = frappe.db.get_value("Sales Invoice", s.reference_name, "is_return")
+            if is_cn:
+                seen_cn.add(s.reference_name)
+                apps.append({
+                    "credit_note":   s.reference_name,
+                    "amount":        abs(flt(s.cr or s.dr)),
+                    "date":          row.posting_date,
+                    "journal_entry": row.parent,
+                    "type":          "applied",
+                })
+
+    apps.sort(key=lambda x: x.get("date") or "", reverse=True)
     return apps
 
 
@@ -1321,6 +1627,23 @@ def create_credit_note():
     if not items_raw:
         frappe.throw("At least one item is required")
 
+    # Validate: CN total must not exceed the parent invoice's outstanding amount
+    if against_inv and frappe.db.exists("Sales Invoice", against_inv):
+        inv_data = frappe.db.get_value(
+            "Sales Invoice", against_inv,
+            ["grand_total", "outstanding_amount", "docstatus"], as_dict=True
+        )
+        if inv_data and inv_data.docstatus == 1:
+            new_cn_total = sum(abs(flt(it.get("qty", 1))) * flt(it.get("rate", 0)) for it in items_raw)
+            inv_outstanding = flt(inv_data.outstanding_amount)
+            if new_cn_total > inv_outstanding + 0.01:
+                frappe.throw(
+                    f"Credit note total {frappe.format_value(new_cn_total, 'Currency')} "
+                    f"exceeds the invoice outstanding amount "
+                    f"{frappe.format_value(inv_outstanding, 'Currency')}. "
+                    f"Reduce the quantities or amounts."
+                )
+
     company = _get_company(frappe.session.user)
 
     ar_account = frappe.db.get_value(
@@ -1422,17 +1745,9 @@ def create_credit_note():
                     indicator="orange", alert=True
                 )
 
-    # Recompute parent invoice outstanding (mirror of the DN fix)
-    if against_inv and frappe.db.exists("Sales Invoice", against_inv):
-        try:
-            from zoho_books_clone.accounts.doctype.general_ledger_entry.general_ledger_entry import recompute_outstanding_from_gl
-            recompute_outstanding_from_gl("Sales Invoice", against_inv)
-            frappe.db.commit()
-        except Exception as exc:
-            frappe.log_error(
-                f"recompute_outstanding failed for parent invoice {against_inv}: {exc}",
-                "create_credit_note",
-            )
+    # Directly reduce parent invoice outstanding using the shared helper.
+    if against_inv:
+        _sync_parent_invoice_after_cn_submit(cn.name, against_inv, cn.grand_total)
 
     return {
         "credit_note": cn.name,
@@ -1452,6 +1767,7 @@ def save_credit_note_draft():
     reason      = fd.get("reason") or ""
     notes       = fd.get("notes") or ""
     items_raw   = json.loads(fd.get("items") or "[]")
+    taxes_raw   = json.loads(fd.get("taxes") or "[]")
 
     if not customer:
         frappe.throw(_("Customer is required"))
@@ -1476,6 +1792,16 @@ def save_credit_note_draft():
         }
         for it in items_raw if (it.get("item_code") or it.get("item_name"))
     ]
+    cn_taxes = [
+        {
+            "charge_type":  "On Net Total",
+            "description":  t.get("description") or t.get("tax_type") or "Tax",
+            "account_head": t.get("tax_type") or "",
+            "rate":         flt(t.get("rate", 0)),
+        }
+        for t in taxes_raw
+        if t.get("tax_type")
+    ]
 
     remarks = (reason + (" — " + notes if notes else ""))
 
@@ -1493,6 +1819,9 @@ def save_credit_note_draft():
         cn.items = []
         for it in cn_items:
             cn.append("items", it)
+        cn.taxes = []
+        for tx in cn_taxes:
+            cn.append("taxes", tx)
         cn.flags.ignore_permissions = True
         cn.flags.ignore_mandatory = True
         cn.save()
@@ -1509,6 +1838,7 @@ def save_credit_note_draft():
             "debit_to":       ar_account,
             "income_account": income_account,
             "items":          cn_items,
+            "taxes":          cn_taxes,
         })
         from datetime import date as _date
         _year = _date.today().year
@@ -1806,6 +2136,17 @@ def get_sales_order_fulfillment(sales_order):
         fields=["name", "item_code", "item_name", "qty", "rate", "amount",
                 "delivered_qty", "billed_qty"],
         order_by="idx asc")
+    # Collect item codes that are missing item_name and fetch from Item master
+    missing = [r["item_code"] for r in rows if not r.get("item_name") and r.get("item_code")]
+    if missing:
+        item_names = {
+            x["name"]: x["item_name"]
+            for x in frappe.get_all("Item", filters={"name": ["in", missing]},
+                                    fields=["name", "item_name"])
+        }
+        for r in rows:
+            if not r.get("item_name") and r.get("item_code"):
+                r["item_name"] = item_names.get(r["item_code"]) or r["item_code"]
     for r in rows:
         r["remaining_to_deliver"] = max(0.0, flt(r["qty"]) - flt(r["delivered_qty"]))
         r["remaining_to_bill"]    = max(0.0, flt(r["qty"]) - flt(r["billed_qty"]))

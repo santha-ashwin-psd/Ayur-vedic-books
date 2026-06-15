@@ -82,6 +82,7 @@
                 <button class="inv-act-btn" @click="openView(c)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="c.docstatus===0" class="inv-act-btn" @click="openEdit(c)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button v-if="c.docstatus===1 && balanceFor(c.name)>0" class="inv-act-btn cn-act-apply" @click="applyCN(c)" title="Apply to Invoice">↳</button>
+                <button v-if="c.docstatus===1" class="inv-act-btn cn-act-cancel" @click="cancelCN(c)" title="Cancel Credit Note"><span v-html="icon('x',12)"></span></button>
                 <button v-if="c.docstatus===0 || c.docstatus===2" class="inv-act-btn cn-act-del" @click="deleteCN(c)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
@@ -147,6 +148,43 @@
                 <SearchableSelect v-model="form.return_against" :options="invoices"
                   placeholder="Select invoice (optional)…" @search="fetchInvoices" @select="onInvoiceSelect" />
               </div>
+
+              <!-- Invoice summary shown after selecting Against Invoice -->
+              <div v-if="form.return_against" class="cn-field" style="grid-column:1/-1">
+                <div class="cn-inv-summary">
+                  <div v-if="invoiceSummary.loading" class="cn-summary-loading">
+                    <span class="cn-spinner"></span> Loading invoice details…
+                  </div>
+                  <template v-else-if="invoiceSummary.data">
+                    <div class="cn-summary-header">
+                      <span class="cn-summary-inv-name">{{ form.return_against }}</span>
+                      <span class="cn-summary-badge"
+                        :class="'cn-badge-' + (invoiceSummary.data.status || 'submitted').toLowerCase().replace(/\s+/g, '-')">
+                        {{ invoiceSummary.data.status }}
+                      </span>
+                    </div>
+                    <div class="cn-summary-grid">
+                      <div class="cn-summary-cell">
+                        <div class="cn-summary-label">Invoice Amount</div>
+                        <div class="cn-summary-value">{{ fmtCur(invoiceSummary.data.grand_total) }}</div>
+                      </div>
+                      <div class="cn-summary-cell">
+                        <div class="cn-summary-label">Paid</div>
+                        <div class="cn-summary-value cn-val-paid">{{ fmtCur(invoiceSummary.data.total_paid) }}</div>
+                      </div>
+                      <div class="cn-summary-cell">
+                        <div class="cn-summary-label">Previous Credits</div>
+                        <div class="cn-summary-value cn-val-credit">{{ fmtCur(invoiceSummary.data.total_credits) }}</div>
+                      </div>
+                      <div class="cn-summary-cell cn-summary-cell-outstanding">
+                        <div class="cn-summary-label">Outstanding</div>
+                        <div class="cn-summary-value cn-val-outstanding">{{ fmtCur(invoiceSummary.data.outstanding) }}</div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
               <div class="cn-field" style="grid-column:1/-1">
                 <label class="inv-lbl">Reason</label>
                 <select v-model="form.reason" class="inv-fi">
@@ -193,12 +231,37 @@
                 <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
               </div>
             </div>
-            <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="padding:10px 16px 4px">
               <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
-              <div class="cn-total-row grand" style="padding:0;border:none;margin:0">
-                <span>Total Credit</span><span style="color:#7f1d1d">{{ fmtCur(subtotal) }}</span>
-              </div>
             </div>
+            <!-- Totals: subtotal + taxes from invoice + grand total -->
+            <div class="cn-form-totals">
+              <div v-if="cnTaxLines.length" class="cn-tax-note">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Tax rates inherited from invoice {{ form.return_against }}
+              </div>
+              <div class="po-totals" style="justify-content:flex-end">
+                <div class="po-totals-right" style="min-width:260px">
+                  <div class="po-total-row">
+                    <span>Subtotal</span>
+                    <span>{{ fmtCur(subtotal) }}</span>
+                  </div>
+                  <template v-if="cnTaxLines.length">
+                    <div v-for="tl in cnTaxLines" :key="tl.description" class="po-total-row cn-tax-row">
+                      <span>{{ tl.description }} ({{ tl.rate }}%)</span>
+                      <span>{{ fmtCur(tl.amount) }}</span>
+                    </div>
+                  </template>
+                  <div v-else class="po-total-row cn-tax-row">
+                    <span>Tax</span><span>{{ fmtCur(0) }}</span>
+                  </div>
+                  <div class="po-total-row cn-grand-total-row">
+                    <span>Total Credit</span>
+                    <span>{{ fmtCur(cnGrandTotal) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div> <!-- /cn-form-totals -->
           </div>
         </div>
 
@@ -279,6 +342,23 @@
                   <span class="ta-r mono-sm">{{ Math.abs(it.qty||0) }}</span>
                   <span class="ta-r mono-sm">{{ fmtCur(it.rate) }}</span>
                   <span class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(Math.abs(it.amount||0)) }}</span>
+                </div>
+              </div>
+              <!-- Totals: subtotal + taxes + grand total -->
+              <div class="cn-view-totals">
+                <div class="cn-vt-row">
+                  <span class="cn-vt-lbl">Subtotal</span>
+                  <span class="cn-vt-val">{{ fmtCur(viewSubtotal) }}</span>
+                </div>
+                <template v-if="viewTaxes.length">
+                  <div v-for="(tx, i) in viewTaxes" :key="i" class="cn-vt-row cn-vt-tax">
+                    <span class="cn-vt-lbl">{{ tx.description || tx.account_head }} ({{ tx.rate }}%)</span>
+                    <span class="cn-vt-val">{{ fmtCur(Math.abs(tx.tax_amount || 0)) }}</span>
+                  </div>
+                </template>
+                <div class="cn-vt-row cn-vt-grand">
+                  <span class="cn-vt-lbl">Total Credit</span>
+                  <span class="cn-vt-val" style="color:#7f1d1d">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</span>
                 </div>
               </div>
             </template>
@@ -362,16 +442,57 @@
         <button class="inv-dclose" @click="applyModal.open=false"><span v-html="icon('x',16)"></span></button>
       </div>
       <div class="inv-dbody">
-        <div style="font-size:12.5px;color:#374151">Available Balance: <strong>{{ fmtCur(applyModal.balance) }}</strong></div>
+        <!-- Credit balance pill -->
+        <div class="cn-balance-pill">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Credit Available: <strong>{{ fmtCur(applyModal.balance) }}</strong>
+        </div>
+
+        <!-- Invoice selector -->
         <div class="cn-field">
           <label class="inv-lbl">Target Invoice <span class="inv-req">*</span></label>
-          <select v-model="applyModal.invoice" class="inv-fi">
+          <select v-model="applyModal.invoice" class="inv-fi" @change="onApplyInvoiceChange">
             <option value="">— Select invoice —</option>
             <option v-for="i in applyModal.openInvoices" :key="i.name" :value="i.name">
-              {{ i.name }} · {{ fmtCur(i.outstanding_amount) }} due
+              {{ i.name === applyModal.originInv ? '★ ' : '' }}{{ i.name }} · {{ fmtCur(i.outstanding_amount) }} due{{ i.name === applyModal.originInv ? ' (original)' : '' }}
             </option>
           </select>
         </div>
+
+        <!-- Invoice summary card (shown after selection) -->
+        <div v-if="applyModal.invoice" class="cn-inv-summary">
+          <div v-if="applyModal.summaryLoading" class="cn-summary-loading">
+            <span class="cn-spinner"></span> Loading invoice details…
+          </div>
+          <template v-else-if="applyModal.summary">
+            <div class="cn-summary-header">
+              <span class="cn-summary-inv-name">{{ applyModal.invoice }}</span>
+              <span class="cn-summary-badge" :class="'cn-badge-' + (applyModal.summary.status || 'Unpaid').toLowerCase().replace(' ','-')">
+                {{ applyModal.summary.status }}
+              </span>
+            </div>
+            <div class="cn-summary-grid">
+              <div class="cn-summary-cell">
+                <div class="cn-summary-label">Invoice Amount</div>
+                <div class="cn-summary-value">{{ fmtCur(applyModal.summary.grand_total) }}</div>
+              </div>
+              <div class="cn-summary-cell">
+                <div class="cn-summary-label">Paid</div>
+                <div class="cn-summary-value cn-val-paid">{{ fmtCur(applyModal.summary.total_paid) }}</div>
+              </div>
+              <div class="cn-summary-cell">
+                <div class="cn-summary-label">Previous Credits</div>
+                <div class="cn-summary-value cn-val-credit">{{ fmtCur(applyModal.summary.total_credits) }}</div>
+              </div>
+              <div class="cn-summary-cell cn-summary-cell-outstanding">
+                <div class="cn-summary-label">Outstanding</div>
+                <div class="cn-summary-value cn-val-outstanding">{{ fmtCur(applyModal.summary.outstanding) }}</div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Amount to apply -->
         <div class="cn-field">
           <label class="inv-lbl">Amount to Apply <span class="inv-req">*</span></label>
           <input v-model.number="applyModal.amount" type="number" min="0.01" :max="applyModal.balance" step="0.01" class="inv-fi ta-r" />
@@ -452,19 +573,30 @@ const { printDoc } = useLivePreview();
 function printCN(d) { printDoc(d, { title: "CREDIT NOTE", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
 
 const { openEmail } = useEmailDialog();
-const { statusLabel, statusCls, statusBg } = useDocStatus({
-  fallbackDraftLabel: "Draft",
-  fallbackSubmittedLabel: "Issued",
-  paidStatuses: ["return"], pendingStatuses: ["return"], completedStatuses: ["return"],
-  outstandingField: "_unused", dueDateField: "_unused",
-  overdueCheck: () => false,
-});
+// Credit-note-specific status — based on docstatus + available balance
+function cnStatus(c) {
+  if (c.docstatus === 2) return "cancelled";
+  if (c.docstatus === 0) return "draft";
+  const total = Math.abs(flt(c.grand_total || 0));
+  const avail = flt(_balances.value[c.name] || 0);
+  if (avail <= 0.005)           return "applied";
+  if (avail < total - 0.005)    return "partial";
+  return "issued";
+}
+function statusLabel(c) {
+  return { draft: "Draft", issued: "Issued", partial: "Partially Applied", applied: "Applied", cancelled: "Cancelled" }[cnStatus(c)] || "—";
+}
+function statusCls(c) {
+  return { draft: "cn-st-draft", issued: "cn-st-issued", partial: "cn-st-partial", applied: "cn-st-applied", cancelled: "cn-st-cancelled" }[cnStatus(c)] || "";
+}
 
 const activeTab = ref("all");
 const tabs = [
   { key: "all",       label: "All" },
   { key: "draft",     label: "Draft" },
   { key: "issued",    label: "Issued" },
+  { key: "partial",   label: "Partially Applied" },
+  { key: "applied",   label: "Applied" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
@@ -473,6 +605,8 @@ const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const cnCollapsed = reactive({ customer: false, items: false, notes: true });
 const viewLoading = ref(false), viewItems = ref([]), viewApplications = ref([]), viewBalance = ref(0), viewReason = ref("");
+const viewTaxes = computed(() => (viewDoc.value?.taxes || []).filter(t => flt(t.tax_amount) !== 0 || flt(t.rate) !== 0));
+const viewSubtotal = computed(() => viewItems.value.reduce((s, i) => s + Math.abs(flt(i.amount)), 0));
 const customers = ref([]), items = ref([]), invoices = ref([]), lines = ref([]);
 const sortCol = ref("posting_date"), sortDir = ref("desc");
 const _balances = ref({});
@@ -481,8 +615,10 @@ function balanceFor(name) { return flt(_balances.value[name] || 0); }
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
 const form = reactive({ customer: "", posting_date: todayStr(), return_against: "", reason: "Price Adjustment", notes: "" });
+const invoiceSummary = reactive({ data: null, loading: false });
+const cnTaxes = ref([]);
 
-const applyModal = reactive({ open: false, saving: false, cnName: "", balance: 0, invoice: "", amount: 0, openInvoices: [] });
+const applyModal = reactive({ open: false, saving: false, cnName: "", balance: 0, invoice: "", originInv: "", amount: 0, openInvoices: [], summary: null, summaryLoading: false });
 const refundModal = reactive({ open: false, saving: false, cnName: "", balance: 0, amount: 0, mode: "Bank Transfer", reference: "" });
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
@@ -520,11 +656,18 @@ async function load() {
   finally { loading.value = false; }
 }
 
-const counts = computed(() => ({
-  draft:     list.value.filter(c => c.docstatus === 0).length,
-  issued:    list.value.filter(c => c.docstatus === 1).length,
-  cancelled: list.value.filter(c => c.docstatus === 2).length,
-}));
+const counts = computed(() => {
+  let draft = 0, issued = 0, partial = 0, applied = 0, cancelled = 0;
+  for (const c of list.value) {
+    const s = cnStatus(c);
+    if (s === "draft")      draft++;
+    else if (s === "issued")    issued++;
+    else if (s === "partial")   partial++;
+    else if (s === "applied")   applied++;
+    else if (s === "cancelled") cancelled++;
+  }
+  return { draft, issued, partial, applied, cancelled };
+});
 const summary = computed(() => ({
   totalValue:  list.value.filter(c => c.docstatus === 1).reduce((s, c) => s + Math.abs(flt(c.grand_total)), 0),
   openBalance: Object.values(_balances.value).reduce((s, v) => s + flt(v), 0),
@@ -542,9 +685,9 @@ const cnTrends = computed(()=>({
 
 const filtered = computed(() => {
   let r = list.value;
-  if (activeTab.value === "draft")     r = r.filter(c => c.docstatus === 0);
-  if (activeTab.value === "issued")    r = r.filter(c => c.docstatus === 1);
-  if (activeTab.value === "cancelled") r = r.filter(c => c.docstatus === 2);
+  const t = activeTab.value;
+  if (t === "draft" || t === "issued" || t === "partial" || t === "applied" || t === "cancelled")
+    r = r.filter(c => cnStatus(c) === t);
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
     r = r.filter(x => (x.name || "").toLowerCase().includes(q)
@@ -571,6 +714,14 @@ function toggle(n) { const s = new Set(selected.value); s.has(n) ? s.delete(n) :
 function toggleAll(e) { selected.value = e.target.checked ? new Set(sorted.value.map(c => c.name)) : new Set(); }
 
 const subtotal = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
+const cnTaxLines = computed(() =>
+  cnTaxes.value.map(t => ({
+    description: t.description || t.tax_type || "Tax",
+    rate: Number(t.rate || 0),
+    amount: Math.round(subtotal.value * Number(t.rate || 0) / 100 * 100) / 100,
+  }))
+);
+const cnGrandTotal = computed(() => subtotal.value + cnTaxLines.value.reduce((s, t) => s + t.amount, 0));
 
 const appliedTotal = computed(() => viewApplications.value.reduce((s, a) => s + flt(a.amount), 0));
 const groupedApplications = computed(() => {
@@ -593,12 +744,16 @@ const timelineSteps = computed(() => {
       { key: "cancelled", label: "Cancelled", danger: true, current: true },
     ];
   }
-  const isDraft = c.docstatus === 0;
-  const fullyApplied = c.docstatus === 1 && viewBalance.value <= 0;
+  const st = cnStatus(c);
+  const isDraft   = st === "draft";
+  const isIssued  = st === "issued";
+  const isPartial = st === "partial";
+  const isApplied = st === "applied";
   return [
-    { key: "draft",  label: "Draft",  done: !isDraft, current: isDraft },
-    { key: "issued", label: "Issued", done: fullyApplied, current: c.docstatus === 1 && !fullyApplied },
-    { key: "closed", label: "Closed", done: fullyApplied, current: false },
+    { key: "draft",   label: "Draft",            done: !isDraft,              current: isDraft },
+    { key: "issued",  label: "Issued",            done: isPartial || isApplied, current: isIssued },
+    { key: "partial", label: "Partially Applied", done: isApplied,             current: isPartial },
+    { key: "applied", label: "Applied",           done: isApplied,             current: isApplied },
   ];
 });
 
@@ -606,6 +761,8 @@ const timelineSteps = computed(() => {
 function openNew() {
   editingName.value = "";
   Object.assign(form, { customer: "", posting_date: todayStr(), return_against: "", reason: "Price Adjustment", notes: "" });
+  invoiceSummary.data = null; invoiceSummary.loading = false;
+  cnTaxes.value = [];
   lines.value = [blankLine()];
   Object.assign(cnCollapsed, { customer: false, items: false, notes: true });
   fetchCustomers(""); fetchItems(""); fetchInvoices("");
@@ -613,6 +770,7 @@ function openNew() {
 }
 async function openEdit(c) {
   editingName.value = c.name;
+  cnTaxes.value = [];
   Object.assign(form, { customer: c.customer || "", posting_date: c.posting_date || todayStr(), return_against: c.return_against || "", reason: "Price Adjustment", notes: "" });
   lines.value = [blankLine()];
   Object.assign(cnCollapsed, { customer: false, items: false, notes: true });
@@ -627,6 +785,10 @@ async function openEdit(c) {
         amount: Math.abs(i.amount || 0),
       }));
     }
+    // Restore taxes from the saved CN
+    cnTaxes.value = (doc?.taxes || [])
+      .map(t => ({ tax_type: t.account_head || "", description: t.description || "", rate: Number(t.rate || 0) }))
+      .filter(t => t.tax_type);
     if (doc?.remarks) form.notes = doc.remarks;
   } catch {}
 }
@@ -677,19 +839,29 @@ async function fetchItems(q = "") {
 }
 async function fetchInvoices(q = "") {
   try {
-    const f = [["is_return", "=", 0], ["docstatus", "=", 1]];
+    const f = [["is_return", "=", 0], ["docstatus", "=", 1], ["outstanding_amount", ">", 0]];
     if (form.customer) f.push(["customer", "=", form.customer]);
     if (q) f.push(["name", "like", "%" + q + "%"]);
     const r = await apiList("Sales Invoice", { fields: ["name", "customer", "customer_name", "outstanding_amount"], filters: f, limit: 30 });
-    invoices.value = r.map(x => ({ ...x, label: x.name + (x.customer_name ? ` · ${x.customer_name}` : ""), value: x.name }));
+    invoices.value = r.map(x => ({ ...x, label: `${x.name} · ₹${Number(x.outstanding_amount||0).toLocaleString("en-IN",{minimumFractionDigits:2})} due${x.customer_name ? ` · ${x.customer_name}` : ""}`, value: x.name }));
   } catch { invoices.value = []; }
 }
-function onCustomerSelect(_opt) { form.return_against = ""; fetchInvoices(""); }
+function onCustomerSelect(_opt) { form.return_against = ""; invoiceSummary.data = null; cnTaxes.value = []; fetchInvoices(""); }
 async function onInvoiceSelect(opt) {
   const invName = opt?.value ?? opt;
+  invoiceSummary.data = null;
+  cnTaxes.value = [];
   if (!invName) return;
+  invoiceSummary.loading = true;
   try {
-    const doc = await apiGet("Sales Invoice", invName);
+    const [doc, summary] = await Promise.all([
+      apiGet("Sales Invoice", invName),
+      apiGET("zoho_books_clone.api.docs.get_invoice_apply_summary", { invoice_name: invName }).catch(() => null),
+    ]);
+    // Store taxes from the parent invoice so saveCN can pass them to the backend
+    cnTaxes.value = (doc?.taxes || [])
+      .map(t => ({ tax_type: t.account_head || "", description: t.description || "", rate: Number(t.rate || 0) }))
+      .filter(t => t.tax_type);
     if (doc?.items?.length) {
       lines.value = doc.items.map(i => ({
         id: _id++, item_code: i.item_code || "", description: i.description || i.item_name || "",
@@ -699,7 +871,9 @@ async function onInvoiceSelect(opt) {
       toast.success(`Loaded ${doc.items.length} item(s) from ${invName}`);
     }
     if (!form.customer && doc?.customer) form.customer = doc.customer;
+    if (summary) invoiceSummary.data = summary;
   } catch {}
+  finally { invoiceSummary.loading = false; }
 }
 function onItemSelect(line, opt) { line.item_code = opt?.value ?? opt; if (opt?.rate) { line.rate = Number(opt.rate) || 0; calcLine(line); } }
 function addLine() { lines.value.push(blankLine()); }
@@ -715,6 +889,7 @@ async function saveCN(submit) {
       .filter(l => l.item_code)
       .map(l => ({ item_code: l.item_code, item_name: l.item_code, description: l.description, qty: flt(l.qty), rate: flt(l.rate) }));
 
+    const taxesJson = JSON.stringify(cnTaxes.value);
     if (!editingName.value && submit === 1) {
       // New + submit → backend API which wires GL accounts and CN- naming
       const r = await apiPOST("zoho_books_clone.api.docs.create_credit_note", {
@@ -724,7 +899,7 @@ async function saveCN(submit) {
         reason: form.reason,
         notes: form.notes || "",
         items: JSON.stringify(itemsPayload),
-        taxes: "[]",
+        taxes: taxesJson,
       });
       toast.success(`Credit Note ${r?.credit_note || ""} submitted`);
     } else {
@@ -737,6 +912,7 @@ async function saveCN(submit) {
         reason: form.reason,
         notes: form.notes || "",
         items: JSON.stringify(itemsPayload),
+        taxes: taxesJson,
       });
       if (submit) await apiSubmit("Sales Invoice", r?.name || editingName.value);
       toast.success(`Credit Note ${r?.name || ""} ${submit ? "submitted" : "saved as draft"}`);
@@ -758,29 +934,74 @@ async function emailCN(c) {
 }
 async function applyCN(c) {
   try {
-    const r = await apiList("Sales Invoice", {
-      fields: ["name", "outstanding_amount", "grand_total"],
-      filters: [["is_return", "=", 0], ["docstatus", "=", 1], ["customer", "=", c.customer], ["outstanding_amount", ">", 0]],
-      limit: 50, order: "posting_date desc",
-    });
+    // Fetch both invoices and fresh CN balance in parallel
+    const [r, balData] = await Promise.all([
+      apiList("Sales Invoice", {
+        fields: ["name", "outstanding_amount", "grand_total", "posting_date"],
+        filters: [["is_return", "=", 0], ["docstatus", "=", 1], ["customer", "=", c.customer], ["outstanding_amount", ">", 0]],
+        limit: 50, order: "posting_date desc",
+      }),
+      apiGET("zoho_books_clone.api.docs.get_credit_note_balance", { credit_note_name: c.name }).catch(() => null),
+    ]);
     if (!r.length) { toast.info("No open invoices for this customer"); return; }
-    const balance = balanceFor(c.name) || viewBalance.value || Math.abs(flt(c.grand_total));
+    const balance = flt(balData?.balance ?? 0);
+    if (balance <= 0) { toast.info("No available credit balance on this credit note"); return; }
+
+    // Sort: original invoice (return_against) always first, others by date
+    const originInv = c.return_against || "";
+    const sorted = [...r].sort((a, b) => {
+      if (a.name === originInv) return -1;
+      if (b.name === originInv) return 1;
+      return 0;
+    });
+
     Object.assign(applyModal, {
-      open: true, saving: false, cnName: c.name, balance, invoice: "",
-      amount: Math.min(balance, flt(r[0].outstanding_amount)), openInvoices: r,
+      open: true, saving: false, cnName: c.name, balance,
+      invoice: "", originInv,
+      amount: 0, openInvoices: sorted, summary: null, summaryLoading: false,
     });
   } catch (e) { toast.error(e.message || "Failed to load invoices"); }
+}
+async function onApplyInvoiceChange() {
+  applyModal.summary = null;
+  if (!applyModal.invoice) return;
+  applyModal.summaryLoading = true;
+  try {
+    const s = await apiGET("zoho_books_clone.api.docs.get_invoice_apply_summary", { invoice_name: applyModal.invoice });
+    applyModal.summary = s;
+    // Auto-fill amount = min(credit balance, outstanding)
+    applyModal.amount = Math.min(applyModal.balance, flt(s.outstanding));
+  } catch (e) {
+    toast.error(e.message || "Failed to load invoice details");
+  } finally {
+    applyModal.summaryLoading = false;
+  }
 }
 async function submitApply() {
   if (!applyModal.invoice || applyModal.amount <= 0) return;
   applyModal.saving = true;
   try {
-    await apiPOST("zoho_books_clone.api.docs.apply_credit_note_to_invoice", {
+    const result = await apiPOST("zoho_books_clone.api.docs.apply_credit_note_to_invoice", {
       credit_note: applyModal.cnName,
       invoice: applyModal.invoice,
       amount: applyModal.amount,
     });
-    toast.success(`Applied ${fmtCur(applyModal.amount)} to ${applyModal.invoice}`);
+    const newOutstanding = result?.invoice_outstanding ?? null;
+    const outstandingMsg = newOutstanding !== null
+      ? ` · Invoice balance now ${fmtCur(newOutstanding)}`
+      : "";
+    toast.success(`Applied ${fmtCur(applyModal.amount)} to ${applyModal.invoice}${outstandingMsg}`);
+
+    // Update the openInvoices list in-place so it's accurate if re-opened
+    if (newOutstanding !== null) {
+      applyModal.openInvoices = applyModal.openInvoices
+        .map(i => i.name === applyModal.invoice
+          ? { ...i, outstanding_amount: newOutstanding }
+          : i
+        )
+        .filter(i => flt(i.outstanding_amount) > 0);
+    }
+
     applyModal.open = false;
     await load();
     if (viewDoc.value?.name === applyModal.cnName) await openView(viewDoc.value);
@@ -788,7 +1009,8 @@ async function submitApply() {
   applyModal.saving = false;
 }
 async function refundCN(c) {
-  const balance = balanceFor(c.name) || viewBalance.value;
+  const balData = await apiGET("zoho_books_clone.api.docs.get_credit_note_balance", { credit_note_name: c.name }).catch(() => null);
+  const balance = flt(balData?.balance ?? 0);
   if (balance <= 0) { toast.info("No available balance to refund"); return; }
   Object.assign(refundModal, { open: true, saving: false, cnName: c.name, balance, amount: balance, mode: "Bank Transfer", reference: "" });
 }
@@ -810,10 +1032,10 @@ async function submitRefund() {
   refundModal.saving = false;
 }
 async function cancelCN(c) {
-  if (!await confirm({ title: "Cancel Credit Note", body: `Cancel ${c.name}? Any applications must be cancelled separately.`, okLabel: "Cancel CN" })) return;
+  if (!await confirm({ title: "Cancel Credit Note", body: `Cancel ${c.name}? The against invoice's outstanding will be restored.`, okLabel: "Cancel CN" })) return;
   try {
-    await apiPOST("zoho_books_clone.api.docs.cancel_doc", { doctype: "Sales Invoice", name: c.name });
-    toast.success("Credit Note cancelled");
+    await apiPOST("zoho_books_clone.api.docs.cancel_credit_note", { name: c.name });
+    toast.success("Credit Note cancelled — invoice outstanding restored");
     await load(); if (viewDoc.value?.name === c.name) await openView(c);
   } catch (e) { toast.error(e.message || "Cancel failed"); }
 }
@@ -974,6 +1196,29 @@ onMounted(async () => {
 .cn-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 8px 0; }
 .cn-total-row.grand { font-weight: 700; font-size: 15px; color: #111827; border-top: 2px solid #e5e7eb; padding-top: 10px; }
 
+/* ── Form totals (items card footer) ── */
+.cn-form-totals {
+  padding: 6px 16px 14px;
+  border-top: 1px solid #f0f2f5;
+  background: #fafbfc;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+.cn-tax-note {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: #6b7280;
+  background: #f0f9ff; border: 1px solid #bae6fd;
+  border-radius: 5px; padding: 4px 9px;
+  margin-bottom: 8px;
+}
+.cn-tax-row { color: #6b7280 !important; font-size: 12.5px !important; }
+.cn-grand-total-row {
+  font-size: 15px !important; font-weight: 800 !important;
+  color: #7f1d1d !important;
+  border-top: 2px solid #fecaca !important;
+  padding-top: 8px !important; margin-top: 4px !important;
+}
+
 /* ── View panel header ── */
 .cn-view-head-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 4px; }
 .cn-view-head-left { display: flex; flex-direction: column; gap: 2px; }
@@ -997,6 +1242,24 @@ onMounted(async () => {
   gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6;
   align-items: center; font-size: 12.5px;
 }
+.cn-view-totals {
+  margin-top: 8px; border: 1px solid #e5e7eb; border-radius: 6px;
+  overflow: hidden; font-size: 12.5px;
+}
+.cn-vt-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 12px; border-bottom: 1px solid #f3f4f6;
+}
+.cn-vt-row:last-child { border-bottom: none; }
+.cn-vt-lbl { color: #6b7280; }
+.cn-vt-val { font-weight: 500; color: #111827; }
+.cn-vt-tax { background: #fafafa; }
+.cn-vt-tax .cn-vt-lbl { color: #4b5563; }
+.cn-vt-grand {
+  background: #fff7f7; border-top: 2px solid #fecaca !important;
+}
+.cn-vt-grand .cn-vt-lbl { font-weight: 700; color: #374151; }
+.cn-vt-grand .cn-vt-val { font-weight: 700; font-size: 13px; }
 
 /* ── Applications grid ── */
 .cn-app-head {
@@ -1018,6 +1281,15 @@ onMounted(async () => {
 .cn-act-apply { background: #fef2f2; border-color: #dc2626; color: #dc2626; }
 .cn-act-apply:hover { background: #fee2e2; color: #b91c1c; }
 .cn-act-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+.cn-act-cancel { background: #fff7ed; border-color: #f97316; color: #ea580c; }
+.cn-act-cancel:hover { background: #ffedd5; color: #c2410c; border-color: #fb923c; }
+
+/* ── Credit-note status badges ── */
+.cn-st-draft     { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+.cn-st-issued    { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.cn-st-partial   { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+.cn-st-applied   { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.cn-st-cancelled { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
 .cn-empty { text-align: center; color: #9ca3af; padding: 48px !important; cursor: default !important; }
 
 /* ── Apply/Refund dialog ── */
@@ -1065,4 +1337,62 @@ onMounted(async () => {
   background: #fff; border-top: none; border-bottom: 1px solid #f3f4f6;
   font-size: 10.5px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em;
 }
+
+/* ── Credit-balance pill ── */
+.cn-balance-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+  font-size: 12.5px; font-weight: 600; border-radius: 20px;
+  padding: 5px 12px; margin-bottom: 14px;
+}
+
+/* ── Invoice summary card ── */
+.cn-inv-summary {
+  border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;
+  margin-bottom: 14px; background: #fafafa;margin-top:14px;
+}
+.cn-summary-loading {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 16px; font-size: 12.5px; color: #6b7280;
+}
+.cn-spinner {
+  display: inline-block; width: 14px; height: 14px; flex-shrink: 0;
+  border: 2px solid #e5e7eb; border-top-color: #6b7280;
+  border-radius: 50%; animation: cn-spin 0.7s linear infinite;
+}
+@keyframes cn-spin { to { transform: rotate(360deg); } }
+.cn-summary-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px 8px; border-bottom: 1px solid #e5e7eb;
+  background: #f3f4f6;
+}
+.cn-summary-inv-name { font-size: 12.5px; font-weight: 700; color: #1a1a2e; }
+.cn-summary-badge {
+  font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 10px;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.cn-badge-unpaid    { background: #fef3c7; color: #92400e; }
+.cn-badge-overdue   { background: #fee2e2; color: #991b1b; }
+.cn-badge-partly-paid { background: #dbeafe; color: #1e40af; }
+.cn-badge-paid      { background: #d1fae5; color: #065f46; }
+.cn-badge-submitted { background: #e0f2fe; color: #0369a1; }
+
+.cn-summary-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+.cn-summary-cell {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 10px 12px; border-right: 1px solid #e5e7eb;
+}
+.cn-summary-cell:last-child { border-right: none; }
+.cn-summary-cell-outstanding { background: #fff8f0; }
+.cn-summary-label {
+  font-size: 10px; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.cn-summary-value { font-size: 13.5px; font-weight: 700; color: #111827; }
+.cn-val-paid      { color: #059669; }
+.cn-val-credit    { color: #2563eb; }
+.cn-val-outstanding { color: #dc2626; }
 </style>

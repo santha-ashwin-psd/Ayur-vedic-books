@@ -738,7 +738,7 @@
           <button class="inv-ab-btn" @click="openEmail(viewInv)">
             <span v-html="icon('mail',13)"></span> <span class="ab-label">Send Email</span>
           </button>
-          <button v-if="viewInv.docstatus===1" class="inv-ab-btn" @click="openCreditNote(viewInv)">
+          <button v-if="viewInv.docstatus===1 && flt(viewInv.outstanding_amount) > 0" class="inv-ab-btn" @click="openCreditNote(viewInv)">
             <span v-html="icon('creditnote',13)"></span> <span class="ab-label">Credit Note</span>
           </button>
           <button v-if="viewInv.docstatus===1" class="inv-ab-btn" @click="makeRecurring(viewInv)">
@@ -756,7 +756,8 @@
         <div class="inv-view-tabs">
           <button class="inv-vtab" :class="{ active: viewTab==='details' }" @click="viewTab='details'">Details</button>
           <button class="inv-vtab" :class="{ active: viewTab==='payments' }" @click="viewTab='payments';loadPayments(viewInv.name)">
-            Payments <span v-if="viewPayments.length" class="inv-vtab-count">{{ viewPayments.length }}</span>
+            Payments
+            <span v-if="viewPayments.length + viewCreditApps.length > 0" class="inv-vtab-count">{{ viewPayments.length + viewCreditApps.length }}</span>
           </button>
           <button v-if="viewInv.docstatus===1 && !viewInv.is_return" class="inv-vtab" :class="{ active: viewTab==='einvoice' }" @click="viewTab='einvoice'">
             e-Invoice
@@ -1014,7 +1015,9 @@
           <div class="inv-tab-body">
             <div v-if="viewPaymentsLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading payments…</div>
             <template v-else>
+              <!-- Cash / bank payments -->
               <div v-if="viewPayments.length" class="inv-items-wrap">
+                <div class="inv-pay-section-lbl">Payments Received</div>
                 <table class="inv-items-table inv-payments-tbl">
                   <thead>
                     <tr>
@@ -1036,7 +1039,39 @@
                   </tbody>
                 </table>
               </div>
-              <div v-else style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
+
+              <!-- Credit note applications -->
+              <div v-if="viewCreditApps.length" class="inv-items-wrap" style="margin-top:12px">
+                <div class="inv-pay-section-lbl inv-pay-section-lbl-cn">Credit Notes</div>
+                <table class="inv-items-table inv-payments-tbl">
+                  <thead>
+                    <tr>
+                      <th>Credit Note</th>
+                      <th>Date</th>
+                      <th>Type</th>
+                      <th>Reference</th>
+                      <th class="th-r">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(a,i) in viewCreditApps" :key="i">
+                      <td><DocLink doctype="Sales Invoice" :name="a.credit_note" /></td>
+                      <td class="mono-sm">{{ fmtDate(a.date) }}</td>
+                      <td>
+                        <span v-if="a.type==='direct'" class="inv-cn-badge inv-cn-badge-direct">Return / Issued</span>
+                        <span v-else class="inv-cn-badge inv-cn-badge-applied">Applied</span>
+                      </td>
+                      <td>
+                        <DocLink v-if="a.journal_entry" doctype="Journal Entry" :name="a.journal_entry" />
+                        <span v-else class="text-muted mono-sm">—</span>
+                      </td>
+                      <td class="td-r" style="font-weight:600;color:#7c3aed">{{ fmtAmt(a.amount) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div v-if="!viewPayments.length && !viewCreditApps.length" style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
                 No payments recorded against this invoice.
                 <div v-if="viewInv.outstanding_amount>0&&viewInv.docstatus===1" style="margin-top:12px">
                   <button class="inv-view-cta" @click="openPayment(viewInv)">
@@ -1434,6 +1469,7 @@ const viewInv     = ref(null);
 const viewTab     = ref("details");
 const viewLoading = ref(false);
 const viewPayments = ref([]);
+const viewCreditApps = ref([]);
 const viewPaymentsLoading = ref(false);
 
 // Phase 0.9 purge — payModal / emailModal / cnModal removed.
@@ -1951,7 +1987,7 @@ async function openEdit(inv) {
   }
 }
 async function openView(inv) {
-  viewInv.value=inv; viewOpen.value=true; viewTab.value="details"; viewPayments.value=[]; viewLoading.value=true;
+  viewInv.value=inv; viewOpen.value=true; viewTab.value="details"; viewPayments.value=[]; viewCreditApps.value=[]; viewLoading.value=true;
   try { const full=await apiGet("Sales Invoice",inv.name); viewInv.value=full; } catch {}
   viewLoading.value=false;
 }
@@ -2066,12 +2102,17 @@ async function openPayment(inv) {
 
 // ── Load payments (view tab) ───────────────────────────────────────────
 async function loadPayments(invName) {
-  if (viewPayments.value.length) return;
-  viewPaymentsLoading.value=true;
+  if (viewPayments.value.length || viewCreditApps.value.length) return;
+  viewPaymentsLoading.value = true;
   try {
-    viewPayments.value=await apiGET("zoho_books_clone.api.docs.get_invoice_payments",{invoice_name:invName})||[];
-  } catch(e) { console.warn("loadPayments failed:",e.message); viewPayments.value=[]; }
-  viewPaymentsLoading.value=false;
+    const [payments, creditApps] = await Promise.all([
+      apiGET("zoho_books_clone.api.docs.get_invoice_payments", { invoice_name: invName }).catch(() => []),
+      apiGET("zoho_books_clone.api.docs.get_invoice_credit_applications", { invoice_name: invName }).catch(() => []),
+    ]);
+    viewPayments.value = payments || [];
+    viewCreditApps.value = creditApps || [];
+  } catch(e) { console.warn("loadPayments failed:", e.message); viewPayments.value = []; viewCreditApps.value = []; }
+  viewPaymentsLoading.value = false;
 }
 
 // ── Email ──────────────────────────────────────────────────────────────
@@ -2145,15 +2186,23 @@ async function confirmAction(action, inv) {
 // Phase 0.9 — delegates to the globally mounted ReturnNoteDialog. The shared
 // dialog already pre-fills items from the invoice and warns about existing CNs.
 async function openCreditNote(inv) {
+  // Always re-fetch the invoice to get the latest items, taxes, and outstanding
+  let freshInv = inv;
+  try { freshInv = await apiGet("Sales Invoice", inv.name); } catch {}
+
   const { openReturnNote } = useReturnNote();
   const result = await openReturnNote({
     kind: "credit",
-    parentName: inv.name,
-    party: inv.customer,
-    items: (inv.items || []).map(it => ({
+    parentName: freshInv.name,
+    party: freshInv.customer,
+    items: (freshInv.items || []).map(it => ({
       item_code: it.item_code, item_name: it.item_name,
       description: it.description, qty: it.qty, rate: it.rate,
     })),
+    taxes: (freshInv.taxes || []).map(t => ({
+      tax_type: t.account_head, description: t.description, rate: t.rate,
+    })),
+    maxInvoiceAmt: flt(freshInv.outstanding_amount),
     existingEndpoint: "zoho_books_clone.api.docs.get_credit_notes",
     createEndpoint:   "zoho_books_clone.api.docs.create_credit_note",
     paramKey:  "invoice_name",
@@ -2626,6 +2675,11 @@ watch(() => route.query, (q) => {
 .inv-req { color:#dc2626; }
 .inv-sec-lbl { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#9ca3af; margin-bottom:12px; margin-top:4px; padding-top:16px; border-top:1px solid #f0f2f5; }
 .inv-sec-lbl:first-child { border-top:none; padding-top:0; margin-top:0; }
+.inv-pay-section-lbl { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#6b7280; margin-bottom:6px; }
+.inv-pay-section-lbl-cn { color:#7c3aed; }
+.inv-cn-badge { font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; }
+.inv-cn-badge-direct  { background:#ede9fe; color:#6d28d9; }
+.inv-cn-badge-applied { background:#d1fae5; color:#065f46; }
 .inv-fg { display:grid; gap:12px; margin-bottom:14px; }
 .inv-fg2 { grid-template-columns:1fr 1fr; } .inv-fg3 { grid-template-columns:1fr 1fr 1fr; }
 .inv-lbl { display:block; font-size:11.5px; font-weight:600; color:#495057; margin-bottom:5px; }

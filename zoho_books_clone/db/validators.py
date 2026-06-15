@@ -16,10 +16,11 @@ def validate_fiscal_year(posting_date: str, company: str) -> str:
     """
     fy = frappe.db.sql("""
         SELECT name, lock_date FROM `tabFiscal Year`
-        WHERE LOWER(company)   = LOWER(%(company)s)
+        WHERE (LOWER(company) = LOWER(%(company)s) OR company IS NULL OR company = '')
           AND is_closed         = 0
           AND year_start_date  <= %(date)s
           AND year_end_date    >= %(date)s
+        ORDER BY (company IS NULL OR company = '') ASC
         LIMIT 1
     """, {"company": company, "date": posting_date}, as_dict=True)
 

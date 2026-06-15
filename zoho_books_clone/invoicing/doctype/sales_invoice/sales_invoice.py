@@ -52,9 +52,12 @@ class SalesInvoice(Document):
         self.grand_total = round(net + tax_total, 2)
 
     def set_outstanding_amount(self):
-        if self.is_new() or not self.name or self.name.startswith("new-"):
-            self.outstanding_amount = self.grand_total
-        elif flt(self.outstanding_amount) == 0 and self.docstatus == 0:
+        # For credit notes, outstanding is always 0 (balance tracked separately)
+        if self.is_return:
+            return
+        if self.docstatus == 0:
+            # Draft: always keep outstanding_amount in sync with grand_total
+            # so that editing items reflects the correct balance immediately
             self.outstanding_amount = self.grand_total
 
     def validate_accounts(self):
@@ -93,8 +96,13 @@ class SalesInvoice(Document):
             self.due_date = self.posting_date
 
     def on_submit(self):
+        new_outstanding = flt(self.grand_total)
+        self.outstanding_amount = new_outstanding
         self.status = "Submitted"
-        self.outstanding_amount = self.grand_total
+        # Explicitly persist so the values are committed even if Frappe's submit()
+        # doesn't call db_update() after on_submit in this version
+        self.db_set("outstanding_amount", new_outstanding, update_modified=False)
+        self.db_set("status", "Submitted", update_modified=False)
         post_sales_invoice(self)
 
     def on_cancel(self):

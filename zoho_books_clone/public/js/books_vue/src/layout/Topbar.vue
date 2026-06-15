@@ -19,20 +19,10 @@
 
     <div class="bv-topbar-spacer"></div>
 
-    <!-- Mobile Search & Filter (visible mainly on mobile but we'll add them here) -->
-    <button class="bv-topbar-icon-btn bv-topbar-search-btn" title="Search">
-      <IconSvg name="search" :size="16" />
-    </button>
-    <button class="bv-topbar-icon-btn bv-topbar-filter-btn" title="Filter">
-      <IconSvg name="filter" :size="16" />
-    </button>
-
     <button class="bv-topbar-icon-btn bv-topbar-ai-btn" title="AI Assistant" @click="$emit('toggle-ai')">
       <IconSvg name="sparkle" :size="17" />
       <span v-if="alertCount > 0" class="bv-ai-badge">{{ alertCount > 9 ? '9+' : alertCount }}</span>
     </button>
-
-    <NotificationsBell />
 
     <div class="bv-topbar-user" @click.stop="userOpen = !userOpen">
       <div class="bv-topbar-avatar">{{ initials }}</div>
@@ -64,7 +54,6 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import IconSvg from "../components/IconSvg.vue";
-import NotificationsBell from "./NotificationsBell.vue";
 import { titleFor } from "./nav.js";
 import { session } from "../api/session.js";
 import { usePermissions } from "../composables/usePermissions.js";

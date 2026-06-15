@@ -1666,4 +1666,146 @@ watch(() => form.supplier, (val) => {
 .vi-line-tax { margin-left:auto; flex-direction:row; align-items:center; gap:6px; }
 .vi-tax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#e0e7ff; color:#4f46e5; flex-shrink:0; }
 .vi-notax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#f3f4f6; color:#9ca3af; }
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE MEDIA QUERIES
+   ══════════════════════════════════════════════════ */
+
+/* ── Small desktop (≤ 1024px) ── */
+@media (max-width: 1024px) {
+  .po-edit-drawer  { width: 660px; right: -660px; }
+  .po-view-drawer  { width: 800px; right: -800px; }
+  .inv-drawer-wide { width: 740px; }
+
+  .bk-kpi-grid  { grid-template-columns: repeat(3, 1fr); }
+  .bk-stat-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .po-view-items-head,
+  .po-view-items-row { grid-template-columns: 2fr 70px 80px 90px; }
+
+  .po-fulfill-head,
+  .po-fulfill-row { grid-template-columns: 2fr 70px 90px 80px 90px; }
+}
+
+/* ── Tablet (≤ 768px) ── */
+@media (max-width: 768px) {
+  /* Drawers go full-screen */
+  .po-edit-drawer   { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .po-view-drawer   { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .inv-drawer-panel { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .inv-drawer-wide  { width: 100%; max-width: 100%; }
+
+  /* KPI / stat grids */
+  .bk-kpi-grid  { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .bk-stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  /* Toolbar: let pills + buttons wrap */
+  .sales-toolbar { flex-wrap: wrap; gap: 8px; }
+
+  /* View header: allow wrapping */
+  .inv-view-header { flex-wrap: wrap; padding: 14px 16px 10px; gap: 10px; }
+  .inv-view-header-left { flex: 1 1 100%; }
+  .inv-view-cta { width: 100%; justify-content: center; }
+
+  /* Details meta */
+  .inv-details-meta { grid-template-columns: repeat(2, 1fr); }
+  .po-meta-grid     { grid-template-columns: repeat(2, 1fr); }
+
+  /* Address grid */
+  .inv-bottom-grid { grid-template-columns: 1fr; gap: 12px; }
+
+  /* View items table: keep item name + amount only */
+  .po-view-items-head { grid-template-columns: 1fr 90px; }
+  .po-view-items-row  { grid-template-columns: 1fr 90px; }
+  .po-view-items-head > *:nth-child(2),
+  .po-view-items-head > *:nth-child(3),
+  .po-view-items-row  > *:nth-child(2),
+  .po-view-items-row  > *:nth-child(3) { display: none; }
+
+  /* Fulfillment table: simplify to 3 cols */
+  .po-fulfill-head { grid-template-columns: 2fr 80px 90px; }
+  .po-fulfill-row  { grid-template-columns: 2fr 80px 90px; }
+  .po-fulfill-head > *:nth-child(4),
+  .po-fulfill-head > *:nth-child(5),
+  .po-fulfill-row  > *:nth-child(4),
+  .po-fulfill-row  > *:nth-child(5) { display: none; }
+
+  /* Totals block */
+  .po-totals { flex-direction: column; gap: 12px; }
+  .po-totals-right { min-width: unset; width: 100%; }
+
+  /* Modals */
+  .po-apply-dialog { width: 96vw; }
+
+  /* Action bar */
+  .inv-action-bar { padding: 10px 14px; gap: 6px; }
+  .inv-ab-btn     { padding: 6px 10px; font-size: 12px; }
+
+  /* Convert-to-bill table: 3 cols */
+  .po-inv-head { grid-template-columns: 2fr 80px 100px; }
+  .po-inv-row  { grid-template-columns: 2fr 80px 100px; }
+  .po-inv-head > *:nth-child(4),
+  .po-inv-row  > *:nth-child(4) { display: none; }
+
+  /* Linked doc rows */
+  .po-link-row { grid-template-columns: 1fr 1fr; gap: 6px; font-size: 12px; }
+}
+
+/* ── Mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+  /* KPI + stat grids: single column */
+  .bk-kpi-grid  { grid-template-columns: 1fr; }
+  .bk-stat-grid { grid-template-columns: 1fr; }
+
+  /* View header */
+  .inv-view-number { font-size: 17px; }
+  .inv-view-cta    { padding: 9px 14px; font-size: 13px; }
+
+  /* Details meta: single column */
+  .inv-details-meta { grid-template-columns: 1fr; }
+  .po-meta-grid     { grid-template-columns: 1fr; }
+
+  /* Item card body stacks */
+  .po-item-card-body { grid-template-columns: 1fr; }
+  .po-item-col--left { border-right: none; border-bottom: 1px solid #f0f2f8; }
+
+  /* Numeric row in item card */
+  .po-item-num-row { grid-template-columns: 1fr; }
+
+  /* Additional details grid */
+  .add-details-grid { grid-template-columns: 1fr; }
+
+  /* Edit drawer footer buttons */
+  .add-footer-actions { flex-wrap: wrap; width: 100%; }
+  .add-btn-cancel,
+  .add-btn-primary { flex: 1 1 auto; justify-content: center; text-align: center; }
+
+  /* Purchase type toggle */
+  .po-type-toggle { flex-wrap: wrap; }
+  .po-type-btns   { width: 100%; }
+  .po-type-btn    { flex: 1; justify-content: center; }
+
+  /* View item card meta */
+  .vi-line-meta { gap: 8px; }
+  .vi-meta-val  { font-size: 12px; }
+
+  /* Totals panel */
+  .po-view-totals-inner { min-width: unset; width: 100%; }
+
+  /* Modal: near full width */
+  .po-apply-dialog { width: 98vw; border-radius: 8px; }
+
+  /* Tabs */
+  .inv-vtab { padding: 9px 12px; font-size: 12.5px; }
+
+  /* Timeline */
+  .inv-tl-wrap { padding: 14px 16px; }
+
+  /* Action bar */
+  .inv-action-bar { gap: 4px; padding: 8px 12px; }
+  .inv-ab-btn     { padding: 5px 8px; font-size: 11.5px; }
+
+  /* Linked doc rows */
+  .po-link-row { grid-template-columns: 1fr; }
+}
 </style>

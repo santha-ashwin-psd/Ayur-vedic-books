@@ -255,7 +255,8 @@ def update_subscription(name, frequency=None, end_date=None, notify_by_email=Non
     if frequency is not None:
         doc.frequency = frequency
     if end_date is not None:
-        doc.end_date = end_date or None
+        # Empty string means "clear the end date" (open-ended subscription)
+        doc.end_date = end_date if end_date else None
     if notify_by_email is not None:
         doc.notify_by_email = int(bool(int(notify_by_email))) if str(notify_by_email).isdigit() else int(bool(notify_by_email))
     if submit_on_creation is not None:

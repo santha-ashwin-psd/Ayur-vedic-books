@@ -67,6 +67,7 @@ function _parseResponse(json, status) {
 export async function apiGET(method, params) {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params || {})) {
+    if (v === null || v === undefined) continue;
     qs.append(k, typeof v === "string" ? v : JSON.stringify(v));
   }
   const r = await fetch("/api/method/" + method + "?" + qs.toString(), {
@@ -123,6 +124,9 @@ export async function apiPOST(method, args) {
   const csrfToken = await refreshCsrfToken();
   const body = new URLSearchParams();
   for (const [k, v] of Object.entries(args || {})) {
+    // Skip null/undefined — sending JSON.stringify(null) = "null" (string)
+    // causes Frappe's Date validator to throw "null is not a valid date string"
+    if (v === null || v === undefined) continue;
     body.append(k, typeof v === "string" ? v : JSON.stringify(v));
   }
   if (csrfToken) body.append("csrf_token", csrfToken);

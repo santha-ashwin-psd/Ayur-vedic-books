@@ -892,7 +892,7 @@ async function saveRec() {
         name: form._name,
         subscription_name: form.subscription_name,
         frequency: form.frequency,
-        end_date: form.end_date || null,
+        end_date: form.end_date || "",
         notify_by_email: form._notify ? 1 : 0,
         submit_on_creation: form.submit_on_creation,
         recipients: form.recipients,
@@ -1049,10 +1049,10 @@ function exportCSV() {
 .text-accent { color:#2563eb;font-weight:600; }
 .mono-sm {font-size:13px; }
 .req { color:#dc2626; }
-.badge-green { background:#dcfce7;color:#16a34a; }
-.badge-orange { background:#fef3c7;color:#ea580c; }
-.badge-grey { background:#e5e7eb;color:#6b7280; }
-.badge-red { background:#fee2e2;color:#dc2626; }
+.badge-green { background:#dcfce7;color:#16a34a;width: fit-content; }
+.badge-orange { background:#fef3c7;color:#ea580c;width: fit-content; }
+.badge-grey { background:#e5e7eb;color:#6b7280;width: fit-content; }
+.badge-red { background:#fee2e2;color:#dc2626;width: fit-content; }
 .rec-view-drawer { width: 625px; right: -625px; }
 
 /* ── View header layout ── */

@@ -216,19 +216,79 @@
             </div>
           </div>
           <div class="add-card-body" :class="{collapsed:cnCollapsed.items}" style="padding:0">
-            <div class="cn-items-table" style="border:none;border-radius:0;border-bottom:1px solid #e5e7eb">
-              <div class="cn-items-head">
-                <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div class="ta-r">Rate</div><div class="ta-r">Amount</div><div></div>
-              </div>
-              <div v-for="line in lines" :key="line.id" class="cn-items-row">
-                <div><SearchableSelect v-model="line.item_code" :options="items"
-                  placeholder="Item…" :createable="true" createDoctype="Item"
-                  @search="fetchItems" @select="v=>onItemSelect(line,v)" /></div>
-                <div><input v-model="line.description" class="inv-fi" placeholder="Description" /></div>
-                <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-                <div><input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi ta-r" @input="calcLine(line)" /></div>
-                <div class="ta-r mono-sm" style="padding:8px 0">{{ fmtCur(line.amount) }}</div>
-                <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
+            <!-- Expandable item cards -->
+            <div class="cn-item-cards">
+              <div v-for="(line, idx) in lines" :key="line.id" class="cn-item-card">
+                <!-- Card header -->
+                <div class="cn-item-card-header" @click="line.collapsed = !line.collapsed">
+                  <span class="cn-item-card-num">#{{ idx + 1 }}</span>
+                  <span class="cn-item-card-title">{{ line.item_name || line.item_code || 'Line Item' }}</span>
+                  <div class="cn-item-card-subtotal">
+                    <span class="cn-item-subtotal-label">SUBTOTAL</span>
+                    <span class="cn-item-amount">{{ fmtCur(line.amount) }}</span>
+                  </div>
+                  <span class="cn-item-chevron" :class="{collapsed: line.collapsed}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                  <button class="cn-item-rm" @click.stop="removeLine(line.id)">
+                    <span v-html="icon('x', 12)"></span>
+                  </button>
+                </div>
+                <!-- Card body -->
+                <div class="cn-item-card-body" v-show="!line.collapsed">
+                  <div class="cn-item-col cn-item-col--left">
+                    <div class="cn-item-field">
+                      <label>Item Name <span class="inv-req">*</span></label>
+                      <SearchableSelect v-model="line.item_code" :options="items"
+                        placeholder="Search item or service" :createable="true" createDoctype="Item"
+                        @search="fetchItems" @update:modelValue="onItemChange(line)" />
+                    </div>
+                    <div class="cn-item-field" style="margin-top:12px">
+                      <label>Description</label>
+                      <textarea v-model="line.description" class="inv-fi cn-item-desc-ta" rows="3" maxlength="500" placeholder="Item description…"></textarea>
+                      <div class="cn-field-hint">{{ (line.description||'').length }}/500</div>
+                    </div>
+                  </div>
+                  <div class="cn-item-col cn-item-col--right">
+                    <div class="cn-item-num-row">
+                      <div class="cn-item-field">
+                        <label>HSN/SAC</label>
+                        <input v-model="line.hsn_code" class="inv-fi" placeholder="e.g. 998314" />
+                      </div>
+                      <div class="cn-item-field">
+                        <label>UOM</label>
+                        <select v-model="line.uom" class="inv-fi">
+                          <option>Nos</option><option>Kg</option><option>Ltr</option>
+                          <option>Hrs</option><option>Pcs</option><option>Box</option>
+                          <option>Mtr</option><option>Set</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="cn-item-num-row">
+                      <div class="cn-item-field">
+                        <label>Qty</label>
+                        <input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-fi" @input="calcLine(line)" />
+                      </div>
+                      <div class="cn-item-field">
+                        <label>Rate (₹)</label>
+                        <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)" />
+                      </div>
+                    </div>
+                    <div class="cn-item-num-row">
+                      <div class="cn-item-field">
+                        <label>Discount %</label>
+                        <input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-fi" @input="calcLine(line)" />
+                      </div>
+                      <div class="cn-item-field">
+                        <label>Tax Template</label>
+                        <select v-model="line.tax_code" class="inv-fi">
+                          <option value="">— No Tax —</option>
+                          <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.title || t.name }}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <div style="padding:10px 16px 4px">
@@ -613,10 +673,11 @@ const _balances = ref({});
 function balanceFor(name) { return flt(_balances.value[name] || 0); }
 
 let _id = 1;
-const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0 });
+const blankLine = () => ({ id: _id++, item_code: "", item_name: "", description: "", hsn_code: "", qty: 1, rate: 0, uom: "Nos", discount_percentage: 0, discount_amount: 0, amount: 0, tax_code: "", collapsed: false });
 const form = reactive({ customer: "", posting_date: todayStr(), return_against: "", reason: "Price Adjustment", notes: "" });
 const invoiceSummary = reactive({ data: null, loading: false });
 const cnTaxes = ref([]);
+const taxTemplates = ref([]);
 
 const applyModal = reactive({ open: false, saving: false, cnName: "", balance: 0, invoice: "", originInv: "", amount: 0, openInvoices: [], summary: null, summaryLoading: false });
 const refundModal = reactive({ open: false, saving: false, cnName: "", balance: 0, amount: 0, mode: "Bank Transfer", reference: "" });
@@ -765,7 +826,7 @@ function openNew() {
   cnTaxes.value = [];
   lines.value = [blankLine()];
   Object.assign(cnCollapsed, { customer: false, items: false, notes: true });
-  fetchCustomers(""); fetchItems(""); fetchInvoices("");
+  fetchCustomers(""); fetchItems(""); fetchInvoices(""); fetchTaxTemplates();
   drawerOpen.value = true;
 }
 async function openEdit(c) {
@@ -774,15 +835,18 @@ async function openEdit(c) {
   Object.assign(form, { customer: c.customer || "", posting_date: c.posting_date || todayStr(), return_against: c.return_against || "", reason: "Price Adjustment", notes: "" });
   lines.value = [blankLine()];
   Object.assign(cnCollapsed, { customer: false, items: false, notes: true });
-  fetchCustomers(""); fetchItems(""); fetchInvoices("");
+  fetchCustomers(""); fetchItems(""); fetchInvoices(""); fetchTaxTemplates();
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Sales Invoice", c.name);
     if (doc?.items?.length) {
       lines.value = doc.items.map(i => ({
-        id: _id++, item_code: i.item_code || "", description: i.description || "",
+        id: _id++, item_code: i.item_code || "", item_name: i.item_name || i.item_code || "",
+        description: i.description || "", hsn_code: i.hsn_code || "",
         qty: Math.abs(i.qty || 0), rate: Math.abs(i.rate || 0),
-        amount: Math.abs(i.amount || 0),
+        uom: i.uom || "Nos", discount_percentage: Math.abs(i.discount_percentage || 0),
+        discount_amount: Math.abs(i.discount_amount || 0),
+        amount: Math.abs(i.amount || 0), tax_code: i.item_tax_template || "", collapsed: true,
       }));
     }
     // Restore taxes from the saved CN
@@ -864,9 +928,13 @@ async function onInvoiceSelect(opt) {
       .filter(t => t.tax_type);
     if (doc?.items?.length) {
       lines.value = doc.items.map(i => ({
-        id: _id++, item_code: i.item_code || "", description: i.description || i.item_name || "",
+        id: _id++, item_code: i.item_code || "", item_name: i.item_name || i.item_code || "",
+        description: i.description || i.item_name || "", hsn_code: i.hsn_code || "",
         qty: Math.abs(i.qty || 1), rate: Math.abs(i.rate || 0),
+        uom: i.uom || "Nos", discount_percentage: Math.abs(i.discount_percentage || 0),
+        discount_amount: Math.abs(i.discount_amount || 0),
         amount: Math.round(Math.abs(i.qty || 1) * Math.abs(i.rate || 0) * 100) / 100,
+        tax_code: i.item_tax_template || "", collapsed: true,
       }));
       toast.success(`Loaded ${doc.items.length} item(s) from ${invName}`);
     }
@@ -875,10 +943,45 @@ async function onInvoiceSelect(opt) {
   } catch {}
   finally { invoiceSummary.loading = false; }
 }
-function onItemSelect(line, opt) { line.item_code = opt?.value ?? opt; if (opt?.rate) { line.rate = Number(opt.rate) || 0; calcLine(line); } }
+async function onItemChange(line) {
+  const it = items.value.find(i => i.name === line.item_code || i.value === line.item_code);
+  if (it) {
+    line.item_name = it.item_name || it.name || line.item_code;
+    line.rate = flt(it.rate || it.standard_rate || 0);
+    line.uom = it.stock_uom || "Nos";
+    calcLine(line);
+  }
+  if (line.item_code) {
+    try {
+      const doc = await apiGet("Item", line.item_code);
+      if (doc?.item_name) line.item_name = doc.item_name;
+      if (doc?.description && !line.description) line.description = doc.description;
+      if (doc?.hsn_code) line.hsn_code = doc.hsn_code;
+      if (!flt(line.rate) && doc?.standard_rate) line.rate = flt(doc.standard_rate);
+      if (doc?.stock_uom) line.uom = doc.stock_uom;
+      calcLine(line);
+    } catch {}
+  }
+}
 function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
-function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
+function calcLine(l) {
+  if (l.discount_percentage > 100) l.discount_percentage = 100;
+  if (l.discount_percentage < 0) l.discount_percentage = 0;
+  const base = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100;
+  const disc = Math.round(base * flt(l.discount_percentage) / 100 * 100) / 100;
+  l.discount_amount = disc;
+  l.amount = base - disc;
+}
+async function fetchTaxTemplates() {
+  try {
+    const co = await resolveCompany();
+    const r = await apiList("Sales Taxes and Charges Template", {
+      fields: ["name", "title"], filters: [["company","=",co],["disabled","=",0]], limit: 50
+    });
+    taxTemplates.value = r;
+  } catch { taxTemplates.value = []; }
+}
 
 async function saveCN(submit) {
   if (!form.customer) return toast.error("Customer is required");
@@ -887,7 +990,13 @@ async function saveCN(submit) {
   try {
     const itemsPayload = lines.value
       .filter(l => l.item_code)
-      .map(l => ({ item_code: l.item_code, item_name: l.item_code, description: l.description, qty: flt(l.qty), rate: flt(l.rate) }));
+      .map(l => ({
+        item_code: l.item_code, item_name: l.item_name || l.item_code,
+        description: l.description, hsn_code: l.hsn_code || "",
+        qty: flt(l.qty), rate: flt(l.rate), uom: l.uom || "Nos",
+        discount_percentage: flt(l.discount_percentage), discount_amount: flt(l.discount_amount),
+        amount: flt(l.amount),
+      }));
 
     const taxesJson = JSON.stringify(cnTaxes.value);
     if (!editingName.value && submit === 1) {
@@ -1395,4 +1504,50 @@ onMounted(async () => {
 .cn-val-paid      { color: #059669; }
 .cn-val-credit    { color: #2563eb; }
 .cn-val-outstanding { color: #dc2626; }
+
+/* ── Item Cards (expandable per-line) ── */
+.cn-item-cards { padding: 12px 14px 4px; display: flex; flex-direction: column; gap: 10px; }
+.cn-item-card {
+  border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;
+  background: #fff;
+}
+.cn-item-card:focus-within { box-shadow: 0 0 0 2px rgba(220,38,38,.1); border-color: #fca5a5; }
+.cn-item-card-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; cursor: pointer; user-select: none;
+  background: #fafafa; border-bottom: 1px solid #e5e7eb;
+  transition: background .12s;
+}
+.cn-item-card-header:hover { background: #f3f4f6; }
+.cn-item-card-num {
+  font-size: 11.5px; font-weight: 800; color: #dc2626; min-width: 22px; flex-shrink: 0;
+}
+.cn-item-card-title {
+  flex: 1; font-size: 12.5px; font-weight: 600; color: #111827;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.cn-item-card-subtotal { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex-shrink: 0; }
+.cn-item-subtotal-label {
+  font-size: 9.5px; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.cn-item-amount { font-size: 13px; font-weight: 700; color: #7f1d1d; }
+.cn-item-chevron { color: #9ca3af; display: inline-flex; flex-shrink: 0; transition: transform .18s; }
+.cn-item-chevron.collapsed { transform: rotate(-90deg); }
+.cn-item-rm {
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid #fee2e2; border-radius: 5px; background: #fef2f2; color: #dc2626;
+  cursor: pointer; flex-shrink: 0; padding: 0; transition: background .12s;
+}
+.cn-item-rm:hover { background: #fee2e2; }
+/* Card body: 2-col layout */
+.cn-item-card-body { display: grid; grid-template-columns: 1.1fr 1fr; }
+.cn-item-col { display: flex; flex-direction: column; padding: 14px; }
+.cn-item-col--left { border-right: 1px solid #f0f2f5; }
+.cn-item-col--right { display: flex; flex-direction: column; gap: 10px; }
+.cn-item-field { display: flex; flex-direction: column; gap: 4px; }
+.cn-item-field label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+.cn-item-num-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cn-item-desc-ta { resize: vertical; min-height: 70px; font-size: 12.5px; }
+.cn-field-hint { font-size: 10.5px; color: #9ca3af; text-align: right; }
 </style>

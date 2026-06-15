@@ -57,7 +57,10 @@
           <template v-else>
             <tr v-for="r in paged" :key="r.name" class="rec-row" :class="{selected:selected.includes(r.name)}" @click="openView(r)">
               <td @click.stop><input type="checkbox" :checked="selected.includes(r.name)" @change="toggleOne(r.name)" /></td>
-              <td><span class="rec-num">{{ r.name }}</span></td>
+              <td>
+                <span class="rec-num">{{ r.name }}</span>
+                <div v-if="r.subscription_name" style="font-size:11.5px;color:#6b7280;margin-top:2px;font-weight:500">{{ r.subscription_name }}</div>
+              </td>
               <td>
                 <span v-if="r.party" style="font-size:13px;color:#111827;font-weight:500">{{ r.party }}</span>
                 <span v-else class="text-muted">—</span>
@@ -117,7 +120,7 @@
         <div v-if="editMode" class="rb-info-card">
           <div class="rb-info-row">
             <div class="rb-info-item">
-              <div class="rb-info-lbl">Subscription Name</div>
+              <div class="rb-info-lbl">Reference #</div>
               <div class="rb-info-val rb-info-name">{{ form._name }}</div>
             </div>
             <div class="rb-info-item">
@@ -146,6 +149,11 @@
             <span>Reference Document</span>
           </div>
           <div class="rec-fields-grid">
+            <div class="rec-field" style="grid-column:1/-1">
+              <label class="rec-label">Subscription Name <span class="rec-hint">(optional)</span></label>
+              <input v-model="form.subscription_name" type="text" class="rec-input" placeholder="e.g. Office Rent, AWS Monthly…" maxlength="140" />
+              <div class="rec-field-help">A friendly label to identify this recurring bill.</div>
+            </div>
             <div class="rec-field" style="grid-column:1/-1">
               <label class="rec-label">Reference Bill <span class="req">*</span></label>
               <SearchableSelect v-model="form.reference_document" :options="refDocs" placeholder="Search a saved bill…" @search="fetchRefDocs" :disabled="editMode" />
@@ -262,8 +270,9 @@
         <div class="rec-view-head" :class="viewDoc.status==='Paused'?'paused':viewDoc.status==='Cancelled'?'completed':''">
           <div class="rec-view-head-row">
             <div>
-              <div class="rec-view-num">{{ viewDoc.name }}</div>
+              <div class="rec-view-num">{{ viewDoc.subscription_name || viewDoc.name }}</div>
               <div class="rec-view-sub">
+                <span v-if="viewDoc.subscription_name" style="color:#9ca3af;font-size:11.5px">{{ viewDoc.name }} · </span>
                 {{ viewDoc.party || viewDoc.vendor_name || 'Recurring Bill' }}
                 <span v-if="viewDoc.frequency"> · {{ viewDoc.frequency }}</span>
               </div>
@@ -335,8 +344,9 @@
             <div class="rec-section">
               <div class="rec-section-hdr"><span v-html="icon('folder',13)"></span><span>Details</span></div>
               <div class="rec-meta-grid">
-                <div><div class="rec-meta-lbl">Subscription Name</div><div class="mono-sm" style="font-weight:600">{{ viewDoc.name }}</div></div>
+                <div><div class="rec-meta-lbl">Reference #</div><div class="mono-sm" style="font-weight:600">{{ viewDoc.name }}</div></div>
                 <div><div class="rec-meta-lbl">Status</div><span class="rec-badge" :class="statusClass(viewDoc.ui_status||viewDoc.status)">{{ viewDoc.ui_status||viewDoc.status||'Active' }}</span></div>
+                <div style="grid-column:1/-1" v-if="viewDoc.subscription_name"><div class="rec-meta-lbl">Subscription Name</div><div style="font-size:14px;font-weight:700;color:#1d4ed8">{{ viewDoc.subscription_name }}</div></div>
                 <div><div class="rec-meta-lbl">Vendor</div><div style="font-weight:500;color:#111827">{{ viewDoc.party || viewDoc.vendor_name || '—' }}</div></div>
                 <div><div class="rec-meta-lbl">Next Billing Date</div><div class="mono-sm" :class="isDue(viewDoc)?'text-accent':''">{{ fmtDate(viewDoc.next_schedule_date)||'—' }}</div></div>
                 <div><div class="rec-meta-lbl">Reference Bill</div><div class="mono-sm">{{ viewDoc.reference_document||'—' }}</div></div>
@@ -432,6 +442,7 @@ const refDocs = ref([]);
 const sortCol = ref("next_schedule_date"), sortDir = ref("asc");
 const form = reactive({
   _name: "",
+  subscription_name: "",
   vendor: "",
   vendor_name: "",
   next_billing_date: "",
@@ -465,17 +476,22 @@ function isDue(r) { return r.next_schedule_date && r.next_schedule_date <= today
 function statusClass(s) { if (s==="Cancelled") return "badge-grey"; if (s==="Paused") return "badge-orange"; return "badge-green"; }
 
 const counts = computed(() => ({
-  active:    list.value.filter(r => (r.status||"Active") === "Active").length,
-  paused:    list.value.filter(r => r.status === "Paused").length,
-  cancelled: list.value.filter(r => r.status === "Cancelled").length,
+  active:    list.value.filter(r => (r.ui_status||r.status||"Active") === "Active").length,
+  paused:    list.value.filter(r => (r.ui_status||r.status) === "Paused").length,
+  cancelled: list.value.filter(r => (r.ui_status||r.status) === "Cancelled").length,
 }));
 
 const filtered = computed(() => {
   let r = list.value;
-  if (activeTab.value !== "all") r = r.filter(x => (x.status||"Active") === activeTab.value);
+  if (activeTab.value !== "all") r = r.filter(x => (x.ui_status||x.status||"Active") === activeTab.value);
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
-    r = r.filter(x => (x.name||"").toLowerCase().includes(q) || (x.reference_document||"").toLowerCase().includes(q));
+    r = r.filter(x =>
+      (x.name||"").toLowerCase().includes(q) ||
+      (x.subscription_name||"").toLowerCase().includes(q) ||
+      (x.party||"").toLowerCase().includes(q) ||
+      (x.reference_document||"").toLowerCase().includes(q)
+    );
   }
   return r;
 });
@@ -504,7 +520,8 @@ function toggleOne(n) { selected.value = selected.value.includes(n) ? selected.v
 function openNew() {
   editMode.value = false;
   Object.assign(form, {
-    _name: "", vendor: "", vendor_name: "", next_billing_date: "", _status: "",
+    _name: "", subscription_name: "", vendor: "", vendor_name: "",
+    next_billing_date: "", _status: "",
     reference_document: "", frequency: "Monthly",
     start_date: new Date().toISOString().slice(0, 10),
     end_date: "", submit_on_creation: 1, _notify: false,
@@ -538,6 +555,7 @@ async function openEdit(doc) {
   // Populate from what we have immediately so drawer opens fast
   Object.assign(form, {
     _name: doc.name,
+    subscription_name: doc.subscription_name || "",
     vendor: doc.vendor || doc.party || "",
     vendor_name: doc.vendor_name || doc.party || "",
     next_billing_date: doc.next_schedule_date || "",
@@ -559,6 +577,7 @@ async function openEdit(doc) {
     const detail = await apiGET("zoho_books_clone.api.recurring.get_subscription", { name: doc.name });
     const d = (detail && typeof detail === "object") ? detail : {};
     Object.assign(form, {
+      subscription_name: d.subscription_name || form.subscription_name,
       vendor: d.vendor || d.party || form.vendor,
       vendor_name: d.vendor_name || d.party || form.vendor_name,
       next_billing_date: d.next_schedule_date || form.next_billing_date,
@@ -660,28 +679,30 @@ async function saveRec() {
     if (editMode.value) {
       await apiPOST("zoho_books_clone.api.recurring.update_subscription", {
         name: form._name,
+        subscription_name: form.subscription_name,
         frequency: form.frequency,
         end_date: form.end_date || "",
         submit_on_creation: form.submit_on_creation,
+        notify_by_email: form._notify ? 1 : 0,
         recipients: form.recipients,
         subject: form.subject,
         message: form.message,
       });
       toast.success(`${form._name} updated`);
     } else {
-      const doc = {
-        doctype: "Auto Repeat",
-        reference_doctype: "Purchase Invoice",
+      const saved = await apiPOST("zoho_books_clone.api.recurring.make_recurring_from_doc", {
+        reference_doctype:  "Purchase Invoice",
         reference_document: form.reference_document,
-        frequency: form.frequency,
-        start_date: form.start_date,
-        end_date: form.end_date || null,
+        subscription_name:  form.subscription_name,
+        frequency:          form.frequency,
+        start_date:         form.start_date,
+        end_date:           form.end_date || "",
         submit_on_creation: form.submit_on_creation,
-        recipients: form._notify ? (form.recipients || "") : "",
-        subject: form._notify ? (form.subject || "") : "",
-        message: form._notify ? (form.message || "") : "",
-      };
-      const saved = await apiSave(doc);
+        notify_by_email:    form._notify ? "1" : "",
+        recipients:         form._notify ? (form.recipients || "") : "",
+        subject:            form._notify ? (form.subject || "") : "",
+        message:            form._notify ? (form.message || "") : "",
+      });
       toast.success(`Recurring bill ${saved?.name || ""} created`);
     }
     drawerOpen.value = false;

@@ -426,6 +426,21 @@
                   <span class="dn-summary-val" style="color:#6b7280">{{ includedCt }} of {{ lines.length }} included</span>
                   <span class="dn-summary-pct"></span>
                 </div>
+                <template v-if="dnTaxLines.length">
+                  <div class="dn-summary-divider"></div>
+                  <div v-for="tl in dnTaxLines" :key="tl.description" class="dn-summary-row">
+                    <span class="dn-summary-lbl">{{ tl.description }} ({{ tl.rate }}%)</span>
+                    <span class="dn-summary-bar-wrap"></span>
+                    <span class="dn-summary-val" style="color:#6b7280">{{ fmtCur(tl.amount) }}</span>
+                    <span class="dn-summary-pct"></span>
+                  </div>
+                  <div class="dn-summary-row" style="border-top:2px solid #fdba74;padding-top:6px;margin-top:2px">
+                    <span class="dn-summary-lbl" style="font-weight:700">Grand Total</span>
+                    <span class="dn-summary-bar-wrap"></span>
+                    <span class="dn-summary-val" style="color:#7c2d12;font-weight:800">{{ fmtCur(dnGrandTotal) }}</span>
+                    <span class="dn-summary-pct"></span>
+                  </div>
+                </template>
               </div>
             </template>
 
@@ -498,18 +513,37 @@
               <div><div class="dn-meta-lbl">Available Balance</div>
                 <div class="mono-sm" :class="viewBalance>0?'text-danger':'text-success'">{{ fmtCur(viewBalance) }}</div>
               </div>
+              <div v-if="viewDoc.cost_center"><div class="dn-meta-lbl">Cost Center</div>
+                <div class="mono-sm" style="color:#059669">{{ viewDoc.cost_center }}</div>
+              </div>
+              <div v-if="viewDoc.remarks"><div class="dn-meta-lbl">Reason / Notes</div>
+                <div class="mono-sm" style="color:#374151">{{ viewDoc.remarks }}</div>
+              </div>
             </div>
 
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
             <template v-else-if="viewItems.length">
               <div class="inv-sec-lbl">Line Items</div>
               <div class="dn-view-items">
-                <div class="dn-view-items-head"><span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span></div>
+                <div class="dn-view-items-head"><span>Item</span><span>HSN/SAC</span><span>UOM</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span></div>
                 <div v-for="it in viewItems" :key="it.name" class="dn-view-items-row">
                   <span>{{ it.item_name||it.item_code }}</span>
+                  <span class="mono-sm text-muted">{{ it.hsn_code||'—' }}</span>
+                  <span class="mono-sm text-muted">{{ it.uom||'—' }}</span>
                   <span class="ta-r mono-sm">{{ Math.abs(it.qty||0) }}</span>
                   <span class="ta-r mono-sm">{{ fmtCur(it.rate) }}</span>
                   <span class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(Math.abs(it.amount||0)) }}</span>
+                </div>
+              </div>
+              <!-- Tax + Grand total block -->
+              <div class="dn-view-totals" v-if="viewDoc.taxes?.length">
+                <div v-for="(tx, i) in (viewDoc.taxes||[]).filter(t=>flt(t.tax_amount)||flt(t.rate))" :key="i" class="dn-vt-row dn-vt-tax">
+                  <span class="dn-vt-lbl">{{ tx.description||tx.account_head }} ({{ tx.rate }}%)</span>
+                  <span class="dn-vt-val">{{ fmtCur(Math.abs(tx.tax_amount||0)) }}</span>
+                </div>
+                <div class="dn-vt-row dn-vt-grand">
+                  <span class="dn-vt-lbl">Grand Total</span>
+                  <span class="dn-vt-val" style="color:#7c2d12">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</span>
                 </div>
               </div>
             </template>
@@ -550,6 +584,7 @@
             🖨 Print
           </button>
           <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="add-btn-draft" @click="applyDN(viewDoc)">↳ Apply to Bill</button>
+          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-outline" @click="refundDN(viewDoc)">↩ Refund</button>
           <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="cancelDN(viewDoc)">Cancel</button>
           <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="form-btn form-btn-danger" @click="deleteDN(viewDoc)">Delete</button>
         </div>
@@ -583,6 +618,44 @@
         <button class="form-btn form-btn-outline" @click="applyModal.open=false" :disabled="applyModal.saving">Cancel</button>
         <button class="form-btn form-btn-primary" :disabled="applyModal.saving || !applyModal.bill || applyModal.amount<=0" @click="submitApply">
           {{ applyModal.saving ? 'Applying…' : `Apply ${fmtCur(applyModal.amount)}` }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Refund Debit Note modal ── -->
+    <div v-if="refundModal.open" class="inv-drawer-bg" @click.self="refundModal.open=false" style="z-index:60"></div>
+    <div v-if="refundModal.open" class="dn-apply-dialog">
+      <div class="inv-dh" style="background:linear-gradient(135deg,#78350f,#d97706);height:auto;padding:14px 18px">
+        <div class="inv-dh-title">Refund Debit Note — {{ refundModal.dnName }}</div>
+        <button class="inv-dclose" @click="refundModal.open=false"><span v-html="icon('x',16)"></span></button>
+      </div>
+      <div class="inv-dbody">
+        <div style="font-size:12.5px;color:#374151;margin-bottom:14px">Available Balance: <strong>{{ fmtCur(refundModal.balance) }}</strong></div>
+        <div class="inv-fg inv-fg2">
+          <div class="dn-field">
+            <label class="inv-lbl">Refund Amount <span class="inv-req">*</span></label>
+            <input v-model.number="refundModal.amount" type="number" min="0.01" :max="refundModal.balance" step="0.01" class="inv-fi ta-r" />
+          </div>
+          <div class="dn-field">
+            <label class="inv-lbl">Mode</label>
+            <select v-model="refundModal.mode" class="inv-fi">
+              <option>Bank Transfer</option>
+              <option>Cash</option>
+              <option>Cheque</option>
+              <option>UPI</option>
+              <option>NEFT</option>
+            </select>
+          </div>
+          <div class="dn-field" style="grid-column:1/-1">
+            <label class="inv-lbl">Reference / Cheque #</label>
+            <input v-model="refundModal.reference" class="inv-fi" placeholder="Optional reference" />
+          </div>
+        </div>
+      </div>
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="refundModal.open=false" :disabled="refundModal.saving">Cancel</button>
+        <button class="form-btn form-btn-outline" :disabled="refundModal.saving || refundModal.amount<=0" @click="submitRefundDN">
+          {{ refundModal.saving ? 'Processing…' : `Refund ${fmtCur(refundModal.amount)}` }}
         </button>
       </div>
     </div>
@@ -660,8 +733,12 @@ async function fetchCostCenters() {
 const form = reactive({ supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", cost_center: "", remark: "" });
 const dnCollapsed = reactive({ vendor: false, bill: false, items: false, notes: true });
 
+const dnTaxes = ref([]);
+const taxTemplates = ref([]);
 // Apply-to-bill modal
 const applyModal = reactive({ open: false, saving: false, dnName: "", balance: 0, bill: "", amount: 0, openBills: [] });
+// Refund modal
+const refundModal = reactive({ open: false, saving: false, dnName: "", balance: 0, amount: 0, mode: "Bank Transfer", reference: "" });
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function fmtCur(v) { return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(Math.abs(flt(v))); }
@@ -796,6 +873,8 @@ watch(lines, () => {
 }, { deep: true });
 
 const subtotal       = computed(() => lines.value.reduce((s, l) => s + (l.included ? flt(l.amount) : 0), 0));
+const dnTaxLines     = computed(() => dnTaxes.value.map(t => ({ description: t.description || t.tax_type || "Tax", rate: Number(t.rate || 0), amount: Math.round(subtotal.value * Number(t.rate || 0) / 100 * 100) / 100 })));
+const dnGrandTotal   = computed(() => subtotal.value + dnTaxLines.value.reduce((s, t) => s + t.amount, 0));
 const billTotal      = computed(() => lines.value.reduce((s, l) => s + flt(l.original_amount), 0));
 const debitPct       = computed(() => billTotal.value ? Math.min(100, Math.round(subtotal.value / billTotal.value * 100)) : 0);
 const totalOutstanding = computed(() => selectedBillDocs.value.reduce((s, d) => s + Math.abs(flt(d.outstanding_amount || 0)), 0));
@@ -894,6 +973,7 @@ async function openView(d) {
   try {
     const doc = await apiGet("Purchase Invoice", d.name);
     viewItems.value = doc?.items || [];
+    if (doc) viewDoc.value = { ...viewDoc.value, ...doc };
     if (d.docstatus === 1) {
       const [bal, apps] = await Promise.all([
         apiGET("zoho_books_clone.api.docs.get_debit_note_balance", { debit_note_name: d.name }).catch(() => null),
@@ -970,6 +1050,17 @@ async function addBill(opt) {
       lines.value.push(...newLines);
     }
     if (!form.supplier && doc?.supplier) form.supplier = doc.supplier;
+    // Merge taxes from this bill into dnTaxes (deduplicate by account_head)
+    if (doc?.taxes?.length) {
+      const existing = new Map(dnTaxes.value.map(t => [t.tax_type, t]));
+      for (const t of doc.taxes) {
+        const key = t.account_head || "";
+        if (key && !existing.has(key)) {
+          existing.set(key, { tax_type: key, description: t.description || key, rate: Number(t.rate || 0) });
+        }
+      }
+      dnTaxes.value = [...existing.values()];
+    }
     debitPreset.value = "full";
     billSearchVal.value = "";
   } catch {}
@@ -986,6 +1077,7 @@ function clearBills() {
   lines.value = [blankLine()];
   debitPreset.value = "full";
   form.return_against = "";
+  dnTaxes.value = [];
 }
 function onItemSelect(line, opt) { line.item_code = opt?.value ?? opt; if (opt?.rate) { line.rate = Number(opt.rate) || 0; calcLine(line); } }
 function addLine() { lines.value.push(blankLine()); }
@@ -1017,6 +1109,7 @@ async function saveDN(submit) {
         cost_center: form.cost_center || "",
         remark: form.remark || "",
         items: JSON.stringify(itemsPayload),
+        taxes: JSON.stringify(dnTaxes.value),
         draft_only: submit ? 0 : 1,
       });
       toast.success(`Debit Note ${r?.debit_note || ""} ${submit ? "submitted" : "saved as draft"}`);
@@ -1112,6 +1205,29 @@ async function cancelDN(d) {
     toast.success("Debit Note cancelled");
     await load(); if (viewDoc.value?.name === d.name) await openView(d);
   } catch (e) { toast.error(e.message || "Cancel failed"); }
+}
+async function refundDN(d) {
+  const balData = await apiGET("zoho_books_clone.api.docs.get_debit_note_balance", { debit_note_name: d.name }).catch(() => null);
+  const balance = flt(balData?.balance ?? 0);
+  if (balance <= 0) { toast.info("No available balance to refund"); return; }
+  Object.assign(refundModal, { open: true, saving: false, dnName: d.name, balance, amount: balance, mode: "Bank Transfer", reference: "" });
+}
+async function submitRefundDN() {
+  if (refundModal.amount <= 0) return;
+  refundModal.saving = true;
+  try {
+    await apiPOST("zoho_books_clone.api.docs.refund_debit_note", {
+      debit_note_name: refundModal.dnName,
+      amount: refundModal.amount,
+      refund_mode: refundModal.mode,
+      reference_no: refundModal.reference,
+    });
+    toast.success(`Refunded ${fmtCur(refundModal.amount)} from ${refundModal.dnName}`);
+    refundModal.open = false;
+    await load();
+    if (viewDoc.value?.name === refundModal.dnName) await openView(viewDoc.value);
+  } catch (e) { toast.error(e.message || "Refund failed"); }
+  refundModal.saving = false;
 }
 async function deleteDN(d) {
   if (!await confirm({ title: "Delete Debit Note", body: `Permanently delete ${d.name}? This cannot be undone.`, okLabel: "Delete" })) return;
@@ -1267,15 +1383,24 @@ onMounted(load);
 /* ── View items table ── */
 .dn-view-items { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
 .dn-view-items-head {
-  display: grid; grid-template-columns: 2.5fr 70px 90px 100px;
+  display: grid; grid-template-columns: 2fr 70px 55px 60px 80px 90px;
   gap: 8px; background: #f9fafb; padding: 8px 12px;
   font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase;
 }
 .dn-view-items-row {
-  display: grid; grid-template-columns: 2.5fr 70px 90px 100px;
+  display: grid; grid-template-columns: 2fr 70px 55px 60px 80px 90px;
   gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6;
   align-items: center; font-size: 12.5px;
 }
+.dn-view-totals { margin-top: 8px; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; font-size: 12.5px; }
+.dn-vt-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 12px; border-bottom: 1px solid #f3f4f6; }
+.dn-vt-row:last-child { border-bottom: none; }
+.dn-vt-lbl { color: #6b7280; }
+.dn-vt-val { font-weight: 500; color: #111827; }
+.dn-vt-tax { background: #fafafa; }
+.dn-vt-grand { background: #fff7f0; border-top: 2px solid #fed7aa !important; }
+.dn-vt-grand .dn-vt-lbl { font-weight: 700; color: #374151; }
+.dn-vt-grand .dn-vt-val { font-weight: 700; font-size: 13px; }
 
 /* ── Applications grid ── */
 .dn-app-head {

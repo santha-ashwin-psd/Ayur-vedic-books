@@ -185,14 +185,22 @@
                 </div>
               </div>
 
-              <div class="cn-field" style="grid-column:1/-1">
+              <div class="cn-field">
                 <label class="inv-lbl">Reason</label>
                 <select v-model="form.reason" class="inv-fi">
                   <option>Price Adjustment</option>
                   <option>Goods Returned</option>
                   <option>Damaged Goods</option>
+                  <option>Short Delivery</option>
                   <option>Duplicate Invoice</option>
                   <option>Other</option>
+                </select>
+              </div>
+              <div class="cn-field">
+                <label class="inv-lbl">Cost Center</label>
+                <select v-model="form.cost_center" class="inv-fi">
+                  <option value="">— None —</option>
+                  <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
                 </select>
               </div>
             </div>
@@ -390,6 +398,9 @@
               <div><div class="cn-meta-lbl">Available Balance</div>
                 <div class="mono-sm" :class="viewBalance>0?'text-danger':'text-success'">{{ fmtCur(viewBalance) }}</div>
               </div>
+              <div v-if="viewDoc.cost_center"><div class="cn-meta-lbl">Cost Center</div>
+                <div class="mono-sm" style="color:#059669">{{ viewDoc.cost_center }}</div>
+              </div>
             </div>
 
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
@@ -477,8 +488,11 @@
 
         <div class="inv-dfooter">
           <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-success" @click="openEdit(viewDoc);viewOpen=false">
+          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
+          </button>
+          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitDraftCN(viewDoc)">
+            <span v-html="icon('check',13)"></span> Submit
           </button>
           <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" @click="emailCN(viewDoc)">
             <span v-html="icon('mail',13)"></span> Email
@@ -487,7 +501,9 @@
             🖨 Print
           </button>
           <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-primary" @click="applyCN(viewDoc)">↳ Apply to Invoice</button>
+          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-outline" @click="autoApplyCN(viewDoc)" title="Auto-apply to oldest open invoice">⚡ Auto Apply</button>
           <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-outline" @click="refundCN(viewDoc)">↩ Refund Credit</button>
+          <button v-if="viewDoc.docstatus===1 && viewBalance>0 && viewBalance<10" class="form-btn form-btn-outline" @click="writeOffCN(viewDoc)" title="Write off small residual balance">✎ Write Off</button>
           <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="cancelCN(viewDoc)">Cancel</button>
           <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="form-btn form-btn-danger" @click="deleteCN(viewDoc)">Delete</button>
         </div>
@@ -674,7 +690,8 @@ function balanceFor(name) { return flt(_balances.value[name] || 0); }
 
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", item_name: "", description: "", hsn_code: "", qty: 1, rate: 0, uom: "Nos", discount_percentage: 0, discount_amount: 0, amount: 0, tax_code: "", collapsed: false });
-const form = reactive({ customer: "", posting_date: todayStr(), return_against: "", reason: "Price Adjustment", notes: "" });
+const costCenters = ref([]);
+const form = reactive({ customer: "", posting_date: todayStr(), return_against: "", reason: "Price Adjustment", notes: "", cost_center: "" });
 const invoiceSummary = reactive({ data: null, loading: false });
 const cnTaxes = ref([]);
 const taxTemplates = ref([]);
@@ -821,21 +838,21 @@ const timelineSteps = computed(() => {
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { customer: "", posting_date: todayStr(), return_against: "", reason: "Price Adjustment", notes: "" });
+  Object.assign(form, { customer: "", posting_date: todayStr(), return_against: "", reason: "Price Adjustment", notes: "", cost_center: "" });
   invoiceSummary.data = null; invoiceSummary.loading = false;
   cnTaxes.value = [];
   lines.value = [blankLine()];
   Object.assign(cnCollapsed, { customer: false, items: false, notes: true });
-  fetchCustomers(""); fetchItems(""); fetchInvoices(""); fetchTaxTemplates();
+  fetchCustomers(""); fetchItems(""); fetchInvoices(""); fetchTaxTemplates(); fetchCostCenters();
   drawerOpen.value = true;
 }
 async function openEdit(c) {
   editingName.value = c.name;
   cnTaxes.value = [];
-  Object.assign(form, { customer: c.customer || "", posting_date: c.posting_date || todayStr(), return_against: c.return_against || "", reason: "Price Adjustment", notes: "" });
+  Object.assign(form, { customer: c.customer || "", posting_date: c.posting_date || todayStr(), return_against: c.return_against || "", reason: "Price Adjustment", notes: "", cost_center: "" });
   lines.value = [blankLine()];
   Object.assign(cnCollapsed, { customer: false, items: false, notes: true });
-  fetchCustomers(""); fetchItems(""); fetchInvoices(""); fetchTaxTemplates();
+  fetchCustomers(""); fetchItems(""); fetchInvoices(""); fetchTaxTemplates(); fetchCostCenters();
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Sales Invoice", c.name);
@@ -854,6 +871,7 @@ async function openEdit(c) {
       .map(t => ({ tax_type: t.account_head || "", description: t.description || "", rate: Number(t.rate || 0) }))
       .filter(t => t.tax_type);
     if (doc?.remarks) form.notes = doc.remarks;
+    if (doc?.cost_center) form.cost_center = doc.cost_center;
   } catch {}
 }
 async function openView(c) {
@@ -868,7 +886,7 @@ async function openView(c) {
   try {
     const doc = await apiGet("Sales Invoice", c.name);
     viewItems.value = doc?.items || [];
-    viewDoc.value = { ...c, ...doc };
+    viewDoc.value = { ...viewDoc.value, ...doc };
     // Extract reason from remarks: stored as "reason — notes"
     if (doc?.remarks) {
       viewReason.value = doc.remarks.split(" — ")[0].trim();
@@ -982,6 +1000,58 @@ async function fetchTaxTemplates() {
     taxTemplates.value = r;
   } catch { taxTemplates.value = []; }
 }
+async function fetchCostCenters() {
+  try {
+    const co = await resolveCompany();
+    const r = await apiGET("frappe.client.get_list", { doctype: "Cost Center", fields: JSON.stringify(["name"]), filters: JSON.stringify([["disabled","=",0],["company","=",co],["is_group","=",0]]), order_by: "name asc", limit_page_length: 100 }) || [];
+    costCenters.value = r.map(c => c.name);
+  } catch { costCenters.value = []; }
+}
+async function submitDraftCN(d) {
+  if (!await confirm({ title: "Submit Credit Note", body: `Submit ${d.name}? GL entries will be posted and it cannot be edited.`, okLabel: "Submit" })) return;
+  try {
+    await apiSubmit("Sales Invoice", d.name);
+    toast.success(`${d.name} submitted`);
+    viewOpen.value = false;
+    await load();
+  } catch (e) { toast.error(e.message || "Submit failed"); }
+}
+async function autoApplyCN(c) {
+  try {
+    const [r, balData] = await Promise.all([
+      apiList("Sales Invoice", {
+        fields: ["name", "outstanding_amount", "posting_date"],
+        filters: [["is_return","=",0],["docstatus","=",1],["customer","=",c.customer],["outstanding_amount",">",0]],
+        limit: 50, order: "posting_date asc",
+      }),
+      apiGET("zoho_books_clone.api.docs.get_credit_note_balance", { credit_note_name: c.name }).catch(() => null),
+    ]);
+    if (!r.length) { toast.info("No open invoices for this customer"); return; }
+    const balance = flt(balData?.balance ?? 0);
+    if (balance <= 0) { toast.info("No available credit balance"); return; }
+    const oldest = r[0];
+    const applyAmt = Math.min(balance, flt(oldest.outstanding_amount));
+    if (!await confirm({ title: "Auto-Apply Credit", body: `Apply ${fmtCur(applyAmt)} to ${oldest.name} (oldest open invoice)?`, okLabel: "Apply" })) return;
+    await apiPOST("zoho_books_clone.api.docs.apply_credit_note_to_invoice", {
+      credit_note: c.name, invoice: oldest.name, amount: applyAmt,
+    });
+    toast.success(`Applied ${fmtCur(applyAmt)} to ${oldest.name}`);
+    await load();
+    if (viewDoc.value?.name === c.name) await openView(viewDoc.value);
+  } catch (e) { toast.error(e.message || "Auto-apply failed"); }
+}
+async function writeOffCN(c) {
+  const balData = await apiGET("zoho_books_clone.api.docs.get_credit_note_balance", { credit_note_name: c.name }).catch(() => null);
+  const balance = flt(balData?.balance ?? 0);
+  if (balance <= 0) { toast.info("No balance to write off"); return; }
+  if (!await confirm({ title: "Write Off Balance", body: `Write off the remaining balance of ${fmtCur(balance)} on ${c.name}? A Journal Entry will be created.`, okLabel: "Write Off" })) return;
+  try {
+    const r = await apiPOST("zoho_books_clone.api.docs.write_off_credit_note", { credit_note_name: c.name });
+    toast.success(`Balance written off — ${r?.journal_entry || "JE created"}`);
+    await load();
+    if (viewDoc.value?.name === c.name) await openView(viewDoc.value);
+  } catch (e) { toast.error(e.message || "Write-off failed"); }
+}
 
 async function saveCN(submit) {
   if (!form.customer) return toast.error("Customer is required");
@@ -1007,6 +1077,7 @@ async function saveCN(submit) {
         date: form.posting_date,
         reason: form.reason,
         notes: form.notes || "",
+        cost_center: form.cost_center || "",
         items: JSON.stringify(itemsPayload),
         taxes: taxesJson,
       });
@@ -1020,6 +1091,7 @@ async function saveCN(submit) {
         date: form.posting_date,
         reason: form.reason,
         notes: form.notes || "",
+        cost_center: form.cost_center || "",
         items: JSON.stringify(itemsPayload),
         taxes: taxesJson,
       });

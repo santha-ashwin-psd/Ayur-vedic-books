@@ -997,6 +997,10 @@ def create_debit_note():
     if isinstance(items_raw, str):
         items_raw = json.loads(items_raw)
 
+    taxes_raw    = fd.get("taxes") or "[]"
+    if isinstance(taxes_raw, str):
+        taxes_raw = json.loads(taxes_raw)
+
     if not vendor:
         frappe.throw("Vendor is required")
     if not reason:
@@ -1039,6 +1043,15 @@ def create_debit_note():
         "credit_to":        ap_account,
         "expense_account":  expense_account,
         "items":            pi_items,
+        "taxes": [
+            {
+                "charge_type":  "On Net Total",
+                "description":  t.get("description") or t.get("tax_type") or "Tax",
+                "account_head": t.get("tax_type") or "",
+                "rate":         flt(t.get("rate", 0)),
+            }
+            for t in taxes_raw if t.get("tax_type")
+        ],
     })
     pi.name = "DN-" + frappe.generate_hash(
         txt=f"{vendor}{frappe.utils.now()}", length=8
@@ -1613,14 +1626,15 @@ def create_credit_note():
     Material Receipt Stock Entry to bring goods back into stock.
     """
     fd = frappe.form_dict
-    customer    = fd.get("customer") or ""
-    against_inv = fd.get("against_invoice") or None
-    date        = fd.get("date") or today()
-    reason      = fd.get("reason") or ""
-    notes       = fd.get("notes") or ""
-    warehouse   = fd.get("warehouse") or ""
-    items_raw   = json.loads(fd.get("items") or "[]")
-    taxes_raw   = json.loads(fd.get("taxes") or "[]")
+    customer     = fd.get("customer") or ""
+    against_inv  = fd.get("against_invoice") or None
+    date         = fd.get("date") or today()
+    reason       = fd.get("reason") or ""
+    notes        = fd.get("notes") or ""
+    cost_center  = fd.get("cost_center") or ""
+    warehouse    = fd.get("warehouse") or ""
+    items_raw    = json.loads(fd.get("items") or "[]")
+    taxes_raw    = json.loads(fd.get("taxes") or "[]")
 
     if not customer:
         frappe.throw("Customer is required")
@@ -1686,6 +1700,7 @@ def create_credit_note():
         "return_against":   against_inv,
         "posting_date":     date,
         "remarks":          (reason + (" — " + notes if notes else "")),
+        "cost_center":      cost_center,
         "debit_to":         ar_account,
         "income_account":   income_account,
         "items":            cn_items,
@@ -1766,6 +1781,7 @@ def save_credit_note_draft():
     date        = fd.get("date") or today()
     reason      = fd.get("reason") or ""
     notes       = fd.get("notes") or ""
+    cost_center = fd.get("cost_center") or ""
     items_raw   = json.loads(fd.get("items") or "[]")
     taxes_raw   = json.loads(fd.get("taxes") or "[]")
 
@@ -1814,6 +1830,7 @@ def save_credit_note_draft():
         cn.return_against = against_inv or None
         cn.posting_date = date
         cn.remarks = remarks
+        cn.cost_center = cost_center or cn.cost_center or ""
         cn.debit_to = cn.debit_to or ar_account
         cn.income_account = cn.income_account or income_account
         cn.items = []
@@ -1835,6 +1852,7 @@ def save_credit_note_draft():
             "return_against": against_inv or None,
             "posting_date":   date,
             "remarks":        remarks,
+            "cost_center":    cost_center,
             "debit_to":       ar_account,
             "income_account": income_account,
             "items":          cn_items,
@@ -3941,6 +3959,114 @@ def get_accounts():
             if all_accs is None:
                 all_accs = get_list_by_type()
             res[key] = all_accs
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Write-off & Refund helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def write_off_credit_note(credit_note_name, write_off_account=None):
+    """Write off the remaining balance on a Credit Note via Journal Entry."""
+    company = _get_company(frappe.session.user)
+    cn = frappe.get_doc("Sales Invoice", credit_note_name)
+    if cn.docstatus != 1:
+        frappe.throw("Credit note must be submitted before writing off")
+
+    bal_data = get_credit_note_balance(credit_note_name)
+    balance = flt(bal_data.get("balance", 0))
+    if balance <= 0:
+        frappe.throw("No outstanding balance to write off")
+
+    ar_account = frappe.db.get_value(
+        "Account", {"account_type": "Receivable", "company": company, "is_group": 0}, "name"
+    )
+    if not write_off_account:
+        write_off_account = (
+            frappe.db.get_value("Account", {"account_type": "Write Off", "company": company, "is_group": 0}, "name")
+            or frappe.db.get_value("Account", {"account_type": "Expense", "company": company, "is_group": 0}, "name")
+        )
+    if not write_off_account:
+        frappe.throw("No write-off or expense account found for the company")
+
+    je = frappe.get_doc({
+        "doctype": "Journal Entry",
+        "company": company,
+        "posting_date": today(),
+        "voucher_type": "Write Off Entry",
+        "user_remark": f"Write off remaining balance on Credit Note {credit_note_name}",
+        "accounts": [
+            {
+                "account": ar_account,
+                "debit_in_account_currency": balance,
+                "party_type": "Customer",
+                "party": cn.customer,
+                "reference_type": "Sales Invoice",
+                "reference_name": credit_note_name,
+            },
+            {
+                "account": write_off_account,
+                "credit_in_account_currency": balance,
+            },
+        ],
+    })
+    je.flags.ignore_permissions = True
+    je.insert()
+    je.submit()
+    frappe.db.commit()
+    return {"journal_entry": je.name}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def refund_debit_note(debit_note_name, amount, refund_mode="Bank Transfer", reference_no=""):
+    """Receive a cash refund from the vendor against a Debit Note balance."""
+    company = _get_company(frappe.session.user)
+    dn = frappe.get_doc("Purchase Invoice", debit_note_name)
+    if dn.docstatus != 1:
+        frappe.throw("Debit note must be submitted before processing a refund")
+
+    amount = flt(amount)
+    if amount <= 0:
+        frappe.throw("Refund amount must be greater than 0")
+
+    ap_account = frappe.db.get_value(
+        "Account", {"account_type": "Payable", "company": company, "is_group": 0}, "name"
+    )
+    account_type = "Cash" if refund_mode == "Cash" else "Bank"
+    cash_bank_account = frappe.db.get_value(
+        "Account", {"account_type": account_type, "company": company, "is_group": 0}, "name"
+    )
+    if not cash_bank_account:
+        frappe.throw(f"No {account_type} account found for the company")
+
+    je = frappe.get_doc({
+        "doctype": "Journal Entry",
+        "company": company,
+        "posting_date": today(),
+        "voucher_type": "Cash Entry" if refund_mode == "Cash" else "Bank Entry",
+        "cheque_no": reference_no or "",
+        "cheque_date": today() if reference_no else None,
+        "user_remark": f"Refund received from vendor against Debit Note {debit_note_name}",
+        "accounts": [
+            {
+                "account": cash_bank_account,
+                "debit_in_account_currency": amount,
+            },
+            {
+                "account": ap_account,
+                "credit_in_account_currency": amount,
+                "party_type": "Supplier",
+                "party": dn.supplier,
+                "reference_type": "Purchase Invoice",
+                "reference_name": debit_note_name,
+            },
+        ],
+    })
+    je.flags.ignore_permissions = True
+    je.insert()
+    je.submit()
+    frappe.db.commit()
+    return {"journal_entry": je.name}
 
     # Fallback 2: if the company itself had no accounts (stale/wrong company name),
     # retry the entire query without any company filter so the UI is never blank.

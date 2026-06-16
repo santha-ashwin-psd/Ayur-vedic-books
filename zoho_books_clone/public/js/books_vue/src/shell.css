@@ -695,6 +695,14 @@
   color: #fff;
 }
 
+/* ── Tablet + Mobile: kill sidebar grid transition ≤ 1024px ─── */
+@media (max-width: 1024px) {
+  .bv-app,
+  .bv-app.bv-app-sidebar-collapsed {
+    transition: none !important; /* kill grid-template-columns animation — prevents compositing blur when drawer opens */
+  }
+}
+
 /* ── Mobile breakpoint  ≤ 768px ─────────────────────────────── */
 @media (max-width: 768px) {
 

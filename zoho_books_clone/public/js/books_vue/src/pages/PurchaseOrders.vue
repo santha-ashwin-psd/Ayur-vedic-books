@@ -67,14 +67,14 @@
           </template>
           <template v-else>
             <tr v-for="o in paged" :key="o.name" class="inv-row" :class="{selected:selected.has(o.name)}">
-              <td><input type="checkbox" :checked="selected.has(o.name)" @change="toggle(o.name)" /></td>
-              <td @click="openView(o)"><span class="inv-link">{{ o.name }}</span></td>
-              <td @click="openView(o)">{{ o.supplier_name || o.supplier || '—' }}</td>
-              <td @click="openView(o)" class="text-muted mono-sm">{{ fmtDate(o.transaction_date) }}</td>
-              <td @click="openView(o)" :class="isPastExpected(o)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(o.expected_delivery_date)||'—' }}</td>
-              <td @click="openView(o)"><span class="inv-status-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span></td>
-              <td @click="openView(o)" class="ta-r mono-sm">{{ fmtCur(o.grand_total) }}</td>
-              <td class="po-act-cell">
+              <td class="td-check"><input type="checkbox" :checked="selected.has(o.name)" @change="toggle(o.name)" /></td>
+              <td class="td-id" @click="openView(o)"><span class="inv-link">{{ o.name }}</span></td>
+              <td class="td-customer" @click="openView(o)">{{ o.supplier_name || o.supplier || '—' }}</td>
+              <td class="td-date text-muted mono-sm" @click="openView(o)">{{ fmtDate(o.transaction_date) }}</td>
+              <td class="td-due mono-sm" @click="openView(o)" :class="isPastExpected(o)?'text-danger':'text-muted'">{{ fmtDate(o.expected_delivery_date)||'—' }}</td>
+              <td class="td-status" @click="openView(o)"><span class="inv-status-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span></td>
+              <td class="td-amount ta-r mono-sm" @click="openView(o)">{{ fmtCur(o.grand_total) }}</td>
+              <td class="td-actions po-act-cell">
                 <button class="inv-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="canEdit(o)" class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button class="inv-act-btn po-act-conv" v-if="canBill(o)" @click="openBillModal(o)" title="Bill"><span v-html="icon('arrow-right',13)"></span></button>
@@ -387,7 +387,7 @@
               <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
             </button>
             <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods'" class="inv-ab-btn" @click="markAllReceived" :disabled="actionRunning">
-              <span v-html="icon('package',13)"></span> <span class="ab-label">Mark Received</span>
+              <span v-html="icon('truck',13)"></span> <span class="ab-label">Mark Received</span>
             </button>
             <span class="inv-ab-spacer"></span>
             <button v-if="canCancel(viewDoc)" class="inv-ab-btn inv-ab-danger" @click="cancelPO(viewDoc)">
@@ -576,7 +576,7 @@
                 </div>
                 <div v-if="hasUnreceived" style="display:flex;justify-content:flex-end;margin-top:12px">
                   <button class="inv-view-cta" @click="markAllReceived" :disabled="actionRunning">
-                    <span v-html="icon('package',14)"></span> Mark All Received
+                    <span v-html="icon('truck',14)"></span> Mark All Received
                   </button>
                 </div>
               </template>
@@ -1689,11 +1689,19 @@ watch(() => form.supplier, (val) => {
 
 /* ── Tablet (≤ 768px) ── */
 @media (max-width: 768px) {
+  /* Table: allow horizontal scroll so columns don't compress into blur */
+  .inv-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .inv-table { min-width: 560px; }
+
   /* Drawers go full-screen */
   .po-edit-drawer   { width: 100% !important; right: -100% !important; max-width: 100%; }
   .po-view-drawer   { width: 100% !important; right: -100% !important; max-width: 100%; }
   .inv-drawer-panel { width: 100% !important; right: -100% !important; max-width: 100%; }
   .inv-drawer-wide  { width: 100%; max-width: 100%; }
+  /* .open must override the right: -100% !important above */
+  .po-edit-drawer.open,
+  .po-view-drawer.open,
+  .inv-drawer-panel.open { right: 0 !important; }
 
   /* KPI / stat grids */
   .bk-kpi-grid  { grid-template-columns: repeat(2, 1fr); gap: 10px; }
@@ -1702,10 +1710,10 @@ watch(() => form.supplier, (val) => {
   /* Toolbar: let pills + buttons wrap */
   .sales-toolbar { flex-wrap: wrap; gap: 8px; }
 
-  /* View header: allow wrapping */
-  .inv-view-header { flex-wrap: wrap; padding: 14px 16px 10px; gap: 10px; }
-  .inv-view-header-left { flex: 1 1 100%; }
-  .inv-view-cta { width: 100%; justify-content: center; }
+  /* View header: tighter padding, keep single row (no wrap) */
+  .inv-view-header { padding: 12px 14px 10px; gap: 8px; }
+  .inv-view-header-left { flex: 1 1 auto; min-width: 0; }
+  .inv-view-cta { flex-shrink: 0; }
 
   /* Details meta */
   .inv-details-meta { grid-template-columns: repeat(2, 1fr); }
@@ -1807,5 +1815,66 @@ watch(() => form.supplier, (val) => {
 
   /* Linked doc rows */
   .po-link-row { grid-template-columns: 1fr; }
+
+  /* Timeline wrapper: no extra padding on mobile, component handles its own */
+  .inv-tl-wrap { padding: 0; }
+
+  /* Fulfillment grid → 3 visible cols, hide billed & remaining */
+  .po-fulfill-tbl { overflow-x: auto !important; overflow-y: visible !important; -webkit-overflow-scrolling: touch; }
+  .po-fulfill-head,
+  .po-fulfill-row  { grid-template-columns: 1.8fr 52px 60px !important; font-size: 11px !important; }
+  .po-fulfill-head > *:nth-child(4), .po-fulfill-head > *:nth-child(5),
+  .po-fulfill-row  > *:nth-child(4), .po-fulfill-row  > *:nth-child(5) { display: none !important; }
+
+  /* Linked bills table: scroll */
+  .inv-items-wrap  { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .inv-items-table { min-width: 340px; font-size: 11.5px !important; }
+  .inv-items-table th,
+  .inv-items-table td { padding: 7px 10px !important; }
 }
+
+/* ── Mobile card layout override (≤ 425px) ── */
+@media (max-width: 425px) {
+  /*
+   * Use explicit grid-row / grid-column instead of named areas.
+   * list.css assigns grid-area names; overriding with row/column numbers
+   * has higher specificity (scoped attr selector) and bypasses named-area
+   * inheritance so td-date::before cannot leak into the id row.
+   */
+  .inv-table tbody .inv-row .td-customer { grid-row: 1 !important; grid-column: 1 !important; }
+  .inv-table tbody .inv-row .td-amount   { grid-row: 1 !important; grid-column: 2 !important; }
+  .inv-table tbody .inv-row .td-date     { grid-row: 2 !important; grid-column: 1 !important; }
+  .inv-table tbody .inv-row .td-status   { grid-row: 2 / 5 !important; grid-column: 2 !important; }
+  .inv-table tbody .inv-row .td-id       { grid-row: 3 !important; grid-column: 1 !important; }
+  .inv-table tbody .inv-row .td-actions  { grid-row: 4 !important; grid-column: 1 !important; }
+
+  /* PO# cell: kill ANY ::before content, style as blue link.
+   * Use high-specificity selector to beat Invoices.vue global rule
+   * ".inv-table tbody td:nth-child(2)::before { content:'Date:' !important }" (0-2-2).
+   * This selector compiles to 0-4-1 which wins. */
+  .td-id { padding: 0 14px 4px !important; cursor: pointer !important; }
+  .inv-table tbody .inv-row .td-id::before { content: none !important; display: none !important; font-size: 0 !important; }
+  .td-id .inv-link {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #1a6ef7 !important;
+    text-decoration: underline !important;
+    text-underline-offset: 2px !important;
+  }
+  .td-id .inv-link:hover { color: #155fd4 !important; }
+
+  /* Vendor row: prominent */
+  .td-customer {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #1a1a2e !important;
+  }
+
+  /* Amount: smaller font so it doesn't truncate on narrow screens */
+  .td-amount {
+    font-size: 14px !important;
+    letter-spacing: -0.02em !important;
+  }
+}
+
 </style>

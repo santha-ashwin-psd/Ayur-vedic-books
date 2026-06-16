@@ -69,15 +69,15 @@
           </template>
           <template v-else>
             <tr v-for="b in paged" :key="b.name" class="inv-row" :class="{selected:selected.has(b.name)}">
-              <td><input type="checkbox" :checked="selected.has(b.name)" @change="toggle(b.name)" /></td>
-              <td @click="openView(b)"><span class="inv-link">{{ b.name }}</span></td>
-              <td @click="openView(b)">{{ b.supplier_name || b.supplier || '—' }}</td>
-              <td @click="openView(b)" class="text-muted mono-sm">{{ fmtDate(b.posting_date) }}</td>
-              <td @click="openView(b)" :class="isOverdue(b)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(b.due_date)||'—' }}</td>
-              <td @click="openView(b)"><span class="inv-status-badge" :class="statusCls(b)">{{ statusLabel(b) }}</span></td>
-              <td @click="openView(b)" class="ta-r mono-sm">{{ fmtCur(b.grand_total) }}</td>
-              <td @click="openView(b)" class="ta-r mono-sm" :class="{'text-danger':flt(b.outstanding_amount)>0,'text-success':flt(b.outstanding_amount)<=0&&b.docstatus===1}">{{ fmtCur(b.outstanding_amount) }}</td>
-              <td class="bill-act-cell">
+              <td class="td-check"><input type="checkbox" :checked="selected.has(b.name)" @change="toggle(b.name)" /></td>
+              <td class="td-id" @click="openView(b)"><span class="inv-link">{{ b.name }}</span></td>
+              <td class="td-customer" @click="openView(b)">{{ b.supplier_name || b.supplier || '—' }}</td>
+              <td class="td-date text-muted mono-sm" @click="openView(b)">{{ fmtDate(b.posting_date) }}</td>
+              <td class="td-due mono-sm" :class="isOverdue(b)?'text-danger':'text-muted'" @click="openView(b)">{{ fmtDate(b.due_date)||'—' }}</td>
+              <td class="td-status" @click="openView(b)"><span class="inv-status-badge" :class="statusCls(b)">{{ statusLabel(b) }}</span></td>
+              <td class="td-amount ta-r mono-sm" @click="openView(b)">{{ fmtCur(b.grand_total) }}</td>
+              <td class="td-balance ta-r mono-sm" @click="openView(b)" :class="{'text-danger':flt(b.outstanding_amount)>0,'text-success':flt(b.outstanding_amount)<=0&&b.docstatus===1}">{{ fmtCur(b.outstanding_amount) }}</td>
+              <td class="td-actions bill-act-cell">
                 <button class="inv-act-btn" @click="openView(b)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="b.docstatus===0" class="inv-act-btn" @click="openEdit(b)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="inv-act-btn inv-act-pay" @click="payBill(b)" title="Record Payment">₹</button>
@@ -360,7 +360,7 @@
               </span>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="bill-view-cta-wrap">
             <button v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1"
                     class="inv-view-cta"
                     @click="payBill(viewDoc)">
@@ -377,21 +377,7 @@
 
           <!-- Status timeline -->
           <div class="inv-tl-wrap">
-            <div class="inv-tl">
-              <div class="inv-tl-progress" :style="{ width: billTlProgressWidth }"></div>
-              <template v-for="(step, i) in timelineSteps" :key="i">
-                <div class="inv-tl-step"
-                     :class="{ 'tl-done': step.done && !step.danger, 'tl-danger': step.danger, 'tl-success': step.success, 'tl-pending': !step.done && !step.danger }">
-                  <div class="inv-tl-dot">
-                    <span v-if="step.done && !step.danger" v-html="icon('check',14)"></span>
-                    <span v-else-if="step.danger" style="font-size:11px;font-weight:800">!</span>
-                    <span v-else v-html="icon(step.icon||'circle',14)"></span>
-                  </div>
-                  <div class="inv-tl-label">{{ step.label }}</div>
-                  <div class="inv-tl-date">{{ step.date ? fmtDate(step.date) : '—' }}</div>
-                </div>
-              </template>
-            </div>
+            <TimelineStepper :steps="timelineSteps" />
           </div>
 
           <!-- Action buttons bar -->
@@ -924,14 +910,6 @@ const timelineSteps = computed(() => {
   ];
 });
 
-const billTlProgressWidth = computed(() => {
-  const steps = timelineSteps.value;
-  if (!steps.length) return "0%";
-  const doneIdx = steps.reduce((last, s, i) => (s.done || s.danger) ? i : last, -1);
-  if (doneIdx < 0) return "0%";
-  const pct = (doneIdx / (steps.length - 1)) * 100;
-  return pct + "%";
-});
 function openNew() {
   editingName.value = "";
   Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
@@ -1387,20 +1365,8 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 /* ── inv-view-body wraps everything below header ── */
 .inv-view-body { margin: 12px 16px 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: scroll; }
 
-/* ── Status timeline ── */
-.inv-tl-wrap { padding: 20px 24px 4px; border-bottom: 1px solid #f0f2f5; }
-.inv-tl { position: relative; display: flex; align-items: flex-start; justify-content: space-between; }
-.inv-tl-progress { position: absolute; top: 18px; left: 0; height: 3px; background: #1a6ef7; border-radius: 2px; transition: width .4s ease; z-index: 0; }
-.inv-tl-step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; position: relative; z-index: 1; }
-.inv-tl-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid #e5e7eb; background: #fff; }
-.tl-done .inv-tl-dot   { background: #1a6ef7; border-color: #1a6ef7; color: #fff; }
-.tl-danger .inv-tl-dot { background: #dc2626; border-color: #dc2626; color: #fff; }
-.tl-success .inv-tl-dot{ background: #16a34a; border-color: #16a34a; color: #fff; }
-.tl-pending .inv-tl-dot { background: #f9fafb; border-color: #d1d5db; color: #9ca3af; }
-.inv-tl-label { font-size: 11.5px; font-weight: 600; color: #374151; }
-.tl-danger .inv-tl-label { color: #dc2626; }
-.tl-pending .inv-tl-label { color: #9ca3af; }
-.inv-tl-date { font-size: 10.5px; color: #9ca3af; }
+/* ── Status timeline wrapper ── */
+.inv-tl-wrap { border-bottom: 1px solid #f0f2f5; }
 
 /* ── Action button bar ── */
 .inv-action-bar { display: flex; align-items: center; gap: 6px; padding: 12px 16px; flex-wrap: wrap; border-bottom: 1px solid #f0f2f5; background: #fafafa; }
@@ -1567,4 +1533,158 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 .po-view-grand { font-size:15px; font-weight:800; color:#111827; border-top:1px solid #e5e7eb; padding-top:8px; margin-top:4px; }
 .po-view-grand span:last-child { color:#1a6ef7; }
 
+/* ══════════════════════════════════════════════════
+   RESPONSIVE MEDIA QUERIES
+   ══════════════════════════════════════════════════ */
+
+/* ── Small desktop (≤ 1024px) ── */
+@media (max-width: 1024px) {
+  .bill-edit-drawer { width: 660px; right: -660px; }
+  .bill-view-drawer { width: 780px; right: -780px; }
+
+  .bk-kpi-grid  { grid-template-columns: repeat(3, 1fr); }
+  .bk-stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Tablet (≤ 768px) ── */
+@media (max-width: 768px) {
+  /* Drawers go full-screen */
+  .bill-edit-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .bill-view-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  /* .open must override right: -100% !important */
+  .bill-edit-drawer.open,
+  .bill-view-drawer.open { right: 0 !important; }
+
+  /* KPI / stat grids */
+  .bk-kpi-grid  { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .bk-stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  /* Toolbar: wrap search + pills + buttons */
+  .sales-toolbar { flex-wrap: wrap; gap: 8px; }
+
+  /* View page header: allow wrapping */
+  .bill-view-page-header { padding: 12px 14px 8px; gap: 10px; }
+  .inv-view-header-left { flex: 1 1 100%; }
+  .inv-view-cta { width: 100%; justify-content: center; }
+  .inv-view-number { font-size: 16px; }
+
+  /* Details meta: 2-col (overrides inline grid-template-columns:repeat(3,1fr)) */
+  .inv-details-meta { grid-template-columns: repeat(2, 1fr) !important; }
+  .inv-details-meta-col { border-right: none; border-bottom: 1px solid #f0f2f5; padding: 12px; }
+  .inv-details-meta-col:last-child { border-bottom: none; }
+
+  /* Action bar */
+  .inv-action-bar { padding: 8px 12px; gap: 5px; }
+  .inv-ab-btn { padding: 5px 10px; font-size: 12px; }
+
+  /* Totals block: stack */
+  .po-totals { flex-direction: column; gap: 12px; }
+  .po-totals-right { min-width: unset; width: 100%; }
+
+  /* Totals panel (view) */
+  .po-view-totals { justify-content: stretch; }
+  .po-view-totals-inner { min-width: unset; width: 100%; }
+
+  /* Address modal */
+  .po-apply-dialog { width: 96vw; }
+
+  /* Main list table: hide Due Date and Balance columns on tablet */
+  .inv-table th:nth-child(5),
+  .inv-table td:nth-child(5),
+  .inv-table th:nth-child(8),
+  .inv-table td:nth-child(8) { display: none; }
+}
+
+/* ── Mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+  /* KPI + stat grids: single column */
+  .bk-kpi-grid  { grid-template-columns: 1fr; }
+  .bk-stat-grid { grid-template-columns: 1fr; }
+
+  /* Details meta: single column */
+  .inv-details-meta { grid-template-columns: 1fr !important; }
+
+  /* Item card body stacks to single column */
+  .po-item-card-body { grid-template-columns: 1fr; }
+  .po-item-col--left { border-right: none; border-bottom: 1px solid #f0f2f8; }
+
+  /* Numeric row in item card */
+  .po-item-num-row { grid-template-columns: 1fr; }
+
+  /* Additional details grid */
+  .add-details-grid { grid-template-columns: 1fr; }
+
+  /* Edit drawer footer buttons */
+  .add-footer-actions { flex-wrap: wrap; width: 100%; }
+  .add-btn-cancel,
+  .add-btn-draft,
+  .add-btn-more,
+  .add-btn-submit { flex: 1 1 auto; justify-content: center; text-align: center; }
+
+  /* Main list table: hide Date + Balance + Actions (keep Bill#, Vendor, Status, Amount) */
+  .inv-table th:nth-child(4),
+  .inv-table td:nth-child(4),
+  .inv-table th:nth-child(5),
+  .inv-table td:nth-child(5),
+  .inv-table th:nth-child(8),
+  .inv-table td:nth-child(8),
+  .inv-table th:nth-child(9),
+  .inv-table td:nth-child(9) { display: none; }
+
+
+  /* Action bar buttons smaller */
+  .inv-action-bar { gap: 4px; padding: 6px 10px; }
+  .inv-ab-btn     { padding: 5px 8px; font-size: 11.5px; }
+  .ab-label       { display: none; }
+
+  /* Tabs */
+  .inv-vtab { padding: 9px 12px; font-size: 12.5px; }
+
+  /* Address modal */
+  .po-apply-dialog { width: 98vw; border-radius: 8px; }
+
+  /* Payment table inside tab: hide reference column */
+  .inv-items-table th:nth-child(3),
+  .inv-items-table td:nth-child(3) { display: none; }
+
+  /* Payments tab table: scrollable */
+  .inv-items-wrap  { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .inv-items-table { min-width: 320px; font-size: 11.5px !important; }
+  .inv-items-table th, .inv-items-table td { padding: 7px 10px !important; }
+}
+
+
+/* ── View drawer header: keep buttons on one row ──────────────────── */
+.bill-view-cta-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  .bill-view-page-header { flex-wrap: nowrap !important; align-items: center !important; }
+  .inv-view-header-left  { flex: 1 1 auto !important; min-width: 0 !important; }
+  .bill-view-cta-wrap    { flex-shrink: 0 !important; }
+  .inv-view-cta          { width: auto !important; }
+}
+
+/* ── Mobile card layout (≤ 425px) ────────────────────────────────── */
+@media (max-width: 425px) {
+  /* Suppress "Date:" prefix that Invoices.vue global CSS injects on td:nth-child(2)
+     Specificity: 0-4-1 in scoped context beats 0-2-2 + !important global rule */
+  .inv-table tbody .inv-row .td-id::before {
+    content: none !important;
+    display: none !important;
+    font-size: 0 !important;
+  }
+
+  /* Style overrides for named cells */
+  .td-id { padding: 0 14px 4px !important; cursor: pointer !important; }
+  .td-id .inv-link {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #1a6ef7 !important;
+    text-decoration: underline !important;
+    text-underline-offset: 2px !important;
+  }
+  .td-id .inv-link:hover { color: #155fd4 !important; }
+  .td-customer { font-size: 15px !important; font-weight: 700 !important; color: #1a1a2e !important; }
+  .td-amount   { font-size: 14px !important; letter-spacing: -0.02em !important; }
+}
 </style>

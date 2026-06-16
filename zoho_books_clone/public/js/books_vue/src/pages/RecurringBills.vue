@@ -756,7 +756,7 @@ onMounted(load);
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 /* ── Overlay & Drawer ── */
-.rec-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(2px);z-index:40;}
+.rec-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:40;}
 .rec-drawer{position:fixed;top:0;right:-560px;bottom:0;width:560px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
 .rec-drawer.open{right:0;}
 .rec-view-drawer{width:625px;right:-625px;}.rec-view-drawer.open{right:0;}
@@ -870,4 +870,123 @@ textarea.rec-input{resize:vertical;min-height:72px;}
 .rb-info-name{font-weight:700;color:#1d4ed8;font-size:14px;}
 /* ── Vendor readonly field ── */
 .rb-readonly-field{display:flex;align-items:center;gap:8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:13px;color:#374151;font-weight:500;}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE MEDIA QUERIES
+   ═══════════════════════════════════════════════════ */
+
+/* ── Tablet (≤ 768px) ── */
+@media (max-width: 768px) {
+  /* Drawers: full-screen */
+  .rec-drawer      { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .rec-view-drawer { width: 100% !important; right: -100% !important; }
+  /* .open must override right: -100% !important */
+  .rec-drawer.open,
+  .rec-view-drawer.open { right: 0 !important; }
+
+  .rec-page    { padding: 12px; gap: 12px; }
+  .rec-actions { flex-wrap: wrap; gap: 8px; }
+
+  /* KPI / stat grids */
+  .bk-kpi-grid  { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .bk-stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  /* Table: hide Reference Bill + Frequency */
+  .rec-table th:nth-child(4), .rec-table td:nth-child(4),
+  .rec-table th:nth-child(5), .rec-table td:nth-child(5) { display: none; }
+
+  /* View drawer header: allow wrap, single-row action group */
+  .rec-view-head-row { flex-wrap: wrap; gap: 8px; }
+  .rec-view-stats    { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+  .rec-page { padding: 8px; gap: 8px; }
+
+  /* KPI grids: single column */
+  .bk-kpi-grid  { grid-template-columns: 1fr; }
+  .bk-stat-grid { grid-template-columns: 1fr; }
+
+  /* Table: also hide Next Billing Date */
+  .rec-table th:nth-child(6), .rec-table td:nth-child(6) { display: none; }
+
+  /* View stats: single column */
+  .rec-view-stats { grid-template-columns: 1fr; }
+  .rec-meta-grid  { grid-template-columns: 1fr !important; }
+
+  /* Form fields: single column */
+  .rec-fields-grid { grid-template-columns: 1fr !important; }
+
+  /* Inner generated table: scrollable */
+  .rec-dbody .rec-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+
+  /* Action bar */
+  .rec-view-actbar { gap: 5px; padding: 8px 12px; }
+  .rec-va-btn      { padding: 5px 9px; font-size: 12px; }
+}
+
+/* ── Timeline: dots-only at ≤ 540px ── */
+@media (max-width: 540px) {
+  .rec-timeline { padding: 10px 12px; gap: 0; }
+  .rec-tl-lbl   { display: none !important; }
+  .rec-tl-step  { min-width: 0; }
+  .rec-tl-dot   { width: 14px; height: 14px; }
+  .rec-tl-line  { min-width: 14px; }
+}
+
+/* ── Mobile card layout (≤ 425px) ── */
+@media (max-width: 425px) {
+  /* Strip the white box from the card container — cards become individual rows */
+  .rec-card { background: transparent; border: none; border-radius: 0; box-shadow: none; overflow: visible; }
+
+  /* Hide table header entirely */
+  .rec-table thead { display: none !important; }
+
+  /* Each row is a card */
+  .rec-table tbody { display: flex !important; flex-direction: column; gap: 10px; }
+  .rec-row {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    grid-template-rows: auto auto auto !important;
+    gap: 4px 8px !important;
+    background: #fff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    padding: 14px !important;
+    margin-bottom: 0 !important;
+  }
+  .rec-row:hover td { background: transparent !important; }
+
+  /* All tds: block in grid */
+  .rec-row td { display: block !important; padding: 0 !important; border: none !important; background: transparent !important; }
+
+  /* Hide: checkbox, Reference Bill, Frequency, Next Billing Date */
+  .rec-row td:nth-child(1),
+  .rec-row td:nth-child(4),
+  .rec-row td:nth-child(5),
+  .rec-row td:nth-child(6) { display: none !important; }
+
+  /* td 2: Subscription # — row 1 col 1 */
+  .rec-row td:nth-child(2) { grid-row: 1; grid-column: 1; }
+  .rec-num { font-size: 13px !important; font-weight: 700 !important; color: #2563eb !important; }
+
+  /* td 3: Vendor — row 2 col 1 */
+  .rec-row td:nth-child(3) { grid-row: 2; grid-column: 1; font-size: 15px !important; font-weight: 700 !important; color: #1a1a2e !important; }
+
+  /* td 7: Status — row 3 col 1 */
+  .rec-row td:nth-child(7) { grid-row: 3; grid-column: 1; }
+
+  /* td 8: Actions — spans all rows on right */
+  .rec-row td:nth-child(8) {
+    grid-row: 1 / 4 !important;
+    grid-column: 2 !important;
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    text-align: right;
+    justify-content: flex-start;
+  }
+}
 </style>

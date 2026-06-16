@@ -65,18 +65,18 @@
           </template>
           <template v-else>
             <tr v-for="d in paged" :key="d.name" class="inv-row" :class="{selected:selected.has(d.name)}">
-              <td><input type="checkbox" :checked="selected.has(d.name)" @change="toggle(d.name)" /></td>
-              <td @click="openView(d)"><span class="inv-link">{{ d.name }}</span></td>
-              <td @click="openView(d)">{{ d.supplier_name || d.supplier || '—' }}</td>
-              <td @click="openView(d)" class="text-muted mono-sm">{{ fmtDate(d.posting_date) }}</td>
-              <td @click="openView(d)" class="text-muted mono-sm">{{ d.return_against||'—' }}</td>
-              <td @click="openView(d)"><span class="inv-status-badge" :class="statusCls(d)">{{ statusLabel(d) }}</span></td>
-              <td @click="openView(d)" class="ta-r mono-sm" style="color:#7c2d12">{{ fmtCur(Math.abs(d.grand_total||0)) }}</td>
-              <td @click="openView(d)" class="ta-r mono-sm">
+              <td class="td-check"><input type="checkbox" :checked="selected.has(d.name)" @change="toggle(d.name)" /></td>
+              <td class="td-id" @click="openView(d)"><span class="inv-link">{{ d.name }}</span></td>
+              <td class="td-customer" @click="openView(d)">{{ d.supplier_name || d.supplier || '—' }}</td>
+              <td class="td-date text-muted mono-sm" @click="openView(d)">{{ fmtDate(d.posting_date) }}</td>
+              <td class="td-against text-muted mono-sm" @click="openView(d)">{{ d.return_against||'—' }}</td>
+              <td class="td-status" @click="openView(d)"><span class="inv-status-badge" :class="statusCls(d)">{{ statusLabel(d) }}</span></td>
+              <td class="td-amount ta-r mono-sm" @click="openView(d)" style="color:#7c2d12">{{ fmtCur(Math.abs(d.grand_total||0)) }}</td>
+              <td class="td-balance ta-r mono-sm" @click="openView(d)">
                 <span v-if="d.docstatus===1" :class="balanceFor(d.name)>0?'text-danger':'text-success'">{{ fmtCur(balanceFor(d.name)) }}</span>
                 <span v-else class="text-muted">—</span>
               </td>
-              <td class="dn-act-cell">
+              <td class="td-actions dn-act-cell">
                 <button class="inv-act-btn" @click="openView(d)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="d.docstatus===0" class="inv-act-btn" @click="openEdit(d)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button v-if="d.docstatus===1 && balanceFor(d.name)>0" class="inv-act-btn dn-act-apply" @click="applyDN(d)" title="Apply to Bill">↳</button>
@@ -1687,4 +1687,59 @@ onMounted(load);
 .dn-bill-group-total { font-size: 11.5px; font-weight: 600; color: #7c2d12; }
 .exp-field-hint { font-size:11.5px;color:#9ca3af;margin-top:4px;text-align:right; }
 .exp-field-hint-err { color:#dc2626;font-weight:600; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .dn-drawer     { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .dn-view-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .dn-drawer.open,
+  .dn-view-drawer.open { right: 0 !important; }
+
+  /* toolbar */
+  .dn-toolbar { flex-wrap: wrap; gap: 8px; }
+  .dn-btn-group { margin-left: 0; flex-wrap: wrap; }
+
+  /* KPI grids */
+  .bk-kpi-grid  { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+  .bk-stat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+
+  /* hide Against Bill + Available columns */
+  .inv-table th:nth-child(5), .inv-table td:nth-child(5),
+  .inv-table th:nth-child(8), .inv-table td:nth-child(8) { display: none; }
+
+  /* view drawer head */
+  .dn-view-head-body { flex-wrap: wrap; gap: 8px; }
+}
+
+@media (max-width: 480px) {
+  .bk-kpi-grid  { grid-template-columns: 1fr !important; }
+  .bk-stat-grid { grid-template-columns: 1fr !important; }
+
+  /* meta grid 1-col */
+  .dn-meta-grid { grid-template-columns: 1fr !important; }
+
+  /* inner line-items table scrollable */
+  .dn-view-items { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .dn-view-items-head,
+  .dn-view-items-row { min-width: 380px; font-size: 11.5px !important; }
+
+  /* applied-to table scrollable */
+  .dn-app-head,
+  .dn-app-row { min-width: 320px; font-size: 11.5px !important; }
+
+  .dn-app-table { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+}
+
+@media (max-width: 425px) {
+  /* suppress the global "Date:" prefix injected by Invoices.vue */
+  .inv-table tbody .inv-row .td-id::before {
+    content: none !important; display: none !important; font-size: 0 !important;
+  }
+
+  /* card-layout style overrides */
+  .td-id { padding: 0 14px 4px !important; cursor: pointer !important; }
+  .td-id .inv-link { font-size: 12px !important; font-weight: 600 !important; color: #1a6ef7 !important; text-decoration: underline !important; }
+  .td-customer { font-size: 15px !important; font-weight: 700 !important; color: #1a1a2e !important; }
+  .td-amount   { font-size: 14px !important; letter-spacing: -0.02em !important; }
+}
 </style>

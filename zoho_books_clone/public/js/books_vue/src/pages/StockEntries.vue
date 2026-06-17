@@ -67,7 +67,7 @@
 
     <!-- ── Table ── -->
     <div class="se-card">
-      <table class="se-table">
+      <table class="se-table se-desktop-table">
         <thead><tr>
           <th @click="sort('name')" class="sortable">Entry # <span v-html="sortArrow('name')"></span></th>
           <th @click="sort('stock_entry_type')" class="sortable">Type <span v-html="sortArrow('stock_entry_type')"></span></th>
@@ -123,6 +123,38 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="se-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 6" :key="n" class="se-mobile-card se-mc--skeleton">
+            <div class="se-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="se-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="se-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="se-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">📦</div>
+          <div>No stock entries found</div>
+        </div>
+        <template v-else>
+          <div v-for="e in paginated" :key="e.name" class="se-mobile-card" @click="openView(e)">
+            <div class="se-mc-top">
+              <span class="se-mc-docno">{{ e.name }}</span>
+              <span class="se-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span>
+            </div>
+            <div class="se-mc-mid">
+              <span class="se-type-badge" :style="typeStyle(e.stock_entry_type)">{{ e.stock_entry_type||'—' }}</span>
+            </div>
+            <div class="se-mc-meta">
+              <span>{{ fmtDate(e.posting_date) }}</span>
+              <span :style="'font-weight:700;color:'+(flt(e.value_difference)>=0?'#16a34a':'#dc2626')">
+                {{ flt(e.value_difference)>=0?'+':'' }}{{ fmtCur(e.value_difference) }}
+              </span>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
     <div v-if="sorted.length > pageSize" style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#6b7280;padding:4px 2px">
       <span>Showing {{ paginated.length }} of {{ sorted.length }}</span>
@@ -776,6 +808,10 @@ textarea.se-input { resize:vertical; }
 .se-view-items-tbl tr:last-child td { border-bottom:none; }
 .se-view-items-tbl tr:hover td { background:#f9fafb; }
 
+/* ── Mobile card defaults ── */
+.se-mobile-cards { display: none; }
+.se-desktop-table { display: table; }
+
 @media (max-width: 768px) {
   .se-kpi-strip { grid-template-columns: 1fr 1fr; }
   .se-kpi-value { grid-column: 1 / -1; }
@@ -783,16 +819,23 @@ textarea.se-input { resize:vertical; }
   .se-view-drawer { width: 100% !important; max-width: 100% !important; right: -100% !important; }
   .se-drawer.open,
   .se-view-drawer.open { right: 0 !important; }
-  .se-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .se-table { min-width: 560px; }
-  .se-table th:nth-child(5), .se-table td:nth-child(5) { display: none; }
   .se-search-wrap { min-width: 0; flex: 1 1 auto; }
   .se-filter-row  { width: 100%; }
+  .se-desktop-table { display: none !important; }
+  .se-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .se-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .se-mobile-card:active { background: #f8f9fc; }
+  .se-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .se-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .se-mc-mid { margin-bottom: 6px; }
+  .se-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .se-mc--skeleton { pointer-events: none; }
+  .se-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: se-mc-sh 1.4s infinite; }
+  @keyframes se-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .se-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .se-page { padding: 12px; gap: 10px; }
-  .se-table th:nth-child(4), .se-table td:nth-child(4) { display: none; }
-  .se-table { min-width: 400px; }
   .se-fields-grid { grid-template-columns: 1fr !important; }
   .se-val-strip   { grid-template-columns: 1fr !important; }
   .se-items-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }

@@ -720,9 +720,9 @@ onMounted(() => { load(); loadLockDate(); });
 .fy-left-panel      { display: flex; }
 
 /* ═══════════════════════════════════════════════════════════
-   RESPONSIVE  –  375 px … 425.98 px
+   RESPONSIVE  –  ≤ 768 px (tablets + phones)
    ═══════════════════════════════════════════════════════════ */
-@media (min-width: 375px) and (max-width: 425.98px) {
+@media (max-width: 768px) {
 
   /* ── Stats strip: 2-col ── */
   .fy-stats-grid {
@@ -857,5 +857,5 @@ onMounted(() => { load(); loadLockDate(); });
     max-width: 100vw !important;
   }
 
-} /* end @media 375px–425.98px */
+} /* end @media ≤768px */
 </style>

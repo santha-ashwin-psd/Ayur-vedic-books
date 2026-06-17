@@ -13,7 +13,7 @@
     </div>
 
     <div class="ra-card">
-      <table class="ra-table">
+      <table class="ra-table ra-desktop-table">
         <thead><tr>
           <th @click="sort('item_code')" class="sortable">Item <span v-html="sortArrow('item_code')"></span></th>
           <th>Item Name</th>
@@ -45,6 +45,39 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="ra-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="ra-mobile-card ra-mc--skeleton">
+            <div class="ra-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="ra-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="ra-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="ra-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">✅</div>
+          <div>No reorder alerts</div>
+        </div>
+        <template v-else>
+          <div v-for="item in sorted" :key="item.item_code+item.warehouse" class="ra-mobile-card" :class="{critical:flt(item.actual_qty)<=0}">
+            <div class="ra-mc-top">
+              <span class="ra-mc-code">{{ item.item_code }}</span>
+              <span class="ra-badge" :class="flt(item.actual_qty)<=0?'badge-red':flt(item.actual_qty)<=flt(item.re_order_level)?'badge-orange':'badge-green'">
+                {{ flt(item.actual_qty)<=0?'Critical':flt(item.actual_qty)<=flt(item.re_order_level)?'Low Stock':'OK' }}
+              </span>
+            </div>
+            <div class="ra-mc-mid">{{ item.item_name||item.item_code }}</div>
+            <div class="ra-mc-meta">
+              <span>{{ item.warehouse||'—' }}</span>
+              <span>
+                Qty: <strong :class="flt(item.actual_qty)<=0?'red':flt(item.actual_qty)<=flt(item.re_order_level)?'orange':''">{{ fmtQty(item.actual_qty) }}</strong>
+                / Reorder: {{ fmtQty(item.re_order_qty) }}
+              </span>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
   </div>
 </template>
@@ -121,18 +154,28 @@ onMounted(load);
 .ra-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
+/* ── Mobile card defaults ── */
+.ra-mobile-cards { display: none; }
+.ra-desktop-table { display: table; }
+
 @media (max-width: 768px) {
   .ra-summary { grid-template-columns: repeat(2, 1fr); }
-  .ra-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .ra-table { min-width: 500px; }
   .ra-search-wrap { min-width: 0; flex: 1 1 auto; }
-  .ra-table th:nth-child(5), .ra-table td:nth-child(5) { display: none; }
+  .ra-desktop-table { display: none !important; }
+  .ra-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .ra-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; transition: background .12s; }
+  .ra-mobile-card.critical { background: #fff8f8; }
+  .ra-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .ra-mc-code { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .ra-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .ra-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; gap: 8px; }
+  .ra-mc--skeleton { pointer-events: none; }
+  .ra-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: ra-mc-sh 1.4s infinite; }
+  @keyframes ra-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .ra-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .ra-page { padding: 12px; gap: 12px; }
   .ra-summary { grid-template-columns: 1fr 1fr; }
-  .ra-table th:nth-child(3), .ra-table td:nth-child(3),
-  .ra-table th:nth-child(6), .ra-table td:nth-child(6) { display: none; }
-  .ra-table { min-width: 340px; }
 }
 </style>

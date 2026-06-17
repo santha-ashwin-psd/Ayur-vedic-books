@@ -48,7 +48,7 @@
 
     <!-- ============================ TABLE -->
     <div class="ew-card">
-      <table class="ew-table">
+      <table class="ew-table ew-desktop-table">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
@@ -102,6 +102,39 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="ew-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 6" :key="n" class="ew-mobile-card ew-mc--skeleton">
+            <div class="ew-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="ew-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="ew-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sortedRows.length" class="ew-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">🚛</div>
+          <div>No E-Way Bills here</div>
+        </div>
+        <template v-else>
+          <div v-for="r in paged" :key="r.name" class="ew-mobile-card" @click="openView(r)">
+            <div class="ew-mc-top">
+              <span class="ew-mc-docno">{{ r.invoice_no }}</span>
+              <span class="ew-badge" :class="statusClass(r.ui_status)">{{ r.ui_status }}</span>
+            </div>
+            <div class="ew-mc-mid">{{ r.customer_name || r.customer }}</div>
+            <div class="ew-mc-meta">
+              <span>{{ fmtDate(r.invoice_date) }}{{ r.ewb_no ? ' · EWB: ' + r.ewb_no : '' }}</span>
+              <span class="ew-mc-amount">{{ fmtCur(r.grand_total) }}</span>
+            </div>
+            <div class="ew-mc-footer">
+              <button v-if="r.ui_status==='Generated'" class="ew-act-btn" @click.stop="quickDownload(r)" title="Download"><span v-html="icon('download',13)"></span></button>
+              <button v-if="r.ui_status==='Generated'" class="ew-act-btn" @click.stop="actionOn(r,'cancel')" title="Cancel"><span v-html="icon('x',13)"></span></button>
+              <button v-if="r.ui_status==='Cancelled'||r.ui_status==='Expired'" class="ew-act-btn ew-act-del" @click.stop="deleteTarget={row:r}" title="Delete"><span v-html="icon('trash',13)"></span></button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <div v-if="!loading && sortedRows.length">
@@ -995,139 +1028,40 @@ function exportCSV() {
 /* Toolbar button group */
 .ew-btn-group{display:flex;gap:8px;margin-left:auto;}
 
-/* ── Mobile card layout ── */
+/* ── Mobile card defaults ── */
+.ew-mobile-cards { display: none; }
+.ew-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .ew-drawer { width: 100% !important; right: -100% !important; }
+  .ew-drawer.open { right: 0 !important; }
+  .ew-view-drawer { width: 100% !important; right: -100% !important; }
+  .ew-view-drawer.open { right: 0 !important; }
+  .ew-desktop-table { display: none !important; }
+  .ew-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .ew-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .ew-mobile-card:active { background: #f8f9fc; }
+  .ew-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .ew-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .ew-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .ew-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 8px; }
+  .ew-mc-amount { font-weight: 700; color: #1a1d23; }
+  .ew-mc-footer { display: flex; gap: 6px; }
+  .ew-mc--skeleton { pointer-events: none; }
+  .ew-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: ew-mc-sh 1.4s infinite; }
+  @keyframes ew-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .ew-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+}
+
 @media(max-width:475px) {
-  .ew-view-actbar{
-    display: flex;justify-content: space-between;
-  }
-  .ew-va-btn-text{display: none;}
-  .ew-page{padding:12px 10px 20px !important;gap:14px !important;box-sizing:border-box !important;background:#fff !important;}
-  .ew-view-stats{display: flex}
-  /* Toolbar */
-  .ew-actions{flex-wrap:wrap !important;gap:8px !important;margin-bottom: 0 !important;background: #f7f8fa !important;padding: 10px 12px !important;}
-  .ew-search-wrap{flex:1 1 100% !important;min-width:0 !important;width:100% !important;box-sizing:border-box !important;border: 1px solid #e2e8f0;}
-  .ew-pills{flex-wrap:wrap !important;}
-  .ew-btn-group{margin-left:0 !important;flex-wrap:wrap !important;width:100% !important;}
-  .ew-btn-group .ew-btn-primary{flex:1 !important;justify-content:center !important;}
-
-  /* Table → card view */
-  .ew-card{overflow:visible !important;border:none !important;background:transparent !important;box-shadow:none !important;}
-  .ew-table{display:block !important;width:100% !important;min-width:0 !important;}
-  .ew-table thead{display:none !important;}
-  .ew-table tbody{display:flex !important;flex-direction:column !important;gap:14px !important;}
-
-  .ew-table tbody tr.ew-row{
-    position:relative !important;
-    display:grid !important;
-    grid-template-columns:56% 44% !important;
-    grid-template-rows:auto auto 1fr auto !important;
-    min-height:180px !important;
-    background:#fff !important;
-    border:1.5px solid #d1d5db !important;
-    border-radius:16px !important;
-    padding:17px 16px 14px !important;
-    box-shadow:none !important;
-    box-sizing:border-box !important;
-    gap:0 !important;
-    overflow:hidden !important;
-  }
-  .ew-table tbody tr.ew-row::after{
-    content:"" !important;
-    position:absolute !important;
-    top:16px !important;bottom:16px !important;
-    left:56% !important;width:1px !important;
-    background:#d7dbe1 !important;
-    pointer-events:none !important;
-  }
-  .ew-table tbody tr.ew-row td{
-    border:none !important;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    box-sizing:border-box !important;
-  }
-
-  /* Hide: checkbox(1), EWB#(2), TRANSPORTER(6), VEHICLE(7), VALID UNTIL(8) */
-  .ew-table tbody td:nth-child(1),
-  .ew-table tbody td:nth-child(2),
-  .ew-table tbody td:nth-child(6),
-  .ew-table tbody td:nth-child(7),
-  .ew-table tbody td:nth-child(8){display:none !important;}
-
-  /* Invoice # (col 3) → top-left title */
-  .ew-table tbody td:nth-child(3){
-    grid-column:1 !important;grid-row:1 !important;
-    display:block !important;width:auto !important;
-    padding:0 14px 7px 0 !important;
-    font-size:16px !important;font-weight:700 !important;color:#0b0f17 !important;
-    overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;
-  }
-
-  /* Customer (col 5) → row 2 left */
-  .ew-table tbody td:nth-child(5){
-    grid-column:1 !important;grid-row:2 !important;
-    display:block !important;width:auto !important;
-    padding:0 14px 7px 0 !important;
-    font-size:14px !important;font-weight:600 !important;color:#111827 !important;
-    overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;
-  }
-
-  /* Inv. Date (col 4) → row 3 left */
-  .ew-table tbody td:nth-child(4){
-    grid-column:1 !important;grid-row:3 !important;
-    display:block !important;align-self:start !important;width:auto !important;
-    padding:0 14px 12px 0 !important;
-    font-size:12.5px !important;color:#111827 !important;
-    overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;
-  }
-  .ew-table tbody td:nth-child(4)::before{
-    content:"Date: " !important;display:inline !important;
-    color:#111827 !important;font-size:12.5px !important;font-weight:500 !important;
-    text-transform:none !important;letter-spacing:0 !important;
-  }
-
-  /* Amount (col 9) → top-right large */
-  .ew-table tbody td:nth-child(9){
-    grid-column:2 !important;grid-row:1 !important;
-    display:block !important;width:auto !important;
-    padding:0 0 8px 18px !important;
-    text-align:right !important;
-    font-size:19px !important;font-weight:800 !important;color:#070b12 !important;
-    white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;
-  }
-  .ew-table tbody td:nth-child(9)::before{display:none !important;content:none !important;}
-
-  /* Status (col 10) → row 2 right */
-  .ew-table tbody td:nth-child(10){
-    grid-column:2 !important;grid-row:2 !important;
-    display:flex !important;justify-content:flex-end !important;
-    align-items:center !important;align-self:start !important;
-    width:auto !important;padding:3px 0 0 18px !important;
-  }
-
-  /* Actions (col 11) → row 4 bottom-left */
-  .ew-table tbody td:nth-child(11){
-    grid-column:1 !important;grid-row:4 !important;
-    display:block !important;align-self:end !important;
-    width:auto !important;padding:6px 14px 0 0 !important;
-    border:none !important;overflow:visible !important;white-space:normal !important;
-  }
-  .ew-table tbody .ew-actions-row{display:flex !important;justify-content:flex-start !important;gap:8px !important;}
-  .ew-table tbody .ew-act-btn{
-    border:none !important;background:transparent !important;
-    width:30px !important;height:30px !important;padding:5px !important;
-    color:#30343b !important;
-  }
-  .ew-table tbody .ew-act-btn:hover{color:#374151 !important;background:#f3f4f6 !important;border-radius:6px !important;}
-
-  /* Non-data rows (empty state, shimmer) */
-  .ew-table tbody tr:not(.ew-row){display:block !important;}
-  .ew-table tbody tr:not(.ew-row) td{display:block !important;white-space:normal !important;overflow:visible !important;}
-
-  /* Drawers full-width */
-  .ew-drawer{width:100% !important;right:-100% !important;}
-  .ew-drawer.open{right:0 !important;}
-  .ew-view-drawer{width:100% !important;right:-100% !important;}
-  .ew-view-drawer.open{right:0 !important;}
+  .ew-view-actbar { display: flex; justify-content: space-between; }
+  .ew-va-btn-text { display: none; }
+  .ew-page { padding: 12px 10px 20px !important; gap: 14px !important; box-sizing: border-box !important; background: #fff !important; }
+  .ew-view-stats { display: flex; }
+  .ew-actions { flex-wrap: wrap !important; gap: 8px !important; margin-bottom: 0 !important; background: #f7f8fa !important; padding: 10px 12px !important; }
+  .ew-search-wrap { flex: 1 1 100% !important; min-width: 0 !important; width: 100% !important; box-sizing: border-box !important; border: 1px solid #e2e8f0; }
+  .ew-pills { flex-wrap: wrap !important; }
+  .ew-btn-group { margin-left: 0 !important; flex-wrap: wrap !important; width: 100% !important; }
+  .ew-btn-group .ew-btn-primary { flex: 1 !important; justify-content: center !important; }
 }
 </style>

@@ -49,7 +49,7 @@
 
     <!-- ── Table ── -->
     <div class="inv-table-wrap">
-      <table class="inv-table">
+      <table class="inv-table bil-desktop-table">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
@@ -88,6 +88,43 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px, hidden on desktop) -->
+      <div class="bil-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="bil-mobile-card bil-mc--skeleton">
+            <div class="bil-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="bil-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="bil-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="bil-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">🧾</div>
+          <div>No bills found</div>
+        </div>
+        <template v-else>
+          <div v-for="b in paged" :key="b.name" class="bil-mobile-card" @click="openView(b)">
+            <div class="bil-mc-top">
+              <span class="bil-mc-docno">{{ b.name }}</span>
+              <span class="inv-status-badge" :class="statusCls(b)">{{ statusLabel(b) }}</span>
+            </div>
+            <div class="bil-mc-mid">{{ b.supplier_name || b.supplier || '—' }}</div>
+            <div class="bil-mc-meta">
+              <span>{{ fmtDate(b.posting_date) }}</span>
+              <span class="bil-mc-amount">{{ fmtCur(b.grand_total) }}</span>
+            </div>
+            <div v-if="flt(b.outstanding_amount) > 0" class="bil-mc-balance">
+              Due: {{ fmtDate(b.due_date) || '—' }} · Balance: <span :class="isOverdue(b)?'text-danger':''">{{ fmtCur(b.outstanding_amount) }}</span>
+            </div>
+            <div class="bil-mc-footer">
+              <button class="bil-mc-btn" @click.stop="openView(b)">View</button>
+              <button v-if="b.docstatus===0" class="bil-mc-btn" @click.stop="openEdit(b)">Edit</button>
+              <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="bil-mc-btn bil-mc-pay" @click.stop="payBill(b)">Pay</button>
+              <button v-if="b.docstatus===0||b.docstatus===2" class="bil-mc-btn bil-mc-danger" @click.stop="deleteBill(b)">Delete</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- ── Pagination ── -->
@@ -1653,6 +1690,31 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
   .inv-items-table th, .inv-items-table td { padding: 7px 10px !important; }
 }
 
+
+/* ── Mobile card view (Option A) ── */
+.bil-mobile-cards { display: none; }
+.bil-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .bil-desktop-table { display: none !important; }
+  .bil-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .bil-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .bil-mobile-card:active { background: #f8f9fc; }
+  .bil-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .bil-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .bil-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .bil-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 4px; }
+  .bil-mc-amount { font-weight: 700; color: #1a1d23; }
+  .bil-mc-balance { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
+  .bil-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
+  .bil-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .bil-mc-pay { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+  .bil-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .bil-mc--skeleton { pointer-events: none; }
+  .bil-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: bil-shimmer 1.4s infinite; }
+  @keyframes bil-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .bil-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+}
 
 /* ── View drawer header: keep buttons on one row ──────────────────── */
 .bill-view-cta-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }

@@ -41,7 +41,7 @@
     </div>
 
     <div class="inv-table-wrap">
-      <table class="inv-table">
+      <table class="inv-table pay-desktop-table">
         <thead><tr>
           <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
           <th @click="sort('name')" class="sortable">PAYMENT # <span v-html="sortArrow('name')"></span></th>
@@ -82,6 +82,41 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="pay-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="pay-mobile-card pay-mc--skeleton">
+            <div class="pay-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="pay-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="pay-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="pay-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">💳</div>
+          <div>No payments found</div>
+        </div>
+        <template v-else>
+          <div v-for="p in paged" :key="p.name" class="pay-mobile-card" @click="openView(p)">
+            <div class="pay-mc-top">
+              <span class="pay-mc-docno">{{ p.name }}</span>
+              <span class="inv-status-badge" :class="p.payment_type==='Receive'?'badge-green':'badge-red'">{{ p.payment_type==='Receive'?'Received':'Paid Out' }}</span>
+            </div>
+            <div class="pay-mc-mid">{{ p.party_name || p.party || '—' }}</div>
+            <div class="pay-mc-meta">
+              <span>{{ fmtDate(p.payment_date) }}</span>
+              <span class="pay-mc-amount" :class="p.payment_type==='Receive'?'pay-mc-green':'pay-mc-red'">{{ fmtCur(p.paid_amount) }}</span>
+            </div>
+            <div v-if="p.mode_of_payment" class="pay-mc-sub">{{ p.mode_of_payment }}</div>
+            <div class="pay-mc-footer">
+              <button class="pay-mc-btn" @click.stop="openView(p)">View</button>
+              <button v-if="p.docstatus===0" class="pay-mc-btn" @click.stop="openEdit(p)">Edit</button>
+              <button v-if="p.docstatus===1" class="pay-mc-btn pay-mc-danger" @click.stop="cancelPmt(p)">Cancel</button>
+              <button v-if="p.docstatus===0||p.docstatus===2" class="pay-mc-btn pay-mc-danger" @click.stop="deletePmt(p)">Delete</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <div v-if="!loading && sorted.length">
@@ -1182,9 +1217,34 @@ onMounted(async () => {
 /* Toolbar button group */
 .pmt-btn-group { display:flex; gap:8px; margin-left:auto; }
 
-/* ── Mobile card layout ── */
+/* ── Mobile card view (Option A) ── */
+.pay-mobile-cards { display: none; }
+.pay-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .pay-desktop-table { display: none !important; }
+  .pay-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .pay-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .pay-mobile-card:active { background: #f8f9fc; }
+  .pay-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .pay-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .pay-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .pay-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 4px; }
+  .pay-mc-amount { font-weight: 700; }
+  .pay-mc-green { color: #16a34a; }
+  .pay-mc-red { color: #dc2626; }
+  .pay-mc-sub { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
+  .pay-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
+  .pay-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .pay-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .pay-mc--skeleton { pointer-events: none; }
+  .pay-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: pay-shimmer 1.4s infinite; }
+  @keyframes pay-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .pay-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+}
+
 @media(max-width:475px) {
-  .list-page { padding:12px 10px 20px !important; gap:14px !important; box-sizing:border-box !important; background:#fff !important; }
+  .list-page { padding:12px 10px 20px !important; gap:14px !important; }
 
   /* Toolbar */
   .sales-toolbar { flex-wrap:wrap !important; gap:8px !important; }
@@ -1192,126 +1252,6 @@ onMounted(async () => {
   .sales-pills { flex-wrap:wrap !important; }
   .pmt-btn-group { margin-left:0 !important; flex-wrap:wrap !important; width:100% !important; }
   .pmt-btn-group .sales-btn-primary { flex:1 !important; justify-content:center !important; }
-
-  /* Table → card view */
-  .inv-table-wrap { border:none !important; background:transparent !important; overflow:visible !important; box-shadow:none !important; }
-  .inv-table { display:block !important; width:100% !important; min-width:0 !important; }
-  .inv-table thead { display:none !important; }
-  .inv-table tbody { display:flex !important; flex-direction:column !important; gap:14px !important; }
-
-  .inv-table tbody tr.inv-row {
-    position:relative !important;
-    display:grid !important;
-    grid-template-columns:56% 44% !important;
-    grid-template-rows:auto auto 1fr auto !important;
-    min-height:180px !important;
-    background:#fff !important;
-    border:1.5px solid #d1d5db !important;
-    border-radius:16px !important;
-    padding:17px 16px 14px !important;
-    box-shadow:none !important;
-    box-sizing:border-box !important;
-    gap:0 !important;
-    overflow:hidden !important;
-  }
-  .inv-table tbody tr.inv-row::after {
-    content:"" !important;
-    position:absolute !important;
-    top:16px !important; bottom:16px !important;
-    left:56% !important; width:1px !important;
-    background:#d7dbe1 !important;
-    pointer-events:none !important;
-  }
-  .inv-table tbody tr.inv-row td {
-    border:none !important;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    box-sizing:border-box !important;
-  }
-
-  /* Hide: checkbox(1), MODE(4), REFERENCE(5) */
-  .inv-table tbody td:nth-child(1),
-  .inv-table tbody td:nth-child(4),
-  .inv-table tbody td:nth-child(5) { display:none !important; }
-
-  /* Payment # (col 2) → top-left title */
-  .inv-table tbody td:nth-child(2) {
-    grid-column:1 !important; grid-row:1 !important;
-    display:block !important; width:auto !important;
-    padding:0 14px 7px 0 !important;
-    font-size:16px !important; font-weight:700 !important; color:#0b0f17 !important;
-    overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
-  }
-  .inv-table tbody td:nth-child(2) .inv-link { color:inherit !important; }
-
-  /* Party (col 3) → row 2 left */
-  .inv-table tbody td:nth-child(3) {
-    grid-column:1 !important; grid-row:2 !important;
-    display:block !important; width:auto !important;
-    padding:0 14px 7px 0 !important;
-    font-size:14px !important; font-weight:600 !important; color:#111827 !important;
-    overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
-  }
-
-  /* Date (col 6) → row 3 left */
-  .inv-table tbody td:nth-child(6) {
-    grid-column:1 !important; grid-row:3 !important;
-    display:block !important; align-self:start !important; width:auto !important;
-    padding:0 14px 12px 0 !important;
-    font-size:12.5px !important; color:#111827 !important;
-    overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
-  }
-  .inv-table tbody td:nth-child(6)::before {
-    content:"Date: " !important; display:inline !important;
-    color:#111827 !important; font-size:12.5px !important; font-weight:500 !important;
-    text-transform:none !important; letter-spacing:0 !important;
-  }
-
-  /* Amount (col 8) → top-right large */
-  .inv-table tbody td:nth-child(8) {
-    grid-column:2 !important; grid-row:1 !important;
-    display:block !important; width:auto !important;
-    padding:0 0 8px 18px !important;
-    text-align:right !important;
-    font-size:19px !important; font-weight:800 !important;
-    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
-  }
-  .inv-table tbody td:nth-child(8)::before { display:none !important; content:none !important; }
-
-  /* Type badge (col 7) → row 2 right */
-  .inv-table tbody td:nth-child(7) {
-    grid-column:2 !important; grid-row:2 !important;
-    display:flex !important; justify-content:flex-end !important;
-    align-items:center !important; align-self:start !important;
-    width:auto !important; padding:3px 0 0 18px !important;
-  }
-  .inv-table tbody td:nth-child(7) .inv-status-badge {
-    margin:0 !important; float:none !important;
-    border-radius:999px !important; font-size:11.5px !important;
-    letter-spacing:0 !important; text-transform:capitalize !important;
-  }
-
-  /* Actions (col 9) → row 4 bottom-left */
-  .inv-table tbody td:nth-child(9) {
-    grid-column:1 !important; grid-row:4 !important;
-    display:block !important; align-self:end !important;
-    width:auto !important; padding:6px 14px 0 0 !important;
-    border:none !important; overflow:visible !important; white-space:normal !important;
-  }
-  .inv-table tbody .pmt-act-cell {
-    justify-content:flex-start !important; gap:8px !important;
-  }
-  .inv-table tbody .inv-act-btn {
-    border:none !important; background:transparent !important;
-    width:30px !important; height:30px !important; padding:5px !important;
-    color:#30343b !important;
-  }
-  .inv-table tbody .inv-act-btn:hover { color:#374151 !important; background:#f3f4f6 !important; border-radius:6px !important; }
-
-  /* Non-data rows (empty, shimmer) */
-  .inv-table tbody tr:not(.inv-row) { display:block !important; }
-  .inv-table tbody tr:not(.inv-row) td { display:block !important; white-space:normal !important; overflow:visible !important; }
 
   /* Drawers full-width */
   .pmt-edit-drawer { width:100% !important; right:-100% !important; }

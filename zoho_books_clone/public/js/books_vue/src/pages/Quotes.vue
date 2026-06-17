@@ -150,7 +150,7 @@
 
   <!-- ── Table ── -->
   <div class="inv-table-wrap">
-    <table class="inv-table">
+    <table class="inv-table qt-desktop-table">
       <thead><tr>
         <th class="th-check"><input type="checkbox" @change="toggleAll" :checked="allChecked"/></th>
         <th class="sortable" @click="sortBy('transaction_date')">DATE <span class="sort-arrow">{{ sortArrowTxt('transaction_date') }}</span></th>
@@ -230,6 +230,40 @@
         </template>
       </tbody>
     </table>
+
+    <!-- Mobile cards (shown at ≤768px) -->
+    <div class="qt-mobile-cards">
+      <template v-if="loading">
+        <div v-for="n in 5" :key="n" class="qt-mobile-card qt-mc--skeleton">
+          <div class="qt-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+          <div class="qt-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+          <div class="qt-mc-shimmer" style="height:11px;width:65%"></div>
+        </div>
+      </template>
+      <div v-else-if="!sorted.length" class="qt-mc-empty">
+        <div style="font-size:32px;margin-bottom:8px">📋</div>
+        <div>No quotations found</div>
+      </div>
+      <template v-else>
+        <div v-for="q in paged" :key="q.name" class="qt-mobile-card" @click="openView(q)">
+          <div class="qt-mc-top">
+            <span class="qt-mc-docno">{{ q.name }}</span>
+            <span class="inv-status-badge" :class="badgeClass(q)">{{ displayStatus(q) }}</span>
+          </div>
+          <div class="qt-mc-mid">{{ q.customer_name || q.customer || '—' }}</div>
+          <div class="qt-mc-meta">
+            <span>{{ fmtDate(q.transaction_date) }}</span>
+            <span class="qt-mc-amount">{{ fmtCur(q.grand_total) }}</span>
+          </div>
+          <div v-if="q.valid_till" class="qt-mc-sub" :class="isExpired(q)?'text-danger':''">Valid till: {{ fmtDate(q.valid_till) }}</div>
+          <div class="qt-mc-footer">
+            <button class="qt-mc-btn" @click.stop="openView(q)">View</button>
+            <button v-if="q.docstatus!==1" class="qt-mc-btn" @click.stop="openEdit(q)">Edit</button>
+            <button class="qt-mc-btn qt-mc-danger" @click.stop="deleteQT(q)">Delete</button>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
   <div v-if="!loading && sorted.length" style="padding:12px 0px 4px">
     <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
@@ -2270,5 +2304,29 @@ onMounted(async () => {
 }
 @media (max-width: 320px)   {
   .quote-delete-lbl{display: none !important;}
+}
+
+/* ── Mobile card view (Option A) ── */
+.qt-mobile-cards { display: none; }
+.qt-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .qt-desktop-table { display: none !important; }
+  .qt-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .qt-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .qt-mobile-card:active { background: #f8f9fc; }
+  .qt-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .qt-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .qt-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .qt-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 4px; }
+  .qt-mc-amount { font-weight: 700; color: #1a1d23; }
+  .qt-mc-sub { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
+  .qt-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
+  .qt-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .qt-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .qt-mc--skeleton { pointer-events: none; }
+  .qt-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: qt-shimmer 1.4s infinite; }
+  @keyframes qt-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .qt-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 </style>

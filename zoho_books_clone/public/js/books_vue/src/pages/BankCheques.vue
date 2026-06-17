@@ -37,7 +37,7 @@
     </div>
 
     <div class="chq-card">
-      <table class="chq-table">
+      <table class="chq-table chq-desktop-table">
         <thead><tr>
           <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /></th>
           <th @click="sort('name')" class="sortable">Payment # <span v-html="sortArrow('name')"></span></th>
@@ -65,6 +65,37 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="chq-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="chq-mobile-card chq-mc--skeleton">
+            <div class="chq-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="chq-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="chq-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="chq-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">🧾</div>
+          <div>{{ list.length ? 'No cheques match' : 'No cheque payments found' }}</div>
+        </div>
+        <template v-else>
+          <div v-for="p in sorted" :key="p.name" class="chq-mobile-card" @click="openView(p)">
+            <div class="chq-mc-top">
+              <span class="chq-mc-docno">{{ p.name }}</span>
+              <span class="chq-badge" :class="statusBadge(p.cheque_status)">{{ p.cheque_status||'Issued' }}</span>
+            </div>
+            <div class="chq-mc-mid">{{ p.party_name || p.party || '—' }}</div>
+            <div class="chq-mc-meta">
+              <span>{{ fmtDate(p.payment_date) }}{{ p.reference_no ? ' · ' + p.reference_no : '' }}</span>
+              <span class="chq-mc-amount">{{ fmtCur(p.paid_amount) }}</span>
+            </div>
+            <div class="chq-mc-type">
+              <span class="chq-badge" :class="p.payment_type==='Receive'?'badge-green':'badge-red'">{{ p.payment_type==='Receive'?'Received':'Paid Out' }}</span>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- View drawer -->
@@ -348,23 +379,34 @@ onMounted(load);
 .chq-life-confirm:disabled{opacity:.5;cursor:not-allowed;}
 .chq-dfooter{display:flex;justify-content:flex-end;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
 
+/* ── Mobile card defaults ── */
+.chq-mobile-cards { display: none; }
+.chq-desktop-table { display: table; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .chq-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
   .chq-drawer.open { right: 0 !important; }
-  .chq-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .chq-table { min-width: 480px; }
-  /* hide Cheque No + Type columns */
-  .chq-table th:nth-child(4), .chq-table td:nth-child(4),
-  .chq-table th:nth-child(6), .chq-table td:nth-child(6) { display: none; }
+  .chq-desktop-table { display: none !important; }
+  .chq-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .chq-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .chq-mobile-card:active { background: #f8f9fc; }
+  .chq-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .chq-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .chq-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .chq-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 6px; }
+  .chq-mc-amount { font-weight: 700; color: #1a1d23; }
+  .chq-mc-type { display: flex; gap: 6px; }
+  .chq-mc--skeleton { pointer-events: none; }
+  .chq-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: chq-mc-sh 1.4s infinite; }
+  @keyframes chq-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .chq-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+  .chq-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
 }
 
 @media (max-width: 480px) {
   .chq-page { padding: 12px; gap: 12px; }
   .chq-search-wrap { min-width: 0; flex: 1 1 auto; }
-  /* also hide Date column */
-  .chq-table th:nth-child(5), .chq-table td:nth-child(5) { display: none; }
-  .chq-table { min-width: 320px; }
   .chq-meta-grid { grid-template-columns: 1fr !important; }
   .chq-dh-amt-val { font-size: 20px; }
   .chq-life-input { flex-wrap: wrap; }

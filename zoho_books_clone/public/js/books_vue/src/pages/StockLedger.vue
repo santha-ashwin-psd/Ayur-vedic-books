@@ -44,7 +44,7 @@
     </div>
 
     <div class="sl-card">
-      <table class="sl-table">
+      <table class="sl-table sl-desktop-table">
         <thead><tr>
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
           <th @click="sort('item_code')" class="sortable">Item <span v-html="sortArrow('item_code')"></span></th>
@@ -71,6 +71,36 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="sl-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 6" :key="n" class="sl-mobile-card sl-mc--skeleton">
+            <div class="sl-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="sl-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="sl-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="sl-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">📒</div>
+          <div>{{ loaded?(list.length?'No entries match':'No ledger entries'):'Run filters to view ledger' }}</div>
+        </div>
+        <template v-else>
+          <div v-for="e in sorted" :key="e.name" class="sl-mobile-card" @click="openView(e)">
+            <div class="sl-mc-top">
+              <span class="sl-mc-date">{{ fmtDate(e.posting_date) }}</span>
+              <span :class="flt(e.actual_qty)>0?'sl-mc-pos':'sl-mc-neg'">
+                {{ flt(e.actual_qty)>0?'+':'' }}{{ fmtQty(e.actual_qty) }}
+              </span>
+            </div>
+            <div class="sl-mc-mid">{{ e.item_code }}</div>
+            <div class="sl-mc-meta">
+              <span>{{ e.voucher_type }} · {{ e.voucher_no }}</span>
+              <span>Bal: {{ fmtQty(e.qty_after_transaction) }}</span>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- Detail drawer -->
@@ -244,22 +274,34 @@ onMounted(()=>{fetchItems("");fetchWarehouses("");});
 .sl-link-btn:hover{background:#dbeafe;}
 .sl-dfooter{display:flex;justify-content:flex-end;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
 
+/* ── Mobile card defaults ── */
+.sl-mobile-cards { display: none; }
+.sl-desktop-table { display: table; }
+
 @media (max-width: 768px) {
   .sl-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
   .sl-drawer.open { right: 0 !important; }
-  .sl-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .sl-table { min-width: 540px; }
-  .sl-table th:nth-child(4), .sl-table td:nth-child(4) { display: none; }
   .sl-search-wrap { min-width: 0; flex: 1 1 auto; }
   .sl-toolbar { flex-wrap: wrap; }
+  .sl-desktop-table { display: none !important; }
+  .sl-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .sl-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .sl-mobile-card:active { background: #f8f9fc; }
+  .sl-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .sl-mc-date { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .sl-mc-pos { font-weight: 700; color: #16a34a; }
+  .sl-mc-neg { font-weight: 700; color: #dc2626; }
+  .sl-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .sl-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; gap: 8px; }
+  .sl-mc--skeleton { pointer-events: none; }
+  .sl-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: sl-mc-sh 1.4s infinite; }
+  @keyframes sl-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .sl-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .sl-page { padding: 12px; gap: 12px; }
   .sl-filterbar { padding: 12px; gap: 8px; }
   .sl-fld-date { width: 100%; }
-  .sl-table th:nth-child(3), .sl-table td:nth-child(3),
-  .sl-table th:nth-child(7), .sl-table td:nth-child(7) { display: none; }
-  .sl-table { min-width: 360px; }
   .sl-meta-grid { grid-template-columns: 1fr !important; }
 }
 </style>

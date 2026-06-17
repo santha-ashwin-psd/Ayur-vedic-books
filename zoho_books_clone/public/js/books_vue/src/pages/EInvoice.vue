@@ -55,7 +55,7 @@
 
     <!-- ── Table ── -->
     <div class="ei-card">
-      <table class="ei-table">
+      <table class="ei-table ei-desktop-table">
         <thead><tr>
           <th @click="sort('name')" class="sortable">Invoice # <span v-html="sortArrow('name')"></span></th>
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
@@ -94,6 +94,34 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="ei-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 6" :key="n" class="ei-mobile-card ei-mc--skeleton">
+            <div class="ei-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="ei-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="ei-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="ei-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">🧾</div>
+          <div>No e-invoices match this filter</div>
+        </div>
+        <template v-else>
+          <div v-for="inv in sorted" :key="inv.name" class="ei-mobile-card" @click="openView(inv)">
+            <div class="ei-mc-top">
+              <span class="ei-mc-docno">{{ inv.name }}</span>
+              <span class="ei-badge" :class="statusClass(inv)">{{ statusLabel(inv) }}</span>
+            </div>
+            <div class="ei-mc-mid">{{ inv.customer_name || inv.customer }}</div>
+            <div class="ei-mc-meta">
+              <span>{{ fmtDate(inv.posting_date) }}</span>
+              <span class="ei-mc-amount">{{ fmtCur(inv.grand_total) }}</span>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- ── View Drawer ── -->
@@ -540,20 +568,32 @@ onMounted(load);
 .ei-fi { width:100%; border:1px solid #e5e7eb; border-radius:7px; padding:8px 10px; font:inherit; font-size:13px; outline:none; color:#111827; background:#fff; box-sizing:border-box; transition:border-color .15s; }
 .ei-fi:focus { border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.1); }
 
+/* ── Mobile card defaults ── */
+.ei-mobile-cards { display: none; }
+.ei-desktop-table { display: table; }
+
 @media (max-width: 768px) {
   .ei-panel { width: 100% !important; right: -100% !important; }
   .ei-panel.open { right: 0 !important; }
   .ei-sum-strip { grid-template-columns: repeat(2, 1fr); }
-  .ei-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .ei-table { min-width: 500px; }
-  .ei-table th:nth-child(4), .ei-table td:nth-child(4) { display: none; }
   .ei-search-wrap { min-width: 0; flex: 1 1 auto; }
+  .ei-desktop-table { display: none !important; }
+  .ei-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .ei-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .ei-mobile-card:active { background: #f8f9fc; }
+  .ei-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .ei-mc-docno { font-size: 12px; font-weight: 700; color: #4f46e5; }
+  .ei-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .ei-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .ei-mc-amount { font-weight: 700; color: #1a1d23; }
+  .ei-mc--skeleton { pointer-events: none; }
+  .ei-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: ei-mc-sh 1.4s infinite; }
+  @keyframes ei-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .ei-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .ei-page   { padding: 12px; gap: 12px; }
   .ei-topbar { padding: 12px 14px; }
-  .ei-table th:nth-child(6), .ei-table td:nth-child(6) { display: none; }
-  .ei-table  { min-width: 380px; }
   .ei-meta-row { grid-template-columns: 1fr 1fr !important; }
 }
 </style>

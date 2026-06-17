@@ -17,7 +17,7 @@
     ]" />
 
     <div class="ia-card">
-      <table class="ia-table">
+      <table class="ia-table ia-desktop-table">
         <thead><tr>
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
           <th @click="sort('item_code')" class="sortable">Item <span v-html="sortArrow('item_code')"></span></th>
@@ -43,6 +43,34 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="ia-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="ia-mobile-card ia-mc--skeleton">
+            <div class="ia-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="ia-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="ia-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="ia-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">🔄</div>
+          <div>{{ list.length ? 'No adjustments match' : 'No stock adjustments yet' }}</div>
+        </div>
+        <template v-else>
+          <div v-for="a in sorted" :key="a.name" class="ia-mobile-card" @click="openView(a)">
+            <div class="ia-mc-top">
+              <span class="ia-mc-docno">{{ a.name }}</span>
+              <span class="ia-badge" :class="a.docstatus===1?'badge-green':a.docstatus===2?'badge-grey':'badge-orange'">{{ a.docstatus===1?'Submitted':a.docstatus===2?'Cancelled':'Draft' }}</span>
+            </div>
+            <div class="ia-mc-mid">{{ a.item_name||a.item_code }}</div>
+            <div class="ia-mc-meta">
+              <span>{{ fmtDate(a.posting_date) }} · {{ a.warehouse||'—' }}</span>
+              <span :class="flt(a.qty)>=0?'ia-mc-pos':'ia-mc-neg'">{{ flt(a.qty)>0?'+':'' }}{{ fmtQty(a.qty) }}</span>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- Create Drawer -->
@@ -349,20 +377,33 @@ textarea.ia-input{resize:vertical;}
 .ia-remark{font-size:13px;color:#334155;line-height:1.5;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:12px 14px;}
 .ia-dfooter{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
 
+/* ── Mobile card defaults ── */
+.ia-mobile-cards { display: none; }
+.ia-desktop-table { display: table; }
+
 @media (max-width: 768px) {
   .ia-drawer      { width: 100% !important; right: -100% !important; max-width: 100%; }
   .ia-view-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
   .ia-drawer.open,
   .ia-view-drawer.open { right: 0 !important; }
-  .ia-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .ia-table { min-width: 520px; }
   .ia-search-wrap { min-width: 0; flex: 1 1 auto; }
+  .ia-desktop-table { display: none !important; }
+  .ia-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .ia-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .ia-mobile-card:active { background: #f8f9fc; }
+  .ia-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .ia-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .ia-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .ia-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .ia-mc-pos { color: #16a34a; font-weight: 700; }
+  .ia-mc-neg { color: #dc2626; font-weight: 700; }
+  .ia-mc--skeleton { pointer-events: none; }
+  .ia-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: ia-mc-sh 1.4s infinite; }
+  @keyframes ia-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .ia-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .ia-page { padding: 12px; gap: 12px; }
-  .ia-table th:nth-child(3), .ia-table td:nth-child(3),
-  .ia-table th:nth-child(4), .ia-table td:nth-child(4) { display: none; }
-  .ia-table { min-width: 360px; }
   .ia-qty-grid  { grid-template-columns: 1fr 1fr !important; }
   .ia-meta-grid { grid-template-columns: 1fr !important; }
 }

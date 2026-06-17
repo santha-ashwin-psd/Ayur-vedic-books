@@ -58,7 +58,7 @@
 
     <div class="inv-table-wrap">
       <div class="inv-table-wrap">
-        <table class="inv-table">
+        <table class="inv-table cus-desktop-table">
           <thead>
             <tr>
               <th class="vt-th vt-th-check">
@@ -127,6 +127,36 @@
             </tr>
           </tbody>
         </table>
+
+        <!-- Mobile cards (shown at ≤768px) -->
+        <div class="cus-mobile-cards">
+          <template v-if="loading">
+            <div v-for="n in 5" :key="n" class="cus-mobile-card cus-mc--skeleton">
+              <div class="cus-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+              <div class="cus-mc-shimmer" style="height:11px;width:40%"></div>
+            </div>
+          </template>
+          <div v-else-if="!filtered.length" class="cus-mc-empty">
+            <div style="font-size:32px;margin-bottom:8px">👤</div>
+            <div>{{ search ? 'No results found' : 'No customers yet' }}</div>
+          </div>
+          <template v-else>
+            <div v-for="c in filtered" :key="c.name" class="cus-mobile-card" @click="selectCustomer(c)">
+              <div class="cus-mc-top">
+                <div class="cus-mc-name">{{ c.customer_name }}</div>
+                <span class="inv-status-badge" :class="c.disabled ? 'vt-badge-red' : 'vt-badge-green'">{{ c.disabled ? 'Disabled' : 'Active' }}</span>
+              </div>
+              <div class="cus-mc-meta">
+                <span>{{ c.mobile_no || '—' }}</span>
+                <span>{{ c.city ? (c.city + (c.state ? ', '+c.state : '')) : '—' }}</span>
+              </div>
+              <div class="cus-mc-footer">
+                <button class="cus-mc-btn" @click.stop="openEdit(c.name)">Edit</button>
+                <button class="cus-mc-btn cus-mc-danger" @click.stop="confirmDelete(c)">Delete</button>
+              </div>
+            </div>
+          </template>
+        </div>
       </div>
       <div v-if="!loading && filtered.length" class="vt-footer">
         <span>Showing <strong>{{filtered.length}}</strong> of <strong>{{list.length}}</strong> customers</span>
@@ -254,7 +284,7 @@
           </button>
         </div>
         <!-- Overview tab -->
-        <div v-if="activeCustomerTab==='overview'" style="display:flex;gap:20px;align-items:flex-start">
+        <div v-if="activeCustomerTab==='overview'" class="cus-overview-cols" style="display:flex;gap:20px;align-items:flex-start">
 
           <!-- Left column ~55% -->
           <div style="flex:0 0 55%;min-width:0;display:flex;flex-direction:column;gap:14px">
@@ -318,7 +348,7 @@
               <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6">
                 <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">RECEIVABLES</span>
               </div>
-              <table style="width:100%;border-collapse:collapse">
+              <table class="cus-recv-table" style="width:100%;border-collapse:collapse">
                 <thead>
                   <tr style="border-bottom:1px solid #F3F4F6">
                     <th style="text-align:left;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px">CURRENCY</th>
@@ -380,12 +410,12 @@
             <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
             <div style="font-size:12.5px;color:#9CA3AF">Invoices and payments for {{selectedCustomer.customer_name}} will appear here.</div>
           </div>
-          <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:scroll">
-            <div style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
+          <div v-else class="cus-txn-wrap" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:scroll">
+            <div style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB;min-width:560px">
               <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span>
             </div>
             <div v-for="t in custTxns" :key="t.type+'-'+t.name"
-              style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+              style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:560px">
               <span :style="{
                 fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
                 background: t.type==='Invoice' ? '#DBEAFE' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
@@ -419,7 +449,7 @@
             <button class="nim-btn nim-btn-primary" @click="loadStatement">Load Statement</button>
           </div>
           <template v-else>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">
+            <div class="cus-stmt-kpis" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">
               <div style="background:#FFF5F5;border:1px solid #FFC9C9;border-radius:10px;padding:14px 16px">
                 <div style="font-size:11px;color:#C92A2A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Total Outstanding</div>
                 <div style="font-size:20px;font-weight:700;color:#C92A2A">₹{{fmtStmt(stmt.total_outstanding)}}</div>
@@ -436,12 +466,12 @@
             <div v-if="!stmt.email" style="margin-bottom:12px;padding:10px 14px;background:#FFF9DB;border:1px solid #FFD43B;border-radius:8px;font-size:12.5px;color:#876800">
               ⚠️ No email on file — add an email to enable sending this statement.
             </div>
-            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+            <div class="cus-stmt-inv-wrap" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
               <div v-if="!stmt.invoices.length" style="padding:24px;text-align:center;color:#9CA3AF;font-size:13px">No outstanding invoices</div>
               <template v-else>
                 <div style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px;padding:12px 14px;background:#F9FAFB;border-bottom:1px solid #E5E7EB">OUTSTANDING INVOICES</div>
                 <div v-for="inv in stmt.invoices" :key="inv.name"
-                  style="display:grid;grid-template-columns:160px 100px 100px auto 80px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+                  style="display:grid;grid-template-columns:160px 100px 100px auto 80px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:480px">
                   <span style="color:#2563EB;font-weight:600">{{inv.name}}</span>
                   <span style="color:#6B7280">{{inv.posting_date}}</span>
                   <span style="color:#6B7280">{{inv.due_date}}</span>
@@ -1654,4 +1684,50 @@ onMounted(load);
 .vt-empty-sub   { font-size: 13px; color: #9ca3af; }
 .vt-footer { padding: 9px 16px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; background: #fafafa; }
 .vt-footer strong { color: #6b7280; font-weight: 600; }
+
+/* ── Mobile card view (Option A) ── */
+.cus-mobile-cards { display: none; }
+.cus-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .cus-desktop-table { display: none !important; }
+  .cus-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .cus-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .cus-mobile-card:active { background: #f8f9fc; }
+  .cus-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .cus-mc-name { font-size: 14px; font-weight: 700; color: #1a1d23; }
+  .cus-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 8px; }
+  .cus-mc-footer { display: flex; gap: 6px; }
+  .cus-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .cus-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .cus-mc--skeleton { pointer-events: none; }
+  .cus-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: cus-shimmer 1.4s infinite; }
+  @keyframes cus-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .cus-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+
+  /* ── Detail panel: hide left pane, go full-width ── */
+  .zb-master-detail { flex-direction: column !important; height: auto !important; min-height: calc(100vh - 56px); }
+  .zb-list-pane { display: none !important; }
+
+  /* ── Overview: stack two columns vertically ── */
+  .cus-overview-cols { flex-direction: column !important; }
+  .cus-overview-cols > div { flex: none !important; width: 100% !important; min-width: 0 !important; }
+
+  /* ── Receivables table: compact + wrap headers ── */
+  .cus-recv-table th {
+    font-size: 9.5px !important;
+    padding: 6px 8px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.3 !important;
+  }
+  .cus-recv-table td { font-size: 12px !important; padding: 8px !important; }
+
+  /* ── Transactions tab: horizontal scroll ── */
+  .cus-txn-wrap { overflow-x: auto !important; }
+
+  /* ── Statement tab: 1-col KPI grid + scroll invoices ── */
+  .cus-stmt-kpis { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .cus-stmt-inv-wrap { overflow-x: auto !important; }
+}
 </style>

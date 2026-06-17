@@ -52,7 +52,7 @@
 
     <div class="inv-table-wrap">
       <div class="inv-table-wrap">
-        <table class="inv-table">
+        <table class="inv-table ven-desktop-table">
           <thead>
             <tr>
               <th class="vt-th vt-th-check">
@@ -127,6 +127,36 @@
             </tr>
           </tbody>
         </table>
+
+        <!-- Mobile cards (shown at ≤768px) -->
+        <div class="ven-mobile-cards">
+          <template v-if="loading">
+            <div v-for="n in 5" :key="n" class="ven-mobile-card ven-mc--skeleton">
+              <div class="ven-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+              <div class="ven-mc-shimmer" style="height:11px;width:40%"></div>
+            </div>
+          </template>
+          <div v-else-if="!filtered.length" class="ven-mc-empty">
+            <div style="font-size:32px;margin-bottom:8px">🏢</div>
+            <div>{{ search ? 'No results found' : 'No vendors yet' }}</div>
+          </div>
+          <template v-else>
+            <div v-for="v in filtered" :key="v.name" class="ven-mobile-card" @click="selectVendor(v)">
+              <div class="ven-mc-top">
+                <div class="ven-mc-name">{{ v.supplier_name || v.name }}</div>
+                <span class="inv-status-badge" :class="v.disabled ? 'vt-badge-red' : 'vt-badge-green'">{{ v.disabled ? 'Disabled' : 'Active' }}</span>
+              </div>
+              <div class="ven-mc-meta">
+                <span>{{ v.mobile_no || '—' }}</span>
+                <span>{{ v.city ? (v.city + (v.state ? ', '+v.state : '')) : '—' }}</span>
+              </div>
+              <div class="ven-mc-footer">
+                <button class="ven-mc-btn" @click.stop="openEdit(v.name)">Edit</button>
+                <button class="ven-mc-btn ven-mc-danger" @click.stop="confirmDelete(v)">Delete</button>
+              </div>
+            </div>
+          </template>
+        </div>
       </div>
       <div v-if="!loading && filtered.length" class="vt-footer">
         <span>Showing <strong>{{filtered.length}}</strong> of <strong>{{list.length}}</strong> vendors</span>
@@ -263,7 +293,7 @@
         </div>
 
         <!-- Overview tab -->
-        <div v-if="activeVendorTab==='overview'" style="display:flex;gap:20px;align-items:flex-start">
+        <div v-if="activeVendorTab==='overview'" class="ven-overview-cols" style="display:flex;gap:20px;align-items:flex-start">
 
           <!-- Left column ~55% -->
           <div style="flex:0 0 55%;min-width:0;display:flex;flex-direction:column;gap:14px">
@@ -327,7 +357,7 @@
               <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6">
                 <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">PAYABLES</span>
               </div>
-              <table style="width:100%;border-collapse:collapse">
+              <table class="ven-recv-table" style="width:100%;border-collapse:collapse">
                 <thead>
                   <tr style="border-bottom:1px solid #F3F4F6">
                     <th style="text-align:left;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px">CURRENCY</th>
@@ -387,12 +417,12 @@
             <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
             <div style="font-size:12.5px;color:#9CA3AF">Bills and payments for {{selectedVendor.supplier_name}} will appear here.</div>
           </div>
-          <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:scroll">
-            <div style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
+          <div v-else class="ven-txn-wrap" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:scroll">
+            <div style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB;min-width:560px">
               <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span>
             </div>
             <div v-for="t in vendorTxns" :key="t.type+'-'+t.name"
-              style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+              style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:560px">
               <span :style="{
                 fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
                 background: t.type==='Bill' ? '#FEF3C7' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
@@ -1329,4 +1359,46 @@ onMounted(async () => {
 .vt-empty-sub   { font-size: 13px; color: #9ca3af; }
 .vt-footer { padding: 9px 16px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; background: #fafafa; }
 .vt-footer strong { color: #6b7280; font-weight: 600; }
+
+/* ── Mobile card view (Option A) ── */
+.ven-mobile-cards { display: none; }
+.ven-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .ven-desktop-table { display: none !important; }
+  .ven-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .ven-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .ven-mobile-card:active { background: #f8f9fc; }
+  .ven-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .ven-mc-name { font-size: 14px; font-weight: 700; color: #1a1d23; }
+  .ven-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 8px; }
+  .ven-mc-footer { display: flex; gap: 6px; }
+  .ven-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .ven-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .ven-mc--skeleton { pointer-events: none; }
+  .ven-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: ven-shimmer 1.4s infinite; }
+  @keyframes ven-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .ven-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+
+  /* ── Detail panel: hide left pane, go full-width ── */
+  .zb-master-detail { flex-direction: column !important; height: auto !important; min-height: calc(100vh - 56px); }
+  .zb-list-pane { display: none !important; }
+
+  /* ── Overview: stack two columns vertically ── */
+  .ven-overview-cols { flex-direction: column !important; }
+  .ven-overview-cols > div { flex: none !important; width: 100% !important; min-width: 0 !important; }
+
+  /* ── Payables table: compact + wrap headers ── */
+  .ven-recv-table th {
+    font-size: 9.5px !important;
+    padding: 6px 8px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.3 !important;
+  }
+  .ven-recv-table td { font-size: 12px !important; padding: 8px !important; }
+
+  /* ── Transactions tab: horizontal scroll ── */
+  .ven-txn-wrap { overflow-x: auto !important; }
+}
 </style>

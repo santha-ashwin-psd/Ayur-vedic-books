@@ -109,7 +109,7 @@
 
   <!-- ── Table ── -->
   <div class="inv-table-wrap">
-    <table class="inv-table">
+    <table class="inv-table inv-desktop-table">
       <thead><tr>
         <th class="th-check"><input type="checkbox" @change="toggleAll" :checked="allSelected"/></th>
         <th class="sortable" @click="sort('posting_date')">DATE <span class="sort-arrow">{{ sortArrow('posting_date') }}</span></th>
@@ -184,6 +184,43 @@
         </template>
       </tbody>
     </table>
+
+    <!-- Mobile cards (shown at ≤768px, hidden on desktop) -->
+    <div class="inv-mobile-cards">
+      <template v-if="loading">
+        <div v-for="n in 5" :key="n" class="inv-mobile-card inv-mc--skeleton">
+          <div class="inv-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+          <div class="inv-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+          <div class="inv-mc-shimmer" style="height:11px;width:65%"></div>
+        </div>
+      </template>
+      <div v-else-if="!sorted.length" class="inv-mc-empty">
+        <div style="font-size:32px;margin-bottom:8px">📄</div>
+        <div>No invoices found</div>
+      </div>
+      <template v-else>
+        <div v-for="inv in paged" :key="inv.name" class="inv-mobile-card" @click="openView(inv)">
+          <div class="inv-mc-top">
+            <span class="inv-mc-docno">{{ inv.name }}</span>
+            <span class="inv-status-badge" :class="statusCls(inv)">{{ statusLabel(inv) }}</span>
+          </div>
+          <div class="inv-mc-mid">{{ inv.customer_name || inv.customer }}</div>
+          <div class="inv-mc-meta">
+            <span>{{ fmtDate(inv.posting_date) }}</span>
+            <span class="inv-mc-amount">{{ fmtAmt(inv.grand_total) }}</span>
+          </div>
+          <div v-if="inv.outstanding_amount > 0" class="inv-mc-balance">
+            Due: {{ fmtDate(inv.due_date) }} · Balance: <span :class="isOverdue(inv)?'text-danger':''">{{ fmtAmt(inv.outstanding_amount) }}</span>
+          </div>
+          <div class="inv-mc-footer">
+            <button class="inv-mc-btn" @click.stop="openView(inv)">View</button>
+            <button v-if="inv.docstatus===0" class="inv-mc-btn" @click.stop="openEdit(inv)">Edit</button>
+            <button v-if="inv.outstanding_amount>0&&inv.docstatus===1" class="inv-mc-btn inv-mc-pay" @click.stop="openPayment(inv)">Pay</button>
+            <button v-if="inv.docstatus===0||inv.docstatus===2" class="inv-mc-btn inv-mc-danger" @click.stop="confirmAction('delete',inv)">Delete</button>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
   <div v-if="!loading && sorted.length" style="padding:12px 0px 4px">
     <Pagination
@@ -2846,249 +2883,45 @@ watch(() => route.query, (q) => {
   white-space: nowrap;
 }
 
-/* ── Mobile invoice cards ── */
-@media(max-width:475px) {
-  .inv-page {
-    padding:12px 10px 20px !important;
-    gap:14px !important;
-    box-sizing:border-box !important;
-    background:#fff !important;
-  }
+/* ── Mobile invoice cards (Option A) ── */
+.inv-mobile-cards { display: none; }
+.inv-desktop-table { display: table; }
 
-  /* The phone design uses the three financial summaries, not the desktop KPI set. */
-  .inv-page > .bk-kpi-grid { display:none !important; }
-  .inv-page > .inv-mobile-summary {
-    display:grid !important;
-    grid-template-columns:1fr !important;
-    gap:10px !important;
-  }
-  .inv-mobile-summary .inv-stat-count { display:none !important; }
-  .inv-mobile-summary .bk-stat-card {
-    min-height:90px !important;
-    border:none !important;
-    border-radius:18px !important;
-    padding:16px 18px !important;
-    box-shadow:none !important;
-  }
-  .inv-mobile-summary .inv-stat-revenue {
-    background:linear-gradient(105deg,#e6f8ec 0%,#d9f4e3 100%) !important;
-  }
-  .inv-mobile-summary .inv-stat-receivable {
-    background:linear-gradient(105deg,#fff8dd 0%,#fff1bf 100%) !important;
-  }
-  .inv-mobile-summary .inv-stat-average {
-    background:linear-gradient(105deg,#e8f5ff 0%,#d9edfb 100%) !important;
-  }
-  .inv-mobile-summary .bk-stat-content {
-    display:block !important;
-  }
-  .inv-mobile-summary .bk-stat-icon { display:none !important; }
-  .inv-mobile-summary .bk-stat-label {
-    margin-bottom:6px !important;
-    color:#111827 !important;
-    font-size:12.5px !important;
-    font-weight:500 !important;
-    letter-spacing:.01em !important;
-  }
-  .inv-mobile-summary .bk-stat-value,
-  .inv-mobile-summary .bk-stat-value[style] {
-    color:#070b12 !important;
-    font-size:25px !important;
-    font-weight:800 !important;
-    line-height:1.05 !important;
-  }
+@media (max-width: 768px) {
+  .inv-page { padding: 12px 10px 20px !important; gap: 14px !important; }
 
-  /* Keep the filters available but visually compact above the summaries. */
-  .inv-page .sales-toolbar {
-    margin-bottom:0 !important;
-    background:#f7f8fa !important;
-  }
+  /* Switch KPI grid → compact summary strip */
+  .inv-page > .bk-kpi-grid { display: none !important; }
+  .inv-page > .inv-mobile-summary { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  .inv-mobile-summary .inv-stat-count { display: none !important; }
 
-  .inv-table-wrap {
-    border:none !important;
-    background:transparent !important;
-    overflow:visible !important;
-    box-shadow:none !important;
-  }
-  .inv-table {
-    display:block !important;
-    width:100% !important;
-    min-width:0 !important;
-  }
-  .inv-table thead { display:none !important; }
-  .inv-table tbody {
-    display:flex !important;
-    flex-direction:column !important;
-    gap:14px !important;
-  }
+  /* Switch table ↔ cards */
+  .inv-desktop-table { display: none !important; }
+  .inv-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .inv-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .inv-mobile-card:active { background: #f8f9fc; }
+  .inv-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .inv-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .inv-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .inv-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 4px; }
+  .inv-mc-amount { font-weight: 700; color: #1a1d23; }
+  .inv-mc-balance { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
+  .inv-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
+  .inv-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .inv-mc-pay { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+  .inv-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .inv-mc--skeleton { pointer-events: none; }
+  .inv-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: mc-shimmer 1.4s infinite; }
+  @keyframes mc-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .inv-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 
-  .inv-table tbody tr.inv-row {
-    position:relative !important;
-    display:grid !important;
-    grid-template-columns:56% 44% !important;
-    grid-template-rows:auto auto 1fr auto !important;
-    min-height:194px !important;
-    background:#fff !important;
-    border:1.5px solid #d1d5db !important;
-    border-radius:16px !important;
-    padding:17px 16px 14px !important;
-    box-shadow:none !important;
-    box-sizing:border-box !important;
-    gap:0 !important;
-    overflow:hidden !important;
-  }
-  .inv-table tbody tr.inv-row::after {
-    content:"" !important;
-    position:absolute !important;
-    top:16px !important;
-    bottom:16px !important;
-    left:56% !important;
-    width:1px !important;
-    background:#d7dbe1 !important;
-    pointer-events:none !important;
-  }
+  .sales-toolbar { flex-wrap: wrap; }
+  .sales-actions { flex-wrap: wrap; }
+  .sales-pills { flex-wrap: wrap; }
+}
 
-  .inv-table tbody tr.inv-row td {
-    border:none !important;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    box-sizing:border-box !important;
-  }
-
-  .inv-table tbody td:nth-child(1),
-  .inv-table tbody td:nth-child(5),
-  .inv-table tbody td:nth-child(8) { display:none !important; }
-
-  /* Invoice number */
-  .inv-table tbody td:nth-child(3) {
-    grid-column:1 !important;
-    grid-row:1 !important;
-    display:block !important;
-    width:auto !important;
-    padding:0 14px 7px 0 !important;
-    font-size:16px !important;
-    font-weight:700 !important;
-    color:#0b0f17 !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    white-space:nowrap !important;
-  }
-  .inv-table tbody td:nth-child(3) .inv-link { color:inherit !important; }
-
-  /* Status */
-  .inv-table tbody td:nth-child(6) {
-    grid-column:2 !important;
-    grid-row:2 !important;
-    display:flex !important;
-    justify-content:flex-end !important;
-    align-items:center !important;
-    align-self:start !important;
-    width:auto !important;
-    padding:3px 0 0 18px !important;
-  }
-  .inv-table tbody td:nth-child(6) .inv-status-badge {
-    margin:0 !important;
-    float:none !important;
-    border-radius:999px !important;
-   
-    font-size:11.5px !important;
-    letter-spacing:0 !important;
-    text-transform:capitalize !important;
-  }
-
-  /* Customer */
-  .inv-table tbody td:nth-child(4) {
-    grid-column:1 !important;
-    grid-row:2 !important;
-    display:block !important;
-    width:auto !important;
-    padding:0 14px 7px 0 !important;
-    font-size:14px !important;
-    font-weight:600 !important;
-    color:#111827 !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    white-space:nowrap !important;
-  }
-
-  /* Posting date */
-  .inv-table tbody td:nth-child(2) {
-    grid-column:1 !important;
-    grid-row:3 !important;
-    display:block !important;
-    align-self:start !important;
-    width:auto !important;
-    padding:0 14px 12px 0 !important;
-    font-size:12.5px !important;
-    color:#111827 !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-    white-space:nowrap !important;
-  }
-  .inv-table tbody td:nth-child(2)::before {
-    content:"Date: " !important;
-    display:inline !important;
-    color:#111827 !important;
-    font-size:12.5px !important;
-    font-weight:500 !important;
-    text-transform:none !important;
-    letter-spacing:0 !important;
-  }
-
-  /* Amount */
-  .inv-table tbody td:nth-child(7) {
-    grid-column:2 !important;
-    grid-row:1 !important;
-    display:block !important;
-    width:auto !important;
-    padding:0 0 8px 18px !important;
-    text-align:right !important;
-    font-size:19px !important;
-    font-weight:800 !important;
-    color:#070b12 !important;
-    white-space:nowrap !important;
-    overflow:hidden !important;
-    text-overflow:ellipsis !important;
-  }
-  .inv-table tbody td:nth-child(7)::before { display:none !important; content:none !important; }
-
-  /* Actions */
-  .inv-table tbody td:nth-child(9) {
-    grid-column:1 !important;
-    grid-row:4 !important;
-    display:block !important;
-    align-self:end !important;
-    width:auto !important;
-    padding:6px 14px 0 0 !important;
-    border:none !important;
-    overflow:visible !important;
-    white-space:normal !important;
-  }
-  .inv-table tbody .inv-row-actions {
-    display:flex !important;
-    justify-content:flex-start !important;
-    gap:8px !important;
-  }
-  .inv-table tbody .inv-act-btn {
-    border:none !important;
-    background:transparent !important;
-    width:30px !important;
-    height:30px !important;
-    padding:5px !important;
-    justify-content:center !important;
-    color:#30343b !important;
-  }
-  .inv-table tbody .inv-act-btn:hover {
-    color:#374151 !important;
-    background:#f3f4f6 !important;
-    border-radius:6px !important;
-  }
-
-  .inv-table tbody tr:not(.inv-row) { display:block !important; }
-  .inv-table tbody tr:not(.inv-row) td {
-    display:block !important; white-space:normal !important; overflow:visible !important;
-  }
+@media (max-width: 480px) {
+  .inv-page > .inv-mobile-summary { grid-template-columns: 1fr !important; }
 }
 
 /* ── e-Invoice status dot (list row) ── */

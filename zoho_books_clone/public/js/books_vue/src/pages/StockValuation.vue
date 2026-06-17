@@ -30,7 +30,7 @@
     </div>
 
     <div class="sv-card">
-      <table class="sv-table">
+      <table class="sv-table sv-desktop-table">
         <thead><tr>
           <th @click="sort('item_code')" class="sortable">Item <span v-html="sortArrow('item_code')"></span></th>
           <th @click="sort('item_name')" class="sortable">Item Name <span v-html="sortArrow('item_name')"></span></th>
@@ -58,6 +58,34 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="sv-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 6" :key="n" class="sv-mobile-card sv-mc--skeleton">
+            <div class="sv-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="sv-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="sv-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="sv-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">📦</div>
+          <div>{{ list.length ? 'No items match' : 'No stock data found' }}</div>
+        </div>
+        <template v-else>
+          <div v-for="i in sorted" :key="i.item_code+i.warehouse" class="sv-mobile-card">
+            <div class="sv-mc-top">
+              <span class="sv-mc-code">{{ i.item_code }}</span>
+              <span class="sv-mc-value">{{ fmtCur(i.stock_value) }}</span>
+            </div>
+            <div class="sv-mc-mid">{{ i.item_name||i.item_code }}</div>
+            <div class="sv-mc-meta">
+              <span :class="flt(i.actual_qty)<=0?'sv-mc-neg':''">{{ fmtQty(i.actual_qty) }} {{ i.stock_uom||'' }}</span>
+              <button class="sv-adjust-btn" @click.stop="goAdjust(i)">Adjust</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
   </div>
 </template>
@@ -158,18 +186,29 @@ onMounted(()=>{load();fetchWarehouses("");fetchItemGroups("");});
 .sv-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
+/* ── Mobile card defaults ── */
+.sv-mobile-cards { display: none; }
+.sv-desktop-table { display: table; }
+
 @media (max-width: 768px) {
-  .sv-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .sv-table { min-width: 520px; }
   .sv-search-wrap { min-width: 0; flex: 1 1 auto; }
   .sv-filterbar { padding: 12px; gap: 8px; }
+  .sv-desktop-table { display: none !important; }
+  .sv-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .sv-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; transition: background .12s; }
+  .sv-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .sv-mc-code { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .sv-mc-value { font-size: 13px; font-weight: 700; color: #1a1d23; }
+  .sv-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 6px; }
+  .sv-mc-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .sv-mc-neg { color: #dc2626; font-weight: 700; }
+  .sv-mc--skeleton { pointer-events: none; }
+  .sv-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: sv-mc-sh 1.4s infinite; }
+  @keyframes sv-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .sv-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .sv-page { padding: 12px; gap: 12px; }
-  .sv-table th:nth-child(3), .sv-table td:nth-child(3),
-  .sv-table th:nth-child(4), .sv-table td:nth-child(4),
-  .sv-table th:nth-child(6), .sv-table td:nth-child(6) { display: none; }
-  .sv-table { min-width: 360px; }
   .sv-asof { display: none; }
 }
 </style>

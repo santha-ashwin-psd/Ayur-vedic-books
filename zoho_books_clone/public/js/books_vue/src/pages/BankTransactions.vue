@@ -35,7 +35,7 @@
     ]" />
 
     <div class="bt-card">
-      <table class="bt-table">
+      <table class="bt-table bt-desktop-table">
         <thead>
           <tr>
             <th @click="sort('date')" class="sortable">Date <span v-html="sortArrow('date')"></span></th>
@@ -65,6 +65,38 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="bt-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="bt-mobile-card bt-mc--skeleton">
+            <div class="bt-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="bt-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="bt-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="bt-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">🏦</div>
+          <div>No transactions found</div>
+        </div>
+        <template v-else>
+          <div v-for="t in sorted" :key="t.name" class="bt-mobile-card" @click="openView(t)">
+            <div class="bt-mc-top">
+              <span class="bt-mc-date">{{ fmtDate(t.date) }}</span>
+              <span class="bt-badge" :class="t.status==='Reconciled'?'badge-green':t.status==='Unreconciled'?'badge-orange':'badge-grey'">{{ t.status||'Unreconciled' }}</span>
+            </div>
+            <div class="bt-mc-mid">{{ t.description || '—' }}</div>
+            <div class="bt-mc-meta">
+              <span>{{ t.bank_account || '—' }}</span>
+              <span>
+                <span v-if="flt(t.deposit)>0" class="bt-mc-dep">+{{ fmtCur(t.deposit) }}</span>
+                <span v-else-if="flt(t.withdrawal)>0" class="bt-mc-wd">-{{ fmtCur(t.withdrawal) }}</span>
+                <span v-else>—</span>
+              </span>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- View -->
@@ -247,23 +279,34 @@ onMounted(()=>{if(route.query.account)selectedAccount.value=String(route.query.a
 .bt-desc{font-size:13px;color:#334155;line-height:1.5;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:12px 14px;}
 .bt-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
 
+/* ── Mobile card defaults ── */
+.bt-mobile-cards { display: none; }
+.bt-desktop-table { display: table; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .bt-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
   .bt-drawer.open { right: 0 !important; }
-  /* table scrolls horizontally; hide Reference column */
-  .bt-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .bt-table { min-width: 520px; }
-  .bt-table th:nth-child(4), .bt-table td:nth-child(4) { display: none; }
+  .bt-desktop-table { display: none !important; }
+  .bt-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .bt-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .bt-mobile-card:active { background: #f8f9fc; }
+  .bt-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .bt-mc-date { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .bt-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bt-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .bt-mc-dep { color: #16a34a; font-weight: 700; }
+  .bt-mc-wd  { color: #dc2626; font-weight: 700; }
+  .bt-mc--skeleton { pointer-events: none; }
+  .bt-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: bt-mc-sh 1.4s infinite; }
+  @keyframes bt-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .bt-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 
 @media (max-width: 480px) {
   .bt-page { padding: 12px; gap: 12px; }
   .bt-search-wrap { min-width: 0; flex: 1 1 auto; }
   .bt-pills { flex-wrap: wrap; gap: 4px; }
-  /* also hide Account column at mobile */
-  .bt-table th:nth-child(2), .bt-table td:nth-child(2) { display: none; }
-  .bt-table { min-width: 360px; }
   .bt-meta-grid { grid-template-columns: 1fr !important; }
   .bt-dh-amt-val { font-size: 20px; }
 }

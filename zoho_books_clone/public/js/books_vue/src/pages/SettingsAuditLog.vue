@@ -9,7 +9,7 @@
   </div>
   <div class="cust-table-card sa-tbl-card" style="margin-top:0">
     <div v-if="loading" style="padding:40px;text-align:center;color:#868e96">Loading audit log…</div>
-    <table v-else style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <table v-else class="sal-desktop-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
       <thead><tr style="background:#f8f9fc;border-bottom:2px solid #e4e8f0">
         <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Date / Time</th>
         <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">User</th>
@@ -30,6 +30,27 @@
         <tr v-if="!logs.length && !loading"><td colspan="5" style="padding:40px;text-align:center;color:#868e96">No audit log entries found</td></tr>
       </tbody>
     </table>
+
+    <!-- Mobile cards (shown at ≤768px) -->
+    <div v-if="!loading" class="sal-mobile-cards">
+      <div v-if="!logs.length" class="sal-mc-empty">
+        <div style="font-size:32px;margin-bottom:8px">📋</div>
+        <div>No audit log entries found</div>
+      </div>
+      <template v-else>
+        <div v-for="l in logs" :key="l.name" class="sal-mobile-card">
+          <div class="sal-mc-top">
+            <span class="sal-mc-date">{{ l.creation }}</span>
+            <span class="sal-mc-op" :style="'background:'+(OP_COLORS[l.operation]||'#f8f9fa')+'22;color:'+(OP_COLORS[l.operation]||'#868e96')">{{ l.operation||'—' }}</span>
+          </div>
+          <div class="sal-mc-mid">{{ l.doc_name||'—' }}</div>
+          <div class="sal-mc-meta">
+            <span>{{ l.user }}</span>
+            <span>{{ l.doctype||'—' }}</span>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
 </div>
 </template>
@@ -76,9 +97,19 @@ onMounted(load);
 </script>
 
 <style>
+.sal-mobile-cards { display: none; }
+.sal-desktop-table { display: table; }
+
 @media (max-width: 768px) {
-  .sa-tbl-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .sa-tbl-card table { min-width: 500px; }
+  .sal-desktop-table { display: none !important; }
+  .sal-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .sal-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; }
+  .sal-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .sal-mc-date { font-size: 11.5px; color: #6b7280; }
+  .sal-mc-op { padding: 2px 8px; border-radius: 20px; font-size: 11.5px; font-weight: 600; }
+  .sal-mc-mid { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+  .sal-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .sal-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .cust-page { padding: 12px !important; }

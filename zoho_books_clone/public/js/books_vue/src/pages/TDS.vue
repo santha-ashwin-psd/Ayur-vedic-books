@@ -42,7 +42,7 @@
     </div>
 
     <div class="tds-card">
-      <table class="tds-table">
+      <table class="tds-table tds-desktop-table">
         <thead><tr>
           <th @click="sort('name')" class="sortable">Voucher / Ref <span v-html="sortArrow('name')"></span></th>
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
@@ -83,6 +83,37 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="tds-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 6" :key="n" class="tds-mobile-card tds-mc--skeleton">
+            <div class="tds-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="tds-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="tds-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="tds-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">📋</div>
+          <div>No TDS transactions found</div>
+        </div>
+        <template v-else>
+          <div v-for="e in sorted" :key="(e.entry_name||e.name)+(e.tds_section||'')" class="tds-mobile-card">
+            <div class="tds-mc-top">
+              <span class="tds-mc-docno">{{ e.name }}</span>
+              <span class="tds-source-badge" :class="e.source==='entry'?'tds-source-manual':'tds-source-bill'">{{ e.source==='entry'?'Manual':'Bill' }}</span>
+            </div>
+            <div class="tds-mc-mid">{{ e.party || '—' }}</div>
+            <div class="tds-mc-meta">
+              <span>{{ fmtDate(e.posting_date) }}{{ e.tds_section ? ' · ' + e.tds_section : '' }}</span>
+              <span class="tds-mc-tds red">{{ fmtCur(e.tds_amount) }}</span>
+            </div>
+            <div class="tds-mc-footer" v-if="e.source==='entry' && e.status !== 'Deposited' && e.status !== 'Filed'">
+              <button class="tds-act-btn" @click.stop="openDeposit(e)">Mark Deposited</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- ── New TDS Entry Drawer ── -->
@@ -521,22 +552,31 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 .tds-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.18);z-index:1001;width:min(420px,90vw);overflow:hidden;}
 .tds-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f3f4f6;}
 
+/* ── Mobile card defaults ── */
+.tds-mobile-cards { display: none; }
+.tds-desktop-table { display: table; }
+
 @media (max-width: 768px) {
   .tds-summary     { grid-template-columns: repeat(2, 1fr); }
-  .tds-card        { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .tds-table       { min-width: 600px; }
-  .tds-table th:nth-child(5), .tds-table td:nth-child(5),
-  .tds-table th:nth-child(6), .tds-table td:nth-child(6),
-  .tds-table th:nth-child(8), .tds-table td:nth-child(8) { display: none; }
   .tds-drawer-panel { width: 100% !important; }
   .tds-search-wrap  { min-width: 0; flex: 1 1 auto; }
+  .tds-desktop-table { display: none !important; }
+  .tds-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .tds-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; transition: background .12s; }
+  .tds-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .tds-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .tds-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .tds-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 8px; }
+  .tds-mc-tds { font-weight: 700; }
+  .tds-mc-footer { display: flex; gap: 6px; }
+  .tds-mc--skeleton { pointer-events: none; }
+  .tds-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: tds-mc-sh 1.4s infinite; }
+  @keyframes tds-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .tds-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .tds-page    { padding: 12px; gap: 12px; }
   .tds-summary { grid-template-columns: 1fr 1fr; }
-  .tds-table th:nth-child(9),  .tds-table td:nth-child(9),
-  .tds-table th:nth-child(10), .tds-table td:nth-child(10) { display: none; }
-  .tds-table   { min-width: 460px; }
   .tds-form-grid { grid-template-columns: 1fr !important; }
 }
 </style>

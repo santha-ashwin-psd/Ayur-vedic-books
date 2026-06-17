@@ -45,7 +45,7 @@
 
     <!-- ── Table ── -->
     <div class="inv-table-wrap">
-      <table class="inv-table">
+      <table class="inv-table dn-desktop-table">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
@@ -87,6 +87,41 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="dn-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="dn-mobile-card dn-mc--skeleton">
+            <div class="dn-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="dn-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="dn-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="dn-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">📋</div>
+          <div>No debit notes found</div>
+        </div>
+        <template v-else>
+          <div v-for="d in paged" :key="d.name" class="dn-mobile-card" @click="openView(d)">
+            <div class="dn-mc-top">
+              <span class="dn-mc-docno">{{ d.name }}</span>
+              <span class="inv-status-badge" :class="statusCls(d)">{{ statusLabel(d) }}</span>
+            </div>
+            <div class="dn-mc-mid">{{ d.supplier_name || d.supplier || '—' }}</div>
+            <div class="dn-mc-meta">
+              <span>{{ fmtDate(d.posting_date) }}</span>
+              <span class="dn-mc-amount">{{ fmtCur(Math.abs(d.grand_total || 0)) }}</span>
+            </div>
+            <div v-if="d.docstatus===1 && balanceFor(d.name)>0" class="dn-mc-balance">Balance: {{ fmtCur(balanceFor(d.name)) }}</div>
+            <div class="dn-mc-footer">
+              <button class="dn-mc-btn" @click.stop="openView(d)">View</button>
+              <button v-if="d.docstatus===0" class="dn-mc-btn" @click.stop="openEdit(d)">Edit</button>
+              <button v-if="d.docstatus===1&&balanceFor(d.name)>0" class="dn-mc-btn dn-mc-apply" @click.stop="applyDN(d)">Apply</button>
+              <button v-if="d.docstatus===0||d.docstatus===2" class="dn-mc-btn dn-mc-danger" @click.stop="deleteDN(d)">Delete</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- ── Pagination ── -->
@@ -1741,5 +1776,30 @@ onMounted(load);
   .td-id .inv-link { font-size: 12px !important; font-weight: 600 !important; color: #1a6ef7 !important; text-decoration: underline !important; }
   .td-customer { font-size: 15px !important; font-weight: 700 !important; color: #1a1a2e !important; }
   .td-amount   { font-size: 14px !important; letter-spacing: -0.02em !important; }
+}
+
+/* ── Mobile card view (Option A) ── */
+.dn-mobile-cards { display: none; }
+.dn-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .dn-desktop-table { display: none !important; }
+  .dn-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .dn-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .dn-mobile-card:active { background: #f8f9fc; }
+  .dn-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .dn-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .dn-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .dn-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 4px; }
+  .dn-mc-amount { font-weight: 700; color: #7c2d12; }
+  .dn-mc-balance { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
+  .dn-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
+  .dn-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .dn-mc-apply { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+  .dn-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .dn-mc--skeleton { pointer-events: none; }
+  .dn-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: dn-shimmer 1.4s infinite; }
+  @keyframes dn-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .dn-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 </style>

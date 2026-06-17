@@ -28,7 +28,7 @@
           </div>
 
     <div class="inv-table-wrap">
-      <table class="inv-table">
+      <table class="inv-table exp-desktop-table">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
@@ -63,6 +63,39 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="exp-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="exp-mobile-card exp-mc--skeleton">
+            <div class="exp-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="exp-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="exp-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="exp-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">🧾</div>
+          <div>No expenses found</div>
+        </div>
+        <template v-else>
+          <div v-for="e in paged" :key="e.name" class="exp-mobile-card" @click="openView(e)">
+            <div class="exp-mc-top">
+              <span class="exp-mc-docno">{{ e.name }}</span>
+              <span class="inv-status-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span>
+            </div>
+            <div class="exp-mc-mid">{{ e.expense_type || '—' }}</div>
+            <div class="exp-mc-meta">
+              <span>{{ fmtDate(e.posting_date) }}</span>
+              <span class="exp-mc-amount">{{ fmtCur(e.total_claimed_amount || e.grand_total) }}</span>
+            </div>
+            <div v-if="e.employee_name || e.employee" class="exp-mc-sub">{{ e.employee_name || e.employee }}</div>
+            <div class="exp-mc-footer">
+              <button class="exp-mc-btn" @click.stop="openView(e)">View</button>
+              <button v-if="e.docstatus===0" class="exp-mc-btn" @click.stop="openEdit(e)">Edit</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- ── Pagination ── -->
@@ -633,4 +666,27 @@ onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseA
 .badge-green { background-color:#d1fae5;color:#065f46; }
 .badge-orange { background-color:#fff7ed;color:#c2410c; }
 .badge-grey { background-color:#f3f4f6;color:#374151; }
+
+/* ── Mobile card view (Option A) ── */
+.exp-mobile-cards { display: none; }
+.exp-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .exp-desktop-table { display: none !important; }
+  .exp-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .exp-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .exp-mobile-card:active { background: #f8f9fc; }
+  .exp-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .exp-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .exp-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .exp-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 4px; }
+  .exp-mc-amount { font-weight: 700; color: #1a1d23; }
+  .exp-mc-sub { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
+  .exp-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
+  .exp-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .exp-mc--skeleton { pointer-events: none; }
+  .exp-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: exp-shimmer 1.4s infinite; }
+  @keyframes exp-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .exp-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+}
 </style>

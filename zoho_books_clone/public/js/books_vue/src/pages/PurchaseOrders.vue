@@ -48,7 +48,7 @@
 
     <!-- ── Table ── -->
     <div class="inv-table-wrap">
-      <table class="inv-table">
+      <table class="inv-table po-desktop-table">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
@@ -85,6 +85,40 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="po-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="po-mobile-card po-mc--skeleton">
+            <div class="po-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="po-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="po-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="po-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">🛒</div>
+          <div>No purchase orders found</div>
+        </div>
+        <template v-else>
+          <div v-for="o in paged" :key="o.name" class="po-mobile-card" @click="openView(o)">
+            <div class="po-mc-top">
+              <span class="po-mc-docno">{{ o.name }}</span>
+              <span class="inv-status-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span>
+            </div>
+            <div class="po-mc-mid">{{ o.supplier_name || o.supplier || '—' }}</div>
+            <div class="po-mc-meta">
+              <span>{{ fmtDate(o.transaction_date) }}</span>
+              <span class="po-mc-amount">{{ fmtCur(o.grand_total) }}</span>
+            </div>
+            <div v-if="o.expected_delivery_date" class="po-mc-sub" :class="isPastExpected(o)?'text-danger':''">Expected: {{ fmtDate(o.expected_delivery_date) }}</div>
+            <div class="po-mc-footer">
+              <button class="po-mc-btn" @click.stop="openView(o)">View</button>
+              <button v-if="canEdit(o)" class="po-mc-btn" @click.stop="openEdit(o)">Edit</button>
+              <button v-if="canDelete(o)" class="po-mc-btn po-mc-danger" @click.stop="deletePO(o)">Delete</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- ── Pagination ── -->
@@ -1834,6 +1868,30 @@ watch(() => form.supplier, (val) => {
 }
 
 /* ── Mobile card layout override (≤ 425px) ── */
+/* ── Mobile card view (Option A) ── */
+.po-mobile-cards { display: none; }
+.po-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .po-desktop-table { display: none !important; }
+  .po-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .po-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .po-mobile-card:active { background: #f8f9fc; }
+  .po-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .po-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .po-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .po-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 4px; }
+  .po-mc-amount { font-weight: 700; color: #1a1d23; }
+  .po-mc-sub { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
+  .po-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
+  .po-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .po-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .po-mc--skeleton { pointer-events: none; }
+  .po-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: po-shimmer 1.4s infinite; }
+  @keyframes po-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .po-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+}
+
 @media (max-width: 425px) {
   /*
    * Use explicit grid-row / grid-column instead of named areas.

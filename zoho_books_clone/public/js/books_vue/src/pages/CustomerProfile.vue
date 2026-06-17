@@ -344,4 +344,35 @@ function newInvoice() {
 .type-payment{background:#dcfce7;color:#16a34a;}
 .cp-status{font-size:11.5px;color:#374151;font-weight:500;}
 .cp-empty{text-align:center;padding:48px;color:#9ca3af;font-size:13px;}
+
+@media (max-width: 768px) {
+  .cp-page { padding: 12px !important; gap: 12px !important; }
+
+  /* Header: wrap buttons below name */
+  .cp-header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 14px 16px; }
+  .cp-header > div:last-child { width: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+  .cp-header > div:last-child > button { flex: 1; justify-content: center; }
+
+  /* Stats: 2-col grid */
+  .cp-stats { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .cp-stat-val { font-size: 17px; }
+
+  /* Contact card: single column stack */
+  .cp-contact-card { grid-template-columns: 1fr !important; gap: 0 !important; padding: 0 !important; }
+  .cp-contact-section { padding: 14px 16px; border-bottom: 1px solid #f3f4f6; }
+  .cp-contact-section:last-child { border-bottom: none; }
+
+  /* Tabs: allow horizontal scroll if many tabs */
+  .cp-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cp-tab { white-space: nowrap; padding: 10px 14px; font-size: 12.5px; }
+
+  /* Table: horizontal scroll */
+  .cp-tab-body { overflow-x: auto; }
+  .cp-table { min-width: 480px; }
+}
+
+@media (max-width: 480px) {
+  /* Stats: 1-col on very small phones */
+  .cp-stats { grid-template-columns: 1fr !important; }
+}
 </style>

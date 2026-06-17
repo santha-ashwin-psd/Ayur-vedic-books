@@ -16,7 +16,7 @@
   <div v-if="loading" style="padding:60px;text-align:center;color:#868e96">Loading…</div>
 
   <div v-else class="cust-table-card sns-tbl-card" style="margin-top:0">
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
+    <table class="sns-desktop-table" style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="background:#f8f9fc;border-bottom:2px solid #e4e8f0">
         <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Document Type</th>
         <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Prefix</th>
@@ -41,6 +41,27 @@
         <tr v-if="!series.length"><td colspan="6" style="padding:40px;text-align:center;color:#868e96">No number series configured</td></tr>
       </tbody>
     </table>
+
+    <!-- Mobile cards (shown at ≤768px) -->
+    <div class="sns-mobile-cards">
+      <div v-if="!series.length" class="sns-mc-empty">
+        <div style="font-size:32px;margin-bottom:8px">🔢</div>
+        <div>No number series configured</div>
+      </div>
+      <template v-else>
+        <div v-for="s in series" :key="s.prefix" class="sns-mobile-card">
+          <div class="sns-mc-top">
+            <span class="sns-mc-prefix">{{ s.prefix }}</span>
+            <span style="background:#EBFBEE;color:#2F9E44;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:600">{{ preview(s) }}</span>
+          </div>
+          <div class="sns-mc-mid">{{ s.doctype }}</div>
+          <div class="sns-mc-meta">
+            <span>Current: {{ s.current||0 }} · Padding: {{ s.padding||4 }}</span>
+            <button class="nim-btn nim-btn-ghost" @click.stop="resetSeries(s)" style="font-size:11.5px;color:#c92a2a;padding:3px 8px">Reset</button>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
 
   <Teleport to="body">
@@ -160,9 +181,18 @@ onMounted(load);
 </script>
 
 <style>
+.sns-mobile-cards { display: none; }
+.sns-desktop-table { display: table; }
+
 @media (max-width: 768px) {
-  .sns-tbl-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .sns-tbl-card table { min-width: 520px; }
+  .sns-desktop-table { display: none !important; }
+  .sns-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .sns-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; }
+  .sns-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .sns-mc-prefix { font-size: 14px; font-weight: 800; color: #1a1a2e; }
+  .sns-mc-mid { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+  .sns-mc-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .sns-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .cust-page { padding: 12px !important; }

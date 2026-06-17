@@ -45,7 +45,7 @@
     </div>
 
     <div class="btr-card">
-      <table class="btr-table">
+      <table class="btr-table btr-desktop-table">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /></th>
@@ -76,6 +76,34 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="btr-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="btr-mobile-card btr-mc--skeleton">
+            <div class="btr-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="btr-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="btr-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!displayRows.length" class="btr-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">↔️</div>
+          <div>{{ list.length ? 'No transfers match' : 'No transfers found' }}</div>
+        </div>
+        <template v-else>
+          <div v-for="t in displayRows" :key="t.from_transaction" class="btr-mobile-card" @click="openView(t)">
+            <div class="btr-mc-top">
+              <span class="btr-mc-docno">{{ t.reference || t.from_transaction }}</span>
+              <span class="btr-badge" :class="t.status==='Reconciled'?'badge-green':'badge-orange'">{{ t.status||'Unreconciled' }}</span>
+            </div>
+            <div class="btr-mc-mid">{{ t.from_account||'—' }} → {{ t.to_account||'—' }}</div>
+            <div class="btr-mc-meta">
+              <span>{{ fmtDate(t.date) }}</span>
+              <span class="btr-mc-amount">{{ fmtCur(t.amount) }}</span>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- Create Drawer -->
@@ -374,24 +402,34 @@ textarea.btr-input{resize:vertical;}
 .btr-meta-lbl{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}
 .btr-dfooter{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
 
+/* ── Mobile card defaults ── */
+.btr-mobile-cards { display: none; }
+.btr-desktop-table { display: table; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .btr-drawer      { width: 100% !important; right: -100% !important; max-width: 100%; }
   .btr-view-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
   .btr-drawer.open,
   .btr-view-drawer.open { right: 0 !important; }
-  /* table scrolls; hide Reference column */
-  .btr-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .btr-table { min-width: 500px; }
-  .btr-table th:nth-child(3), .btr-table td:nth-child(3) { display: none; }
+  .btr-desktop-table { display: none !important; }
+  .btr-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .btr-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .btr-mobile-card:active { background: #f8f9fc; }
+  .btr-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .btr-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .btr-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btr-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .btr-mc-amount { font-weight: 700; color: #1a1d23; }
+  .btr-mc--skeleton { pointer-events: none; }
+  .btr-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: btr-mc-sh 1.4s infinite; }
+  @keyframes btr-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .btr-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 
 @media (max-width: 480px) {
   .btr-page { padding: 12px; gap: 12px; }
   .btr-search-wrap { min-width: 0; flex: 1 1 auto; }
-  /* also hide From Account — To Account + Amount still visible */
-  .btr-table th:nth-child(4), .btr-table td:nth-child(4) { display: none; }
-  .btr-table { min-width: 360px; }
   .btr-fields-grid { grid-template-columns: 1fr !important; }
   .btr-meta-grid   { grid-template-columns: 1fr !important; }
   .btr-dh-amt-val  { font-size: 20px; }

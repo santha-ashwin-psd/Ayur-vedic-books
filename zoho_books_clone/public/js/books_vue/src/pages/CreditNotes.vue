@@ -47,7 +47,7 @@
 
     <!-- ── Table ── -->
     <div class="inv-table-wrap">
-      <table class="inv-table">
+      <table class="inv-table cn-desktop-table">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
@@ -90,6 +90,41 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="cn-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="cn-mobile-card cn-mc--skeleton">
+            <div class="cn-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="cn-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="cn-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="cn-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">📝</div>
+          <div>No credit notes found</div>
+        </div>
+        <template v-else>
+          <div v-for="c in paged" :key="c.name" class="cn-mobile-card" @click="openView(c)">
+            <div class="cn-mc-top">
+              <span class="cn-mc-docno">{{ c.name }}</span>
+              <span class="inv-status-badge" :class="statusCls(c)">{{ statusLabel(c) }}</span>
+            </div>
+            <div class="cn-mc-mid">{{ c.customer_name || c.customer || '—' }}</div>
+            <div class="cn-mc-meta">
+              <span>{{ fmtDate(c.posting_date) }}</span>
+              <span class="cn-mc-amount">{{ fmtCur(Math.abs(c.grand_total || 0)) }}</span>
+            </div>
+            <div v-if="c.docstatus===1 && balanceFor(c.name)>0" class="cn-mc-balance">Balance: {{ fmtCur(balanceFor(c.name)) }}</div>
+            <div class="cn-mc-footer">
+              <button class="cn-mc-btn" @click.stop="openView(c)">View</button>
+              <button v-if="c.docstatus===0" class="cn-mc-btn" @click.stop="openEdit(c)">Edit</button>
+              <button v-if="c.docstatus===1&&balanceFor(c.name)>0" class="cn-mc-btn cn-mc-apply" @click.stop="applyCN(c)">Apply</button>
+              <button v-if="c.docstatus===0||c.docstatus===2" class="cn-mc-btn cn-mc-danger" @click.stop="deleteCN(c)">Delete</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
 
     <div v-if="!loading && sorted.length" style="padding:12px 0 4px">
@@ -1622,4 +1657,29 @@ onMounted(async () => {
 .cn-item-num-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .cn-item-desc-ta { resize: vertical; min-height: 70px; font-size: 12.5px; }
 .cn-field-hint { font-size: 10.5px; color: #9ca3af; text-align: right; }
+
+/* ── Mobile card view (Option A) ── */
+.cn-mobile-cards { display: none; }
+.cn-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .cn-desktop-table { display: none !important; }
+  .cn-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .cn-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .cn-mobile-card:active { background: #f8f9fc; }
+  .cn-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .cn-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .cn-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .cn-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 4px; }
+  .cn-mc-amount { font-weight: 700; color: #7f1d1d; }
+  .cn-mc-balance { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
+  .cn-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
+  .cn-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .cn-mc-apply { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+  .cn-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .cn-mc--skeleton { pointer-events: none; }
+  .cn-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: cn-shimmer 1.4s infinite; }
+  @keyframes cn-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .cn-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+}
 </style>

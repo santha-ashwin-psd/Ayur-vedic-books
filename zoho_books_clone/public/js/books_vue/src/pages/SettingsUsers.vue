@@ -22,7 +22,7 @@
 
   <div v-else class="cust-table-card su-tbl-card" style="margin-top:0">
     <div v-if="loading" style="padding:40px;text-align:center;color:#868E96">Loading members…</div>
-    <table v-else style="width:100%;border-collapse:collapse;font-size:13px">
+    <table v-else class="su-desktop-table" style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="background:#f8f9fc;border-bottom:2px solid #e4e8f0">
         <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Member</th>
         <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Email</th>
@@ -59,6 +59,30 @@
         <tr v-if="!users.length"><td colspan="6" style="padding:40px;text-align:center;color:#868e96">No members yet — add your first team member above</td></tr>
       </tbody>
     </table>
+
+    <!-- Mobile cards (shown at ≤768px) -->
+    <div v-if="!loading" class="su-mobile-cards">
+      <div v-if="!users.length" class="su-mc-empty">
+        <div style="font-size:32px;margin-bottom:8px">👥</div>
+        <div>No members yet</div>
+      </div>
+      <template v-else>
+        <div v-for="u in users" :key="u.name" class="su-mobile-card">
+          <div class="su-mc-top">
+            <span class="su-mc-name">{{ u.full_name||u.name }}</span>
+            <span :style="'background:'+(u.enabled?'#ebfbee':'#f8f9fa')+';color:'+(u.enabled?'#2f9e44':'#868e96')+';padding:2px 8px;border-radius:20px;font-size:11.5px;font-weight:600'">{{ u.enabled?'Active':'Inactive' }}</span>
+          </div>
+          <div class="su-mc-mid">{{ u.name }}</div>
+          <div class="su-mc-meta">
+            <span :style="'background:'+(ROLE_BG[displayRole(u)]||'#F8F9FA')+';color:'+(ROLE_COLORS[displayRole(u)]||'#868E96')+';padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600'">{{ displayRole(u)||'—' }}</span>
+            <span v-if="!u.is_owner" style="display:flex;gap:4px">
+              <button class="nim-btn nim-btn-ghost" style="padding:3px 8px;font-size:11.5px" @click.stop="editUser=u;editRole=u.books_role">Role</button>
+              <button class="nim-btn nim-btn-ghost" style="padding:3px 8px;font-size:11.5px;color:#C92A2A;border-color:#ffd0d0" @click.stop="showRemoveConfirm=u">Remove</button>
+            </span>
+          </div>
+        </div>
+      </template>
+    </div>
   </div><!-- end v-else -->
 
   <Teleport to="body">
@@ -405,9 +429,18 @@ onMounted(load);
 </script>
 
 <style>
+.su-mobile-cards { display: none; }
+.su-desktop-table { display: table; }
+
 @media (max-width: 768px) {
-  .su-tbl-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .su-tbl-card table { min-width: 460px; }
+  .su-desktop-table { display: none !important; }
+  .su-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .su-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; }
+  .su-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .su-mc-name { font-size: 13.5px; font-weight: 700; color: #1a1a2e; }
+  .su-mc-mid { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+  .su-mc-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .su-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
   .cust-page { padding: 12px !important; }

@@ -144,7 +144,7 @@
 
     <!-- ── Table ── -->
     <div class="inv-table-wrap">
-      <table class="inv-table">
+      <table class="inv-table so-desktop-table">
         <thead><tr>
           <th class="th-check"><input type="checkbox" @change="toggleAll" :checked="allChecked"/></th>
           <th class="sortable" @click="sortBy('transaction_date')">DATE <span class="sort-arrow">{{ sortArrowTxt('transaction_date') }}</span></th>
@@ -211,6 +211,40 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="so-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="so-mobile-card so-mc--skeleton">
+            <div class="so-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="so-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="so-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="so-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">📦</div>
+          <div>No sales orders found</div>
+        </div>
+        <template v-else>
+          <div v-for="o in paged" :key="o.name" class="so-mobile-card" @click="openView(o)">
+            <div class="so-mc-top">
+              <span class="so-mc-docno">{{ o.name }}</span>
+              <span class="inv-status-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span>
+            </div>
+            <div class="so-mc-mid">{{ o.customer_name || o.customer || '—' }}</div>
+            <div class="so-mc-meta">
+              <span>{{ fmtDate(o.transaction_date) }}</span>
+              <span class="so-mc-amount">{{ fmtCur(o.grand_total) }}</span>
+            </div>
+            <div v-if="o.delivery_date" class="so-mc-sub" :class="isPastDelivery(o)?'text-danger':''">Delivery: {{ fmtDate(o.delivery_date) }}</div>
+            <div class="so-mc-footer">
+              <button class="so-mc-btn" @click.stop="openView(o)">View</button>
+              <button v-if="isDraft(o)" class="so-mc-btn" @click.stop="openEdit(o)">Edit</button>
+              <button class="so-mc-btn so-mc-danger" @click.stop="deleteSO(o)">Delete</button>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
     <div v-if="!loading && sorted.length" style="padding:12px 0px 4px">
       <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
@@ -1702,4 +1736,28 @@ onMounted(async () => {
 .so-stock-ok   { background: #d1fae5; color: #065f46; }
 .so-stock-zero { background: #fee2e2; color: #991b1b; }
 .so-stock-na   { background: #f3f4f6; color: #9ca3af; }
+
+/* ── Mobile card view (Option A) ── */
+.so-mobile-cards { display: none; }
+.so-desktop-table { display: table; }
+
+@media (max-width: 768px) {
+  .so-desktop-table { display: none !important; }
+  .so-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
+  .so-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .so-mobile-card:active { background: #f8f9fc; }
+  .so-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .so-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .so-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .so-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; margin-bottom: 4px; }
+  .so-mc-amount { font-weight: 700; color: #1a1d23; }
+  .so-mc-sub { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
+  .so-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
+  .so-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .so-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
+  .so-mc--skeleton { pointer-events: none; }
+  .so-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: so-shimmer 1.4s infinite; }
+  @keyframes so-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .so-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+}
 </style>

@@ -1070,36 +1070,61 @@ onMounted(async () => {
      LEDGER DRAWER – Mobile responsive (375–425px)
      ─────────────────────────────────────────────────────────── */
 
-  /* Ledger drawer: full screen on mobile */
+  /* Ledger drawer: full screen on mobile, must fill viewport height */
   .ldg-panel {
     width: 100% !important;
     max-width: 100vw !important;
+    height: 100vh !important;
     border-radius: 0 !important;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Toolbar: stack date filters vertically */
-  .ldg-toolbar {
+    display: flex !important;
     flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 8px !important;
-    padding: 12px 14px !important;
+    overflow: hidden !important;
   }
 
-  .ldg-toolbar > span { font-size: 10.5px !important; }
+  /* Compact 2-col toolbar: FROM/date | TO/date on row1, Refresh | Export on row2 */
+  .ldg-toolbar {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto 1fr !important;
+    grid-template-rows: auto auto !important;
+    align-items: center !important;
+    gap: 6px 8px !important;
+    padding: 10px 12px !important;
+    flex-wrap: unset !important;
+    flex-shrink: 0;
+  }
+
+  .ldg-toolbar > span { font-size: 10.5px !important; white-space: nowrap; }
 
   .ldg-toolbar input[type="date"] {
     width: 100% !important;
+    min-width: 0;
     box-sizing: border-box;
+    font-size: 12px !important;
+    padding: 5px 6px !important;
   }
 
-  .ldg-toolbar button {
-    width: 100%;
+  /* Refresh and Export buttons span full width on row 2 */
+  .ldg-toolbar .b-btn-primary {
+    grid-column: 1 / 3 !important;
+    margin: 0 !important;
+    padding: 7px 10px !important;
+    font-size: 12.5px !important;
   }
 
-  .ldg-toolbar button[style*="margin-left:auto"] {
+  .ldg-toolbar .b-btn:not(.b-btn-primary) {
+    grid-column: 3 / 5 !important;
     margin-left: 0 !important;
+    padding: 7px 10px !important;
+    font-size: 12px !important;
+    text-align: center;
+  }
+
+  /* Scrollable content area */
+  .ldg-panel > div[style*="flex:1"] {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px !important;
   }
 
   /* Hide desktop ledger table on mobile */
@@ -1112,7 +1137,7 @@ onMounted(async () => {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 10px 10px;
+    padding: 4px 0;
   }
 
   /* Individual transaction card */

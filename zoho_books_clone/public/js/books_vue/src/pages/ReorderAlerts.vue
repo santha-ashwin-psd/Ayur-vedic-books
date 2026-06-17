@@ -120,4 +120,19 @@ onMounted(load);
 .ra-empty{text-align:center;color:#9ca3af;padding:48px!important;}
 .ra-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+@media (max-width: 768px) {
+  .ra-summary { grid-template-columns: repeat(2, 1fr); }
+  .ra-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ra-table { min-width: 500px; }
+  .ra-search-wrap { min-width: 0; flex: 1 1 auto; }
+  .ra-table th:nth-child(5), .ra-table td:nth-child(5) { display: none; }
+}
+@media (max-width: 480px) {
+  .ra-page { padding: 12px; gap: 12px; }
+  .ra-summary { grid-template-columns: 1fr 1fr; }
+  .ra-table th:nth-child(3), .ra-table td:nth-child(3),
+  .ra-table th:nth-child(6), .ra-table td:nth-child(6) { display: none; }
+  .ra-table { min-width: 340px; }
+}
 </style>

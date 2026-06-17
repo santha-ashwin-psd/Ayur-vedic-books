@@ -6,6 +6,7 @@
    The new Vue shell uses .bv-app-content (no padding) so we add it here. */
 .b-page { padding: 24px; min-height: 0; }
 .b-page > * { min-width: 0; }
+@media (max-width: 480px) { .b-page { padding: 12px; } }
 .cust-page  { padding: 24px; }
 .page-banking { padding: 24px; }
 

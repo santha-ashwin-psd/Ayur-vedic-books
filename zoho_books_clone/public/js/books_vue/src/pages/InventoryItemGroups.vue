@@ -1,7 +1,7 @@
 <template>
-<div class="b-page" style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start">
+<div class="b-page ig-layout" style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start">
   <!-- Left: Tree panel -->
-  <div class="b-card" style="padding:0;overflow:hidden;position:sticky;top:0">
+  <div class="b-card ig-tree-panel" style="padding:0;overflow:hidden;position:sticky;top:0">
     <div style="padding:12px 16px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;background:#F8FAFC">
       <span style="font-size:13px;font-weight:700;color:#1a1d23">Item Groups</span>
       <button class="b-btn b-btn-primary" style="padding:5px 10px;font-size:12px" @click="newGroup('All Item Groups')">
@@ -9,7 +9,7 @@
       </button>
     </div>
     <div v-if="loading" style="padding:20px"><div class="b-shimmer" style="height:12px;margin-bottom:8px"></div><div class="b-shimmer" style="height:12px;width:70%"></div></div>
-    <div v-else style="padding:6px 0;max-height:calc(100vh - 200px);overflow-y:auto">
+    <div v-else class="ig-tree-scroll" style="padding:6px 0;max-height:calc(100vh - 200px);overflow-y:auto">
       <div v-for="node in flatTree" :key="node.name"
         @click="selectGroup(node)"
         :style="{
@@ -212,3 +212,12 @@ async function deleteGroup() {
 
 onMounted(load);
 </script>
+
+<style>
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .ig-layout      { grid-template-columns: 1fr !important; }
+  .ig-tree-panel  { position: static !important; }
+  .ig-tree-scroll { max-height: 280px !important; }
+}
+</style>

@@ -54,7 +54,7 @@
     </div>
   </div>
 
-  <div class="b-card" style="padding:0;overflow:hidden">
+  <div class="b-card jen-tbl-card" style="padding:0;overflow:hidden">
     <table class="b-table">
       <thead>
         <tr>
@@ -611,3 +611,20 @@ async function doAction() {
 
 onMounted(load);
 </script>
+
+<style>
+@media (max-width: 768px) {
+  .jen-sum-strip { grid-template-columns: repeat(2, 1fr) !important; }
+  .jen-tbl-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .jen-tbl-card .b-table { min-width: 560px; }
+  .jen-tbl-card .b-table th:nth-child(6), .jen-tbl-card .b-table td:nth-child(6) { display: none; }
+  .jen-drawer-panel { width: 100% !important; max-width: 100% !important; }
+  .jen-tpl-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 480px) {
+  .jen-page { gap: 10px !important; }
+  .jen-sum-strip { grid-template-columns: 1fr 1fr !important; }
+  .jen-tbl-card .b-table th:nth-child(3), .jen-tbl-card .b-table td:nth-child(3) { display: none; }
+  .jen-tbl-card .b-table { min-width: 400px; }
+}
+</style>

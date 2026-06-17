@@ -417,4 +417,13 @@ const reports = [
 .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
 .badge-blue  { background: #E7F5FF; color: #1971C2; }
 .badge-muted { background: #F1F3F5; color: #868E96; }
+
+@media (max-width: 768px) {
+  .date-range-bar { padding: 12px 14px; gap: 8px; }
+  .report-card { overflow-x: auto; }
+}
+@media (max-width: 480px) {
+  .page-reports { padding: 12px; gap: 12px; }
+  .dr-input { width: 100%; }
+}
 </style>

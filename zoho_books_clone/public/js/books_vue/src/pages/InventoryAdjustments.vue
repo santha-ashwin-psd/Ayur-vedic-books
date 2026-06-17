@@ -348,4 +348,22 @@ textarea.ia-input{resize:vertical;}
 .ia-meta-lbl{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}
 .ia-remark{font-size:13px;color:#334155;line-height:1.5;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:12px 14px;}
 .ia-dfooter{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
+
+@media (max-width: 768px) {
+  .ia-drawer      { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .ia-view-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .ia-drawer.open,
+  .ia-view-drawer.open { right: 0 !important; }
+  .ia-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ia-table { min-width: 520px; }
+  .ia-search-wrap { min-width: 0; flex: 1 1 auto; }
+}
+@media (max-width: 480px) {
+  .ia-page { padding: 12px; gap: 12px; }
+  .ia-table th:nth-child(3), .ia-table td:nth-child(3),
+  .ia-table th:nth-child(4), .ia-table td:nth-child(4) { display: none; }
+  .ia-table { min-width: 360px; }
+  .ia-qty-grid  { grid-template-columns: 1fr 1fr !important; }
+  .ia-meta-grid { grid-template-columns: 1fr !important; }
+}
 </style>

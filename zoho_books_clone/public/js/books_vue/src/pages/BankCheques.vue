@@ -347,4 +347,27 @@ onMounted(load);
 .chq-life-confirm:hover:not(:disabled){background:#1d4ed8;}
 .chq-life-confirm:disabled{opacity:.5;cursor:not-allowed;}
 .chq-dfooter{display:flex;justify-content:flex-end;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .chq-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .chq-drawer.open { right: 0 !important; }
+  .chq-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .chq-table { min-width: 480px; }
+  /* hide Cheque No + Type columns */
+  .chq-table th:nth-child(4), .chq-table td:nth-child(4),
+  .chq-table th:nth-child(6), .chq-table td:nth-child(6) { display: none; }
+}
+
+@media (max-width: 480px) {
+  .chq-page { padding: 12px; gap: 12px; }
+  .chq-search-wrap { min-width: 0; flex: 1 1 auto; }
+  /* also hide Date column */
+  .chq-table th:nth-child(5), .chq-table td:nth-child(5) { display: none; }
+  .chq-table { min-width: 320px; }
+  .chq-meta-grid { grid-template-columns: 1fr !important; }
+  .chq-dh-amt-val { font-size: 20px; }
+  .chq-life-input { flex-wrap: wrap; }
+  .chq-life-input input { min-width: 0; flex: 1 1 100%; }
+}
 </style>

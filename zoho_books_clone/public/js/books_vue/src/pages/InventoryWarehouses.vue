@@ -1,8 +1,8 @@
 <template>
-<div style="display:flex;height:calc(100vh - 56px);overflow:hidden">
+<div class="wh-layout" style="display:flex;height:calc(100vh - 56px);overflow:hidden">
 
   <!-- Left panel: tree -->
-  <div style="width:340px;min-width:340px;border-right:1px solid #e4e8f0;display:flex;flex-direction:column;background:#fff">
+  <div class="wh-left" style="width:340px;min-width:340px;border-right:1px solid #e4e8f0;display:flex;flex-direction:column;background:#fff">
     <div style="padding:16px 16px 12px;border-bottom:1px solid #f0f2f5">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:15px;font-weight:700;color:#1A1D23">Warehouses</div>
@@ -55,7 +55,7 @@
   </div>
 
   <!-- Right panel: detail -->
-  <div style="flex:1;overflow-y:auto;background:#f0f2f5">
+  <div class="wh-right" style="flex:1;overflow-y:auto;background:#f0f2f5">
     <div v-if="!selectedWH" style="display:flex;align-items:center;justify-content:center;height:100%">
       <div style="text-align:center;color:#868E96">
         <div style="font-size:48px;margin-bottom:12px">🏭</div>
@@ -95,7 +95,7 @@
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div class="wh-stats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
         <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
           <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Stock Value</div>
           <div style="font-size:18px;font-weight:700;color:#2563eb;">{{fmt(whStats.value)}}</div>
@@ -709,3 +709,40 @@ const whStats = computed(() => {
 
 onMounted(() => { load(); loadItems(); });
 </script>
+
+<style>
+/* ── Warehouse page — mobile responsive ── */
+@media (max-width: 768px) {
+  .wh-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .wh-left {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-height: 300px !important;
+    border-right: none !important;
+    border-bottom: 1px solid #e4e8f0 !important;
+  }
+  .wh-right {
+    overflow-y: visible !important;
+  }
+  .wh-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .cust-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cust-table { min-width: 600px; }
+  .nim-dialog { max-width: 95vw !important; }
+}
+@media (max-width: 480px) {
+  .wh-stats-grid { grid-template-columns: 1fr !important; }
+  .cust-table th:nth-child(3), .cust-table td:nth-child(3),
+  .cust-table th:nth-child(4), .cust-table td:nth-child(4),
+  .cust-table th:nth-child(6), .cust-table td:nth-child(6) { display: none; }
+  .cust-table { min-width: 400px; }
+}
+</style>

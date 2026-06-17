@@ -427,4 +427,15 @@ onMounted(load);
 .g1-placeholder { display:flex; flex-direction:column; align-items:center; gap:8px; padding:64px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; }
 .g1-ph-title { font-size:14px; font-weight:600; color:#374151; }
 .g1-ph-sub   { font-size:12.5px; color:#9ca3af; }
+
+@media (max-width: 768px) {
+  .g1-sum-strip   { grid-template-columns: repeat(2, 1fr); }
+  .g1-search-wrap { min-width: 0; flex: 1 1 auto; }
+  .g1-tabs        { overflow-x: auto; flex-wrap: nowrap; }
+}
+@media (max-width: 480px) {
+  .g1-page    { padding: 12px; gap: 10px; }
+  .g1-toolbar { padding: 12px 14px; }
+  .g1-sum-strip { grid-template-columns: 1fr 1fr; }
+}
 </style>

@@ -246,4 +246,25 @@ onMounted(()=>{if(route.query.account)selectedAccount.value=String(route.query.a
 .bt-meta-lbl{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}
 .bt-desc{font-size:13px;color:#334155;line-height:1.5;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:12px 14px;}
 .bt-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .bt-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .bt-drawer.open { right: 0 !important; }
+  /* table scrolls horizontally; hide Reference column */
+  .bt-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .bt-table { min-width: 520px; }
+  .bt-table th:nth-child(4), .bt-table td:nth-child(4) { display: none; }
+}
+
+@media (max-width: 480px) {
+  .bt-page { padding: 12px; gap: 12px; }
+  .bt-search-wrap { min-width: 0; flex: 1 1 auto; }
+  .bt-pills { flex-wrap: wrap; gap: 4px; }
+  /* also hide Account column at mobile */
+  .bt-table th:nth-child(2), .bt-table td:nth-child(2) { display: none; }
+  .bt-table { min-width: 360px; }
+  .bt-meta-grid { grid-template-columns: 1fr !important; }
+  .bt-dh-amt-val { font-size: 20px; }
+}
 </style>

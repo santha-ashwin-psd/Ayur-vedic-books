@@ -383,4 +383,14 @@ onMounted(load);
 
 /* Shimmer */
 .g3-shimmer { height:13px; background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%); border-radius:4px; animation:shimmer 1.4s infinite; background-size:200% 100%; }
+
+@media (max-width: 768px) {
+  .g3-card  { overflow-x: auto !important; }
+  .g3-table { min-width: 380px; }
+}
+@media (max-width: 480px) {
+  .g3-page    { padding: 12px; gap: 10px; }
+  .g3-toolbar { padding: 12px 14px; }
+  .g3-sum-strip { grid-template-columns: 1fr !important; }
+}
 </style>

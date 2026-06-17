@@ -335,4 +335,24 @@ onMounted(async()=>{
 .br-match-confirm:disabled{opacity:.5;cursor:not-allowed;}
 .br-suggest-close{position:absolute;top:8px;right:10px;background:transparent;border:none;color:#6b7280;font-size:11px;cursor:pointer;}
 .br-suggest-close:hover{color:#1d4ed8;text-decoration:underline;}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .br-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .br-table { min-width: 520px; }
+  /* hide Reference column */
+  .br-table th:nth-child(4), .br-table td:nth-child(4) { display: none; }
+  .br-toolbar-right { flex-wrap: wrap; gap: 8px; }
+  .br-search-wrap { min-width: 0; flex: 1 1 auto; }
+}
+
+@media (max-width: 480px) {
+  .br-page { padding: 12px; gap: 12px; }
+  /* also hide Match column — table still scrollable so Suggest button reachable */
+  .br-table th:nth-child(8), .br-table td:nth-child(8) { display: none; }
+  .br-table { min-width: 360px; }
+  /* suggest card: 2-col instead of 4 */
+  .br-suggest-card { grid-template-columns: 1fr auto; }
+  .br-suggest-info { grid-column: 1 / -1; }
+}
 </style>

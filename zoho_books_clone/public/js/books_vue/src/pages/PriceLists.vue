@@ -15,7 +15,7 @@
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:start">
+  <div class="pl-layout" style="display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:start">
 
     <!-- Left: Price List selector -->
     <div class="b-card" style="padding:0;overflow:hidden">
@@ -64,7 +64,7 @@
           </div>
         </div>
 
-        <div class="b-card" style="padding:0;overflow:hidden">
+        <div class="b-card pl-tbl-card" style="padding:0;overflow:hidden">
           <table class="b-table">
             <thead>
               <tr>
@@ -440,3 +440,21 @@ async function saveNewPriceList() {
 
 onMounted(loadPriceLists);
 </script>
+
+<style>
+/* ── Price Lists page — mobile responsive ── */
+@media (max-width: 768px) {
+  .pl-layout { grid-template-columns: 1fr !important; }
+  .pl-tbl-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .pl-tbl-card .b-table { min-width: 480px; }
+  .pl-tbl-card .b-table th:nth-child(5),
+  .pl-tbl-card .b-table td:nth-child(5),
+  .pl-tbl-card .b-table th:nth-child(6),
+  .pl-tbl-card .b-table td:nth-child(6) { display: none; }
+}
+@media (max-width: 480px) {
+  .pl-tbl-card .b-table th:nth-child(3),
+  .pl-tbl-card .b-table td:nth-child(3) { display: none; }
+  .pl-tbl-card .b-table { min-width: 360px; }
+}
+</style>

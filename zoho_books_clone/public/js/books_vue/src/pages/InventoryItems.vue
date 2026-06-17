@@ -23,7 +23,7 @@
 
   <!-- Table view -->
   <template v-if="viewMode==='table'">
-    <div class="b-card" style="padding:0;overflow:hidden">
+    <div class="b-card items-tbl-wrap" style="padding:0;overflow:hidden">
       <table class="b-table">
         <thead><tr><th>Item Code</th><th>Name</th><th>Group</th><th>Type</th><th>UOM</th><th class="ta-r">Rate (₹)</th><th class="ta-r">GST %</th><th>Status</th><th></th></tr></thead>
         <tbody>
@@ -432,3 +432,21 @@ async function doDelete() {
 
 onMounted(load);
 </script>
+
+<style>
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .items-tbl-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .items-tbl-wrap .b-table { min-width: 500px; }
+  /* hide Group (3), UOM (5), GST% (7) */
+  .items-tbl-wrap .b-table th:nth-child(3), .items-tbl-wrap .b-table td:nth-child(3),
+  .items-tbl-wrap .b-table th:nth-child(5), .items-tbl-wrap .b-table td:nth-child(5),
+  .items-tbl-wrap .b-table th:nth-child(7), .items-tbl-wrap .b-table td:nth-child(7) { display: none; }
+}
+
+@media (max-width: 480px) {
+  /* also hide Type (4) */
+  .items-tbl-wrap .b-table th:nth-child(4), .items-tbl-wrap .b-table td:nth-child(4) { display: none; }
+  .items-tbl-wrap .b-table { min-width: 360px; }
+}
+</style>

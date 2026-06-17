@@ -90,7 +90,7 @@
   <!-- Step 3: Results -->
   <div v-if="step===3" class="b-card b-card-body">
     <div style="font-size:13.5px;font-weight:700;margin-bottom:16px;color:#1a1a2e">Step 3 — Import Results</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+    <div class="bi-results-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
       <div style="background:#EBFBEE;border:1px solid #8CE99A;border-radius:10px;padding:16px;text-align:center">
         <div style="font-size:28px;font-weight:700;color:#2F9E44;">{{result.created}}</div>
         <div style="font-size:12px;color:#2F9E44;font-weight:600;margin-top:4px">Created</div>
@@ -290,5 +290,10 @@ function goToList() {
 .imp-dropzone:hover, .imp-dropzone.dragging {
   background: #EDF2FF;
   border-color: #4C6EF5;
+}
+
+@media (max-width: 480px) {
+  .imp-dropzone { padding: 28px 14px; }
+  .bi-results-grid { grid-template-columns: 1fr !important; }
 }
 </style>

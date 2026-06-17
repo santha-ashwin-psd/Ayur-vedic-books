@@ -243,4 +243,23 @@ onMounted(()=>{fetchItems("");fetchWarehouses("");});
 .sl-link-btn{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:8px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;margin-top:4px;}
 .sl-link-btn:hover{background:#dbeafe;}
 .sl-dfooter{display:flex;justify-content:flex-end;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
+
+@media (max-width: 768px) {
+  .sl-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .sl-drawer.open { right: 0 !important; }
+  .sl-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .sl-table { min-width: 540px; }
+  .sl-table th:nth-child(4), .sl-table td:nth-child(4) { display: none; }
+  .sl-search-wrap { min-width: 0; flex: 1 1 auto; }
+  .sl-toolbar { flex-wrap: wrap; }
+}
+@media (max-width: 480px) {
+  .sl-page { padding: 12px; gap: 12px; }
+  .sl-filterbar { padding: 12px; gap: 8px; }
+  .sl-fld-date { width: 100%; }
+  .sl-table th:nth-child(3), .sl-table td:nth-child(3),
+  .sl-table th:nth-child(7), .sl-table td:nth-child(7) { display: none; }
+  .sl-table { min-width: 360px; }
+  .sl-meta-grid { grid-template-columns: 1fr !important; }
+}
 </style>

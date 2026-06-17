@@ -373,4 +373,27 @@ textarea.btr-input{resize:vertical;}
 .btr-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .btr-meta-lbl{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}
 .btr-dfooter{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .btr-drawer      { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .btr-view-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .btr-drawer.open,
+  .btr-view-drawer.open { right: 0 !important; }
+  /* table scrolls; hide Reference column */
+  .btr-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .btr-table { min-width: 500px; }
+  .btr-table th:nth-child(3), .btr-table td:nth-child(3) { display: none; }
+}
+
+@media (max-width: 480px) {
+  .btr-page { padding: 12px; gap: 12px; }
+  .btr-search-wrap { min-width: 0; flex: 1 1 auto; }
+  /* also hide From Account — To Account + Amount still visible */
+  .btr-table th:nth-child(4), .btr-table td:nth-child(4) { display: none; }
+  .btr-table { min-width: 360px; }
+  .btr-fields-grid { grid-template-columns: 1fr !important; }
+  .btr-meta-grid   { grid-template-columns: 1fr !important; }
+  .btr-dh-amt-val  { font-size: 20px; }
+}
 </style>

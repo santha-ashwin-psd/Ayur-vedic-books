@@ -539,4 +539,21 @@ onMounted(load);
 .ei-lbl { font-size:11.5px; font-weight:600; color:#374151; display:block; margin-bottom:4px; }
 .ei-fi { width:100%; border:1px solid #e5e7eb; border-radius:7px; padding:8px 10px; font:inherit; font-size:13px; outline:none; color:#111827; background:#fff; box-sizing:border-box; transition:border-color .15s; }
 .ei-fi:focus { border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.1); }
+
+@media (max-width: 768px) {
+  .ei-panel { width: 100% !important; right: -100% !important; }
+  .ei-panel.open { right: 0 !important; }
+  .ei-sum-strip { grid-template-columns: repeat(2, 1fr); }
+  .ei-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ei-table { min-width: 500px; }
+  .ei-table th:nth-child(4), .ei-table td:nth-child(4) { display: none; }
+  .ei-search-wrap { min-width: 0; flex: 1 1 auto; }
+}
+@media (max-width: 480px) {
+  .ei-page   { padding: 12px; gap: 12px; }
+  .ei-topbar { padding: 12px 14px; }
+  .ei-table th:nth-child(6), .ei-table td:nth-child(6) { display: none; }
+  .ei-table  { min-width: 380px; }
+  .ei-meta-row { grid-template-columns: 1fr 1fr !important; }
+}
 </style>

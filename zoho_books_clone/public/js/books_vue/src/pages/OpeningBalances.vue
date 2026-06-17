@@ -415,11 +415,68 @@ onMounted(load);
 .ob-desktop-stepper { display: flex; }
 
 /* ═══════════════════════════════════════════════════════════
-   RESPONSIVE  –  375 px … 425.98 px
+   TABLET  –  481 px … 768 px
    ═══════════════════════════════════════════════════════════ */
-@media (min-width: 375px) and (max-width: 425.98px) {
+@media (min-width: 481px) and (max-width: 768px) {
 
-  /* Hide desktop stepper, show mobile stepper */
+  /* Stepper: tighter spacing */
+  .ob-step-lbl { font-size: 11.5px !important; }
+  .ob-step-line { margin: 0 6px !important; }
+
+  /* Go-live bar: wrap tightly */
+  .ob-go-live-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .ob-go-live-bar > div:last-child {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+
+  .ob-go-live-bar > div:last-child button { flex: 1; justify-content: center; }
+
+  /* Eq strip: 3-col stays but tighter */
+  .ob-eq-title { font-size: 10px !important; }
+
+  .ob-eq-strip > div[style*="flex:1"] {
+    padding: 10px 12px !important;
+  }
+
+  /* Account column header: tighter widths */
+  .ob-col-header {
+    grid-template-columns: 1fr 110px 100px !important;
+    padding: 6px 14px !important;
+    gap: 6px !important;
+  }
+
+  /* Account rows: tighter columns */
+  .ob-acct-row {
+    grid-template-columns: 1fr 110px 100px !important;
+    padding: 8px 14px !important;
+    gap: 6px !important;
+  }
+
+  .ob-bal-input { padding: 5px 8px !important; font-size: 12.5px !important; }
+  .ob-dr-cr-sel { padding: 5px 6px !important; font-size: 11.5px !important; }
+
+  /* Section footer: match tighter widths */
+  .ob-sec-footer {
+    grid-template-columns: 1fr 110px 100px !important;
+    padding: 8px 14px !important;
+    gap: 6px !important;
+  }
+
+} /* end @media tablet 481–768px */
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE  –  ≤ 480 px
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+
+  /* ── Stepper: swap to mobile dots layout ── */
   .ob-desktop-stepper { display: none !important; }
 
   .ob-mobile-stepper {
@@ -429,10 +486,8 @@ onMounted(load);
     border-radius: 10px;
     padding: 14px 12px 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    margin-bottom: 4px;
   }
 
-  /* Top row: dots connected by lines */
   .ob-ms-dots {
     display: flex;
     align-items: center;
@@ -447,44 +502,29 @@ onMounted(load);
     flex-shrink: 0;
   }
 
-  .ob-ms-dot {
-    width: 26px;
-    height: 26px;
-    font-size: 11px;
-  }
+  .ob-ms-dot { width: 26px; height: 26px; font-size: 11px; }
 
   .ob-ms-line {
-    flex: 1;
-    height: 2px;
-    background: #E2E8F0;
-    border-radius: 1px;
-    margin: 0 4px;
+    flex: 1; height: 2px;
+    background: #E2E8F0; border-radius: 1px; margin: 0 4px;
   }
-
   .ob-ms-line.ob-line-done { background: #2F9E44; }
 
-  /* Bottom row: labels in 4 equal columns */
   .ob-ms-labels {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 0;
   }
 
   .ob-ms-lbl {
-    font-size: 9.5px;
-    font-weight: 600;
-    line-height: 1.3;
-    text-align: center;
-    padding: 0 2px;
-    word-break: break-word;
-    hyphens: auto;
+    font-size: 9.5px; font-weight: 600; line-height: 1.3;
+    text-align: center; padding: 0 2px;
+    word-break: break-word; hyphens: auto;
   }
-
   .ob-ms-lbl.ob-lbl-done   { color: #2F9E44; }
   .ob-ms-lbl.ob-lbl-active { color: #3B5BDB; }
   .ob-ms-lbl.ob-lbl-muted  { color: #868E96; }
 
-  /* ── Go-live date row: stack into column ── */
+  /* ── Go-live bar: stack vertically ── */
   .ob-go-live-bar {
     flex-direction: column !important;
     align-items: flex-start !important;
@@ -499,28 +539,26 @@ onMounted(load);
   }
 
   .ob-go-live-bar > div:first-child input[type="date"] {
-    width: 100%;
-    box-sizing: border-box;
+    width: 100%; box-sizing: border-box;
   }
 
-  .ob-go-live-bar > div:first-child span {
-    font-size: 11px !important;
-  }
+  .ob-go-live-bar > div:first-child span { font-size: 11px !important; }
 
   .ob-go-live-bar > div:last-child {
-    width: 100%;
-    display: flex;
-    gap: 8px;
+    width: 100%; display: flex; gap: 8px;
   }
 
   .ob-go-live-bar > div:last-child button,
   .ob-go-live-bar > div:last-child a {
-    flex: 1;
-    justify-content: center;
-    text-align: center;
+    flex: 1; justify-content: center; text-align: center;
   }
 
-  /* ── Equation check card: stack boxes vertically ── */
+  /* ── Equation check: title compact, boxes stacked ── */
+  .ob-eq-title {
+    font-size: 9.5px !important;
+    letter-spacing: 0.3px !important;
+  }
+
   .ob-eq-strip {
     flex-direction: column !important;
     gap: 6px !important;
@@ -529,6 +567,7 @@ onMounted(load);
   .ob-eq-strip > div[style*="flex:1"] {
     min-width: unset !important;
     width: 100% !important;
+    padding: 10px 14px !important;
   }
 
   .ob-eq-strip > div[style*="font-size:20px"] {
@@ -537,173 +576,65 @@ onMounted(load);
     text-align: center;
   }
 
-  /* ── Equation title ── */
-  .ob-eq-title {
-    font-size: 9.5px !important;
-    letter-spacing: 0.3px !important;
-  }
-
-  /* ── Section header (type strip) ── */
-  .ob-sec-header {
-    padding: 10px 12px !important;
-    gap: 6px !important;
-  }
-
-  .ob-sec-header span:first-child {
-    font-size: 10px !important;
-    padding: 2px 8px !important;
-  }
-
-  .ob-sec-header-info {
-    font-size: 11px !important;
-  }
-
-  .ob-sec-total {
-    font-size: 12px !important;
-  }
-
-  /* ── Column header row ── */
-  .ob-col-header {
-    grid-template-columns: 1fr 110px 100px !important;
-    padding: 6px 12px !important;
-    gap: 6px !important;
-  }
-
-  /* ── Account rows: switch to 2-row card layout ── */
-  .ob-acct-row {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    padding: 10px 12px !important;
-    border-top: 1px solid #F1F3F5;
-  }
-
-  /* Account name section (top row) */
-  .ob-acct-row > div:first-child {
-    width: 100%;
-  }
-
-  .ob-acct-row > div:first-child > div:first-child {
-    font-size: 13px;
-    font-weight: 500;
-    color: #1A1D23;
-  }
-
-  .ob-acct-row > div:first-child > div:last-child {
-    font-size: 10.5px;
-    color: #868E96;
-    margin-top: 1px;
-  }
-
-  /* Balance input + Dr/Cr selector: side by side in bottom row */
-  .ob-acct-row .ob-bal-input {
-    flex: 1;
-    min-width: 0;
-    font-size: 13px;
-    padding: 8px 10px;
-    text-align: right;
-  }
-
-  .ob-acct-row .ob-dr-cr-sel {
-    width: 110px;
-    flex-shrink: 0;
-    font-size: 11.5px;
-    padding: 8px 6px;
-  }
-
-  /* Wrap the input + select in a flex row */
-  .ob-acct-row input.ob-bal-input,
-  .ob-acct-row select.ob-dr-cr-sel {
-    display: block;
-  }
-
-  /* We use an :after pseudo trick: make input+select appear in same row
-     by making them flex children of the row (they are direct children after the div) */
-  .ob-acct-row {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    grid-template-rows: auto auto !important;
-    gap: 0 !important;
-  }
-
-  /* First child = account name block */
-  .ob-acct-row > div:first-child {
-    grid-row: 1;
-    margin-bottom: 8px;
-  }
-
-  /* Input = second child, Select = third child → place side by side */
-  .ob-acct-row > input.ob-bal-input {
-    grid-row: 2;
-    grid-column: 1;
-    width: calc(55% - 4px);
-    justify-self: start;
-  }
-
-  .ob-acct-row > select.ob-dr-cr-sel {
-    grid-row: 2;
-    grid-column: 1;
-    width: calc(45% - 4px);
-    justify-self: end;
-  }
-
-  /* Override the grid so input and select share row 2 */
-  .ob-acct-row {
-    grid-template-columns: 1fr 1fr !important;
-    grid-template-rows: auto auto !important;
-  }
-
-  .ob-acct-row > div:first-child {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    margin-bottom: 6px;
-  }
-
-  .ob-acct-row > input.ob-bal-input {
-    grid-column: 1;
-    grid-row: 2;
-    width: 100%;
-    justify-self: stretch;
-  }
-
-  .ob-acct-row > select.ob-dr-cr-sel {
-    grid-column: 2;
-    grid-row: 2;
-    width: 100%;
-    justify-self: stretch;
-  }
-
-  /* ── Section footer (totals row) ── */
-  .ob-sec-footer {
-    grid-template-columns: 1fr 110px 100px !important;
-    padding: 8px 12px !important;
-    gap: 6px !important;
-    font-size: 12px !important;
-  }
-
-  .ob-sec-footer > div:nth-child(2) {
-    font-size: 13px !important;
-  }
-
-  /* ── Eq diff message ── */
   .ob-eq-diff {
     font-size: 11.5px !important;
     padding: 8px 10px !important;
     line-height: 1.5;
   }
 
-  /* ── Modal dialogs: full-width ── */
+  /* ── Section header ── */
+  .ob-sec-header { padding: 10px 12px !important; gap: 6px !important; }
+
+  /* ── Column header: hidden on mobile (labels shown in cards) ── */
+  .ob-col-header { display: none !important; }
+
+  /* ── Account rows: 2-row card (name | balance + Dr/Cr) ── */
+  .ob-acct-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto auto !important;
+    gap: 6px 8px !important;
+    padding: 10px 12px !important;
+    border-top: 1px solid #f1f3f5;
+  }
+
+  .ob-acct-row > div:first-child {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .ob-acct-row > input.ob-bal-input {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    font-size: 13px !important;
+    padding: 8px 10px !important;
+  }
+
+  .ob-acct-row > select.ob-dr-cr-sel {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    font-size: 11.5px !important;
+    padding: 8px 6px !important;
+  }
+
+  /* ── Section footer ── */
+  .ob-sec-footer {
+    grid-template-columns: 1fr auto !important;
+    padding: 8px 12px !important;
+    gap: 6px !important;
+  }
+
+  .ob-sec-footer > div:last-child { display: none !important; }
+
+  /* ── Modals: full width ── */
   div[style*="max-width:500px"],
   div[style*="max-width:420px"] {
     padding: 20px 18px !important;
     border-radius: 10px !important;
   }
 
-  div[style*="max-width:500px"] > div:first-child,
-  div[style*="max-width:420px"] > div:first-child {
-    font-size: 16px !important;
-  }
-
-} /* end @media 375px–425.98px */
+} /* end @media mobile ≤480px */
 </style>
 

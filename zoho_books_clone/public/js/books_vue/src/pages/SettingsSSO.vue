@@ -206,4 +206,12 @@ onMounted(load);
 .sso-info-title { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:#0f172a; margin-bottom:10px; }
 .sso-info-list { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:6px; }
 .sso-info-list li { font-size:12.5px; color:#475569; line-height:1.55; }
+
+@media (max-width: 768px) {
+  .sso-head { flex-wrap: wrap; }
+  .sso-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 480px) {
+  .sso-page { padding: 12px; gap: 12px; }
+}
 </style>

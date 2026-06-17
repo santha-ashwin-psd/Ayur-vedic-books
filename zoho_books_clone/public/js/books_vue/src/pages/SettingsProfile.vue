@@ -20,7 +20,7 @@
         <div style="font-size:13px;color:#868e96;margin-top:2px">{{profile.email}}</div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="sp-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="nim-field"><label class="nim-label">First Name</label><input class="nim-input" v-model="profile.first_name"/></div>
       <div class="nim-field"><label class="nim-label">Last Name</label><input class="nim-input" v-model="profile.last_name"/></div>
       <div class="nim-field"><label class="nim-label">Email</label><input class="nim-input" :value="profile.email" disabled style="background:#f8f9fc;color:#868e96"/></div>
@@ -109,3 +109,10 @@ const initials = computed(() => {
 
 onMounted(loadProfile);
 </script>
+
+<style>
+@media (max-width: 480px) {
+  .sp-form-grid { grid-template-columns: 1fr !important; }
+  .cust-page { padding: 12px !important; }
+}
+</style>

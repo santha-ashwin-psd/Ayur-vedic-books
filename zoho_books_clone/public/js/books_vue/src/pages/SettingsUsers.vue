@@ -20,7 +20,7 @@
     <span style="color:#4a5568;font-size:13px">Only company admins can manage team members.</span>
   </div>
 
-  <div v-else class="cust-table-card" style="margin-top:0">
+  <div v-else class="cust-table-card su-tbl-card" style="margin-top:0">
     <div v-if="loading" style="padding:40px;text-align:center;color:#868E96">Loading members…</div>
     <table v-else style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="background:#f8f9fc;border-bottom:2px solid #e4e8f0">
@@ -403,3 +403,13 @@ function userInitials(name) {
 
 onMounted(load);
 </script>
+
+<style>
+@media (max-width: 768px) {
+  .su-tbl-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .su-tbl-card table { min-width: 460px; }
+}
+@media (max-width: 480px) {
+  .cust-page { padding: 12px !important; }
+}
+</style>

@@ -7,7 +7,7 @@
       <button class="nim-btn nim-btn-primary" @click="load"><span v-html="icon('refresh',13)" style="vertical-align:-2px;margin-right:4px"/>Refresh</button>
     </div>
   </div>
-  <div class="cust-table-card" style="margin-top:0">
+  <div class="cust-table-card sa-tbl-card" style="margin-top:0">
     <div v-if="loading" style="padding:40px;text-align:center;color:#868e96">Loading audit log…</div>
     <table v-else style="width:100%;border-collapse:collapse;font-size:12.5px">
       <thead><tr style="background:#f8f9fc;border-bottom:2px solid #e4e8f0">
@@ -74,3 +74,13 @@ function exportCSV() {
 
 onMounted(load);
 </script>
+
+<style>
+@media (max-width: 768px) {
+  .sa-tbl-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .sa-tbl-card table { min-width: 500px; }
+}
+@media (max-width: 480px) {
+  .cust-page { padding: 12px !important; }
+}
+</style>

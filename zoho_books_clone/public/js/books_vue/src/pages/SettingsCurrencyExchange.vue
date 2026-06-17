@@ -27,7 +27,7 @@
 
     <!-- CURRENCIES -->
     <div v-if="activeTab==='currencies'">
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+      <div class="sce-stat-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
         <div v-for="s in currencySummary" :key="s.label"
           :style="'background:'+s.bg+';border:1px solid '+s.border+';border-radius:12px;padding:16px 20px'">
           <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#666;margin-bottom:6px">{{s.label}}</div>
@@ -174,7 +174,7 @@
 
     <!-- P&L -->
     <div v-if="activeTab==='pnl'">
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+      <div class="sce-stat-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
         <div style="background:#EBFBEE;border:1px solid #b2f2bb;border-radius:12px;padding:18px 20px">
           <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#2F9E44;margin-bottom:6px">Realised Gain</div>
           <div style="font-size:24px;font-weight:800;color:#2F9E44">₹{{pnlSummary.gain.toLocaleString('en-IN',{minimumFractionDigits:2})}}</div>
@@ -576,3 +576,13 @@ onMounted(async () => {
   } catch {}
 });
 </script>
+
+<style>
+@media (max-width: 768px) {
+  .sce-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 480px) {
+  .sce-stat-grid { grid-template-columns: 1fr 1fr !important; }
+  .cust-page { padding: 12px !important; }
+}
+</style>

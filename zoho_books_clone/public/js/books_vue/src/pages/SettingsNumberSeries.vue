@@ -15,7 +15,7 @@
 
   <div v-if="loading" style="padding:60px;text-align:center;color:#868e96">Loading…</div>
 
-  <div v-else class="cust-table-card" style="margin-top:0">
+  <div v-else class="cust-table-card sns-tbl-card" style="margin-top:0">
     <table style="width:100%;border-collapse:collapse;font-size:13px">
       <thead><tr style="background:#f8f9fc;border-bottom:2px solid #e4e8f0">
         <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Document Type</th>
@@ -158,3 +158,13 @@ async function resetSeries(s) {
 
 onMounted(load);
 </script>
+
+<style>
+@media (max-width: 768px) {
+  .sns-tbl-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .sns-tbl-card table { min-width: 520px; }
+}
+@media (max-width: 480px) {
+  .cust-page { padding: 12px !important; }
+}
+</style>

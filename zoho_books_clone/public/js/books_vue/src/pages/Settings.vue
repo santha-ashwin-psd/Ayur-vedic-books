@@ -465,4 +465,14 @@ onMounted(() => {
 .modal h3 { margin-bottom: 20px; font-size: 17px; color: #0D1117; }
 .modules-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 12px; background: #F8FAFC; border-radius: 8px; margin: 16px 0; }
 .modules-title { grid-column: 1 / -1; font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+@media (max-width: 768px) {
+  .settings-page { padding: 16px; }
+  .card { overflow-x: auto; }
+}
+@media (max-width: 480px) {
+  .settings-page { padding: 12px; }
+  .grid { grid-template-columns: 1fr !important; }
+  .users-table { min-width: 480px; }
+}
 </style>

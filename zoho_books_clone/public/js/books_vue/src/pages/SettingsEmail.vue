@@ -19,7 +19,7 @@
         <span style="font-size:14px;font-weight:600;color:#1a1a2e">Enable Company SMTP</span>
       </label>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 18px">
+      <div class="se-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px 18px">
         <div>
           <div style="font-size:11.5px;color:#6b7db3;font-weight:600;margin-bottom:6px">SMTP Server</div>
           <input class="nim-input" v-model="form.smtp_server" placeholder="smtp.gmail.com" :disabled="!form.smtp_enabled"/>
@@ -144,3 +144,10 @@ async function sendTest() {
 
 onMounted(load);
 </script>
+
+<style>
+@media (max-width: 480px) {
+  .se-form-grid { grid-template-columns: 1fr !important; }
+  .cust-page { padding: 12px !important; }
+}
+</style>

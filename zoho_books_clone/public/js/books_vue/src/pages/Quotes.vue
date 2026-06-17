@@ -17,6 +17,7 @@
         <option value="">All Customers</option>
         <option v-for="c in customers" :key="c.name" :value="c.name">{{ c.customer_name || c.label }}</option>
       </select>
+      <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
       <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
       <button class="sales-btn-primary" @click="openNew">
@@ -150,6 +151,7 @@
 
   <!-- ── Table ── -->
   <div class="inv-table-wrap">
+    <template v-if="viewMode==='table'">
     <table class="inv-table qt-desktop-table">
       <thead><tr>
         <th class="th-check"><input type="checkbox" @change="toggleAll" :checked="allChecked"/></th>
@@ -264,6 +266,47 @@
         </div>
       </template>
     </div>
+    </template>
+    <!-- GRID MODE -->
+    <template v-else>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding:24px 24px 24px">
+        <template v-if="loading">
+          <div v-for="n in 8" :key="n" class="b-card" style="padding:16px">
+            <div class="b-shimmer" style="height:12px;width:60%;border-radius:4px;margin-bottom:10px"></div>
+            <div class="b-shimmer" style="height:14px;width:80%;border-radius:4px;margin-bottom:8px"></div>
+            <div class="b-shimmer" style="height:11px;width:45%;border-radius:4px"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
+          <div style="font-size:32px;margin-bottom:8px">💬</div>
+          <div>{{ search ? 'No quotations match your filters' : 'No quotations yet' }}</div>
+          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openNew"><span v-html="icon('plus',13)"></span> New Quotation</button>
+        </div>
+        <template v-else>
+          <div v-for="q in paged" :key="q.name"
+            class="b-card b-card-body"
+            style="cursor:pointer;padding:16px;display:flex;flex-direction:column;gap:8px"
+            @click="openView(q)">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span style="font-size:12px;font-weight:700;color:#2563eb">{{ q.name }}</span>
+              <span class="inv-status-badge" :class="badgeClass(q)">{{ displayStatus(q) }}</span>
+            </div>
+            <div style="font-size:13.5px;font-weight:600;color:#1a1d23;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ q.customer_name || q.customer || '—' }}</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280">
+              <span>{{ fmtDate(q.transaction_date) }}</span>
+              <span style="font-weight:700;color:#1a1d23">{{ fmtCur(q.grand_total) }}</span>
+            </div>
+            <div v-if="q.valid_till" style="font-size:11.5px;" :class="isExpired(q)?'text-danger':'text-muted'">
+              Valid till: {{ fmtDate(q.valid_till) }}
+            </div>
+            <div style="display:flex;gap:6px;border-top:1px solid #f3f4f6;padding-top:10px">
+              <button class="inv-act-btn" @click.stop="openView(q)" title="View"><span v-html="icon('eye',13)"></span></button>
+              <button v-if="q.docstatus!==1" class="inv-act-btn" @click.stop="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
   </div>
   <div v-if="!loading && sorted.length" style="padding:12px 0px 4px">
     <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
@@ -419,11 +462,16 @@
                 <div>
                   <label class="inv-lbl">Billing Address <span v-if="addressLoading" style="color:#9ca3af;font-weight:400">(loading…)</span></label>
                   <div class="po-addr-select-wrap">
-                    <select class="inv-fi po-addr-select" v-model="form.billing_address_name" @change="onBillingAddrChange">
-                      <option value="">— Select —</option>
-                      <option v-for="a in customerAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
-                      <option value="__new__">+ Add New Address</option>
-                    </select>
+                    <SearchableSelect
+                      v-model="form.billing_address_name"
+                      :options="customerAddresses"
+                      valueKey="name" labelKey="label"
+                      placeholder="— Select —"
+                      :createable="true" :staticCreate="true"
+                      createLabel="+ Add New Address"
+                      @select="onBillingAddrSelect"
+                      @create="openAddrModal('billing')"
+                    />
                   </div>
                   <div v-if="selectedBillingAddr" class="po-addr-card">
                     <div class="po-addr-card-type">{{ selectedBillingAddr.address_type || 'Billing' }}</div>
@@ -434,11 +482,16 @@
                 <div>
                   <label class="inv-lbl">Shipping Address</label>
                   <div class="po-addr-select-wrap">
-                    <select class="inv-fi po-addr-select" v-model="form.shipping_address_name" @change="onShippingAddrChange">
-                      <option value="">— Select —</option>
-                      <option v-for="a in customerAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
-                      <option value="__new__">+ Add New Address</option>
-                    </select>
+                    <SearchableSelect
+                      v-model="form.shipping_address_name"
+                      :options="customerAddresses"
+                      valueKey="name" labelKey="label"
+                      placeholder="— Select —"
+                      :createable="true" :staticCreate="true"
+                      createLabel="+ Add New Address"
+                      @select="onShippingAddrSelect"
+                      @create="openAddrModal('shipping')"
+                    />
                   </div>
                   <div v-if="selectedShippingAddr" class="po-addr-card">
                     <div class="po-addr-card-type">{{ selectedShippingAddr.address_type || 'Shipping' }}</div>
@@ -1110,6 +1163,7 @@ const TAX_PRESETS = [
 const list        = ref([]);
 const loading     = ref(false);
 const search      = ref("");
+const viewMode    = ref("table"); // "table" | "grid"
 const selected    = ref(new Set());
 const showPreview     = ref(false);
 const selectedTemplate = ref("modern");
@@ -1590,23 +1644,14 @@ function displayAddr(text) {
   if (!text) return "";
   return text.includes("\n") ? text : text.split(", ").join("\n");
 }
-function onBillingAddrChange() {
-  if (form.billing_address_name === "__new__") {
-    form.billing_address_name = "";
-    Object.assign(addrModal, { open: true, saving: false, forField: "billing", address_title: "", address_type: "Billing", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
-    return;
-  }
-  const a = customerAddresses.value.find(x => x.name === form.billing_address_name);
-  form.billing_address = a ? formatAddress(a) : "";
+function onBillingAddrSelect(opt) {
+  form.billing_address = opt ? formatAddress(opt) : "";
 }
-function onShippingAddrChange() {
-  if (form.shipping_address_name === "__new__") {
-    form.shipping_address_name = "";
-    Object.assign(addrModal, { open: true, saving: false, forField: "shipping", address_title: "", address_type: "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
-    return;
-  }
-  const a = customerAddresses.value.find(x => x.name === form.shipping_address_name);
-  form.shipping_address = a ? formatAddress(a) : "";
+function onShippingAddrSelect(opt) {
+  form.shipping_address = opt ? formatAddress(opt) : "";
+}
+function openAddrModal(field) {
+  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: field === "billing" ? "Billing" : "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
 }
 async function saveNewAddress() {
   if (!addrModal.address_title.trim()) return toast.error("Address Title is required");
@@ -2180,7 +2225,11 @@ table.it thead th{padding:9px 11px;font-size:10px;font-weight:700;text-transform
 table.it tbody td{padding:9px 11px;border-bottom:1px solid #f0f2f5;font-size:12px}
 .tw{display:flex;justify-content:flex-end;margin-bottom:20px}.tot{width:270px;background:#f8fafc;border-radius:8px;padding:14px}
 .tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.tr2.gr{border-top:2px solid ${c};margin-top:7px;padding-top:9px;font-size:14px;font-weight:700;color:${c}}
-@media print{@page{size:A4;margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+@media print{@page{size:A4;margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media (max-width: 480px) {
+  .view-toggle-btn { display: none !important; }
+}
+</style></head><body>
 <div class="hband"><div class="hinner"><div>${logoTag}<div class="co-name">${co}</div></div><div style="text-align:right"><div class="qt-chip">QUOTATION</div><div class="qt-num">${d.name || "DRAFT"}</div></div></div></div>
 <div class="body"><div class="mgrid">
 <div><div class="ml">Bill To</div><div class="mv">${d.customer_name || d.customer || "—"}</div>${d.billing_address ? `<div style="font-size:11px;color:#6b7280;margin-top:4px">${d.billing_address}</div>` : ""}</div>

@@ -16,6 +16,7 @@
           <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
           <input v-model="search" placeholder="Search vendors…" class="sales-search-input" autocomplete="off"/>
         </div>
+        <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
         <button class="sales-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
@@ -51,7 +52,8 @@
     </div>
 
     <div class="inv-table-wrap">
-      <div class="inv-table-wrap">
+      <!-- TABLE MODE -->
+      <div v-if="viewMode==='table'" class="inv-table-wrap">
         <table class="inv-table ven-desktop-table">
           <thead>
             <tr>
@@ -158,6 +160,58 @@
           </template>
         </div>
       </div>
+
+      <!-- GRID MODE -->
+      <div v-else style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding:24px 24px 24px">
+        <template v-if="loading">
+          <div v-for="n in 8" :key="n" class="b-card" style="padding:16px">
+            <div style="display:flex;gap:10px;margin-bottom:12px">
+              <div class="b-shimmer" style="width:40px;height:40px;border-radius:50%;flex-shrink:0"></div>
+              <div style="flex:1">
+                <div class="b-shimmer" style="height:13px;width:70%;border-radius:4px;margin-bottom:7px"></div>
+                <div class="b-shimmer" style="height:11px;width:45%;border-radius:4px"></div>
+              </div>
+            </div>
+            <div class="b-shimmer" style="height:11px;width:55%;border-radius:4px"></div>
+          </div>
+        </template>
+        <div v-else-if="!filtered.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
+          <div style="font-size:32px;margin-bottom:8px">🏢</div>
+          <div>{{ search ? 'No results found' : 'No vendors yet' }}</div>
+          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
+        </div>
+        <template v-else>
+          <div v-for="v in filtered" :key="v.name"
+            class="b-card b-card-body"
+            style="cursor:pointer;padding:16px;display:flex;flex-direction:column;gap:10px"
+            @click="selectVendor(v)">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <div class="vt-avatar" :class="v.disabled ? 'vt-avatar-disabled' : ''" style="width:40px;height:40px;font-size:14px;flex-shrink:0">
+                {{vendorInitials(v.supplier_name)}}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13.5px;font-weight:700;color:#1a1d23;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{v.supplier_name||v.name}}</div>
+                <div style="font-size:11.5px;color:#9ca3af">{{v.name}}</div>
+              </div>
+              <span class="inv-status-badge" :class="v.disabled ? 'vt-badge-red' : 'vt-badge-green'" style="flex-shrink:0">
+                <span class="vt-badge-dot"></span>{{v.disabled ? 'Disabled' : 'Active'}}
+              </span>
+            </div>
+            <div style="font-size:12px;color:#6b7280;display:flex;justify-content:space-between;align-items:center">
+              <span>{{v.city ? (v.city + (v.state ? ', '+v.state : '')) : '—'}}</span>
+              <span class="vt-badge" :class="v.supplier_type==='Company' ? 'vt-badge-blue' : 'vt-badge-gray'">{{v.supplier_type||'—'}}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #f3f4f6;padding-top:10px">
+              <span style="font-size:12px;color:#6b7280">{{v.mobile_no||'—'}}</span>
+              <div style="display:flex;gap:6px">
+                <button class="inv-act-btn vt-act-edit" @click.stop="openEdit(v.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button class="inv-act-btn vt-act-del" @click.stop="confirmDelete(v)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
       <div v-if="!loading && filtered.length" class="vt-footer">
         <span>Showing <strong>{{filtered.length}}</strong> of <strong>{{list.length}}</strong> vendors</span>
       </div>
@@ -755,6 +809,7 @@ const list          = ref([]);
 const loading       = ref(true);
 const search        = ref("");
 const activeFilter  = ref("all");
+const viewMode      = ref("table"); // "table" | "grid"
 const showDrawer    = ref(false);
 const drawerMode    = ref("add");
 const drawerLoading = ref(false);
@@ -1400,5 +1455,9 @@ onMounted(async () => {
 
   /* ── Transactions tab: horizontal scroll ── */
   .ven-txn-wrap { overflow-x: auto !important; }
+}
+
+@media (max-width: 480px) {
+  .view-toggle-btn { display: none !important; }
 }
 </style>

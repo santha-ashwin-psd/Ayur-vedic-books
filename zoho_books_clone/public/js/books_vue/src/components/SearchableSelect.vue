@@ -42,8 +42,9 @@
             class="ss-opt ss-opt-create"
             @mousedown.prevent="onClickCreate"
           >
-            <IconSvg name="plus" :size="13" />
-            Create <strong style="margin-left:4px">"{{ q.trim() }}"</strong>
+            <IconSvg v-if="!(props.staticCreate && !q.trim())" name="plus" :size="13" />
+            <template v-if="props.staticCreate && !q.trim()">{{ props.createLabel || '+ Add New' }}</template>
+            <template v-else>Create <strong style="margin-left:4px">"{{ q.trim() }}"</strong></template>
           </div>
         </div>
       </div>
@@ -66,6 +67,7 @@ const props = defineProps({
   compact:       { type: Boolean, default: false },
   disabled:      { type: Boolean, default: false },
   createable:    { type: Boolean, default: false },
+  staticCreate:  { type: Boolean, default: false },
   createDoctype: { type: String,  default: "" },
   createLabel:   { type: String,  default: "" },
 });
@@ -144,6 +146,7 @@ const filtered = computed(() => {
 const showCreate = computed(() => {
   if (!props.createable) return false;
   const qv = q.value.trim();
+  if (props.staticCreate && !qv) return true;
   if (!qv) return false;
   return !normalized.value.some((o) => String(o.label).toLowerCase() === qv.toLowerCase());
 });
@@ -206,6 +209,19 @@ function onDoc(e) {
   }
 }
 
-onMounted(()   => document.addEventListener("pointerdown", onDoc, true));
-onUnmounted(() => document.removeEventListener("pointerdown", onDoc, true));
+function onScrollOrResize() {
+  if (open.value) open.value = false;
+}
+
+onMounted(() => {
+  document.addEventListener("pointerdown", onDoc, true);
+  // Close on any scroll (capture phase catches inner overflow containers too)
+  document.addEventListener("scroll", onScrollOrResize, { capture: true, passive: true });
+  window.addEventListener("resize", onScrollOrResize, { passive: true });
+});
+onUnmounted(() => {
+  document.removeEventListener("pointerdown", onDoc, true);
+  document.removeEventListener("scroll", onScrollOrResize, { capture: true });
+  window.removeEventListener("resize", onScrollOrResize);
+});
 </script>

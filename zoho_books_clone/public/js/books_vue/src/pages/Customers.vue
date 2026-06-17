@@ -19,6 +19,7 @@
           <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
           <input v-model="search" placeholder="Search customers…" class="sales-search-input" autocomplete="off"/>
         </div>
+        <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
         <button class="sales-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
@@ -57,7 +58,8 @@
     </div>
 
     <div class="inv-table-wrap">
-      <div class="inv-table-wrap">
+      <!-- TABLE MODE -->
+      <div v-if="viewMode==='table'" class="inv-table-wrap">
         <table class="inv-table cus-desktop-table">
           <thead>
             <tr>
@@ -158,6 +160,58 @@
           </template>
         </div>
       </div>
+
+      <!-- GRID MODE -->
+      <div v-else style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding:24px 24px 24px">
+        <template v-if="loading">
+          <div v-for="n in 8" :key="n" class="b-card" style="padding:16px">
+            <div style="display:flex;gap:10px;margin-bottom:12px">
+              <div class="b-shimmer" style="width:40px;height:40px;border-radius:50%;flex-shrink:0"></div>
+              <div style="flex:1">
+                <div class="b-shimmer" style="height:13px;width:70%;border-radius:4px;margin-bottom:7px"></div>
+                <div class="b-shimmer" style="height:11px;width:45%;border-radius:4px"></div>
+              </div>
+            </div>
+            <div class="b-shimmer" style="height:11px;width:55%;border-radius:4px"></div>
+          </div>
+        </template>
+        <div v-else-if="!filtered.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
+          <div style="font-size:32px;margin-bottom:8px">👤</div>
+          <div>{{ search ? 'No results found' : 'No customers yet' }}</div>
+          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
+        </div>
+        <template v-else>
+          <div v-for="c in filtered" :key="c.name"
+            class="b-card b-card-body"
+            style="cursor:pointer;padding:16px;display:flex;flex-direction:column;gap:10px"
+            @click="selectCustomer(c)">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+              <div class="vt-avatar" :class="c.disabled ? 'vt-avatar-disabled' : ''" style="width:40px;height:40px;font-size:14px;flex-shrink:0">
+                {{custInitials(c.customer_name)}}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13.5px;font-weight:700;color:#1a1d23;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{c.customer_name}}</div>
+                <div style="font-size:11.5px;color:#9ca3af">{{c.name}}</div>
+              </div>
+              <span class="inv-status-badge" :class="c.disabled ? 'vt-badge-red' : 'vt-badge-green'" style="flex-shrink:0">
+                <span class="vt-badge-dot"></span>{{c.disabled ? 'Disabled' : 'Active'}}
+              </span>
+            </div>
+            <div style="font-size:12px;color:#6b7280;display:flex;justify-content:space-between;align-items:center">
+              <span>{{c.city ? (c.city + (c.state ? ', '+c.state : '')) : '—'}}</span>
+              <span class="vt-badge" :class="c.customer_type==='Company' ? 'vt-badge-blue' : 'vt-badge-gray'">{{c.customer_type||'—'}}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #f3f4f6;padding-top:10px">
+              <span style="font-size:12px;color:#6b7280">{{c.mobile_no||'—'}}</span>
+              <div style="display:flex;gap:6px">
+                <button class="inv-act-btn vt-act-edit" @click.stop="openEdit(c.name)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button class="inv-act-btn vt-act-del" @click.stop="confirmDelete(c)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
       <div v-if="!loading && filtered.length" class="vt-footer">
         <span>Showing <strong>{{filtered.length}}</strong> of <strong>{{list.length}}</strong> customers</span>
       </div>
@@ -651,7 +705,7 @@
 
             <div style="height:1px;background:#e8ecf0;margin-bottom:20px"></div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+            <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
               <div>
                 <label class="inv-lbl">Email Address</label>
                 <input v-model="form.email_id" class="inv-fi" placeholder="name@company.com"
@@ -736,7 +790,7 @@
             <div style="height:1px;background:#e8ecf0;margin-bottom:20px"></div>
 
             <div class="inv-sec-lbl" style="margin-top:0">Billing Preferences</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px">
+            <div class="cus-form-grid3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px">
               <div>
                 <label class="inv-lbl">Currency</label>
                 <select v-model="form.default_currency" class="inv-fi" style="cursor:pointer">
@@ -798,7 +852,7 @@
               <button @click="drawerTab='overview'" style="margin-left:auto;font-size:12px;color:#3B5BDB;background:none;border:none;cursor:pointer;font-weight:600;font-family:inherit">Change →</button>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+            <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
               <transition name="gst-field">
                 <div v-if="activeRule.showPlaceOfSupply">
                   <label class="inv-lbl">
@@ -829,7 +883,7 @@
             </div>
 
             <div class="inv-sec-lbl">Opening Balance</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+            <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
               <div>
                 <label class="inv-lbl">Opening Balance (₹)</label>
                 <input v-model.number="form.opening_balance" type="number" min="0" class="inv-fi" placeholder="0.00"
@@ -844,7 +898,7 @@
           <!-- Bank Tab -->
           <template v-else-if="drawerTab==='bank'">
             <div class="inv-sec-lbl" style="margin-top:0">Bank Account</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
               <div style="grid-column:span 2">
                 <label class="inv-lbl">Bank Name</label>
                 <input v-model="form.bank_name" class="inv-fi" placeholder="HDFC Bank, SBI, ICICI…"/>
@@ -970,6 +1024,7 @@ function toggleRow(name) {
 }
 function clearSelection() { selectedRows.value = new Set(); }
 const activeFilter = ref("all");
+const viewMode     = ref("table"); // "table" | "grid"
 const showDrawer = ref(false);
 const drawerMode = ref("add");
 const drawerLoading = ref(false);
@@ -1729,5 +1784,14 @@ onMounted(load);
   /* ── Statement tab: 1-col KPI grid + scroll invoices ── */
   .cus-stmt-kpis { grid-template-columns: 1fr !important; gap: 8px !important; }
   .cus-stmt-inv-wrap { overflow-x: auto !important; }
+
+  /* ── New/Edit Customer form: stack multi-col grids to 1 col ── */
+  .cus-form-grid2 { grid-template-columns: 1fr !important; }
+  .cus-form-grid3 { grid-template-columns: 1fr !important; }
+  .cus-form-grid2 [style*="grid-column:span 2"] { grid-column: span 1 !important; }
+}
+
+@media (max-width: 480px) {
+  .view-toggle-btn { display: none !important; }
 }
 </style>

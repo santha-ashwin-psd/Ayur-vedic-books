@@ -16,6 +16,7 @@
         </button>
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
         <button class="sales-btn-primary" @click="openNew">
@@ -49,6 +50,7 @@
 
     <!-- ── Table ── -->
     <div class="inv-table-wrap">
+      <template v-if="viewMode==='table'">
       <table class="inv-table bil-desktop-table">
         <thead>
           <tr>
@@ -125,6 +127,49 @@
           </div>
         </template>
       </div>
+      </template>
+      <!-- GRID MODE -->
+      <template v-else>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding:24px 24px 24px">
+          <template v-if="loading">
+            <div v-for="n in 8" :key="n" class="b-card" style="padding:16px">
+              <div class="b-shimmer" style="height:12px;width:60%;border-radius:4px;margin-bottom:10px"></div>
+              <div class="b-shimmer" style="height:14px;width:80%;border-radius:4px;margin-bottom:8px"></div>
+              <div class="b-shimmer" style="height:11px;width:45%;border-radius:4px"></div>
+            </div>
+          </template>
+          <div v-else-if="!sorted.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
+            <div style="font-size:32px;margin-bottom:8px">🧾</div>
+            <div>{{ search || filterVendor ? 'No bills match your filters' : 'No bills yet' }}</div>
+            <button v-if="!search && !filterVendor" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openNew"><span v-html="icon('plus',13)"></span> New Bill</button>
+          </div>
+          <template v-else>
+            <div v-for="b in paged" :key="b.name"
+              class="b-card b-card-body"
+              style="cursor:pointer;padding:16px;display:flex;flex-direction:column;gap:8px"
+              @click="openView(b)">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span style="font-size:12px;font-weight:700;color:#2563eb">{{ b.name }}</span>
+                <span class="inv-status-badge" :class="statusCls(b)">{{ statusLabel(b) }}</span>
+              </div>
+              <div style="font-size:13.5px;font-weight:600;color:#1a1d23;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.supplier_name || b.supplier || '—' }}</div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280">
+                <span>{{ fmtDate(b.posting_date) }}</span>
+                <span style="font-weight:700;color:#1a1d23">{{ fmtCur(b.grand_total) }}</span>
+              </div>
+              <div v-if="flt(b.outstanding_amount) > 0" style="font-size:11.5px;" :class="isOverdue(b)?'text-danger':'text-muted'">
+                Balance: {{ fmtCur(b.outstanding_amount) }}
+              </div>
+              <div style="display:flex;gap:6px;border-top:1px solid #f3f4f6;padding-top:10px">
+                <button class="inv-act-btn" @click.stop="openView(b)" title="View"><span v-html="icon('eye',13)"></span></button>
+                <button v-if="b.docstatus===0" class="inv-act-btn" @click.stop="openEdit(b)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="inv-act-btn inv-act-pay" @click.stop="payBill(b)" title="Record Payment">₹</button>
+                <button v-if="b.docstatus===0||b.docstatus===2" class="inv-act-btn" style="color:#dc2626" @click.stop="deleteBill(b)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
     </div>
 
     <!-- ── Pagination ── -->
@@ -238,11 +283,16 @@
           <div class="add-card-body" :class="{collapsed:billCollapsed.billing}">
             <label class="inv-lbl">Billing Address</label>
             <div class="po-addr-select-wrap">
-              <select class="inv-fi po-addr-select" v-model="form.billing_address_name" @change="onBillingAddrChange">
-                <option value="">— Select —</option>
-                <option v-for="a in vendorAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
-                <option value="__new__">+ Add New Address</option>
-              </select>
+              <SearchableSelect
+                v-model="form.billing_address_name"
+                :options="vendorAddresses"
+                valueKey="name" labelKey="label"
+                placeholder="— Select —"
+                :createable="true" :staticCreate="true"
+                createLabel="+ Add New Address"
+                @select="onBillingAddrSelect"
+                @create="openAddrModal"
+              />
             </div>
             <div v-if="selectedBillingAddr" class="po-addr-card">
               <div class="po-addr-card-type">{{ selectedBillingAddr.address_type || 'Billing' }}</div>
@@ -746,6 +796,7 @@ const tabs = [
 ];
 
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
+const viewMode = ref("table"); // "table" | "grid"
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const billCollapsed = reactive({ details: false, billing: true, lines: false, remarks: true });
@@ -795,14 +846,11 @@ async function fetchVendorAddresses(supplier) {
   } catch { vendorAddresses.value = []; }
 }
 
-function onBillingAddrChange() {
-  if (form.billing_address_name === "__new__") {
-    form.billing_address_name = "";
-    Object.assign(addrModal, { open: true, saving: false, address_title: "", address_type: "Billing", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
-  } else {
-    const a = selectedBillingAddr.value;
-    form.billing_address = a ? formatAddress(a) : "";
-  }
+function onBillingAddrSelect(opt) {
+  form.billing_address = opt ? formatAddress(opt) : "";
+}
+function openAddrModal() {
+  Object.assign(addrModal, { open: true, saving: false, address_title: "", address_type: "Billing", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
 }
 
 async function saveNewAddress() {
@@ -1748,5 +1796,9 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
   .td-id .inv-link:hover { color: #155fd4 !important; }
   .td-customer { font-size: 15px !important; font-weight: 700 !important; color: #1a1a2e !important; }
   .td-amount   { font-size: 14px !important; letter-spacing: -0.02em !important; }
+}
+
+@media (max-width: 480px) {
+  .view-toggle-btn { display: none !important; }
 }
 </style>

@@ -395,11 +395,16 @@
                 <!-- Billing Address -->
                 <div>
                   <label class="inv-lbl">Billing Address</label>
-                  <select class="inv-fi po-addr-select" v-model="form.billing_address_name" @change="onBillingAddrChange">
-                    <option value="">— None —</option>
-                    <option v-for="a in customerAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
-                    <option value="__new__">+ Add New Address</option>
-                  </select>
+                  <SearchableSelect
+                    v-model="form.billing_address_name"
+                    :options="customerAddresses"
+                    valueKey="name" labelKey="label"
+                    placeholder="— None —"
+                    :createable="true" :staticCreate="true"
+                    createLabel="+ Add New Address"
+                    @select="onBillingAddrSelect"
+                    @create="openAddrModal('billing')"
+                  />
                   <div v-if="selectedBillingAddr" class="po-addr-card">
                     <div class="po-addr-card-body">{{ formatAddress(selectedBillingAddr) }}</div>
                   </div>
@@ -407,11 +412,16 @@
                 <!-- Shipping / Delivery Address -->
                 <div>
                   <label class="inv-lbl">Delivery / Shipping Address</label>
-                  <select class="inv-fi po-addr-select" v-model="form.shipping_address_name" @change="onShippingAddrChange">
-                    <option value="">— None —</option>
-                    <option v-for="a in customerAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
-                    <option value="__new__">+ Add New Address</option>
-                  </select>
+                  <SearchableSelect
+                    v-model="form.shipping_address_name"
+                    :options="customerAddresses"
+                    valueKey="name" labelKey="label"
+                    placeholder="— None —"
+                    :createable="true" :staticCreate="true"
+                    createLabel="+ Add New Address"
+                    @select="onShippingAddrSelect"
+                    @create="openAddrModal('shipping')"
+                  />
                   <div v-if="selectedShippingAddr" class="po-addr-card">
                     <div class="po-addr-card-body">{{ formatAddress(selectedShippingAddr) }}</div>
                   </div>
@@ -1174,26 +1184,15 @@ function displayAddr(text) {
   return text.includes("\n") ? text : text.split(", ").join("\n");
 }
 
-function onBillingAddrChange() {
-  if (form.billing_address_name === "__new__") {
-    form.billing_address_name = "";
-    addrModal.forField = "billing"; addrModal.address_type = "Billing";
-    Object.assign(addrModal, { open: true, saving: false, title: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "India", gstin: "" });
-    return;
-  }
-  const a = customerAddresses.value.find(x => x.name === form.billing_address_name);
-  form.billing_address = a ? formatAddress(a) : "";
+function onBillingAddrSelect(opt) {
+  form.billing_address = opt ? formatAddress(opt) : "";
 }
-
-function onShippingAddrChange() {
-  if (form.shipping_address_name === "__new__") {
-    form.shipping_address_name = "";
-    addrModal.forField = "shipping"; addrModal.address_type = "Shipping";
-    Object.assign(addrModal, { open: true, saving: false, title: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "India", gstin: "" });
-    return;
-  }
-  const a = customerAddresses.value.find(x => x.name === form.shipping_address_name);
-  form.shipping_address = a ? formatAddress(a) : "";
+function onShippingAddrSelect(opt) {
+  form.shipping_address = opt ? formatAddress(opt) : "";
+}
+function openAddrModal(field) {
+  const addrType = field === "billing" ? "Billing" : "Shipping";
+  Object.assign(addrModal, { open: true, saving: false, forField: field, address_type: addrType, title: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "India", gstin: "" });
 }
 
 async function saveNewAddress() {

@@ -16,6 +16,7 @@
         </button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:nowrap;">
+        <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
         <button class="sales-btn-primary" @click="openNew">
@@ -48,6 +49,7 @@
 
     <!-- ── Table ── -->
     <div class="inv-table-wrap">
+      <template v-if="viewMode==='table'">
       <table class="inv-table po-desktop-table">
         <thead>
           <tr>
@@ -119,6 +121,47 @@
           </div>
         </template>
       </div>
+      </template>
+      <!-- GRID MODE -->
+      <template v-else>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding:24px 24px 24px">
+          <template v-if="loading">
+            <div v-for="n in 8" :key="n" class="b-card" style="padding:16px">
+              <div class="b-shimmer" style="height:12px;width:60%;border-radius:4px;margin-bottom:10px"></div>
+              <div class="b-shimmer" style="height:14px;width:80%;border-radius:4px;margin-bottom:8px"></div>
+              <div class="b-shimmer" style="height:11px;width:45%;border-radius:4px"></div>
+            </div>
+          </template>
+          <div v-else-if="!sorted.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
+            <div style="font-size:32px;margin-bottom:8px">🛒</div>
+            <div>{{ search ? 'No purchase orders match your filters' : 'No purchase orders yet' }}</div>
+            <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openNew"><span v-html="icon('plus',13)"></span> New Purchase Order</button>
+          </div>
+          <template v-else>
+            <div v-for="o in paged" :key="o.name"
+              class="b-card b-card-body"
+              style="cursor:pointer;padding:16px;display:flex;flex-direction:column;gap:8px"
+              @click="openView(o)">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span style="font-size:12px;font-weight:700;color:#2563eb">{{ o.name }}</span>
+                <span class="inv-status-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span>
+              </div>
+              <div style="font-size:13.5px;font-weight:600;color:#1a1d23;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.supplier_name || o.supplier || '—' }}</div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280">
+                <span>{{ fmtDate(o.transaction_date) }}</span>
+                <span style="font-weight:700;color:#1a1d23">{{ fmtCur(o.grand_total) }}</span>
+              </div>
+              <div v-if="o.expected_delivery_date" style="font-size:11.5px;" :class="isPastExpected(o)?'text-danger':'text-muted'">
+                Expected: {{ fmtDate(o.expected_delivery_date) }}
+              </div>
+              <div style="display:flex;gap:6px;border-top:1px solid #f3f4f6;padding-top:10px">
+                <button class="inv-act-btn" @click.stop="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
+                <button v-if="canEdit(o)" class="inv-act-btn" @click.stop="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
     </div>
 
     <!-- ── Pagination ── -->
@@ -216,11 +259,16 @@
               <div>
                 <label class="inv-lbl">Billing Address</label>
                 <div class="po-addr-select-wrap">
-                  <select class="inv-fi po-addr-select" v-model="form.billing_address_name" @change="onBillingAddrChange">
-                    <option value="">— Select —</option>
-                    <option v-for="a in vendorAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
-                    <option value="__new__">+ Add New Address</option>
-                  </select>
+                  <SearchableSelect
+                    v-model="form.billing_address_name"
+                    :options="vendorAddresses"
+                    valueKey="name" labelKey="label"
+                    placeholder="— Select —"
+                    :createable="true" :staticCreate="true"
+                    createLabel="+ Add New Address"
+                    @select="onBillingAddrSelect"
+                    @create="openAddrModal('billing')"
+                  />
                 </div>
                 <div v-if="selectedBillingAddr" class="po-addr-card">
                   <div class="po-addr-card-type">{{ selectedBillingAddr.address_type || 'Billing' }}</div>
@@ -231,11 +279,16 @@
               <div>
                 <label class="inv-lbl">Delivery Address</label>
                 <div class="po-addr-select-wrap">
-                  <select class="inv-fi po-addr-select" v-model="form.delivery_address_name" @change="onDeliveryAddrChange">
-                    <option value="">— Select —</option>
-                    <option v-for="a in vendorAddresses" :key="a.name" :value="a.name">{{ a.label }}</option>
-                    <option value="__new__">+ Add New Address</option>
-                  </select>
+                  <SearchableSelect
+                    v-model="form.delivery_address_name"
+                    :options="vendorAddresses"
+                    valueKey="name" labelKey="label"
+                    placeholder="— Select —"
+                    :createable="true" :staticCreate="true"
+                    createLabel="+ Add New Address"
+                    @select="onDeliveryAddrSelect"
+                    @create="openAddrModal('delivery')"
+                  />
                 </div>
                 <div v-if="selectedDeliveryAddr" class="po-addr-card">
                   <div class="po-addr-card-type">{{ selectedDeliveryAddr.address_type || 'Delivery' }}</div>
@@ -833,6 +886,7 @@ const tabs = [
 ];
 
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
+const viewMode = ref("table"); // "table" | "grid"
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const poCollapsed = reactive({ details: false, address: true, lines: false, terms: true });
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
@@ -1206,25 +1260,15 @@ function formatAddress(a) {
     .filter(Boolean).join("\n");
 }
 
-function onBillingAddrChange() {
-  if (form.billing_address_name === "__new__") {
-    form.billing_address_name = "";
-    addrModal.forField = "billing";
-    Object.assign(addrModal, { open: true, saving: false, address_title: "", address_type: "Billing", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
-  } else {
-    const a = selectedBillingAddr.value;
-    form.billing_address = a ? formatAddress(a) : "";
-  }
+function onBillingAddrSelect(opt) {
+  form.billing_address = opt ? formatAddress(opt) : "";
 }
-function onDeliveryAddrChange() {
-  if (form.delivery_address_name === "__new__") {
-    form.delivery_address_name = "";
-    addrModal.forField = "delivery";
-    Object.assign(addrModal, { open: true, saving: false, address_title: "", address_type: "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
-  } else {
-    const a = selectedDeliveryAddr.value;
-    form.delivery_address = a ? formatAddress(a) : "";
-  }
+function onDeliveryAddrSelect(opt) {
+  form.delivery_address = opt ? formatAddress(opt) : "";
+}
+function openAddrModal(field) {
+  const addrType = field === "billing" ? "Billing" : "Shipping";
+  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: addrType, address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
 }
 
 async function saveNewAddress() {
@@ -1935,4 +1979,8 @@ watch(() => form.supplier, (val) => {
   }
 }
 
+
+@media (max-width: 480px) {
+  .view-toggle-btn { display: none !important; }
+}
 </style>

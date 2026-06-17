@@ -932,9 +932,11 @@
   .inv-tl-label        { font-size: 11px; }
   .inv-tl-date         { font-size: 10px; }
 
-  /* Action bar: smaller buttons */
-  .inv-action-bar      { padding: 10px 12px; gap: 6px; }
-  .inv-ab-btn          { padding: 6px 10px; font-size: 12px; }
+  /* Action bar: icon-only, no wrap */
+  .inv-action-bar      { padding: 10px 12px; gap: 6px; flex-wrap: nowrap; overflow-x: auto; }
+  .inv-ab-btn          { padding: 6px 10px; font-size: 12px; flex-shrink: 0; }
+  .inv-ab-btn .ab-label { display: none; }
+  .inv-ab-btn.inv-ab-danger .ab-label { display: inline; }
 
   /* Tabs */
   .inv-view-tabs       { padding: 0 12px; }

@@ -27,7 +27,8 @@
   </div>
 
   <div class="b-card" style="padding:0;overflow:hidden">
-    <table class="b-table coa-tbl">
+    <!-- ── Desktop table (hidden on mobile 375–425px via media query) ── -->
+    <table class="b-table coa-tbl coa-desktop-table">
       <thead>
         <tr>
           <th style="width:36%">Account Name</th>
@@ -87,6 +88,115 @@
         </template>
       </tbody>
     </table>
+
+    <!-- ── Mobile card list (shown only on 375–425px screens via media query) ── -->
+    <div class="coa-mobile-cards">
+      <!-- Loading skeleton -->
+      <template v-if="loading">
+        <div v-for="n in 5" :key="'sk-'+n" class="coa-mobile-card coa-mobile-card--skeleton">
+          <div class="coa-mc-shimmer coa-mc-shimmer--title"></div>
+          <div class="coa-mc-shimmer coa-mc-shimmer--line"></div>
+          <div class="coa-mc-shimmer coa-mc-shimmer--line"></div>
+        </div>
+      </template>
+
+      <!-- Empty state -->
+      <div v-else-if="flatTree.length===0" class="coa-mc-empty">
+        <div class="coa-mc-empty-icon">📂</div>
+        <div class="coa-mc-empty-text">No accounts found</div>
+      </div>
+
+      <!-- Account cards -->
+      <template v-else>
+        <div v-for="row in flatTree" :key="'mc-'+row.name"
+          class="coa-mobile-card"
+          :class="[row.is_group ? 'coa-mobile-card--group' : 'coa-mobile-card--leaf']"
+          :style="'--mc-accent:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).color+';--mc-bg:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).bg"
+          @click="openEdit(row.name)">
+
+          <!-- Card header: tree indent + name + badges -->
+          <div class="coa-mc-header" :style="'padding-left:'+(8 + row.depth * 12)+'px'">
+            <div class="coa-mc-name-row">
+              <button v-if="row.is_group && hasChildren(row.name)"
+                class="coa-toggle coa-mc-toggle"
+                :class="{open: expandedGroups.has(row.name)}"
+                @click.stop="toggleGroup(row.name)">
+                <span v-html="icon('chevR',10)"></span>
+              </button>
+              <span class="coa-dot coa-mc-dot"
+                :style="'background:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).color"></span>
+              <span class="coa-mc-acct-name" :class="{'coa-mc-acct-name--bold': row.is_group}">
+                {{row.account_name || row.name}}
+              </span>
+            </div>
+            <div class="coa-mc-badges">
+              <span class="b-badge coa-mc-type-badge"
+                :style="'background:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).bg+';color:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).color">
+                {{row.root_type}}
+              </span>
+              <span v-if="row.is_group" class="coa-group-chip coa-mc-group-chip"
+                :style="'background:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).bg+';color:'+(TYPE_META_COA[row.root_type]||TYPE_META_COA.Asset).color">
+                Group
+              </span>
+              <span v-if="row.account_type" class="coa-acct-type coa-mc-acct-type-chip">
+                {{row.account_type}}
+              </span>
+            </div>
+          </div>
+
+          <!-- Card body: data rows -->
+          <div class="coa-mc-body">
+            <div class="coa-mc-row">
+              <span class="coa-mc-label">Account No.</span>
+              <span class="coa-mc-value coa-mc-value--code">{{row.code || '—'}}</span>
+            </div>
+            <div class="coa-mc-row">
+              <span class="coa-mc-label">Opening</span>
+              <span class="coa-mc-value"
+                :class="row.opening > 0 ? (row.bal_type==='Debit' ? 'coa-dr' : 'coa-cr') : 'c-muted'">
+                {{fmtINR(row.opening)}}
+              </span>
+            </div>
+            <div class="coa-mc-row">
+              <span class="coa-mc-label">Current Balance</span>
+              <span class="coa-mc-value"
+                :class="(balances[row.name]||0) > 0 ? 'coa-dr' : (balances[row.name]||0) < 0 ? 'coa-cr' : 'c-muted'">
+                <template v-if="row.is_group">—</template>
+                <template v-else-if="balancesLoading && balances[row.name] === undefined">
+                  <span style="color:#9ca3af;font-size:10px">…</span>
+                </template>
+                <template v-else>{{ fmtBal(balances[row.name]) }}</template>
+              </span>
+            </div>
+          </div>
+
+          <!-- Card footer: actions -->
+          <div class="coa-mc-footer" @click.stop>
+            <button v-if="!row.is_group && row.source==='frappe'"
+              class="b-icon-btn coa-mc-action-btn"
+              @click.stop="openLedger(row)"
+              title="View Ledger"
+              style="color:#2563eb">
+              <span v-html="icon('book',13)"></span>
+              <span class="coa-mc-action-lbl">Ledger</span>
+            </button>
+            <button class="b-icon-btn coa-mc-action-btn"
+              @click.stop="openEdit(row.name)"
+              title="Edit">
+              <span v-html="icon('edit',13)"></span>
+              <span class="coa-mc-action-lbl">Edit</span>
+            </button>
+            <button v-if="row.source!=='frappe'"
+              class="b-icon-btn danger coa-mc-action-btn"
+              @click.stop="confirmDelete(row.name)"
+              title="Delete">
+              <span v-html="icon('trash',13)"></span>
+              <span class="coa-mc-action-lbl">Delete</span>
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
   <div style="text-align:right;font-size:12px;color:#868e96;padding:6px 4px">{{flatTree.length}} account(s)</div>
 
@@ -205,7 +315,7 @@
   <!-- ── Ledger drill-down drawer ── -->
   <Teleport to="body">
     <div v-if="ledgerDrawer.open" class="coa-drawer-bg" @click.self="closeLedger">
-      <div class="coa-drawer-panel" style="width:min(960px,98vw)">
+      <div class="coa-drawer-panel ldg-panel" style="width:min(960px,98vw)">
         <div class="coa-dh" style="background:linear-gradient(135deg,#1e3a5f,#1a6ef7);color:#fff;padding:18px 24px">
           <div>
             <div class="coa-dh-title" style="color:#fff">📒 Ledger — {{ ledgerDrawer.account_label }}</div>
@@ -213,7 +323,7 @@
           </div>
           <button class="coa-dclose" style="color:#fff;background:rgba(255,255,255,.18)" @click="closeLedger"><span v-html="icon('x',16)"></span></button>
         </div>
-        <div style="padding:12px 24px;background:#f8fafc;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e5e7eb;flex-wrap:wrap">
+        <div class="ldg-toolbar" style="padding:12px 24px;background:#f8fafc;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e5e7eb;flex-wrap:wrap">
           <span style="font-size:11.5px;font-weight:600;color:#6b7280">FROM</span>
           <input v-model="ledgerDrawer.from_date" type="date" class="coa-fi" style="width:150px"/>
           <span style="font-size:11.5px;font-weight:600;color:#6b7280">TO</span>
@@ -224,42 +334,88 @@
         <div style="flex:1;overflow-y:auto;padding:16px 24px">
           <div v-if="ledgerDrawer.loading" style="text-align:center;padding:32px;color:#9ca3af">Loading ledger…</div>
           <div v-else-if="!ledgerDrawer.rows.length" style="text-align:center;padding:32px;color:#9ca3af">No transactions in this period.</div>
-          <table v-else class="b-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
-            <thead>
-              <tr style="background:#f9fafb">
-                <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Date</th>
-                <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Voucher</th>
-                <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Type</th>
-                <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Party</th>
-                <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Debit</th>
-                <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Credit</th>
-                <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="r in ledgerDrawer.rows" :key="(r.name||r.voucher_no)+'-'+r.posting_date"
-                style="border-top:1px solid #f3f4f6">
-                <td style="padding:8px 10px;color:#6b7280">{{ r.posting_date }}</td>
-                <td style="padding:8px 10px;color:#2563eb;font-weight:600">{{ r.voucher_no }}</td>
-                <td style="padding:8px 10px;color:#6b7280">{{ r.voucher_type }}</td>
-                <td style="padding:8px 10px;color:#374151" :title="r.party || ''">{{ r.party_name || r.party || '—' }}</td>
-                <td style="padding:8px 10px;text-align:right;color:#16a34a">{{ Number(r.debit||0) > 0 ? "₹"+Number(r.debit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
-                <td style="padding:8px 10px;text-align:right;color:#dc2626">{{ Number(r.credit||0) > 0 ? "₹"+Number(r.credit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
-                <td style="padding:8px 10px;text-align:right;font-weight:700" :style="{color: r.balance > 0 ? '#16a34a' : r.balance < 0 ? '#dc2626' : '#374151'}">
-                  ₹{{ Number(r.balance).toLocaleString("en-IN",{minimumFractionDigits:2}) }}
-                </td>
-              </tr>
-            </tbody>
-            <tfoot v-if="ledgerDrawer.rows.length">
-              <tr style="background:#f9fafb;border-top:2px solid #e5e7eb">
-                <td colspan="4" style="padding:10px;font-weight:700;color:#374151">Closing Balance</td>
-                <td colspan="2"></td>
-                <td style="padding:10px;text-align:right;font-weight:800;font-size:14px" :style="{color: ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance > 0 ? '#16a34a' : '#dc2626'}">
+          <template v-else>
+            <!-- Desktop ledger table (hidden on mobile) -->
+            <table class="b-table ldg-desktop-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+              <thead>
+                <tr style="background:#f9fafb">
+                  <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Date</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Voucher</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Type</th>
+                  <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Party</th>
+                  <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Debit</th>
+                  <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Credit</th>
+                  <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in ledgerDrawer.rows" :key="(r.name||r.voucher_no)+'-'+r.posting_date"
+                  style="border-top:1px solid #f3f4f6">
+                  <td style="padding:8px 10px;color:#6b7280">{{ r.posting_date }}</td>
+                  <td style="padding:8px 10px;color:#2563eb;font-weight:600">{{ r.voucher_no }}</td>
+                  <td style="padding:8px 10px;color:#6b7280">{{ r.voucher_type }}</td>
+                  <td style="padding:8px 10px;color:#374151" :title="r.party || ''">{{ r.party_name || r.party || '—' }}</td>
+                  <td style="padding:8px 10px;text-align:right;color:#16a34a">{{ Number(r.debit||0) > 0 ? "₹"+Number(r.debit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
+                  <td style="padding:8px 10px;text-align:right;color:#dc2626">{{ Number(r.credit||0) > 0 ? "₹"+Number(r.credit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</td>
+                  <td style="padding:8px 10px;text-align:right;font-weight:700" :style="{color: r.balance > 0 ? '#16a34a' : r.balance < 0 ? '#dc2626' : '#374151'}">
+                    ₹{{ Number(r.balance).toLocaleString("en-IN",{minimumFractionDigits:2}) }}
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot v-if="ledgerDrawer.rows.length">
+                <tr style="background:#f9fafb;border-top:2px solid #e5e7eb">
+                  <td colspan="4" style="padding:10px;font-weight:700;color:#374151">Closing Balance</td>
+                  <td colspan="2"></td>
+                  <td style="padding:10px;text-align:right;font-weight:800;font-size:14px" :style="{color: ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance > 0 ? '#16a34a' : '#dc2626'}">
+                    ₹{{ Number(ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance).toLocaleString("en-IN",{minimumFractionDigits:2}) }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <!-- Mobile ledger cards (shown only at 375–425px) -->
+            <div class="ldg-mobile-cards">
+              <div v-for="r in ledgerDrawer.rows" :key="'lmc-'+(r.name||r.voucher_no)+'-'+r.posting_date"
+                class="ldg-entry-card"
+                :class="r.balance > 0 ? 'ldg-card--dr' : r.balance < 0 ? 'ldg-card--cr' : 'ldg-card--zero'">
+                <!-- Row 1: Date + Voucher type -->
+                <div class="ldg-card-top">
+                  <span class="ldg-card-date">{{ r.posting_date }}</span>
+                  <span class="ldg-card-vtype">{{ r.voucher_type }}</span>
+                </div>
+                <!-- Row 2: Voucher no + Party -->
+                <div class="ldg-card-mid">
+                  <span class="ldg-card-voucher">{{ r.voucher_no }}</span>
+                  <span class="ldg-card-party">{{ r.party_name || r.party || '—' }}</span>
+                </div>
+                <!-- Row 3: Debit | Credit | Balance strip -->
+                <div class="ldg-card-strip">
+                  <div class="ldg-strip-cell">
+                    <span class="ldg-strip-lbl">Debit</span>
+                    <span class="ldg-strip-val ldg-strip-dr">{{ Number(r.debit||0) > 0 ? "₹"+Number(r.debit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</span>
+                  </div>
+                  <div class="ldg-strip-cell ldg-strip-cell--mid">
+                    <span class="ldg-strip-lbl">Credit</span>
+                    <span class="ldg-strip-val ldg-strip-cr">{{ Number(r.credit||0) > 0 ? "₹"+Number(r.credit).toLocaleString("en-IN",{minimumFractionDigits:2}) : '—' }}</span>
+                  </div>
+                  <div class="ldg-strip-cell">
+                    <span class="ldg-strip-lbl">Balance</span>
+                    <span class="ldg-strip-val" :style="{color: r.balance > 0 ? '#16a34a' : r.balance < 0 ? '#dc2626' : '#374151'}">
+                      ₹{{ Number(r.balance).toLocaleString("en-IN",{minimumFractionDigits:2}) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <!-- Closing balance card -->
+              <div v-if="ledgerDrawer.rows.length" class="ldg-closing-card">
+                <span class="ldg-closing-lbl">Closing Balance</span>
+                <span class="ldg-closing-val"
+                  :style="{color: ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance > 0 ? '#16a34a' : '#dc2626'}">
                   ₹{{ Number(ledgerDrawer.rows[ledgerDrawer.rows.length-1].balance).toLocaleString("en-IN",{minimumFractionDigits:2}) }}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+                </span>
+              </div>
+            </div><!-- end .ldg-mobile-cards -->
+          </template>
         </div>
       </div>
     </div>
@@ -625,3 +781,457 @@ onMounted(async () => {
   loadBalances();
 });
 </script>
+
+<style scoped>
+/* ═══════════════════════════════════════════════════════════════════
+   COA MOBILE CARD VIEW  –  375 px … 425 px
+   By default (all widths): mobile cards hidden, desktop table shown.
+   Inside the media query: flip visibility.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Default: mobile card container hidden everywhere ── */
+.coa-mobile-cards {
+  display: none;
+}
+
+/* ── Default: desktop table visible everywhere ── */
+.coa-desktop-table {
+  display: table;
+}
+
+/* ── Activate card layout only on 375 px – 425 px ── */
+@media (min-width: 375px) and (max-width: 425.98px) {
+
+  /* Hide desktop table */
+  .coa-desktop-table {
+    display: none !important;
+  }
+
+  /* Show card list */
+  .coa-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 10px;
+    background: #f8fafc;
+  }
+
+  /* ── Individual account card ── */
+  .coa-mobile-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    border-left: 4px solid var(--mc-accent, #0C8599);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow 0.18s ease, transform 0.12s ease;
+  }
+
+  .coa-mobile-card:active {
+    transform: scale(0.985);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Group cards get a subtle tinted header */
+  .coa-mobile-card--group {
+    background: linear-gradient(160deg, var(--mc-bg, #E0F7FA) 0%, #ffffff 60%);
+  }
+
+  /* ── Card header ── */
+  .coa-mc-header {
+    padding: 11px 12px 8px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .coa-mc-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    margin-bottom: 6px;
+  }
+
+  .coa-mc-toggle {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s;
+  }
+
+  .coa-mc-toggle.open {
+    background: var(--mc-bg, #E0F7FA);
+    border-color: var(--mc-accent, #0C8599);
+    transform: rotate(90deg);
+  }
+
+  .coa-mc-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+  }
+
+  .coa-mc-acct-name {
+    font-size: 13.5px;
+    color: #1a202c;
+    line-height: 1.3;
+    word-break: break-word;
+  }
+
+  .coa-mc-acct-name--bold {
+    font-weight: 700;
+  }
+
+  /* ── Badge row under the name ── */
+  .coa-mc-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin-top: 2px;
+  }
+
+  .coa-mc-type-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+  }
+
+  .coa-mc-group-chip {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+  }
+
+  .coa-mc-acct-type-chip {
+    font-size: 10px;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 20px;
+  }
+
+  /* ── Card body: labeled data rows ── */
+  .coa-mc-body {
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .coa-mc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 22px;
+  }
+
+  .coa-mc-label {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .coa-mc-value {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #374151;
+    text-align: right;
+    word-break: break-all;
+  }
+
+  .coa-mc-value--code {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  /* ── Card footer: action buttons ── */
+  .coa-mc-footer {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 7px 10px 8px;
+    border-top: 1px solid #f3f4f6;
+    background: #fafafa;
+  }
+
+  .coa-mc-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 500;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .coa-mc-action-btn:hover {
+    background: #e5e7eb;
+    border-color: #d1d5db;
+  }
+
+  .coa-mc-action-btn.danger {
+    color: #dc2626;
+    background: #fff1f2;
+    border-color: #fecaca;
+  }
+
+  .coa-mc-action-btn.danger:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
+
+  .coa-mc-action-lbl {
+    font-size: 11px;
+  }
+
+  /* ── Skeleton shimmer cards ── */
+  .coa-mobile-card--skeleton {
+    pointer-events: none;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-left-color: #e5e7eb;
+    background: #ffffff;
+  }
+
+  .coa-mc-shimmer {
+    border-radius: 6px;
+    background: linear-gradient(90deg, #f3f4f6 25%, #e9ecef 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: coa-shimmer 1.4s infinite;
+  }
+
+  .coa-mc-shimmer--title {
+    height: 14px;
+    width: 65%;
+  }
+
+  .coa-mc-shimmer--line {
+    height: 11px;
+    width: 45%;
+  }
+
+  @keyframes coa-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ── Empty state ── */
+  .coa-mc-empty {
+    text-align: center;
+    padding: 36px 16px;
+    color: #9ca3af;
+  }
+
+  .coa-mc-empty-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+  }
+
+  .coa-mc-empty-text {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* ── Utility overrides inside mobile view ── */
+  .coa-mobile-cards .coa-dr { color: #16a34a; }
+  .coa-mobile-cards .coa-cr { color: #dc2626; }
+  .coa-mobile-cards .c-muted { color: #9ca3af; font-weight: 400; }
+
+  /* ───────────────────────────────────────────────────────────
+     LEDGER DRAWER – Mobile responsive (375–425px)
+     ─────────────────────────────────────────────────────────── */
+
+  /* Ledger drawer: full screen on mobile */
+  .ldg-panel {
+    width: 100% !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Toolbar: stack date filters vertically */
+  .ldg-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+  }
+
+  .ldg-toolbar > span { font-size: 10.5px !important; }
+
+  .ldg-toolbar input[type="date"] {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .ldg-toolbar button {
+    width: 100%;
+  }
+
+  .ldg-toolbar button[style*="margin-left:auto"] {
+    margin-left: 0 !important;
+  }
+
+  /* Hide desktop ledger table on mobile */
+  .ldg-desktop-table {
+    display: none !important;
+  }
+
+  /* Mobile ledger cards: hidden by default, shown in this breakpoint */
+  .ldg-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 10px;
+  }
+
+  /* Individual transaction card */
+  .ldg-entry-card {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    border-left: 3px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+
+  /* Left border by balance direction */
+  .ldg-card--dr  { border-left-color: #16a34a; }
+  .ldg-card--cr  { border-left-color: #dc2626; }
+  .ldg-card--zero{ border-left-color: #d1d5db; }
+
+  /* Row 1: date + voucher type */
+  .ldg-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px 4px;
+    gap: 8px;
+  }
+  .ldg-card-date {
+    font-size: 11.5px;
+    color: #6b7280;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .ldg-card-vtype {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #374151;
+    background: #f3f4f6;
+    border-radius: 20px;
+    padding: 1px 8px;
+    flex-shrink: 0;
+  }
+
+  /* Row 2: voucher no + party */
+  .ldg-card-mid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 12px 8px;
+    gap: 8px;
+  }
+  .ldg-card-voucher {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #2563eb;
+    word-break: break-all;
+  }
+  .ldg-card-party {
+    font-size: 11.5px;
+    color: #374151;
+    text-align: right;
+    flex-shrink: 0;
+    max-width: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Row 3: 3-col Debit | Credit | Balance strip */
+  .ldg-card-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid #f3f4f6;
+    background: #fafafa;
+  }
+  .ldg-strip-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 4px;
+    gap: 2px;
+  }
+  .ldg-strip-cell--mid {
+    border-left: 1px solid #f3f4f6;
+    border-right: 1px solid #f3f4f6;
+  }
+  .ldg-strip-lbl {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #9ca3af;
+  }
+  .ldg-strip-val {
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+  }
+  .ldg-strip-dr { color: #16a34a; }
+  .ldg-strip-cr { color: #dc2626; }
+
+  /* Closing balance card */
+  .ldg-closing-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 2px;
+  }
+  .ldg-closing-lbl {
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+  }
+  .ldg-closing-val {
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+} /* end @media 375px–425px */
+</style>

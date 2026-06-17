@@ -1,24 +1,25 @@
 <template>
-<div style="display:flex;flex-direction:column;height:calc(100vh - 56px);overflow:hidden">
-  <div style="display:flex;flex:1;gap:0;overflow:hidden">
+<div class="cc-root">
+  <div class="cc-layout">
 
-    <div style="width:340px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid #E2E8F0;background:#fff">
-      <div style="padding:12px 16px;border-bottom:1px solid #E2E8F0;background:#F8F9FC;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-        <span style="font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#868E96">{{loading?"Loading...":allCC.length+" cost centers"}}</span>
+    <!-- LEFT: Tree sidebar -->
+    <div class="cc-sidebar" :class="{'cc-sidebar--hidden': selected}">
+      <div class="cc-sidebar-hdr">
+        <span class="cc-sidebar-count">{{loading?"Loading...":allCC.length+" cost centers"}}</span>
         <div style="display:flex;gap:6px">
           <button style="border:1px solid #E2E8F0;border-radius:5px;padding:4px 7px;background:#fff;cursor:pointer;color:#868E96;font-size:12px;display:inline-flex;align-items:center" @click="expandAll(true)" title="Expand all"><span v-html="icon('chevD',13)"></span></button>
           <button style="border:1px solid #E2E8F0;border-radius:5px;padding:4px 7px;background:#fff;cursor:pointer;color:#868E96;font-size:12px;display:inline-flex;align-items:center" @click="expandAll(false)" title="Collapse all"><span v-html="icon('chevU',13)"></span></button>
           <button class="b-btn b-btn-primary" style="font-size:12px;padding:5px 10px" @click="openAdd()"><span v-html="icon('plus',12)"></span> New</button>
         </div>
       </div>
-      <div style="padding:8px 12px;border-bottom:1px solid #F1F3F5;flex-shrink:0">
+      <div class="cc-sidebar-search">
         <input v-model="ccSearch" type="text" placeholder="Search cost centers..." style="width:100%;border:1px solid #E2E8F0;border-radius:6px;padding:6px 10px;font-size:13px;outline:none;font-family:inherit"/>
       </div>
-      <div style="overflow-y:auto;flex:1">
+      <div class="cc-sidebar-tree">
         <div v-if="loading" style="padding:20px;text-align:center;color:#868E96">Loading...</div>
         <template v-else>
           <div v-for="node in visibleNodes" :key="node.name"
-            style="display:flex;align-items:center;border-bottom:1px solid #F8F9FC;cursor:pointer;transition:background .12s;user-select:none"
+            class="cc-tree-row"
             :style="{background:selected===node.name?'rgba(59,91,219,.07)':'',borderLeft:selected===node.name?'3px solid #3B5BDB':'3px solid transparent'}"
             @click="selectCC(node.name)">
             <div style="width:20px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#868E96;cursor:pointer;margin-left:4px"
@@ -40,7 +41,17 @@
       </div>
     </div>
 
-    <div style="flex:1;overflow-y:auto;padding:20px;background:#F3F4F6">
+    <!-- RIGHT: Detail panel -->
+    <div class="cc-detail" :class="{'cc-detail--visible': selected}">
+
+      <!-- Mobile back button -->
+      <div class="cc-mobile-back">
+        <button @click="selected=null" class="cc-back-btn">
+          <span style="font-size:16px;line-height:1">&#8592;</span>
+          Back to list
+        </button>
+      </div>
+
       <div v-if="!selectedCC" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:#868E96;padding:40px">
         <div style="font-size:40px;margin-bottom:12px">🏢</div>
         <div style="font-size:15px;font-weight:600;color:#1A1D23;margin-bottom:6px">Select a cost center</div>
@@ -49,8 +60,8 @@
       </div>
 
       <template v-else>
-        <div class="b-card" style="padding:0;overflow:hidden;margin-bottom:16px">
-          <div style="padding:14px 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between">
+        <div class="b-card cc-detail-card">
+          <div class="cc-detail-hdr">
             <div style="display:flex;align-items:center;gap:10px">
               <div style="width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px" :style="{background:selectedCC.color+'22',color:selectedCC.color}">{{CC_TYPE_ICONS[selectedCC.type]||"🏢"}}</div>
               <div>
@@ -58,7 +69,7 @@
                 <div style="font-size:12px;color:#868E96">{{selectedCC.type}}{{selectedCC.code?" · "+selectedCC.code:""}}{{selectedCC.parent?" · under "+selectedCC.parent:""}}</div>
               </div>
             </div>
-            <div style="display:flex;gap:8px">
+            <div class="cc-detail-actions">
               <button class="b-btn b-btn-ghost" @click="openEdit(selectedCC.name)"><span v-html="icon('edit',13)"></span>Edit</button>
               <button v-if="selectedCC.source!=='frappe'" style="border:1px solid rgba(201,42,42,.3);border-radius:5px;cursor:pointer;padding:5px 7px;display:inline-flex;color:#C92A2A;background:none" @click="confirmDel(selectedCC.name)"><span v-html="icon('trash',14)"></span></button>
             </div>
@@ -67,18 +78,18 @@
             <div v-if="selectedCC.desc" style="font-size:13px;color:#868E96;margin-bottom:16px;line-height:1.5">{{selectedCC.desc}}</div>
 
             <template v-if="!selectedCC.is_group">
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px">
-                  <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Annual Budget</div>
-                  <div style="font-size:17px;font-weight:700;color:#3B5BDB">{{fmtINR(selectedCC.budget)||"—"}}</div>
+              <div class="cc-stat-grid">
+                <div class="cc-stat-box">
+                  <div class="cc-stat-lbl">Annual Budget</div>
+                  <div class="cc-stat-val" style="color:#3B5BDB">{{fmtINR(selectedCC.budget)||"—"}}</div>
                 </div>
-                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px">
-                  <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Spent (YTD)</div>
-                  <div style="font-size:17px;font-weight:700;font-family:var(--mono)" :style="{color:pct(spend[selectedCC.name]||0,selectedCC.budget)>=100?'#C92A2A':pct(spend[selectedCC.name]||0,selectedCC.budget)>=80?'#E67700':'#1A1D23'}">{{fmtINR(spend[selectedCC.name]||0)}}</div>
+                <div class="cc-stat-box">
+                  <div class="cc-stat-lbl">Spent (YTD)</div>
+                  <div class="cc-stat-val" :style="{color:pct(spend[selectedCC.name]||0,selectedCC.budget)>=100?'#C92A2A':pct(spend[selectedCC.name]||0,selectedCC.budget)>=80?'#E67700':'#1A1D23'}">{{fmtINR(spend[selectedCC.name]||0)}}</div>
                 </div>
-                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px">
-                  <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">{{selectedCC.budget-(spend[selectedCC.name]||0)>=0?"Remaining":"Over Budget"}}</div>
-                  <div style="font-size:17px;font-weight:700;font-family:var(--mono)" :style="{color:selectedCC.budget-(spend[selectedCC.name]||0)>=0?'#2F9E44':'#C92A2A'}">{{fmtINR(Math.abs(selectedCC.budget-(spend[selectedCC.name]||0)))}}</div>
+                <div class="cc-stat-box">
+                  <div class="cc-stat-lbl">{{selectedCC.budget-(spend[selectedCC.name]||0)>=0?"Remaining":"Over Budget"}}</div>
+                  <div class="cc-stat-val" :style="{color:selectedCC.budget-(spend[selectedCC.name]||0)>=0?'#2F9E44':'#C92A2A'}">{{fmtINR(Math.abs(selectedCC.budget-(spend[selectedCC.name]||0)))}}</div>
                 </div>
               </div>
               <div v-if="selectedCC.budget" style="margin-bottom:20px">
@@ -93,10 +104,19 @@
             </template>
 
             <template v-if="selectedCC.is_group">
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Child Centers</div><div style="font-size:17px;font-weight:700;font-family:var(--mono)">{{ccChildren.length}}</div></div>
-                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Total Budget</div><div style="font-size:17px;font-weight:700;color:#3B5BDB">{{fmtINR(ccChildren.reduce((s,c)=>s+Number(c.budget||0),0))}}</div></div>
-                <div style="background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px"><div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px">Total Spent</div><div style="font-size:17px;font-weight:700;font-family:var(--mono)">{{fmtINR(ccChildren.reduce((s,c)=>s+(spend[c.name]||0),0))}}</div></div>
+              <div class="cc-stat-grid">
+                <div class="cc-stat-box">
+                  <div class="cc-stat-lbl">Child Centers</div>
+                  <div class="cc-stat-val">{{ccChildren.length}}</div>
+                </div>
+                <div class="cc-stat-box">
+                  <div class="cc-stat-lbl">Total Budget</div>
+                  <div class="cc-stat-val" style="color:#3B5BDB">{{fmtINR(ccChildren.reduce((s,c)=>s+Number(c.budget||0),0))}}</div>
+                </div>
+                <div class="cc-stat-box">
+                  <div class="cc-stat-lbl">Total Spent</div>
+                  <div class="cc-stat-val">{{fmtINR(ccChildren.reduce((s,c)=>s+(spend[c.name]||0),0))}}</div>
+                </div>
               </div>
               <div v-if="ccChildren.length">
                 <div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96;margin-bottom:10px">Sub-centers expense allocation</div>
@@ -114,7 +134,7 @@
 
         <div v-if="!selectedCC.is_group" class="b-card" style="padding:0;overflow:hidden">
           <div style="padding:12px 20px;border-bottom:1px solid #E2E8F0"><span style="font-size:13px;font-weight:600">Budget Settings</span></div>
-          <div style="padding:14px 20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:13px">
+          <div class="cc-budget-grid">
             <div><div style="color:#868E96;font-size:11.5px;margin-bottom:3px">Period</div><div style="font-weight:500">{{selectedCC.budget_period||"Annual"}}</div></div>
             <div><div style="color:#868E96;font-size:11.5px;margin-bottom:3px">Alert at</div><div style="font-weight:500">{{selectedCC.alert_pct||80}}%</div></div>
             <div><div style="color:#868E96;font-size:11.5px;margin-bottom:3px">Action</div><div style="font-weight:500">{{selectedCC.budget_action||"Warn"}}</div></div>
@@ -425,3 +445,202 @@ async function doDelete() {
 
 onMounted(load);
 </script>
+
+<style scoped>
+/* ═══════════════════════════════════════════════════════════
+   Cost Centers — base layout
+   ═══════════════════════════════════════════════════════════ */
+.cc-root   { display:flex;flex-direction:column;height:calc(100vh - 56px);overflow:hidden; }
+.cc-layout { display:flex;flex:1;gap:0;overflow:hidden; }
+
+/* Sidebar */
+.cc-sidebar {
+  width: 340px; flex-shrink:0; display:flex; flex-direction:column;
+  border-right:1px solid #E2E8F0; background:#fff;
+}
+.cc-sidebar-hdr {
+  padding:12px 16px; border-bottom:1px solid #E2E8F0;
+  background:#F8F9FC; display:flex; align-items:center;
+  justify-content:space-between; flex-shrink:0;
+}
+.cc-sidebar-count { font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#868E96; }
+.cc-sidebar-search { padding:8px 12px;border-bottom:1px solid #F1F3F5;flex-shrink:0; }
+.cc-sidebar-tree   { overflow-y:auto;flex:1; }
+
+/* Tree rows */
+.cc-tree-row {
+  display:flex;align-items:center;border-bottom:1px solid #F8F9FC;
+  cursor:pointer;transition:background .12s;user-select:none;
+}
+
+/* Detail panel */
+.cc-detail {
+  flex:1; overflow-y:auto; padding:20px; background:#F3F4F6;
+}
+
+/* Stat grid (3 cols on desktop) */
+.cc-stat-grid {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:12px; margin-bottom:16px;
+}
+.cc-stat-box  { background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px; }
+.cc-stat-lbl  { font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#868E96;margin-bottom:4px; }
+.cc-stat-val  { font-size:17px;font-weight:700; }
+
+/* Detail header */
+.cc-detail-hdr    { padding:14px 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between; }
+.cc-detail-actions { display:flex;gap:8px; }
+.cc-detail-card   { padding:0;overflow:hidden;margin-bottom:16px; }
+
+/* Budget settings grid */
+.cc-budget-grid {
+  padding:14px 20px; display:grid;
+  grid-template-columns:1fr 1fr 1fr; gap:16px; font-size:13px;
+}
+
+/* Mobile back button — hidden by default */
+.cc-mobile-back { display:none; }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE  –  375 px … 425.98 px
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 375px) and (max-width: 425.98px) {
+
+  /* Root container: full height column */
+  .cc-root {
+    height: auto;
+    min-height: calc(100vh - 56px);
+    overflow: auto;
+  }
+
+  /* Stack sidebar + detail vertically */
+  .cc-layout {
+    flex-direction: column;
+    overflow: visible;
+    height: auto;
+  }
+
+  /* ── SIDEBAR: full width, fixed height list ── */
+  .cc-sidebar {
+    width: 100%;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid #E2E8F0;
+    max-height: 300px;       /* Compact list — scrollable */
+  }
+
+  /* When a CC is selected on mobile: hide the sidebar list */
+  .cc-sidebar--hidden {
+    display: none;
+  }
+
+  .cc-sidebar-hdr {
+    padding: 10px 12px;
+  }
+
+  .cc-sidebar-count {
+    font-size: 11px;
+  }
+
+  .cc-sidebar-tree {
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  /* ── DETAIL: full width, scrollable ── */
+  .cc-detail {
+    width: 100%;
+    flex: none;
+    padding: 12px 10px;
+    min-height: 50vh;
+    display: none;           /* Hidden by default — shown when selected */
+  }
+
+  /* Show detail panel when a CC is selected */
+  .cc-detail--visible {
+    display: block;
+  }
+
+  /* ── Mobile back button ── */
+  .cc-mobile-back {
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .cc-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: background 0.15s;
+  }
+
+  .cc-back-btn:hover { background: #f9fafb; }
+
+  /* ── Stat grid: 2 cols on mobile (3rd wraps) ── */
+  .cc-stat-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* 3rd stat box spans full width */
+  .cc-stat-box:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .cc-stat-val {
+    font-size: 15px !important;
+  }
+
+  .cc-stat-lbl {
+    font-size: 9.5px !important;
+  }
+
+  /* ── Detail card header: wrap on very small screens ── */
+  .cc-detail-hdr {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px !important;
+  }
+
+  .cc-detail-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  /* ── Budget settings: 3 cols still fits at 375px ── */
+  .cc-budget-grid {
+    grid-template-columns: 1fr 1fr 1fr !important;
+    padding: 12px 14px !important;
+    gap: 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* Sub-center allocation bars: tighter label */
+  .cc-detail [style*="width:120px"] {
+    width: 90px !important;
+    font-size: 11.5px !important;
+  }
+
+  .cc-detail [style*="width:70px"] {
+    width: 58px !important;
+    font-size: 11px !important;
+  }
+
+  /* Drawer: full screen on mobile */
+  .cc-drawer-open > div {
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+} /* end @media 375px–425.98px */
+</style>

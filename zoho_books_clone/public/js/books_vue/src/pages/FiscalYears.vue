@@ -7,7 +7,7 @@
     <span>Showing fiscal years for <strong>{{ currentCompany }}</strong></span>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+  <div class="fy-stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
     <div class="b-card" style="padding:13px 16px">
       <div style="font-size:10.5px;color:#868E96;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Total Years</div>
       <div style="font-size:22px;font-weight:700;">{{stats.total}}</div>
@@ -30,7 +30,7 @@
     </div>
   </div>
 
-  <div class="b-card" style="padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap" :style="{borderLeft: lockDate ? '3px solid #C92A2A' : '3px solid #E2E8F0'}">
+  <div class="b-card fy-lock-card" style="padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap" :style="{borderLeft: lockDate ? '3px solid #C92A2A' : '3px solid #E2E8F0'}">
     <span v-html="icon('lock',16)" :style="{color: lockDate ? '#C92A2A' : '#868E96'}"></span>
     <div>
       <div style="font-size:13px;font-weight:700;color:#1A1D23">Books Lock Date</div>
@@ -45,9 +45,9 @@
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start">
+  <div class="fy-main-layout" style="display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start">
 
-    <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="fy-left-panel" :class="{'fy-left-panel--hidden': selectedYear}" style="display:flex;flex-direction:column;gap:12px">
       <div v-if="loading" class="b-card" style="padding:40px;text-align:center;color:#868E96">Loading fiscal years…</div>
       <template v-else>
         <div v-for="y in allYears" :key="y.name"
@@ -96,7 +96,16 @@
       </template>
     </div>
 
-    <div>
+    <div class="fy-right-panel" :class="{'fy-right-panel--visible': selectedYear}">
+
+      <!-- Mobile back button -->
+      <div class="fy-mobile-back">
+        <button @click="selectedYear=null" class="fy-back-btn">
+          <span style="font-size:16px;line-height:1">&#8592;</span>
+          Back to years
+        </button>
+      </div>
+
       <div v-if="!selectedYearData" class="b-card" style="padding:48px;text-align:center;color:#868E96">
         <div style="font-size:40px;margin-bottom:14px">📅</div>
         <div style="font-weight:600;font-size:15px;color:#1A1D23;margin-bottom:6px">Select a fiscal year</div>
@@ -140,33 +149,67 @@
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 140px 110px 90px;gap:0;padding:8px 16px;background:#F8F9FC;border-bottom:1px solid #E2E8F0;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96">
-            <span>Period</span><span>Date Range</span><span>Status</span><span style="text-align:center">Action</span>
-          </div>
-          <div v-for="(p,i) in (selectedYearData.periods||[])" :key="i"
-            style="display:grid;grid-template-columns:1fr 140px 110px 90px;align-items:center;gap:0;padding:9px 16px;border-bottom:1px solid #F1F3F5;font-size:13px;transition:background .12s"
-            :style="{background:p.locked?'#FFF5F5':p.is_current?'#EEF2FF':'#fff'}">
-            <div>
-              <span :style="{fontWeight:p.is_current?'700':'400',color:p.is_current?'#1A1D23':'#344054'}">{{p.name}}</span>
-              <span v-if="p.is_current" style="margin-left:6px;font-size:10px;background:#EEF2FF;color:#3B5BDB;padding:1px 6px;border-radius:10px;font-weight:600">NOW</span>
+          <!-- Desktop periods table (hidden on mobile) -->
+          <div class="fy-desktop-periods">
+            <div style="display:grid;grid-template-columns:1fr 140px 110px 90px;gap:0;padding:8px 16px;background:#F8F9FC;border-bottom:1px solid #E2E8F0;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96">
+              <span>Period</span><span>Date Range</span><span>Status</span><span style="text-align:center">Action</span>
             </div>
-            <div style="font-size:11.5px;color:#868E96;">{{fmtShort(p.start)}} – {{fmtShort(p.end)}}</div>
-            <div>
-              <span v-if="p.locked" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#FFE3E3;color:#C92A2A">🔒 Locked</span>
-              <span v-else-if="p.is_current" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#EEF2FF;color:#3B5BDB">Open</span>
-              <span v-else-if="p.is_past" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#F8F9FA;color:#868E96">Past</span>
-              <span v-else style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#F8F9FA;color:#ADB5BD">Future</span>
+            <div v-for="(p,i) in (selectedYearData.periods||[])" :key="i"
+              style="display:grid;grid-template-columns:1fr 140px 110px 90px;align-items:center;gap:0;padding:9px 16px;border-bottom:1px solid #F1F3F5;font-size:13px;transition:background .12s"
+              :style="{background:p.locked?'#FFF5F5':p.is_current?'#EEF2FF':'#fff'}">
+              <div>
+                <span :style="{fontWeight:p.is_current?'700':'400',color:p.is_current?'#1A1D23':'#344054'}">{{p.name}}</span>
+                <span v-if="p.is_current" style="margin-left:6px;font-size:10px;background:#EEF2FF;color:#3B5BDB;padding:1px 6px;border-radius:10px;font-weight:600">NOW</span>
+              </div>
+              <div style="font-size:11.5px;color:#868E96;">{{fmtShort(p.start)}} – {{fmtShort(p.end)}}</div>
+              <div>
+                <span v-if="p.locked" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#FFE3E3;color:#C92A2A">🔒 Locked</span>
+                <span v-else-if="p.is_current" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#EEF2FF;color:#3B5BDB">Open</span>
+                <span v-else-if="p.is_past" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#F8F9FA;color:#868E96">Past</span>
+                <span v-else style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#F8F9FA;color:#ADB5BD">Future</span>
+              </div>
+              <div style="text-align:center">
+                <button v-if="!p.is_current"
+                  style="background:none;border:1px solid;border-radius:5px;cursor:pointer;padding:3px 8px;font-size:11px;font-family:inherit;transition:all .15s"
+                  :style="{borderColor:p.locked?'#C92A2A':'#CED4DA',color:p.locked?'#C92A2A':'#868E96',background:p.locked?'#FFF5F5':'#fff'}"
+                  @click="togglePeriodLock(selectedYearData.name,i)">
+                  {{p.locked?"Unlock":"Lock"}}
+                </button>
+                <span v-else style="color:#CED4DA;font-size:12px">—</span>
+              </div>
             </div>
-            <div style="text-align:center">
-              <button v-if="!p.is_current"
-                style="background:none;border:1px solid;border-radius:5px;cursor:pointer;padding:3px 8px;font-size:11px;font-family:inherit;transition:all .15s"
-                :style="{borderColor:p.locked?'#C92A2A':'#CED4DA',color:p.locked?'#C92A2A':'#868E96',background:p.locked?'#FFF5F5':'#fff'}"
-                @click="togglePeriodLock(selectedYearData.name,i)">
-                {{p.locked?"Unlock":"Lock"}}
-              </button>
-              <span v-else style="color:#CED4DA;font-size:12px">—</span>
+          </div><!-- end .fy-desktop-periods -->
+
+          <!-- Mobile period cards (shown only at 375–425px) -->
+          <div class="fy-mobile-periods">
+            <div v-for="(p,i) in (selectedYearData.periods||[])" :key="'mc'+i"
+              class="fy-period-card"
+              :class="p.locked?'fy-pc--locked':p.is_current?'fy-pc--current':p.is_past?'fy-pc--past':'fy-pc--future'"
+              :style="{background:p.locked?'#FFF5F5':p.is_current?'#EEF2FF':'#fff'}">
+              <div class="fy-pc-top">
+                <div class="fy-pc-name">
+                  <span :style="{fontWeight:p.is_current?700:500,color:p.is_current?'#1A1D23':'#344054'}">{{p.name}}</span>
+                  <span v-if="p.is_current" style="margin-left:6px;font-size:10px;background:#EEF2FF;color:#3B5BDB;padding:1px 6px;border-radius:10px;font-weight:600">NOW</span>
+                </div>
+                <div class="fy-pc-status">
+                  <span v-if="p.locked" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#FFE3E3;color:#C92A2A">🔒 Locked</span>
+                  <span v-else-if="p.is_current" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#EEF2FF;color:#3B5BDB">Open</span>
+                  <span v-else-if="p.is_past" style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#F8F9FA;color:#868E96">Past</span>
+                  <span v-else style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;background:#F8F9FA;color:#ADB5BD">Future</span>
+                </div>
+              </div>
+              <div class="fy-pc-bottom">
+                <span class="fy-pc-date">{{fmtShort(p.start)}} – {{fmtShort(p.end)}}</span>
+                <button v-if="!p.is_current"
+                  class="fy-pc-lock-btn"
+                  :class="{' fy-pc-lock-btn--locked':p.locked}"
+                  @click="togglePeriodLock(selectedYearData.name,i)">
+                  {{p.locked?"Unlock":"Lock"}}
+                </button>
+                <span v-else style="color:#CED4DA;font-size:12px">—</span>
+              </div>
             </div>
-          </div>
+          </div><!-- end .fy-mobile-periods -->
 
           <div style="padding:10px 16px;background:#F8F9FC;border-top:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center">
             <span style="font-size:12px;color:#868E96">
@@ -665,3 +708,154 @@ async function clearLockDate() {
 
 onMounted(() => { load(); loadLockDate(); });
 </script>
+
+<style scoped>
+/* ═══════════════════════════════════════════════════════════
+   Fiscal Years — base layout tokens
+   ═══════════════════════════════════════════════════════════ */
+.fy-mobile-periods  { display: none; }
+.fy-desktop-periods { display: block; }
+.fy-mobile-back     { display: none; }
+.fy-right-panel     { display: block; }
+.fy-left-panel      { display: flex; }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE  –  375 px … 425.98 px
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 375px) and (max-width: 425.98px) {
+
+  /* ── Stats strip: 2-col ── */
+  .fy-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* ── Lock date card: stack vertically ── */
+  .fy-lock-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+  .fy-lock-card > div:last-child {
+    margin-left: 0 !important;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .fy-lock-card > div:last-child input[type="date"] {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .fy-lock-card > div:last-child button { width: 100%; }
+
+  /* ── Main layout: single column ── */
+  .fy-main-layout {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  .fy-left-panel { width: 100%; flex-direction: column; }
+
+  .fy-left-panel--hidden { display: none !important; }
+
+  .fy-right-panel { display: none; width: 100%; }
+  .fy-right-panel--visible { display: block !important; }
+
+  /* ── Back button ── */
+  .fy-mobile-back { display: block; margin-bottom: 12px; }
+
+  .fy-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    transition: background 0.15s;
+  }
+  .fy-back-btn:hover { background: #f9fafb; }
+
+  /* ── Period TABLE → hidden on mobile ── */
+  .fy-desktop-periods { display: none !important; }
+
+  /* ── Period CARDS → shown on mobile ── */
+  .fy-mobile-periods {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 10px;
+    background: #f8fafc;
+  }
+
+  .fy-period-card {
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    border-left: 3px solid #E2E8F0;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .fy-pc--locked  { border-left-color: #C92A2A; }
+  .fy-pc--current { border-left-color: #3B5BDB; }
+  .fy-pc--past    { border-left-color: #ADB5BD; }
+  .fy-pc--future  { border-left-color: #DEE2E6; }
+
+  .fy-pc-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .fy-pc-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 13px;
+  }
+  .fy-pc-status { flex-shrink: 0; }
+
+  .fy-pc-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .fy-pc-date { font-size: 11.5px; color: #868E96; }
+
+  .fy-pc-lock-btn {
+    background: #fff;
+    border: 1px solid #CED4DA;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 4px 12px;
+    font-size: 11.5px;
+    font-family: inherit;
+    color: #868E96;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .fy-pc-lock-btn--locked {
+    border-color: #C92A2A;
+    color: #C92A2A;
+    background: #FFF5F5;
+  }
+
+  /* Drawer: full screen */
+  div[style*="width:480px"] {
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+} /* end @media 375px–425.98px */
+</style>

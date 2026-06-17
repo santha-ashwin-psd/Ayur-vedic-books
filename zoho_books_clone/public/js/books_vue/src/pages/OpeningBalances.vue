@@ -4,7 +4,8 @@
     <strong>What is this?</strong> Enter account balances from your previous accounting system as of the date you start using Books. This is done <strong>once</strong>. After submission, balances are locked and posted as an Opening Journal Entry.
   </div>
 
-  <div class="b-card" style="padding:14px 18px;display:flex;align-items:center">
+  <!-- ── Desktop stepper (hidden on 375–425px) ── -->
+  <div class="b-card ob-desktop-stepper" style="padding:14px 18px;display:flex;align-items:center">
     <template v-for="(s,i) in ['Set go-live date','Enter balances','Verify equation','Submit']" :key="i">
       <div style="display:flex;align-items:center">
         <div class="ob-step-dot" :class="i<curStep||submitted?'ob-dot-done':i===curStep&&!submitted?'ob-dot-active':'ob-dot-pending'">
@@ -17,7 +18,34 @@
     </template>
   </div>
 
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <!-- ── Mobile stepper: dots on top row, labels below (shown only at 375–425px) ── -->
+  <div class="ob-mobile-stepper">
+    <!-- Dots + connecting lines -->
+    <div class="ob-ms-dots">
+      <template v-for="(s,i) in ['Set go-live date','Enter balances','Verify equation','Submit']" :key="'d'+i">
+        <div class="ob-ms-dot-wrap">
+          <div class="ob-step-dot ob-ms-dot"
+            :class="i<curStep||submitted?'ob-dot-done':i===curStep&&!submitted?'ob-dot-active':'ob-dot-pending'">
+            <span v-if="i<curStep||submitted" v-html="icon('check',11)"></span>
+            <span v-else>{{i+1}}</span>
+          </div>
+        </div>
+        <div v-if="i<3" class="ob-ms-line"
+          :class="i<curStep||submitted?'ob-line-done':''">
+        </div>
+      </template>
+    </div>
+    <!-- Labels below each dot -->
+    <div class="ob-ms-labels">
+      <span v-for="(s,i) in ['Set go-live date','Enter balances','Verify equation','Submit']" :key="'l'+i"
+        class="ob-ms-lbl"
+        :class="i<curStep||submitted?'ob-lbl-done':i===curStep&&!submitted?'ob-lbl-active':'ob-lbl-muted'">
+        {{s}}
+      </span>
+    </div>
+  </div>
+
+  <div class="ob-go-live-bar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <label style="font-size:13px;font-weight:600;color:#868E96;white-space:nowrap">Go-live Date</label>
       <input type="date" v-model="goLiveDate" @change="saveDraft" :disabled="submitted" class="b-input"/>
@@ -38,8 +66,8 @@
   </div>
 
   <div v-else class="b-card" style="padding:16px 20px">
-    <div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96;margin-bottom:12px">Accounting Equation Check — Assets = Liabilities + Equity</div>
-    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0">
+    <div class="ob-eq-title" style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96;margin-bottom:12px">Accounting Equation Check — Assets = Liabilities + Equity</div>
+    <div class="ob-eq-strip" style="display:flex;align-items:center;flex-wrap:wrap;gap:0">
       <div style="flex:1;min-width:140px;padding:12px 16px;border-radius:8px;text-align:center;background:#E0F7FA">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#0C8599;margin-bottom:4px">Assets</div>
         <div style="font-size:18px;font-weight:700;color:#0C8599">{{fmtINR(eq.assets)}}</div>
@@ -65,7 +93,7 @@
   <template v-if="!loading">
     <template v-for="type in OB_TYPES" :key="type">
       <div v-if="secAccts(type).length" class="b-card" style="padding:0;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none" @click="toggleSec(type)">
+        <div class="ob-sec-header" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none" @click="toggleSec(type)">
           <div style="display:flex;align-items:center;gap:10px">
             <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px" :style="{background:OB_TYPE_META[type].bg,color:OB_TYPE_META[type].color}">{{OB_TYPE_META[type].label}}</span>
             <span style="font-size:13px;color:#868E96">{{secAccts(type).length}} accounts &nbsp;·&nbsp; {{secAccts(type).filter(a=>balances[a.name]>0).length}} filled</span>
@@ -76,7 +104,7 @@
           </div>
         </div>
         <template v-if="isSec(type)">
-          <div style="display:grid;grid-template-columns:1fr 130px 130px;align-items:center;gap:10px;padding:8px 16px;background:#F8F9FC;border-top:1px solid #F1F3F5">
+          <div class="ob-col-header" style="display:grid;grid-template-columns:1fr 130px 130px;align-items:center;gap:10px;padding:8px 16px;background:#F8F9FC;border-top:1px solid #F1F3F5">
             <div style="font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96">Account</div>
             <div style="font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96;text-align:right">Balance (₹)</div>
             <div style="font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96">Dr / Cr</div>
@@ -95,7 +123,7 @@
               <option value="Credit" :selected="(drCrMap[a.name]||'Debit')==='Credit'">Cr (Credit)</option>
             </select>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 130px 130px;gap:10px;padding:10px 16px;background:#F8F9FC;border-top:1px solid #E2E8F0">
+          <div class="ob-sec-footer" style="display:grid;grid-template-columns:1fr 130px 130px;gap:10px;padding:10px 16px;background:#F8F9FC;border-top:1px solid #E2E8F0">
             <div style="font-size:12px;font-weight:600;color:#868E96">Total {{OB_TYPE_META[type].label}}</div>
             <div style="font-size:13px;font-weight:700;text-align:right" :style="{color:OB_TYPE_META[type].color}">{{fmtINR(secTotal(type))}}</div>
             <div></div>
@@ -325,9 +353,10 @@ function doReset() {
 onMounted(load);
 </script>
 
-<style>
-/* Opening Balances styles — these were inline in the legacy app and never made
-   it into books.css. Defined locally so the page renders correctly. */
+<style scoped>
+/* ─────────────────────────────────────────────────────────
+   Opening Balances — base styles
+   ───────────────────────────────────────────────────────── */
 .ob-step-dot {
   width: 24px; height: 24px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
@@ -365,7 +394,7 @@ onMounted(load);
 
 .ob-bal-input {
   width: 100%; border: 1px solid #E2E8F0; border-radius: 6px;
-  padding: 6px 10px; font-size: 13px; 
+  padding: 6px 10px; font-size: 13px;
   text-align: right; outline: none;
 }
 .ob-bal-input:focus { border-color: #3B5BDB; box-shadow: 0 0 0 3px rgba(59,91,219,.08); }
@@ -378,4 +407,303 @@ onMounted(load);
 }
 .ob-dr { color: #C92A2A; }
 .ob-cr { color: #2F9E44; }
+
+/* ── Default: mobile stepper hidden ── */
+.ob-mobile-stepper { display: none; }
+
+/* ── Default: desktop stepper visible ── */
+.ob-desktop-stepper { display: flex; }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE  –  375 px … 425.98 px
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 375px) and (max-width: 425.98px) {
+
+  /* Hide desktop stepper, show mobile stepper */
+  .ob-desktop-stepper { display: none !important; }
+
+  .ob-mobile-stepper {
+    display: block;
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-radius: 10px;
+    padding: 14px 12px 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    margin-bottom: 4px;
+  }
+
+  /* Top row: dots connected by lines */
+  .ob-ms-dots {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .ob-ms-dot-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .ob-ms-dot {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+
+  .ob-ms-line {
+    flex: 1;
+    height: 2px;
+    background: #E2E8F0;
+    border-radius: 1px;
+    margin: 0 4px;
+  }
+
+  .ob-ms-line.ob-line-done { background: #2F9E44; }
+
+  /* Bottom row: labels in 4 equal columns */
+  .ob-ms-labels {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+  }
+
+  .ob-ms-lbl {
+    font-size: 9.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: center;
+    padding: 0 2px;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
+  .ob-ms-lbl.ob-lbl-done   { color: #2F9E44; }
+  .ob-ms-lbl.ob-lbl-active { color: #3B5BDB; }
+  .ob-ms-lbl.ob-lbl-muted  { color: #868E96; }
+
+  /* ── Go-live date row: stack into column ── */
+  .ob-go-live-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .ob-go-live-bar > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    width: 100%;
+  }
+
+  .ob-go-live-bar > div:first-child input[type="date"] {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .ob-go-live-bar > div:first-child span {
+    font-size: 11px !important;
+  }
+
+  .ob-go-live-bar > div:last-child {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+
+  .ob-go-live-bar > div:last-child button,
+  .ob-go-live-bar > div:last-child a {
+    flex: 1;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* ── Equation check card: stack boxes vertically ── */
+  .ob-eq-strip {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  .ob-eq-strip > div[style*="flex:1"] {
+    min-width: unset !important;
+    width: 100% !important;
+  }
+
+  .ob-eq-strip > div[style*="font-size:20px"] {
+    padding: 2px 0 !important;
+    font-size: 16px !important;
+    text-align: center;
+  }
+
+  /* ── Equation title ── */
+  .ob-eq-title {
+    font-size: 9.5px !important;
+    letter-spacing: 0.3px !important;
+  }
+
+  /* ── Section header (type strip) ── */
+  .ob-sec-header {
+    padding: 10px 12px !important;
+    gap: 6px !important;
+  }
+
+  .ob-sec-header span:first-child {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+  }
+
+  .ob-sec-header-info {
+    font-size: 11px !important;
+  }
+
+  .ob-sec-total {
+    font-size: 12px !important;
+  }
+
+  /* ── Column header row ── */
+  .ob-col-header {
+    grid-template-columns: 1fr 110px 100px !important;
+    padding: 6px 12px !important;
+    gap: 6px !important;
+  }
+
+  /* ── Account rows: switch to 2-row card layout ── */
+  .ob-acct-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    border-top: 1px solid #F1F3F5;
+  }
+
+  /* Account name section (top row) */
+  .ob-acct-row > div:first-child {
+    width: 100%;
+  }
+
+  .ob-acct-row > div:first-child > div:first-child {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1A1D23;
+  }
+
+  .ob-acct-row > div:first-child > div:last-child {
+    font-size: 10.5px;
+    color: #868E96;
+    margin-top: 1px;
+  }
+
+  /* Balance input + Dr/Cr selector: side by side in bottom row */
+  .ob-acct-row .ob-bal-input {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    padding: 8px 10px;
+    text-align: right;
+  }
+
+  .ob-acct-row .ob-dr-cr-sel {
+    width: 110px;
+    flex-shrink: 0;
+    font-size: 11.5px;
+    padding: 8px 6px;
+  }
+
+  /* Wrap the input + select in a flex row */
+  .ob-acct-row input.ob-bal-input,
+  .ob-acct-row select.ob-dr-cr-sel {
+    display: block;
+  }
+
+  /* We use an :after pseudo trick: make input+select appear in same row
+     by making them flex children of the row (they are direct children after the div) */
+  .ob-acct-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto !important;
+    gap: 0 !important;
+  }
+
+  /* First child = account name block */
+  .ob-acct-row > div:first-child {
+    grid-row: 1;
+    margin-bottom: 8px;
+  }
+
+  /* Input = second child, Select = third child → place side by side */
+  .ob-acct-row > input.ob-bal-input {
+    grid-row: 2;
+    grid-column: 1;
+    width: calc(55% - 4px);
+    justify-self: start;
+  }
+
+  .ob-acct-row > select.ob-dr-cr-sel {
+    grid-row: 2;
+    grid-column: 1;
+    width: calc(45% - 4px);
+    justify-self: end;
+  }
+
+  /* Override the grid so input and select share row 2 */
+  .ob-acct-row {
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  .ob-acct-row > div:first-child {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    margin-bottom: 6px;
+  }
+
+  .ob-acct-row > input.ob-bal-input {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .ob-acct-row > select.ob-dr-cr-sel {
+    grid-column: 2;
+    grid-row: 2;
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  /* ── Section footer (totals row) ── */
+  .ob-sec-footer {
+    grid-template-columns: 1fr 110px 100px !important;
+    padding: 8px 12px !important;
+    gap: 6px !important;
+    font-size: 12px !important;
+  }
+
+  .ob-sec-footer > div:nth-child(2) {
+    font-size: 13px !important;
+  }
+
+  /* ── Eq diff message ── */
+  .ob-eq-diff {
+    font-size: 11.5px !important;
+    padding: 8px 10px !important;
+    line-height: 1.5;
+  }
+
+  /* ── Modal dialogs: full-width ── */
+  div[style*="max-width:500px"],
+  div[style*="max-width:420px"] {
+    padding: 20px 18px !important;
+    border-radius: 10px !important;
+  }
+
+  div[style*="max-width:500px"] > div:first-child,
+  div[style*="max-width:420px"] > div:first-child {
+    font-size: 16px !important;
+  }
+
+} /* end @media 375px–425.98px */
 </style>
+

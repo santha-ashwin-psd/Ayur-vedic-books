@@ -25,7 +25,8 @@
     </div>
   </div>
 
-  <div class="b-action-bar" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
+  <!-- ── Desktop action bar (hidden on 375–425px) ── -->
+  <div class="b-action-bar jen-desktop-bar" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="jen-pill" :class="{active:currentFilter==='all'}" @click="currentFilter='all'">All</button>
       <button class="jen-pill" :class="{active:currentFilter==='Draft'}" @click="currentFilter='Draft'">
@@ -54,8 +55,55 @@
     </div>
   </div>
 
-  <div class="b-card jen-tbl-card" style="padding:0;overflow:hidden">
-    <table class="b-table">
+  <!-- ── Mobile action bar (shown only on 375–425.98px) ── -->
+  <div class="jen-mobile-bar">
+
+    <!-- Filter pills: wrap naturally across rows -->
+    <div class="jen-mob-pills">
+      <button class="jen-mob-pill" :class="{active:currentFilter==='all'}" @click="currentFilter='all'">All</button>
+      <button class="jen-mob-pill" :class="{active:currentFilter==='Draft'}" @click="currentFilter='Draft'">
+        Draft <span class="jen-mob-pc jen-mob-pc--draft">{{counts.Draft}}</span>
+      </button>
+      <button class="jen-mob-pill" :class="{active:currentFilter==='Submitted'}" @click="currentFilter='Submitted'">
+        Submitted <span class="jen-mob-pc jen-mob-pc--submitted">{{counts.Submitted}}</span>
+      </button>
+      <button class="jen-mob-pill" :class="{active:currentFilter==='Cancelled'}" @click="currentFilter='Cancelled'">
+        Cancelled <span class="jen-mob-pc jen-mob-pc--cancelled">{{counts.Cancelled}}</span>
+      </button>
+    </div>
+
+    <!-- Date range card -->
+    <div class="jen-mob-date-card">
+      <div class="jen-mob-date-lbl">DATE RANGE</div>
+      <div class="jen-mob-date-row">
+        <div class="jen-mob-date-field">
+          <label class="jen-mob-date-field-lbl">From</label>
+          <input type="date" v-model="dateFrom" class="jen-mob-date-input"/>
+        </div>
+        <div class="jen-mob-date-field">
+          <label class="jen-mob-date-field-lbl">To</label>
+          <input type="date" v-model="dateTo" class="jen-mob-date-input"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="jen-mob-btns">
+      <button class="jen-mob-btn jen-mob-btn--ghost" @click="load">
+        <span v-html="icon('refresh',15)"></span>
+        Refresh
+      </button>
+      <button class="jen-mob-btn jen-mob-btn--primary" @click="openAdd">
+        <span v-html="icon('plus',15)"></span>
+        New Entry
+      </button>
+    </div>
+
+  </div>
+
+  <div class="b-card" style="padding:0;overflow:hidden">
+    <!-- ── Desktop table (hidden on 375–425px via media query) ── -->
+    <table class="b-table jen-desktop-table">
       <thead>
         <tr>
           <th>Entry #</th><th>Date</th><th>Type</th><th>Narration</th>
@@ -97,6 +145,99 @@
         </template>
       </tbody>
     </table>
+
+    <!-- ── Mobile card list (shown only on 375–425.98px via media query) ── -->
+    <div class="jen-mobile-cards">
+
+      <!-- Loading skeleton -->
+      <template v-if="loading">
+        <div v-for="n in 5" :key="'sk-'+n" class="jen-mobile-card jen-mobile-card--skeleton">
+          <div class="jen-mc-shimmer jen-mc-shimmer--title"></div>
+          <div class="jen-mc-shimmer jen-mc-shimmer--line"></div>
+          <div class="jen-mc-shimmer jen-mc-shimmer--line"></div>
+        </div>
+      </template>
+
+      <!-- Empty state -->
+      <div v-else-if="filteredRows.length===0" class="jen-mc-empty">
+        <div class="jen-mc-empty-icon">📄</div>
+        <div class="jen-mc-empty-title">{{searchQ?'No entries match':'No journal entries yet'}}</div>
+        <div class="jen-mc-empty-sub">{{searchQ?'Try a different search':'Record adjustments, depreciation, accruals and more'}}</div>
+        <button v-if="!searchQ" class="b-btn b-btn-primary" style="margin-top:10px" @click="openAdd">
+          <span v-html="icon('plus',13)"></span> New Entry
+        </button>
+      </div>
+
+      <!-- Journal entry cards -->
+      <template v-else>
+        <div v-for="e in filteredRows" :key="'mc-'+e.name"
+          class="jen-mobile-card"
+          :class="'jen-mc-status--'+(e.status||'Draft').toLowerCase()"
+          @click="openView(e.name)">
+
+          <!-- Card header: entry # + status badge -->
+          <div class="jen-mc-header">
+            <div class="jen-mc-entry-no">{{e.name}}</div>
+            <span class="b-badge jen-mc-status-badge" :class="JE_STATUS_COLOR[e.status]||'je-s-draft'">{{e.status}}</span>
+          </div>
+
+          <!-- Card meta: date + type badge -->
+          <div class="jen-mc-meta">
+            <span class="jen-mc-date">📅 {{fmtDateLocal(e.date)}}</span>
+            <span class="b-badge jen-mc-type-badge" :class="JE_TYPE_COLOR[e.type]||'je-type-info'">
+              {{e.type||'Journal Entry'}}
+            </span>
+          </div>
+
+          <!-- Narration -->
+          <div class="jen-mc-narration">{{e.narration||'—'}}</div>
+
+          <!-- Debit / Credit amounts -->
+          <div class="jen-mc-amounts">
+            <div class="jen-mc-amount-box jen-mc-amount-box--dr">
+              <div class="jen-mc-amount-lbl">Total Debit</div>
+              <div class="jen-mc-amount-val jen-mc-amount-val--dr">{{fmtINR(e.total_debit)}}</div>
+            </div>
+            <div class="jen-mc-amount-divider"></div>
+            <div class="jen-mc-amount-box jen-mc-amount-box--cr">
+              <div class="jen-mc-amount-lbl">Total Credit</div>
+              <div class="jen-mc-amount-val jen-mc-amount-val--cr">{{fmtINR(e.total_credit)}}</div>
+            </div>
+          </div>
+
+          <!-- Card footer: action buttons -->
+          <div class="jen-mc-footer" @click.stop>
+            <button class="jen-mc-action-btn"
+              @click.stop="openView(e.name)"
+              title="View">
+              <span v-html="icon('eye',13)"></span>
+              <span class="jen-mc-action-lbl">View</span>
+            </button>
+            <button v-if="e.status==='Draft'"
+              class="jen-mc-action-btn"
+              @click.stop="openEdit(e.name)"
+              title="Edit">
+              <span v-html="icon('edit',13)"></span>
+              <span class="jen-mc-action-lbl">Edit</span>
+            </button>
+            <button v-if="e.status==='Draft'"
+              class="jen-mc-action-btn jen-mc-action-btn--danger"
+              @click.stop="confirmAction(e.name,'delete')"
+              title="Delete">
+              <span v-html="icon('trash',13)"></span>
+              <span class="jen-mc-action-lbl">Delete</span>
+            </button>
+            <button v-if="e.status==='Submitted'"
+              class="jen-mc-action-btn jen-mc-action-btn--danger"
+              @click.stop="confirmAction(e.name,'cancel')"
+              title="Cancel">
+              <span v-html="icon('cancel',13)"></span>
+              <span class="jen-mc-action-lbl">Cancel</span>
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
   <div style="text-align:right;font-size:12px;color:#868e96;padding:6px 4px">Showing {{filteredRows.length}} of {{allEntries.length}} entries</div>
 
@@ -175,7 +316,8 @@
             </div>
           </div>
 
-          <div style="border:1px solid #e8ecf0;border-radius:8px;overflow:hidden;margin-bottom:16px;overflow-x:auto">
+          <!-- Desktop lines table (hidden on mobile) -->
+          <div class="jen-lines-desktop-wrapper" style="border:1px solid #e8ecf0;border-radius:8px;overflow:hidden;margin-bottom:16px;overflow-x:auto">
             <table class="jen-lines-tbl" style="min-width:680px">
               <thead>
                 <tr>
@@ -218,7 +360,81 @@
                 </tr>
               </tbody>
             </table>
-          </div>
+          </div><!-- end .jen-lines-desktop-wrapper -->
+
+          <!-- Mobile line cards (shown only at 375–425px) -->
+          <div class="jen-lines-mobile-cards">
+
+            <!-- Empty state -->
+            <div v-if="!lines.length" class="jen-lmc-empty">
+              No lines — click ‘+ Debit Row’ or ‘+ Credit Row’ above
+            </div>
+
+            <!-- One card per line -->
+            <div v-for="line in lines" :key="'lmc-'+line.id"
+              class="jen-lmc-card"
+              :class="flt(line.dr)>0?'jen-lmc--dr':flt(line.cr)>0?'jen-lmc--cr':'jen-lmc--empty'">
+
+              <!-- Card header: type chip + delete button -->
+              <div class="jen-lmc-header">
+                <span class="jen-lmc-type-chip"
+                  :class="flt(line.dr)>0?'jen-lmc-chip--dr':flt(line.cr)>0?'jen-lmc-chip--cr':'jen-lmc-chip--none'">
+                  {{flt(line.dr)>0?'Debit (Dr)':flt(line.cr)>0?'Credit (Cr)':'New Line'}}
+                </span>
+                <button @click="removeLine(line.id)" class="jen-lmc-del-btn" title="Remove line">
+                  <span v-html="icon('x',12)"></span>
+                </button>
+              </div>
+
+              <!-- Account select -->
+              <div class="jen-lmc-field">
+                <label class="jen-lmc-lbl">Account <span style="color:#c92a2a">*</span></label>
+                <SearchableSelect v-model="line.account" :options="accounts" placeholder="— Select Account —" :compact="true" class="ss-cell-wrap jen-lmc-ss"/>
+              </div>
+
+              <!-- Party field -->
+              <div class="jen-lmc-field">
+                <label class="jen-lmc-lbl">Party (Customer/Vendor)</label>
+                <input v-model="line.party" class="jen-lmc-input" placeholder="Optional"/>
+              </div>
+
+              <!-- Cost center -->
+              <div class="jen-lmc-field">
+                <label class="jen-lmc-lbl">Cost Center</label>
+                <select v-model="line.cost_center" class="jen-lmc-input">
+                  <option value="">—</option>
+                  <option v-for="cc in costCenters" :key="cc" :value="cc">{{cc}}</option>
+                </select>
+              </div>
+
+              <!-- Dr / Cr inputs in a 2-col strip -->
+              <div class="jen-lmc-amounts">
+                <div class="jen-lmc-amount-cell jen-lmc-amount-cell--dr">
+                  <label class="jen-lmc-amount-lbl">Debit (Dr)</label>
+                  <input v-model="line.dr" type="number" min="0" step="0.01"
+                    class="jen-lmc-amount-input jen-lmc-amount-input--dr"
+                    placeholder="0.00" @input="line.cr=''"/>
+                </div>
+                <div class="jen-lmc-amount-cell jen-lmc-amount-cell--cr">
+                  <label class="jen-lmc-amount-lbl">Credit (Cr)</label>
+                  <input v-model="line.cr" type="number" min="0" step="0.01"
+                    class="jen-lmc-amount-input jen-lmc-amount-input--cr"
+                    placeholder="0.00" @input="line.dr=''"/>
+                </div>
+              </div>
+
+            </div><!-- end jen-lmc-card -->
+
+            <!-- Totals row -->
+            <div v-if="lines.length" class="jen-lmc-totals">
+              <span class="jen-lmc-totals-lbl">Totals</span>
+              <div class="jen-lmc-totals-vals">
+                <span class="jen-lmc-totals-dr">Dr: ₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
+                <span class="jen-lmc-totals-cr">Cr: ₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
+              </div>
+            </div>
+
+          </div><!-- end .jen-lines-mobile-cards -->
 
           <div class="coa-fg coa-fg2">
             <div>
@@ -612,19 +828,678 @@ async function doAction() {
 onMounted(load);
 </script>
 
-<style>
-@media (max-width: 768px) {
-  .jen-sum-strip { grid-template-columns: repeat(2, 1fr) !important; }
-  .jen-tbl-card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .jen-tbl-card .b-table { min-width: 560px; }
-  .jen-tbl-card .b-table th:nth-child(6), .jen-tbl-card .b-table td:nth-child(6) { display: none; }
-  .jen-drawer-panel { width: 100% !important; max-width: 100% !important; }
-  .jen-tpl-grid { grid-template-columns: repeat(2, 1fr) !important; }
+<style scoped>
+/* ═══════════════════════════════════════════════════════════════════
+   JEN MOBILE CARD VIEW  –  375 px … 425.98 px
+   Default: mobile cards hidden, desktop table shown.
+   Media query: flip visibility.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Default: mobile card container hidden ── */
+.jen-mobile-cards {
+  display: none;
 }
-@media (max-width: 480px) {
-  .jen-page { gap: 10px !important; }
-  .jen-sum-strip { grid-template-columns: 1fr 1fr !important; }
-  .jen-tbl-card .b-table th:nth-child(3), .jen-tbl-card .b-table td:nth-child(3) { display: none; }
-  .jen-tbl-card .b-table { min-width: 400px; }
+
+/* ── Default: desktop table visible ── */
+.jen-desktop-table {
+  display: table;
 }
+
+/* ── Default: mobile action bar hidden ── */
+.jen-mobile-bar {
+  display: none;
+}
+
+/* ── Default: desktop action bar visible ── */
+.jen-desktop-bar {
+  display: flex;
+}
+
+/* ── Activate card layout only on 375 px – 425.98 px ── */
+@media (min-width: 375px) and (max-width: 425.98px) {
+
+  /* Hide desktop action bar, show mobile action bar */
+  .jen-desktop-bar {
+    display: none !important;
+  }
+
+  .jen-mobile-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  /* ── Filter pills ── */
+  .jen-mob-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .jen-mob-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 50px;
+    border: 1.5px solid #e5e7eb;
+    background: #ffffff;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .jen-mob-pill.active {
+    background: #3b5bdb;
+    border-color: #3b5bdb;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .jen-mob-pill:not(.active):hover {
+    border-color: #3b5bdb;
+    color: #3b5bdb;
+  }
+
+  /* Count badge inside pill */
+  .jen-mob-pc {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 0 5px;
+  }
+
+  .jen-mob-pc--draft     { background: #f1f3f5; color: #868e96; }
+  .jen-mob-pc--submitted { background: #ebfbee; color: #2f9e44; }
+  .jen-mob-pc--cancelled { background: #ffe3e3; color: #c92a2a; }
+
+  /* Active pill → invert badge colours */
+  .jen-mob-pill.active .jen-mob-pc--draft     { background: rgba(255,255,255,0.25); color: #fff; }
+  .jen-mob-pill.active .jen-mob-pc--submitted { background: rgba(255,255,255,0.25); color: #fff; }
+  .jen-mob-pill.active .jen-mob-pc--cancelled { background: rgba(255,255,255,0.25); color: #fff; }
+
+  /* ── DATE RANGE card ── */
+  .jen-mob-date-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 14px 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .jen-mob-date-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-bottom: 10px;
+  }
+
+  .jen-mob-date-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .jen-mob-date-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .jen-mob-date-field-lbl {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: #6b7280;
+  }
+
+  .jen-mob-date-input {
+    width: 100%;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #374151;
+    background: #fff;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .jen-mob-date-input:focus {
+    border-color: #3b5bdb;
+  }
+
+  /* ── Action buttons ── */
+  .jen-mob-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .jen-mob-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: none;
+  }
+
+  .jen-mob-btn--ghost {
+    background: #ffffff;
+    border: 1.5px solid #e5e7eb;
+    color: #374151;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .jen-mob-btn--ghost:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+  }
+
+  .jen-mob-btn--primary {
+    background: #3b5bdb;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(59,91,219,0.35);
+  }
+
+  .jen-mob-btn--primary:hover {
+    background: #2f4dc4;
+    box-shadow: 0 3px 10px rgba(59,91,219,0.45);
+  }
+
+  /* Hide desktop table */
+  .jen-desktop-table {
+    display: none !important;
+  }
+
+  /* Show card list */
+  .jen-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 10px;
+    background: #f8fafc;
+  }
+
+  /* ── Individual journal entry card ── */
+  .jen-mobile-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    border-left: 4px solid #3b5bdb;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow 0.18s ease, transform 0.12s ease;
+  }
+
+  .jen-mobile-card:active {
+    transform: scale(0.985);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Status-based left border colours */
+  .jen-mc-status--draft     { border-left-color: #3b5bdb; }
+  .jen-mc-status--submitted { border-left-color: #2f9e44; }
+  .jen-mc-status--cancelled { border-left-color: #c92a2a; }
+
+  /* ── Card header: Entry # + Status badge ── */
+  .jen-mc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 12px 6px;
+    border-bottom: 1px solid #f3f4f6;
+    gap: 8px;
+  }
+
+  .jen-mc-entry-no {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2563eb;
+    letter-spacing: 0.2px;
+    word-break: break-all;
+  }
+
+  .jen-mc-status-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Card meta: date + type badge ── */
+  .jen-mc-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    flex-wrap: wrap;
+  }
+
+  .jen-mc-date {
+    font-size: 11.5px;
+    color: #6b7280;
+    white-space: nowrap;
+  }
+
+  .jen-mc-type-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Narration ── */
+  .jen-mc-narration {
+    font-size: 12.5px;
+    color: #374151;
+    padding: 0 12px 8px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Debit / Credit amount boxes ── */
+  .jen-mc-amounts {
+    display: flex;
+    align-items: stretch;
+    border-top: 1px solid #f3f4f6;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .jen-mc-amount-box {
+    flex: 1;
+    padding: 8px 12px;
+    text-align: center;
+  }
+
+  .jen-mc-amount-box--dr { background: #fff9f9; }
+  .jen-mc-amount-box--cr { background: #f0fff4; }
+
+  .jen-mc-amount-divider {
+    width: 1px;
+    background: #e5e7eb;
+    flex-shrink: 0;
+  }
+
+  .jen-mc-amount-lbl {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #9ca3af;
+    margin-bottom: 3px;
+  }
+
+  .jen-mc-amount-val {
+    font-size: 13.5px;
+    font-weight: 700;
+  }
+
+  .jen-mc-amount-val--dr { color: #c92a2a; }
+  .jen-mc-amount-val--cr { color: #2f9e44; }
+
+  /* ── Card footer: action buttons ── */
+  .jen-mc-footer {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 10px 8px;
+    background: #fafafa;
+  }
+
+  .jen-mc-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 500;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+
+  .jen-mc-action-btn:hover {
+    background: #e5e7eb;
+    border-color: #d1d5db;
+  }
+
+  .jen-mc-action-btn--danger {
+    color: #dc2626;
+    background: #fff1f2;
+    border-color: #fecaca;
+  }
+
+  .jen-mc-action-btn--danger:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
+
+  .jen-mc-action-lbl {
+    font-size: 11px;
+  }
+
+  /* ── Skeleton shimmer cards ── */
+  .jen-mobile-card--skeleton {
+    pointer-events: none;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-left-color: #e5e7eb;
+    background: #ffffff;
+  }
+
+  .jen-mc-shimmer {
+    border-radius: 6px;
+    background: linear-gradient(90deg, #f3f4f6 25%, #e9ecef 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: jen-shimmer 1.4s infinite;
+  }
+
+  .jen-mc-shimmer--title {
+    height: 14px;
+    width: 60%;
+  }
+
+  .jen-mc-shimmer--line {
+    height: 11px;
+    width: 40%;
+  }
+
+  @keyframes jen-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ── Empty state ── */
+  .jen-mc-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 16px;
+    text-align: center;
+    color: #9ca3af;
+  }
+
+  .jen-mc-empty-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+  }
+
+  .jen-mc-empty-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+  }
+
+  .jen-mc-empty-sub {
+    font-size: 12px;
+    color: #9ca3af;
+    line-height: 1.5;
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     EDIT DRAWER – Lines table → cards (375–425.98px)
+     ─────────────────────────────────────────────────────────── */
+
+  /* Edit/New entry drawer: full screen on mobile */
+  .jen-drawer-panel {
+    width: 100% !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+  }
+
+  /* Balance bar: wrap Dr/Cr summary below the status text */
+  .jen-balance-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    padding: 10px 12px !important;
+  }
+
+  /* Entry details grid: 2-col → 1-col */
+  .jen-fg4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Desktop lines table: hide on mobile */
+  .jen-lines-desktop-wrapper {
+    display: none !important;
+  }
+
+  /* Mobile line cards container: hidden by default, shown here */
+  .jen-lines-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  /* Empty state */
+  .jen-lmc-empty {
+    text-align: center;
+    padding: 18px;
+    font-size: 12.5px;
+    color: #9ca3af;
+    border: 1px dashed #e5e7eb;
+    border-radius: 10px;
+  }
+
+  /* Individual line card */
+  .jen-lmc-card {
+    border: 1px solid #e5e7eb;
+    border-left: 3px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  /* Left border by type */
+  .jen-lmc--dr    { border-left-color: #c92a2a; }
+  .jen-lmc--cr    { border-left-color: #2f9e44; }
+  .jen-lmc--empty { border-left-color: #d1d5db; }
+
+  /* Card header: type chip + delete btn */
+  .jen-lmc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px 6px;
+    border-bottom: 1px solid #f3f4f6;
+    background: #fafafa;
+  }
+
+  .jen-lmc-type-chip {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .jen-lmc-chip--dr   { color: #c92a2a; background: #fff5f5; border-color: rgba(201,42,42,.2); }
+  .jen-lmc-chip--cr   { color: #2f9e44; background: #f0fff4; border-color: rgba(47,158,68,.2); }
+  .jen-lmc-chip--none { color: #868e96; background: #f8f9fa; border-color: #e5e7eb; }
+
+  .jen-lmc-del-btn {
+    background: #fff1f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    color: #dc2626;
+    cursor: pointer;
+    padding: 4px 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .jen-lmc-del-btn:hover { background: #fee2e2; }
+
+  /* Card body fields */
+  .jen-lmc-field {
+    padding: 7px 10px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .jen-lmc-lbl {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #9ca3af;
+  }
+
+  .jen-lmc-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 7px;
+    padding: 7px 10px;
+    font-size: 13px;
+    color: #374151;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  .jen-lmc-input:focus { border-color: #3b5bdb; }
+
+  /* SearchableSelect inside a card */
+  .jen-lmc-ss { width: 100%; }
+
+  /* Dr / Cr 2-col strip */
+  .jen-lmc-amounts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid #f3f4f6;
+    margin-top: 8px;
+  }
+
+  .jen-lmc-amount-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px 10px;
+  }
+
+  .jen-lmc-amount-cell--dr { border-right: 1px solid #f3f4f6; background: #fff9f9; }
+  .jen-lmc-amount-cell--cr { background: #f0fff4; }
+
+  .jen-lmc-amount-lbl {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #9ca3af;
+  }
+
+  .jen-lmc-amount-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 7px;
+    padding: 6px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: right;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  .jen-lmc-amount-input--dr:focus { border-color: #c92a2a; }
+  .jen-lmc-amount-input--cr:focus { border-color: #2f9e44; }
+
+  /* Totals row */
+  .jen-lmc-totals {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 9px 12px;
+    margin-top: 2px;
+  }
+  .jen-lmc-totals-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #6b7280;
+  }
+  .jen-lmc-totals-vals {
+    display: flex;
+    gap: 12px;
+  }
+  .jen-lmc-totals-dr {
+    font-size: 13px;
+    font-weight: 700;
+    color: #c92a2a;
+  }
+  .jen-lmc-totals-cr {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2f9e44;
+  }
+
+  /* Edit drawer footer: stack buttons on mobile */
+  .coa-dfooter {
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+    align-items: stretch !important;
+  }
+
+  .coa-dfooter > div:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .coa-dfooter button {
+    width: 100% !important;
+    justify-content: center;
+  }
+
+} /* end @media 375px–425.98px */
 </style>

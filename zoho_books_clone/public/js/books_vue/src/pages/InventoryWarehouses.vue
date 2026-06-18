@@ -4,6 +4,9 @@
   <!-- ════════════════════════════════════════════
        TOOLBAR
        ════════════════════════════════════════════ -->
+  <!-- Backdrop to close filter dropdown -->
+  <div v-if="filterDDOpen" class="wh-dd-backdrop" @click="filterDDOpen = false"></div>
+
   <div class="wh-toolbar">
 
     <!-- Group dropdown -->
@@ -20,21 +23,29 @@
       </div>
     </div>
 
-    <!-- Search -->
-    <div class="wh-tb-search-wrap">
-      <span v-html="icon('search')" class="wh-tb-search-icon"></span>
-      <input v-model="search" class="wh-tb-search-input" placeholder="Search warehouses…" />
+    <!-- Filter dropdown -->
+    <div class="wh-filter-dd-wrap">
+      <button class="wh-filter-dd-btn" :class="{ 'wh-filter-dd-btn--active': filterType !== 'All' }" @click="filterDDOpen = !filterDDOpen">
+        <span>{{ filterType === 'All' ? 'All Types' : whMeta(filterType).icon + ' ' + filterType }}</span>
+        <span class="wh-filter-dd-chev" :class="{ 'wh-filter-dd-chev--open': filterDDOpen }" v-html="icon('chevD', 11)"></span>
+      </button>
+      <div v-if="filterDDOpen" class="wh-filter-dd-menu">
+        <div
+          v-for="t in ['All', ...WH_TYPES]" :key="t"
+          class="wh-filter-dd-item" :class="{ 'wh-filter-dd-item--active': filterType === t }"
+          @click="filterType = t; filterDDOpen = false"
+        >
+          <span class="wh-filter-dd-icon">{{ t === 'All' ? '🏭' : whMeta(t).icon }}</span>
+          <span>{{ t === 'All' ? 'All Types' : t }}</span>
+          <span v-if="filterType === t" class="wh-filter-dd-check" v-html="icon('check', 13)"></span>
+        </div>
+      </div>
     </div>
 
-    <!-- Type filter pills -->
-    <div class="wh-filter-pills">
-      <button
-        v-for="t in ['All', ...WH_TYPES]" :key="t"
-        class="wh-fpill" :class="{ 'wh-fpill--active': filterType === t }"
-        @click="filterType = t"
-      >{{ t === 'All' ? 'All' : whMeta(t).icon + ' ' + t }}</button>
-    </div>
+    <!-- Spacer -->
+    <div style="flex:1"></div>
 
+    <!-- Actions + search (right side) -->
     <div class="wh-tb-actions">
       <button class="wh-action-btn" @click="load">
         <span v-html="icon('refresh', 14)"></span>
@@ -43,6 +54,13 @@
         <span v-html="icon('plus', 13)"></span><span class="wh-btn-label"> New Warehouse</span>
       </button>
     </div>
+
+    <!-- Search (right corner) -->
+    <div class="wh-tb-search-wrap">
+      <span v-html="icon('search')" class="wh-tb-search-icon"></span>
+      <input v-model="search" class="wh-tb-search-input" placeholder="Search…" />
+    </div>
+
   </div>
 
   <!-- ════════════════════════════════════════════
@@ -494,6 +512,7 @@ const stockItems     = ref([]);
 const stockLoading   = ref(false);
 const search         = ref("");
 const filterType     = ref("All");
+const filterDDOpen   = ref(false);
 
 const adjDrawer = reactive({
   open: false, saving: false,
@@ -902,36 +921,75 @@ onMounted(() => { load(); loadItems(); });
 }
 .wh-tb-search-input:focus { border-color: #3b82f6; background: #fff; }
 
-/* ── Filter pills ── */
-.wh-filter-pills {
-  display: flex;
-  gap: 5px;
-  flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* ── Filter dropdown ── */
+.wh-dd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
 }
-.wh-filter-pills::-webkit-scrollbar { display: none; }
 
-.wh-fpill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 20px;
-  border: 1.5px solid #e2e8f0;
-  background: #f8fafc;
-  color: #475569;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .12s, border-color .12s, color .12s;
+.wh-filter-dd-wrap {
+  position: relative;
+  z-index: 200;
   flex-shrink: 0;
 }
-.wh-fpill:hover { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
-.wh-fpill--active { background: #eff6ff !important; border-color: #2563eb !important; color: #2563eb !important; }
+
+.wh-filter-dd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #374151;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  white-space: nowrap;
+}
+.wh-filter-dd-btn:hover { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
+.wh-filter-dd-btn--active { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
+
+.wh-filter-dd-chev {
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  transition: transform .18s ease;
+}
+.wh-filter-dd-chev--open { transform: rotate(180deg); }
+
+.wh-filter-dd-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.13);
+  min-width: 210px;
+  padding: 6px;
+  z-index: 200;
+}
+
+.wh-filter-dd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background .1s;
+}
+.wh-filter-dd-item:hover { background: #f1f5f9; }
+.wh-filter-dd-item--active { background: #eff6ff !important; color: #2563eb; font-weight: 700; }
+
+.wh-filter-dd-icon { font-size: 16px; flex-shrink: 0; }
+.wh-filter-dd-check { margin-left: auto; color: #2563eb; display: flex; align-items: center; }
 
 /* ── Toolbar actions ── */
 .wh-tb-actions {
@@ -1297,9 +1355,10 @@ onMounted(() => { load(); loadItems(); });
   .wh-toolbar { flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
   .wh-group-wrap { flex: 1 1 100%; order: 0; }
   .wh-group-select { min-width: 0; width: 100%; }
-  .wh-tb-search-wrap { flex: 1 1 100%; order: 1; }
-  .wh-filter-pills { order: 3; flex: 1 1 100%; }
-  .wh-tb-actions { order: 2; margin-left: auto; }
+  .wh-tb-search-wrap { flex: 1 1 auto; order: 2; }
+  .wh-tb-search-input { width: 100%; }
+  .wh-filter-dd-wrap { order: 1; }
+  .wh-tb-actions { order: 1; }
   .wh-btn-label { display: none; }
 
   .wh-content { padding: 12px; gap: 12px; }

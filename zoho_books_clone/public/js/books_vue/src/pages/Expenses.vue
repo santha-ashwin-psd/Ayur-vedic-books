@@ -430,7 +430,7 @@ async function load(){
               "total_amount","vendor","status","docstatus","expense_account","paid_through","attach","notes"],
       filters:[["company","=",co]],
       limit:200,
-      order:"posting_date desc",
+      order: "posting_date desc, creation desc",
     });
     // Map to legacy shape so the rest of the template doesn't need to change.
     list.value=raw.map(e=>({

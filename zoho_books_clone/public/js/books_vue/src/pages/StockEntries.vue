@@ -556,7 +556,7 @@ async function load() {
                "docstatus", "remarks", "reference_doctype", "reference_name",
                "adjustment_reason", "company", "owner", "creation"],
       filters: [["company", "=", co]],
-      limit: 500, order: "posting_date desc",
+      limit: 500, order: "posting_date desc, creation desc",
     });
     // Attach item count from a separate list call (names only)
     list.value = rows;
@@ -833,6 +833,10 @@ textarea.se-input { resize:vertical; }
   .se-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: se-mc-sh 1.4s infinite; }
   @keyframes se-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   .se-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+  /* View drawer items table: horizontal scroll */
+  .se-view-items-tbl { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+  .se-view-items-tbl thead, .se-view-items-tbl tbody, .se-view-items-tbl tr { display: table; width: 100%; table-layout: fixed; }
+  .se-view-items-tbl { min-width: 420px; display: block; }
 }
 @media (max-width: 480px) {
   .se-page { padding: 12px; gap: 10px; }

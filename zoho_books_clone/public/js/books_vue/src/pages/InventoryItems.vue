@@ -12,7 +12,7 @@
       </button>
     </div>
     <div style="display:flex;gap:6px;margin-left:auto">
-      <button class="b-btn b-btn-ghost" @click="viewMode=viewMode==='table'?'grid':'table'" style="padding:7px 10px">
+      <button class="b-btn b-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" style="padding:7px 10px">
         <span v-html="icon(viewMode==='table'?'grid':'file',14)"></span>
       </button>
       <button class="b-btn b-btn-ghost" @click="load"><span v-html="icon('refresh',13)"></span></button>
@@ -157,8 +157,8 @@
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div><label class="nim-label">Income Account</label><input class="nim-input" v-model="form.income_account" placeholder="Sales — Company"/></div>
-              <div><label class="nim-label">Expense Account</label><input class="nim-input" v-model="form.expense_account" placeholder="Cost of Goods Sold"/></div>
+              <div><label class="nim-label">Income Account</label><SearchableSelect v-model="form.income_account" :options="accountsList" placeholder="Select income account…" :createable="true" createDoctype="Account" @create="reloadAccounts"/></div>
+              <div><label class="nim-label">Expense Account</label><SearchableSelect v-model="form.expense_account" :options="accountsList" placeholder="Select expense account…" :createable="true" createDoctype="Account" @create="reloadAccounts"/></div>
             </div>
           </template>
 
@@ -220,7 +220,7 @@ const list       = ref([]);
 const loading    = ref(true);
 const search     = ref("");
 const filterTab  = ref("all");
-const viewMode   = ref("table");
+const viewMode   = ref(window.innerWidth <= 480 ? "grid" : "table");
 const showDrawer = ref(false);
 const drawerMode = ref("add");
 const saving     = ref(false);
@@ -233,6 +233,7 @@ const warehouses    = ref([]);
 const taxTemplates  = ref([]);
 const uomList       = ref([]);
 const defaultAccounts = ref({ income: "", expense: "" });
+const accountsList    = ref([]);
 
 const form = reactive({
   name: "", item_code: "", item_name: "", item_group: "", item_type: "Product",
@@ -283,17 +284,35 @@ async function load() {
   } catch { uomList.value = ["Nos", "Kg", "Ltr", "Mtr", "Box", "Pcs", "Set", "Dozen"]; }
   try {
     const company = await resolveCompany();
-    const accts = await apiGET("zoho_books_clone.api.docs.get_accounts", { company });
-    const incomeAcc = (accts.income || [])[0]?.name || "";
-    const expenseAccs = await apiList("Account", {
-      fields: ["name"],
-      filters: [["account_type", "in", ["Expense", "Cost of Goods Sold"]], ["is_group", "=", 0], ["company", "=", company]],
-      order: "name asc", limit: 10,
+    // Load full account list for dropdowns
+    const allAccts = await apiList("Account", {
+      fields: ["name"], filters: [["is_group","=",0],["company","=",company]], order: "name asc", limit: 500,
     });
-    const expenseAcc = (expenseAccs || [])[0]?.name || "";
-    defaultAccounts.value = { income: incomeAcc, expense: expenseAcc };
-  } catch { defaultAccounts.value = { income: "", expense: "" }; }
+    accountsList.value = (allAccts || []).map((a) => ({ value: a.name, label: a.name }));
+    // Determine defaults
+    try {
+      const accts = await apiGET("zoho_books_clone.api.docs.get_accounts", { company });
+      const incomeAcc = (accts.income || [])[0]?.name || "";
+      const expenseAccs = await apiList("Account", {
+        fields: ["name"],
+        filters: [["account_type", "in", ["Expense", "Cost of Goods Sold"]], ["is_group", "=", 0], ["company", "=", company]],
+        order: "name asc", limit: 10,
+      });
+      const expenseAcc = (expenseAccs || [])[0]?.name || "";
+      defaultAccounts.value = { income: incomeAcc, expense: expenseAcc };
+    } catch { defaultAccounts.value = { income: "", expense: "" }; }
+  } catch { defaultAccounts.value = { income: "", expense: "" }; accountsList.value = []; }
   loading.value = false;
+}
+
+async function reloadAccounts() {
+  try {
+    const company = await resolveCompany();
+    const allAccts = await apiList("Account", {
+      fields: ["name"], filters: [["is_group","=",0],["company","=",company]], order: "name asc", limit: 500,
+    });
+    accountsList.value = (allAccts || []).map((a) => ({ value: a.name, label: a.name }));
+  } catch {}
 }
 
 const filtered = computed(() => {
@@ -442,11 +461,20 @@ onMounted(load);
   .items-tbl-wrap .b-table th:nth-child(3), .items-tbl-wrap .b-table td:nth-child(3),
   .items-tbl-wrap .b-table th:nth-child(5), .items-tbl-wrap .b-table td:nth-child(5),
   .items-tbl-wrap .b-table th:nth-child(7), .items-tbl-wrap .b-table td:nth-child(7) { display: none; }
+  /* Toolbar: stack action row below filters */
+  .b-action-bar { flex-direction: column !important; align-items: stretch !important; }
+  .b-action-bar > div[style*="margin-left:auto"] { margin-left: 0 !important; display: flex; flex-wrap: wrap; gap: 6px; }
+  .b-action-bar > div[style*="margin-left:auto"] .b-btn-primary { flex: 1; justify-content: center; }
+  .b-filter-row { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; padding-bottom: 2px; }
 }
 
 @media (max-width: 480px) {
   /* also hide Type (4) */
   .items-tbl-wrap .b-table th:nth-child(4), .items-tbl-wrap .b-table td:nth-child(4) { display: none; }
   .items-tbl-wrap .b-table { min-width: 360px; }
+  /* Compact action buttons */
+  .b-action-bar > div[style*="margin-left:auto"] .b-btn-ghost { flex: 0 0 auto; padding: 7px 10px !important; }
+  /* Hide grid/list toggle — mobile always shows card view */
+  .view-toggle-btn { display: none !important; }
 }
 </style>

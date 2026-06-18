@@ -745,7 +745,7 @@ async function load() {
       fields: ["name", "customer", "customer_name", "posting_date", "grand_total", "return_against", "docstatus", "status"],
       filters: [["is_return", "=", 1], ["company", "=", co]],
       limit: 500,
-      order: "posting_date desc",
+      order: "posting_date desc, creation desc",
     });
     // Frappe sometimes omits customer_name on return invoices — resolve missing ones
     const missingNames = [...new Set(list.value.filter(c => !c.customer_name && c.customer).map(c => c.customer))];
@@ -1155,7 +1155,7 @@ async function applyCN(c) {
       apiList("Sales Invoice", {
         fields: ["name", "outstanding_amount", "grand_total", "posting_date"],
         filters: [["is_return", "=", 0], ["docstatus", "=", 1], ["customer", "=", c.customer], ["outstanding_amount", ">", 0]],
-        limit: 50, order: "posting_date desc",
+        limit: 50, order: "posting_date desc, creation desc",
       }),
       apiGET("zoho_books_clone.api.docs.get_credit_note_balance", { credit_note_name: c.name }).catch(() => null),
     ]);

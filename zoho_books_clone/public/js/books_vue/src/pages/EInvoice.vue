@@ -315,7 +315,7 @@ async function load() {
     const rows = await apiList("Sales Invoice", {
       fields:["name","posting_date","customer","customer_name","customer_gstin",
               "grand_total","irn","einvoice_status","ack_no","ack_date"],
-      filters, limit:500, order:"posting_date desc",
+      filters, limit:500, order: "posting_date desc, creation desc",
     });
     list.value = (rows||[]).filter(i=>i.customer_gstin);
     if (!list.value.length) noGstinWarning.value = true;

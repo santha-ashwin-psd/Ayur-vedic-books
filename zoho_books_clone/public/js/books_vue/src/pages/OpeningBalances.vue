@@ -65,22 +65,22 @@
     <div class="b-shimmer" style="max-width:300px;margin:0 auto;height:14px"></div>
   </div>
 
-  <div v-else class="b-card" style="padding:16px 20px">
+  <div v-else class="b-card ob-eq-card" style="padding:16px 20px">
     <div class="ob-eq-title" style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#868E96;margin-bottom:12px">Accounting Equation Check — Assets = Liabilities + Equity</div>
     <div class="ob-eq-strip" style="display:flex;align-items:center;flex-wrap:wrap;gap:0">
-      <div style="flex:1;min-width:140px;padding:12px 16px;border-radius:8px;text-align:center;background:#E0F7FA">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#0C8599;margin-bottom:4px">Assets</div>
-        <div style="font-size:18px;font-weight:700;color:#0C8599">{{fmtINR(eq.assets)}}</div>
+      <div class="ob-eq-cell" style="flex:1;padding:12px 16px;border-radius:8px;text-align:center;background:#E0F7FA">
+        <div class="ob-eq-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#0C8599;margin-bottom:4px">Assets</div>
+        <div class="ob-eq-val" style="font-size:18px;font-weight:700;color:#0C8599">{{fmtINR(eq.assets)}}</div>
       </div>
-      <div style="font-size:20px;font-weight:700;color:#868E96;padding:0 12px;align-self:center">=</div>
-      <div style="flex:1;min-width:140px;padding:12px 16px;border-radius:8px;text-align:center;background:#FFE3E3">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#C92A2A;margin-bottom:4px">Liabilities</div>
-        <div style="font-size:18px;font-weight:700;color:#C92A2A">{{fmtINR(eq.liabilities)}}</div>
+      <div class="ob-eq-op" style="font-size:20px;font-weight:700;color:#868E96;padding:0 12px;align-self:center">=</div>
+      <div class="ob-eq-cell" style="flex:1;padding:12px 16px;border-radius:8px;text-align:center;background:#FFE3E3">
+        <div class="ob-eq-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#C92A2A;margin-bottom:4px">Liabilities</div>
+        <div class="ob-eq-val" style="font-size:18px;font-weight:700;color:#C92A2A">{{fmtINR(eq.liabilities)}}</div>
       </div>
-      <div style="font-size:20px;font-weight:700;color:#868E96;padding:0 12px;align-self:center">+</div>
-      <div style="flex:1;min-width:140px;padding:12px 16px;border-radius:8px;text-align:center;background:#F3F0FF">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#2563eb;margin-bottom:4px">Equity</div>
-        <div style="font-size:18px;font-weight:700;color:#2563eb">{{fmtINR(eq.equity)}}</div>
+      <div class="ob-eq-op" style="font-size:20px;font-weight:700;color:#868E96;padding:0 12px;align-self:center">+</div>
+      <div class="ob-eq-cell" style="flex:1;padding:12px 16px;border-radius:8px;text-align:center;background:#F3F0FF">
+        <div class="ob-eq-lbl" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#2563eb;margin-bottom:4px">Equity</div>
+        <div class="ob-eq-val" style="font-size:18px;font-weight:700;color:#2563eb">{{fmtINR(eq.equity)}}</div>
       </div>
     </div>
     <div class="ob-eq-diff" :class="!eq.assets&&!eq.liabilities&&!eq.equity?'ob-eq-zero':Math.abs(eq.diff)<0.01?'ob-eq-ok':'ob-eq-err'">
@@ -553,32 +553,53 @@ onMounted(load);
     flex: 1; justify-content: center; text-align: center;
   }
 
-  /* ── Equation check: title compact, boxes stacked ── */
+  /* ── Equation card: clip overflow and reduce side padding ── */
+  .ob-eq-card {
+    padding: 12px 10px !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Equation check: compact horizontal row ── */
   .ob-eq-title {
-    font-size: 9.5px !important;
-    letter-spacing: 0.3px !important;
+    font-size: 8.5px !important;
+    letter-spacing: 0.2px !important;
+    margin-bottom: 8px !important;
   }
 
   .ob-eq-strip {
-    flex-direction: column !important;
-    gap: 6px !important;
-  }
-
-  .ob-eq-strip > div[style*="flex:1"] {
-    min-width: unset !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 0 !important;
+    align-items: stretch !important;
     width: 100% !important;
-    padding: 10px 14px !important;
   }
 
-  .ob-eq-strip > div[style*="font-size:20px"] {
-    padding: 2px 0 !important;
-    font-size: 16px !important;
+  .ob-eq-cell {
+    min-width: 0;
+    flex: 1;
+    padding: 6px 4px !important;
     text-align: center;
   }
 
+  .ob-eq-lbl {
+    font-size: 8px !important;
+    letter-spacing: 0.1px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .ob-eq-val {
+    font-size: 13px !important;
+  }
+
+  .ob-eq-op {
+    padding: 0 3px !important;
+    font-size: 12px !important;
+    flex-shrink: 0;
+  }
+
   .ob-eq-diff {
-    font-size: 11.5px !important;
-    padding: 8px 10px !important;
+    font-size: 10.5px !important;
+    padding: 7px 8px !important;
     line-height: 1.5;
   }
 

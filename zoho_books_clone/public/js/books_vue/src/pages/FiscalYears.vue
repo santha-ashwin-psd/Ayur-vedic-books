@@ -8,25 +8,25 @@
   </div>
 
   <div class="fy-stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
-    <div class="b-card" style="padding:13px 16px">
-      <div style="font-size:10.5px;color:#868E96;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Total Years</div>
-      <div style="font-size:22px;font-weight:700;">{{stats.total}}</div>
+    <div class="b-card fy-kpi-card">
+      <div class="fy-kpi-lbl">Total Years</div>
+      <div class="fy-kpi-val">{{stats.total}}</div>
     </div>
-    <div class="b-card" style="padding:13px 16px;border-left:3px solid #2F9E44">
-      <div style="font-size:10.5px;color:#2F9E44;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Current Year</div>
-      <div style="font-size:14px;font-weight:700;;color:#2F9E44">{{stats.currentName}}</div>
+    <div class="b-card fy-kpi-card fy-kpi-card--green">
+      <div class="fy-kpi-lbl" style="color:#2F9E44">Current Year</div>
+      <div class="fy-kpi-val fy-kpi-val--sm" style="color:#2F9E44">{{stats.currentName}}</div>
     </div>
-    <div class="b-card" style="padding:13px 16px;border-left:3px solid #3B5BDB">
-      <div style="font-size:10.5px;color:#3B5BDB;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Days Elapsed</div>
-      <div style="font-size:22px;font-weight:700;;color:#3B5BDB">{{stats.elapsed}}</div>
+    <div class="b-card fy-kpi-card fy-kpi-card--blue">
+      <div class="fy-kpi-lbl" style="color:#3B5BDB">Days Elapsed</div>
+      <div class="fy-kpi-val" style="color:#3B5BDB">{{stats.elapsed}}</div>
     </div>
-    <div class="b-card" style="padding:13px 16px;border-left:3px solid #E67700">
-      <div style="font-size:10.5px;color:#E67700;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Periods Locked</div>
-      <div style="font-size:22px;font-weight:700;;color:#E67700">{{stats.locked}}</div>
+    <div class="b-card fy-kpi-card fy-kpi-card--orange">
+      <div class="fy-kpi-lbl" style="color:#E67700">Periods Locked</div>
+      <div class="fy-kpi-val" style="color:#E67700">{{stats.locked}}</div>
     </div>
-    <div class="b-card" style="padding:13px 16px" :style="{borderLeft:stats.needsClosing?'3px solid #C92A2A':'3px solid #E2E8F0'}">
-      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px" :style="{color:stats.needsClosing?'#C92A2A':'#868E96'}">Needs Closing</div>
-      <div style="font-size:22px;font-weight:700;" :style="{color:stats.needsClosing?'#C92A2A':'#1A1D23'}">{{stats.needsClosing}}</div>
+    <div class="b-card fy-kpi-card" :class="stats.needsClosing?'fy-kpi-card--red':''">
+      <div class="fy-kpi-lbl" :style="{color:stats.needsClosing?'#C92A2A':'#868E96'}">Needs Closing</div>
+      <div class="fy-kpi-val" :style="{color:stats.needsClosing?'#C92A2A':'#1A1D23'}">{{stats.needsClosing}}</div>
     </div>
   </div>
 
@@ -322,7 +322,7 @@
               {{fForm.start&&fForm.end&&fForm.start>=fForm.end?"⚠ End date must be after start date":"Set start and end dates to preview periods"}}
             </div>
             <template v-else>
-              <div v-for="(p,i) in periodPreview.slice(0,6)" :key="i"
+              <div v-for="(p,i) in (showAllPeriods ? periodPreview : periodPreview.slice(0,6))" :key="i"
                 style="display:flex;justify-content:space-between;padding:8px 14px;border-bottom:1px solid #F1F3F5;font-size:12.5px">
                 <span :style="{color:p.is_current?'#3B5BDB':'#344054',fontWeight:p.is_current?600:400}">
                   {{p.name}}<span v-if="p.is_current" style="margin-left:5px;font-size:10px;background:#EEF2FF;color:#3B5BDB;padding:1px 5px;border-radius:8px">NOW</span>
@@ -330,8 +330,9 @@
                 <span style="color:#868E96;">{{p.start}} – {{p.end}}</span>
               </div>
               <div v-if="periodPreview.length>6"
-                style="padding:8px 14px;text-align:center;color:#868E96;font-size:12px;background:#F8F9FC">
-                + {{periodPreview.length-6}} more periods
+                @click="showAllPeriods=!showAllPeriods"
+                style="padding:8px 14px;text-align:center;font-size:12px;background:#F8F9FC;cursor:pointer;color:#2563eb;font-weight:600;user-select:none">
+                {{ showAllPeriods ? '▲ Show less' : '+ ' + (periodPreview.length-6) + ' more periods' }}
               </div>
             </template>
           </div>
@@ -390,7 +391,8 @@ const allYears       = ref([]);
 const selectedYear   = ref(null);
 const editingName    = ref(null);
 const showDrawer     = ref(false);
-const showCloseModal = ref(false);
+const showCloseModal  = ref(false);
+const showAllPeriods  = ref(false);
 const closeModalYear = ref(null);
 const saving         = ref(false);
 const fromFrappe     = ref(false);
@@ -718,6 +720,16 @@ onMounted(() => { load(); loadLockDate(); });
 .fy-mobile-back     { display: none; }
 .fy-right-panel     { display: block; }
 .fy-left-panel      { display: flex; }
+
+/* ── KPI stat cards ── */
+.fy-kpi-card { padding: 13px 16px; }
+.fy-kpi-lbl  { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #868E96; margin-bottom: 6px; }
+.fy-kpi-val  { font-size: 22px; font-weight: 700; color: #1A1D23; line-height: 1; }
+.fy-kpi-val--sm { font-size: 14px; }
+.fy-kpi-card--green { background: linear-gradient(135deg,#f0fdf4,#fff); }
+.fy-kpi-card--blue  { background: linear-gradient(135deg,#eff6ff,#fff); }
+.fy-kpi-card--orange{ background: linear-gradient(135deg,#fff7ed,#fff); }
+.fy-kpi-card--red   { background: linear-gradient(135deg,#fff1f2,#fff); }
 
 /* ═══════════════════════════════════════════════════════════
    RESPONSIVE  –  ≤ 768 px (tablets + phones)

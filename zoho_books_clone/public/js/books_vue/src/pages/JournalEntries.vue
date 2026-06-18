@@ -663,7 +663,7 @@ async function load() {
     try {
       frappeEntries = await apiList("Journal Entry", {
         fields: ["name", "posting_date", "voucher_type", "remark", "total_debit", "total_credit", "docstatus"],
-        order: "posting_date desc", limit: 300,
+        order: "posting_date desc, creation desc", limit: 300,
       });
     } catch {}
     if (frappeEntries && frappeEntries.length) {

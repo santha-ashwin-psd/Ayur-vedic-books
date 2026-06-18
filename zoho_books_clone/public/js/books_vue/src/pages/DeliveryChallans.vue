@@ -752,7 +752,7 @@ async function load() {
                "sales_order", "status", "total_qty", "lr_no", "transporter_name", "docstatus"],
       filters: [["company", "=", company]],
       limit: 500,
-      order: "posting_date desc",
+      order: "posting_date desc, creation desc",
     }).catch(() => []);
 
     // 2) Sales Orders that are Submitted and not yet fully delivered
@@ -765,7 +765,7 @@ async function load() {
         ["status", "in", ["To Deliver", "Partially Delivered", "Submitted"]],
       ],
       limit: 500,
-      order: "transaction_date desc",
+      order: "transaction_date desc, creation desc",
     }).catch(() => []);
 
     // Normalise DN rows
@@ -1126,7 +1126,7 @@ async function fetchSalesOrders(q = "") {
     if (q) f.push(["name", "like", "%" + q + "%"]);
     const r = await apiList("Sales Order", {
       fields: ["name", "customer", "customer_name", "delivery_date", "status"],
-      filters: f, limit: 30, order: "transaction_date desc",
+      filters: f, limit: 30, order: "transaction_date desc, creation desc",
     });
     salesOrders.value = (r || []).map(x => ({
       ...x,

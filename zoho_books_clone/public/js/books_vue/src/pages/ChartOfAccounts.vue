@@ -335,8 +335,8 @@
           <div v-if="ledgerDrawer.loading" style="text-align:center;padding:32px;color:#9ca3af">Loading ledger…</div>
           <div v-else-if="!ledgerDrawer.rows.length" style="text-align:center;padding:32px;color:#9ca3af">No transactions in this period.</div>
           <template v-else>
-            <!-- Desktop ledger table (hidden on mobile) -->
-            <table class="b-table ldg-desktop-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+            <!-- Desktop ledger table -->
+            <table v-if="!isMobile" class="b-table ldg-desktop-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
               <thead>
                 <tr style="background:#f9fafb">
                   <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;text-transform:uppercase;font-weight:700">Date</th>
@@ -373,8 +373,8 @@
               </tfoot>
             </table>
 
-            <!-- Mobile ledger cards (shown only at 375–425px) -->
-            <div class="ldg-mobile-cards">
+            <!-- Mobile ledger cards -->
+            <div v-if="isMobile" class="ldg-mobile-cards">
               <div v-for="r in ledgerDrawer.rows" :key="'lmc-'+(r.name||r.voucher_no)+'-'+r.posting_date"
                 class="ldg-entry-card"
                 :class="r.balance > 0 ? 'ldg-card--dr' : r.balance < 0 ? 'ldg-card--cr' : 'ldg-card--zero'">
@@ -424,7 +424,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted } from "vue";
 import { apiGET, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
@@ -776,10 +776,15 @@ function exportLedgerCSV() {
   toast("Ledger CSV exported", "success");
 }
 
+const isMobile = ref(window.innerWidth <= 425);
+function onResize() { isMobile.value = window.innerWidth <= 425; }
+
 onMounted(async () => {
   await load();
   loadBalances();
+  window.addEventListener("resize", onResize, { passive: true });
 });
+onUnmounted(() => window.removeEventListener("resize", onResize));
 </script>
 
 <style scoped>
@@ -819,23 +824,22 @@ onMounted(async () => {
   /* ── Individual account card ── */
   .coa-mobile-card {
     background: #ffffff;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    border-left: 4px solid var(--mc-accent, #0C8599);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     overflow: hidden;
     cursor: pointer;
-    transition: box-shadow 0.18s ease, transform 0.12s ease;
+    transition: box-shadow 0.15s, border-color 0.15s;
   }
 
   .coa-mobile-card:active {
-    transform: scale(0.985);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    border-color: #cbd5e1;
   }
 
-  /* Group cards get a subtle tinted header */
+  /* Group cards: subtle top accent bar */
   .coa-mobile-card--group {
-    background: linear-gradient(160deg, var(--mc-bg, #E0F7FA) 0%, #ffffff 60%);
+    border-top: 3px solid var(--mc-accent, #0C8599);
   }
 
   /* ── Card header ── */

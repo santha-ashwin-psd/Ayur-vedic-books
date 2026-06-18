@@ -892,7 +892,7 @@ async function load() {
       fields: ["name", "supplier", "supplier_name", "posting_date", "due_date", "bill_no", "grand_total", "outstanding_amount", "docstatus", "status"],
       filters: [["is_return", "=", 0]],
       limit: 500,
-      order: "posting_date desc",
+      order: "posting_date desc, creation desc",
     });
   } catch (e) { toast.error(e.message || "Failed to load bills"); }
   finally { loading.value = false; }

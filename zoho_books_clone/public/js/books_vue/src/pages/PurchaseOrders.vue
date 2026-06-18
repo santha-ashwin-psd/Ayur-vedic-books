@@ -979,7 +979,7 @@ async function load() {
       fields: ["name", "supplier", "supplier_name", "transaction_date", "expected_delivery_date", "status", "grand_total", "billed_amount", "billing_address", "delivery_address", "billing_address_name", "delivery_address_name"],
       filters: [["company", "=", co]],
       limit: 500,
-      order: "transaction_date desc",
+      order: "transaction_date desc, creation desc",
     });
   } catch (e) { toast.error(e.message || "Failed to load purchase orders"); }
   finally { loading.value = false; }

@@ -1124,7 +1124,7 @@ async function load() {
       fields: ["name", "customer", "customer_name", "transaction_date", "delivery_date", "status", "grand_total", "billed_amount", "ref_quote", "po_number"],
       filters: [["company", "=", co]],
       limit: 500,
-      order: "transaction_date desc",
+      order: "transaction_date desc, creation desc",
     });
   } catch (e) { toast.error(e.message || "Failed to load sales orders"); }
   finally { loading.value = false; }

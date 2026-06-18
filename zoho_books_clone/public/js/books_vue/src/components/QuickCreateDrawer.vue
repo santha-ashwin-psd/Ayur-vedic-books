@@ -234,6 +234,48 @@
             </div>
           </template>
 
+          <!-- ── Account ────────────────────────────────────────────── -->
+          <template v-else-if="state.doctype === 'Account'">
+            <div class="qcd-section">Account Details</div>
+            <div class="qcd-grid">
+              <div class="qcd-field qcd-full">
+                <label class="qcd-lbl">Account Name <span class="qcd-req">*</span></label>
+                <input v-model="form.account_name" class="qcd-input" placeholder="e.g. Sales Revenue, Office Supplies" autofocus />
+              </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">Account Type</label>
+                <select v-model="form.account_type" class="qcd-input">
+                  <option value="">— Select Type —</option>
+                  <option value="Income Account">Income Account</option>
+                  <option value="Expense Account">Expense Account</option>
+                  <option value="Cost of Goods Sold">Cost of Goods Sold</option>
+                  <option value="Fixed Asset">Fixed Asset</option>
+                  <option value="Accumulated Depreciation">Accumulated Depreciation</option>
+                  <option value="Depreciation">Depreciation</option>
+                  <option value="Current Asset">Current Asset</option>
+                  <option value="Current Liability">Current Liability</option>
+                  <option value="Equity">Equity</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank">Bank</option>
+                  <option value="Receivable">Receivable</option>
+                  <option value="Payable">Payable</option>
+                  <option value="Tax">Tax</option>
+                </select>
+              </div>
+              <div class="qcd-field">
+                <label class="qcd-lbl">Parent Account <span class="qcd-req">*</span></label>
+                <select v-model="form.parent_account" class="qcd-input">
+                  <option value="">— Select Parent —</option>
+                  <option v-for="a in parentAccountList" :key="a" :value="a">{{ a }}</option>
+                </select>
+              </div>
+              <div class="qcd-field qcd-full">
+                <label class="qcd-lbl">Account Number</label>
+                <input v-model="form.account_number" class="qcd-input" placeholder="Optional account code" />
+              </div>
+            </div>
+          </template>
+
           <!-- ── Fallback ─────────────────────────────────────────────── -->
           <template v-else>
             <div class="qcd-grid">
@@ -272,8 +314,9 @@ const saving  = ref(false);
 const form    = reactive({});
 const uomList = ref([]);
 const parentWarehouseList = ref([]);
+const parentAccountList   = ref([]);
 const PAYMENT_TERMS = ["Due on Receipt","Net 7","Net 15","Net 30","Net 45","Net 60","Net 90"];
-const LABELS = { Customer: "Customer", Supplier: "Vendor / Supplier", Item: "Item", Warehouse: "Warehouse" };
+const LABELS = { Customer: "Customer", Supplier: "Vendor / Supplier", Item: "Item", Warehouse: "Warehouse", Account: "Account" };
 
 onMounted(async () => {
   try {
@@ -284,6 +327,10 @@ onMounted(async () => {
     const r = await apiList("Warehouse", { fields: ["name"], filters: [["is_group","=",1],["disabled","=",0]], order: "name asc", limit: 100 });
     parentWarehouseList.value = (r || []).map(x => x.name);
   } catch { parentWarehouseList.value = []; }
+  try {
+    const r = await apiList("Account", { fields: ["name"], filters: [["is_group","=",1]], order: "name asc", limit: 300 });
+    parentAccountList.value = (r || []).map(x => x.name);
+  } catch { parentAccountList.value = []; }
 });
 
 watch(() => state.open, (open) => {
@@ -312,6 +359,10 @@ watch(() => state.open, (open) => {
       warehouse_name: state.prefill, warehouse_type: "Stores",
       parent_warehouse: "", address_line_1: "", city: "", state: "", pin: "", country: "India",
     });
+  } else if (state.doctype === "Account") {
+    Object.assign(form, {
+      account_name: state.prefill, account_type: "", parent_account: "", account_number: "",
+    });
   } else {
     form.name = state.prefill;
   }
@@ -335,6 +386,10 @@ async function onSave() {
   if (state.doctype === "Warehouse" && !form.warehouse_name?.trim()) {
     toast("Warehouse Name is required", "error"); return;
   }
+  if (state.doctype === "Account") {
+    if (!form.account_name?.trim()) { toast("Account Name is required", "error"); return; }
+    if (!form.parent_account?.trim()) { toast("Parent Account is required", "error"); return; }
+  }
   if (!state.doctype && !form.name?.trim()) {
     toast("Name is required", "error"); return;
   }
@@ -348,7 +403,7 @@ async function onSave() {
     }
     if (company) {
       if (["Customer", "Supplier", "Item"].includes(state.doctype)) payload.books_company = company;
-      if (["Warehouse"].includes(state.doctype)) payload.company = company;
+      if (["Warehouse", "Account"].includes(state.doctype)) payload.company = company;
     }
 
     const saved = await apiSave(payload);
@@ -358,6 +413,7 @@ async function onSave() {
       state.doctype === "Supplier"  ? (form.supplier_name  || savedName) :
       state.doctype === "Item"      ? (form.item_name      || savedName) :
       state.doctype === "Warehouse" ? (form.warehouse_name || savedName) :
+      state.doctype === "Account"   ? (form.account_name   || savedName) :
       savedName;
 
     toast(`${LABELS[state.doctype] || state.doctype} "${label}" created`, "success");

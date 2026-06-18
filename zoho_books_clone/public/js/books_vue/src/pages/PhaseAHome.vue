@@ -173,7 +173,7 @@ async function loadAll() {
       apiList("Sales Invoice", {
         fields: ["name", "customer", "customer_name", "grand_total", "outstanding_amount", "status", "posting_date", "due_date"],
         filters: [["company", "=", co], ["docstatus", "=", 1], ["outstanding_amount", ">", 0]],
-        limit: 100, order: "posting_date desc"
+        limit: 100, order: "posting_date desc, creation desc"
       }),
       apiList("Purchase Invoice", {
         fields: ["name", "supplier", "grand_total", "outstanding_amount", "status", "posting_date"],

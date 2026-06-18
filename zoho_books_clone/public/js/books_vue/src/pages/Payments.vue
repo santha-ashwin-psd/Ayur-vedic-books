@@ -642,7 +642,7 @@ async function load() {
     list.value = await apiList("Payment Entry", {
       fields: ["name","party","party_name","party_type","paid_amount","payment_type","payment_date",
                "mode_of_payment","reference_no","reference_date","paid_from","paid_to","remarks","docstatus"],
-      limit: 200, order: "payment_date desc",
+      limit: 200, order: "payment_date desc, creation desc",
     });
   } catch (e) { toast.error(e.message || "Failed to load payments"); }
   finally { loading.value = false; }

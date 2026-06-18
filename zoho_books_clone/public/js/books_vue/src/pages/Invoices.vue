@@ -1826,7 +1826,7 @@ async function load() {
               "grand_total","outstanding_amount","status","docstatus","po_no",
               "customer_gstin","irn","einvoice_status","ack_no","ack_date"],
       filters:[["is_return","=",0]],
-      limit:500, order:"posting_date desc",
+      limit:500, order: "posting_date desc, creation desc",
     })||[];
   } catch { list.value=[]; toast("Could not load invoices","error"); }
   loading.value=false;

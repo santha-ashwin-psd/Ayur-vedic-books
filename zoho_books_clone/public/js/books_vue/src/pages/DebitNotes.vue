@@ -786,7 +786,7 @@ async function load() {
       fields: ["name", "supplier", "supplier_name", "posting_date", "grand_total", "return_against", "docstatus", "status"],
       filters: [["is_return", "=", 1], ["company", "=", co]],
       limit: 500,
-      order: "posting_date desc",
+      order: "posting_date desc, creation desc",
     });
     // Resolve supplier_name for any rows where it's missing
     const missing = [...new Set(rows.filter(d => !d.supplier_name && d.supplier).map(d => d.supplier))];
@@ -1192,7 +1192,7 @@ async function applyDN(d) {
     const r = await apiList("Purchase Invoice", {
       fields: ["name", "outstanding_amount", "grand_total"],
       filters: [["is_return", "=", 0], ["docstatus", "=", 1], ["supplier", "=", d.supplier], ["outstanding_amount", ">", 0]],
-      limit: 50, order: "posting_date desc",
+      limit: 50, order: "posting_date desc, creation desc",
     });
     if (!r.length) { toast.info("No open bills for this vendor"); return; }
     const balance = balanceFor(d.name) || viewBalance.value || Math.abs(flt(d.grand_total));

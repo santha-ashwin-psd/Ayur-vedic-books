@@ -1363,7 +1363,7 @@ async function load() {
                "valid_till","status","docstatus","grand_total","title","currency"],
       filters: [["company","=",co]],
       limit: 500,
-      order: "transaction_date desc",
+      order: "transaction_date desc, creation desc",
     });
   } catch (e) {
     toast.error(e.message || "Failed to load quotations");

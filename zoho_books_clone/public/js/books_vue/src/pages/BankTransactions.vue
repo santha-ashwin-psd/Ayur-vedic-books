@@ -200,7 +200,7 @@ async function load(){
     // Pull both then alias for the legacy template.
     const raw=await apiList("Bank Transaction",{
       fields:["name","date","bank_account","description","reference_number","debit","credit","status","currency"],
-      filters, limit:300, order:"date desc"
+      filters, limit:300, order: "date desc, creation desc"
     });
     list.value = raw.map(t => ({
       ...t,

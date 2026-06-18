@@ -335,7 +335,7 @@ async function fetchPOs(q = "") {
     if (q) filters.push(["name", "like", `%${q}%`]);
     const rows = await apiList("Purchase Order", {
       fields: ["name", "supplier", "transaction_date", "grand_total"],
-      filters, limit: 30, order: "transaction_date desc",
+      filters, limit: 30, order: "transaction_date desc, creation desc",
     });
     poOptions.value = rows.map(r => ({
       label: `${r.name}  (${r.transaction_date || ""})`,

@@ -1,182 +1,282 @@
 <template>
-<div class="wh-layout" style="display:flex;height:calc(100vh - 56px);overflow:hidden">
+<div class="wh-page">
 
-  <!-- Left panel: tree -->
-  <div class="wh-left" style="width:340px;min-width:340px;border-right:1px solid #e4e8f0;display:flex;flex-direction:column;background:#fff">
-    <div style="padding:16px 16px 12px;border-bottom:1px solid #f0f2f5">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:15px;font-weight:700;color:#1A1D23">Warehouses</div>
-        <button class="nim-btn nim-btn-primary" style="padding:5px 12px;font-size:12px" @click="openAdd">
-          <span v-html="icon('plus')"></span> New
-        </button>
-      </div>
-      <div style="position:relative">
-        <span v-html="icon('search')" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none;width:14px"></span>
-        <input v-model="search" placeholder="Search warehouses…"
-          style="width:100%;border:1px solid #e4e8f0;border-radius:7px;padding:7px 10px 7px 30px;font-size:13px;outline:none;color:#1A1D23"/>
+  <!-- ════════════════════════════════════════════
+       TOOLBAR
+       ════════════════════════════════════════════ -->
+  <div class="wh-toolbar">
+
+    <!-- Group dropdown -->
+    <div class="wh-group-wrap">
+      <span class="wh-group-prefix">Group</span>
+      <div class="wh-group-select-wrap">
+        <select v-model="selectedGroupName" class="wh-group-select">
+          <option value="">— Select group —</option>
+          <option v-for="g in groups" :key="g.name" :value="g.name">
+            {{ whMeta(g.warehouse_type).icon }} {{ g.warehouse_name || g.name }}
+          </option>
+        </select>
+        <span class="wh-group-chev" v-html="icon('chevD', 12)"></span>
       </div>
     </div>
-    <div style="flex:1;overflow-y:auto">
-      <div v-if="loading" style="padding:20px 16px">
-        <div class="b-shimmer" style="height:28px;border-radius:6px;margin-bottom:8px"></div>
-        <div class="b-shimmer" style="height:28px;border-radius:6px;margin-bottom:8px;margin-left:20px"></div>
-        <div class="b-shimmer" style="height:28px;border-radius:6px;margin-bottom:8px;margin-left:20px"></div>
-        <div class="b-shimmer" style="height:28px;border-radius:6px;margin-left:40px"></div>
-      </div>
-      <div v-else-if="!treeNodes.length" style="padding:32px 16px;text-align:center;color:#868E96;font-size:13px">
-        No warehouses found
-      </div>
-      <div v-else v-for="node in treeNodes" :key="node.name"
-        @click="selectWarehouse(node)"
-        :style="{
-          paddingLeft: (14 + node.depth * 20) + 'px',
-          paddingRight:'12px', paddingTop:'8px', paddingBottom:'8px',
-          cursor:'pointer', display:'flex', alignItems:'center', gap:'6px',
-          borderLeft: selectedWH && selectedWH.name===node.name ? '3px solid #2563eb' : '3px solid transparent',
-          background: selectedWH && selectedWH.name===node.name ? '#F3F0FF' : 'transparent',
-          transition:'background 0.12s',
-        }">
-        <span v-if="node.is_group" @click.stop="toggleExpand(node.name, $event)"
-          style="width:14px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;color:#868E96;cursor:pointer">
-          {{expanded.has(node.name)?'▼':'▶'}}
-        </span>
-        <span v-else style="width:14px;flex-shrink:0"></span>
-        <span style="font-size:15px;flex-shrink:0">{{whMeta(node.warehouse_type).icon}}</span>
-        <span style="font-size:13px;color:#1A1D23;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          {{node.warehouse_name || node.name}}
-        </span>
-        <span v-if="node.is_group && childCount(node.name)"
-          style="font-size:10px;background:#e4e8f0;color:#495057;border-radius:10px;padding:0 6px;flex-shrink:0">
-          {{childCount(node.name)}}
-        </span>
-        <span v-if="node.disabled" style="font-size:10px;background:#FFF5F5;color:#C92A2A;border-radius:10px;padding:0 6px;flex-shrink:0">off</span>
-      </div>
+
+    <!-- Search -->
+    <div class="wh-tb-search-wrap">
+      <span v-html="icon('search')" class="wh-tb-search-icon"></span>
+      <input v-model="search" class="wh-tb-search-input" placeholder="Search warehouses…" />
+    </div>
+
+    <!-- Type filter pills -->
+    <div class="wh-filter-pills">
+      <button
+        v-for="t in ['All', ...WH_TYPES]" :key="t"
+        class="wh-fpill" :class="{ 'wh-fpill--active': filterType === t }"
+        @click="filterType = t"
+      >{{ t === 'All' ? 'All' : whMeta(t).icon + ' ' + t }}</button>
+    </div>
+
+    <div class="wh-tb-actions">
+      <button class="wh-action-btn" @click="load">
+        <span v-html="icon('refresh', 14)"></span>
+      </button>
+      <button class="wh-action-btn wh-action-btn--primary" @click="openAddChild">
+        <span v-html="icon('plus', 13)"></span><span class="wh-btn-label"> New Warehouse</span>
+      </button>
     </div>
   </div>
 
-  <!-- Right panel: detail -->
-  <div class="wh-right" style="flex:1;overflow-y:auto;background:#f0f2f5">
-    <div v-if="!selectedWH" style="display:flex;align-items:center;justify-content:center;height:100%">
-      <div style="text-align:center;color:#868E96">
-        <div style="font-size:48px;margin-bottom:12px">🏭</div>
-        <div style="font-size:15px;font-weight:600;color:#343A40;margin-bottom:4px">Select a Warehouse</div>
-        <div style="font-size:13px">Click a warehouse on the left to view its stock details</div>
-      </div>
+  <!-- ════════════════════════════════════════════
+       MAIN CONTENT (scrollable)
+       ════════════════════════════════════════════ -->
+  <div class="wh-content">
+
+    <!-- No groups exist at all -->
+    <div v-if="!loading && !groups.length" class="wh-empty-state">
+      <div class="wh-empty-icon">🏭</div>
+      <div class="wh-empty-title">No warehouse groups yet</div>
+      <div class="wh-empty-sub">Create a group warehouse first to start organizing stock</div>
+      <button class="wh-action-btn wh-action-btn--primary" style="margin-top:18px" @click="openAddGroup">
+        <span v-html="icon('plus', 13)"></span> Create Warehouse Group
+      </button>
     </div>
-    <div v-else style="padding:24px">
 
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-        <div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-size:22px">{{whMeta(selectedWH.warehouse_type).icon}}</span>
-            <h1 style="font-size:20px;font-weight:700;color:#1A1D23;margin:0">{{selectedWH.warehouse_name || selectedWH.name}}</h1>
-            <span :style="{background:whMeta(selectedWH.warehouse_type).bg,color:whMeta(selectedWH.warehouse_type).color,
-              padding:'3px 10px',borderRadius:'20px',fontSize:'12px',fontWeight:'600'}">
-              {{selectedWH.warehouse_type || 'Stores'}}
+    <!-- No group selected -->
+    <div v-else-if="!selectedWH && !loading" class="wh-empty-state">
+      <div class="wh-empty-icon">👆</div>
+      <div class="wh-empty-title">Select a warehouse group</div>
+      <div class="wh-empty-sub">Choose a group from the dropdown above</div>
+    </div>
+
+    <template v-else-if="selectedWH">
+
+      <!-- ── Section header ── -->
+      <div class="wh-section-header">
+        <div class="wh-section-title">
+          <span>{{ whMeta(selectedWH.warehouse_type).icon }}</span>
+          {{ selectedWH.warehouse_name || selectedWH.name }}
+          <span v-if="childWarehouses.length" class="wh-stock-count">{{ childWarehouses.length }}</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="wh-action-btn" @click="openEdit(selectedWH)">
+            <span v-html="icon('edit', 13)"></span> Edit Group
+          </button>
+          <button class="wh-action-btn wh-action-btn--danger" @click="confirmDel(selectedWH)">
+            <span v-html="icon('trash', 13)"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Loading shimmer ── -->
+      <div v-if="loading" class="wh-cards-grid wh-cards-gap">
+        <div v-for="i in 4" :key="i" class="wh-card-shimmer">
+          <div class="b-shimmer" style="height:44px;width:44px;border-radius:12px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="b-shimmer" style="height:16px;border-radius:4px;margin-bottom:8px;width:75%"></div>
+            <div class="b-shimmer" style="height:12px;border-radius:4px;width:50%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── No children ── -->
+      <div v-else-if="!childWarehouses.length" class="wh-no-children">
+        <div style="font-size:32px;margin-bottom:8px">🏭</div>
+        <div style="font-size:14px;font-weight:700;color:#334155;margin-bottom:4px">No warehouses in this group</div>
+        <div style="font-size:13px;color:#94a3b8;margin-bottom:14px">Add a warehouse to start tracking stock</div>
+        <button class="wh-action-btn wh-action-btn--primary" @click="openAddChild">
+          <span v-html="icon('plus', 13)"></span> Add Warehouse
+        </button>
+      </div>
+
+      <!-- ── Child warehouse cards ── -->
+      <div v-else class="wh-cards-grid wh-cards-gap">
+        <div
+          v-for="child in childWarehouses" :key="child.name"
+          class="wh-card"
+          :class="{
+            'wh-card--active':   selectedChild?.name === child.name,
+            'wh-card--disabled': child.disabled
+          }"
+          @click="selectChild(child)"
+        >
+          <div class="wh-card-top">
+            <div class="wh-card-icon" :style="{ background: whMeta(child.warehouse_type).bg }">
+              {{ whMeta(child.warehouse_type).icon }}
+            </div>
+            <div class="wh-card-info">
+              <div class="wh-card-name">{{ child.warehouse_name || child.name }}</div>
+              <div class="wh-card-meta">
+                <span v-if="child.city" class="wh-card-city">📍 {{ child.city }}{{ child.state ? ', ' + child.state : '' }}</span>
+              </div>
+            </div>
+            <div class="wh-card-right">
+              <span class="wh-badge"
+                :style="{ background: whMeta(child.warehouse_type).bg, color: whMeta(child.warehouse_type).color }">
+                {{ child.warehouse_type || 'Stores' }}
+              </span>
+              <span v-if="child.is_group" class="wh-badge wh-badge-blue">Group</span>
+              <span v-if="child.disabled" class="wh-badge wh-badge-red">Off</span>
+            </div>
+          </div>
+          <div class="wh-card-footer wh-card-footer--actions" @click.stop>
+            <button
+              class="wh-adj-btn"
+              :class="{ 'wh-adj-btn--active': selectedChild?.name === child.name }"
+              @click="openNewAdjustment(child)"
+            >
+              <span v-html="icon('plus', 11)"></span> Add Stock
+            </button>
+            <button class="wh-action-btn" style="padding:5px 10px" @click="openEdit(child)">
+              <span v-html="icon('edit', 13)"></span>
+            </button>
+            <button class="wh-action-btn wh-action-btn--danger" style="padding:5px 10px" @click="confirmDel(child)">
+              <span v-html="icon('trash', 13)"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Stock summary table ── -->
+      <div class="wh-stock-section">
+
+        <!-- Stats strip -->
+        <div v-if="stockItems.length && !stockLoading" class="wh-stats-strip">
+          <div class="wh-stat-chip wh-stat-chip--blue">
+            <span class="wh-stat-chip-icon">💰</span>
+            <div>
+              <div class="wh-stat-chip-lbl">Total Value</div>
+              <div class="wh-stat-chip-val">{{ fmt(whStats.value) }}</div>
+            </div>
+          </div>
+          <div class="wh-stat-chip wh-stat-chip--green">
+            <span class="wh-stat-chip-icon">📦</span>
+            <div>
+              <div class="wh-stat-chip-lbl">Items in Stock</div>
+              <div class="wh-stat-chip-val">{{ whStats.items }}</div>
+            </div>
+          </div>
+          <div class="wh-stat-chip wh-stat-chip--orange">
+            <span class="wh-stat-chip-icon">🔒</span>
+            <div>
+              <div class="wh-stat-chip-lbl">Reserved Qty</div>
+              <div class="wh-stat-chip-val">{{ whStats.reserved.toFixed(2) }}</div>
+            </div>
+          </div>
+          <div class="wh-stat-chip wh-stat-chip--indigo">
+            <span class="wh-stat-chip-icon">📊</span>
+            <div>
+              <div class="wh-stat-chip-lbl">Projected Qty</div>
+              <div class="wh-stat-chip-val">{{ whStats.projected.toFixed(2) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table header -->
+        <div class="wh-stock-header">
+          <div class="wh-stock-title">
+            Stock Items
+            <span v-if="selectedChild" class="wh-stock-scope">
+              — {{ selectedChild.warehouse_name || selectedChild.name }}
             </span>
-            <span v-if="selectedWH.disabled" style="background:#FFF5F5;color:#C92A2A;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">Disabled</span>
+            <span v-else class="wh-stock-scope">— All ({{ selectedWH.warehouse_name || selectedWH.name }})</span>
+            <span v-if="stockItems.length" class="wh-stock-count">{{ stockItems.length }}</span>
           </div>
-          <span v-if="selectedWH.is_group" style="background:#eff6ff;color:#2563eb;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;margin-left:4px">Group Warehouse</span>
-          <div v-if="selectedWH.parent_warehouse" style="font-size:12.5px;color:#868E96;margin-top:4px">
-            Parent: {{selectedWH.parent_warehouse}}
-          </div>
-          <div v-if="selectedWH.is_group" style="font-size:12px;color:#64748b;margin-top:4px">
-            Totals aggregated from all child warehouses
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
-          <button class="nim-btn nim-btn-ghost" @click="openEdit(selectedWH)"><span v-html="icon('edit')"></span> Edit</button>
-          <button v-if="!selectedWH.is_group" class="nim-btn nim-btn-ghost" style="color:#1971C2;border-color:#1971C2" @click="openTransfer">
-            <span v-html="icon('refresh')"></span> Transfer
-          </button>
-          <button class="nim-btn" style="background:#FFF5F5;color:#C92A2A;border-color:#FFC9C9" @click="confirmDel(selectedWH)">
-            <span v-html="icon('trash')"></span>
-          </button>
-        </div>
-      </div>
-
-      <div class="wh-stats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Stock Value</div>
-          <div style="font-size:18px;font-weight:700;color:#2563eb;">{{fmt(whStats.value)}}</div>
-        </div>
-        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Items in Stock</div>
-          <div style="font-size:18px;font-weight:700;color:#111827;">{{whStats.items}}</div>
-        </div>
-        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Reserved Qty</div>
-          <div style="font-size:18px;font-weight:700;color:#E67700;">{{whStats.reserved.toFixed(2)}}</div>
-        </div>
-        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px">
-          <div style="font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px">Projected Qty</div>
-          <div style="font-size:18px;font-weight:700;color:#1971C2;">{{whStats.projected.toFixed(2)}}</div>
-        </div>
-      </div>
-
-      <div class="cust-table-card">
-        <div style="padding:14px 16px 10px;border-bottom:1px solid #f0f2f5;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:14px;font-weight:600;color:#1A1D23">Stock Items</div>
-          <div style="display:flex;gap:8px">
-            <button v-if="!selectedWH.is_group" class="nim-btn" style="font-size:12px;padding:4px 12px;background:#2563eb;color:#fff;border-color:#2563eb" @click="openNewAdjustment">
-              <span v-html="icon('plus',12)"></span> Add Stock
+          <div class="wh-stock-actions">
+            <button v-if="selectedChild" class="wh-action-btn" @click="selectedChild = null; loadStockForWarehouse(selectedWH.name)">
+              <span v-html="icon('x', 12)"></span> Clear
             </button>
-            <button class="nim-btn nim-btn-ghost" style="font-size:12px;padding:4px 10px" @click="loadStockForWarehouse(selectedWH.name)">
-              <span v-html="icon('refresh')"></span> Refresh
+            <button class="wh-action-btn" @click="loadStockForWarehouse(selectedChild?.name || selectedWH.name)">
+              <span v-html="icon('refresh', 13)"></span>
             </button>
           </div>
         </div>
-        <div v-if="stockLoading" style="padding:20px">
-          <div class="b-shimmer" style="height:32px;border-radius:6px;margin-bottom:6px"></div>
-          <div class="b-shimmer" style="height:32px;border-radius:6px;margin-bottom:6px"></div>
-          <div class="b-shimmer" style="height:32px;border-radius:6px"></div>
+
+        <!-- Loading -->
+        <div v-if="stockLoading" class="wh-stock-shimmer">
+          <div class="b-shimmer" style="height:42px;border-radius:6px;margin-bottom:6px"></div>
+          <div class="b-shimmer" style="height:42px;border-radius:6px;margin-bottom:6px"></div>
+          <div class="b-shimmer" style="height:42px;border-radius:6px;margin-bottom:6px"></div>
+          <div class="b-shimmer" style="height:42px;border-radius:6px"></div>
         </div>
-        <div v-else-if="!stockItems.length" style="padding:40px;text-align:center;color:#868E96;font-size:13px">
-          <div style="font-size:32px;margin-bottom:8px">📦</div>
-          <div style="font-weight:600;color:#343A40;margin-bottom:4px">No stock in this warehouse</div>
-          <div>{{ selectedWH.is_group ? 'No stock in any child warehouse yet' : 'Stock will appear here once items are received' }}</div>
+
+        <!-- Empty -->
+        <div v-else-if="!stockItems.length" class="wh-stock-empty">
+          <div style="font-size:36px;margin-bottom:10px">📭</div>
+          <div class="wh-stock-empty-title">No stock data</div>
+          <div class="wh-stock-empty-sub">No stock found in this warehouse group yet</div>
         </div>
-        <div v-else class="cust-table-wrap">
-          <table class="cust-table">
-            <thead><tr>
-              <th>Item Code</th><th>Item Name</th><th>Group</th><th>UOM</th>
-              <th style="text-align:right">Actual Qty</th>
-              <th style="text-align:right">Reserved</th>
-              <th style="text-align:right">Val. Rate</th>
-              <th style="text-align:right">Stock Value</th>
-              <th style="text-align:center">Alert</th>
-              <th v-if="!selectedWH.is_group" style="text-align:center">Action</th>
-            </tr></thead>
+
+        <!-- Table -->
+        <div v-else class="wh-tbl-wrap">
+          <table class="wh-tbl">
+            <thead>
+              <tr>
+                <th class="wh-th">Item</th>
+                <th class="wh-th wh-th-hide-sm">Group</th>
+                <th class="wh-th wh-th-hide-sm">UOM</th>
+                <th class="wh-th wh-th-r">Actual Qty</th>
+                <th class="wh-th wh-th-r wh-th-hide-md">Reserved</th>
+                <th class="wh-th wh-th-r wh-th-hide-md">Val. Rate</th>
+                <th class="wh-th wh-th-r">Stock Value</th>
+                <th class="wh-th wh-th-c">Status</th>
+                <th v-if="selectedChild && !selectedChild.is_group" class="wh-th wh-th-c">Adjust</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="r in stockItems" :key="r.item_code" class="cust-row">
-                <td style="font-size:12.5px;color:#5C7CFA">{{r.item_code}}</td>
-                <td style="font-weight:500">{{r.item_name}}</td>
-                <td style="font-size:12px;color:#868E96">{{r.item_group||'—'}}</td>
-                <td style="font-size:12px;color:#868E96">{{r.uom||'Nos'}}</td>
-                <td style="text-align:right;font-weight:600;color:#2F9E44">{{flt(r.actual_qty).toFixed(2)}}</td>
-                <td style="text-align:right;color:#E67700">{{flt(r.reserved_qty).toFixed(2)}}</td>
-                <td style="text-align:right;">{{fmt(r.valuation_rate)}}</td>
-                <td style="text-align:right;font-weight:600">{{fmt(r.stock_value)}}</td>
-                <td style="text-align:center">
-                  <span v-if="r.below_reorder" style="font-size:11px;background:#FFF3BF;color:#E67700;padding:2px 7px;border-radius:12px;font-weight:600">⚠ Low</span>
-                  <span v-else style="color:#d1d5db">—</span>
+              <tr v-for="r in stockItems" :key="r.item_code" class="wh-tr">
+                <td class="wh-td">
+                  <div class="wh-item-name">{{ r.item_name }}</div>
+                  <div class="wh-item-code">{{ r.item_code }}</div>
                 </td>
-                <td v-if="!selectedWH.is_group" style="text-align:center">
-                  <button class="wh-adj-btn" @click="openAdjustment(r)" title="Adjust stock quantity">
-                    <span v-html="icon('edit',12)"></span> Adjust
+                <td class="wh-td wh-td-muted wh-th-hide-sm">{{ r.item_group || '—' }}</td>
+                <td class="wh-td wh-td-muted wh-th-hide-sm">{{ r.uom || 'Nos' }}</td>
+                <td class="wh-td wh-td-r wh-td-qty">{{ flt(r.actual_qty).toFixed(2) }}</td>
+                <td class="wh-td wh-td-r wh-td-reserved wh-th-hide-md">{{ flt(r.reserved_qty).toFixed(2) }}</td>
+                <td class="wh-td wh-td-r wh-th-hide-md">{{ fmt(r.valuation_rate) }}</td>
+                <td class="wh-td wh-td-r wh-td-value">{{ fmt(r.stock_value) }}</td>
+                <td class="wh-td wh-td-c">
+                  <span v-if="r.below_reorder" class="wh-status-low">⚠ Low</span>
+                  <span v-else class="wh-status-ok">✓ OK</span>
+                </td>
+                <td v-if="selectedChild && !selectedChild.is_group" class="wh-td wh-td-c">
+                  <button class="wh-adj-btn" @click="openAdjustment(r)">
+                    <span v-html="icon('edit', 12)"></span> Adjust
                   </button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div v-if="stockItems.length" class="cust-row-count">{{stockItems.length}} items</div>
       </div>
-    </div>
+
+    </template>
   </div>
 
+  <!-- ════════════════════════════════════════════
+       TELEPORT: all modals
+       ════════════════════════════════════════════ -->
   <Teleport to="body">
-    <!-- Stock Adjustment drawer -->
+
+    <!-- ── Stock Adjustment drawer ── -->
     <div v-if="adjDrawer.open" class="nim-overlay" @click.self="adjDrawer.open=false">
       <div class="nim-dialog" style="width:480px">
         <div class="nim-dialog-header">
@@ -187,8 +287,6 @@
           <button class="nim-close" @click="adjDrawer.open=false">✕</button>
         </div>
         <div class="nim-dialog-body" style="display:flex;flex-direction:column;gap:16px">
-
-          <!-- Item info -->
           <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:14px">
             <div style="width:40px;height:40px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0" v-html="icon('box',18)"></div>
             <div>
@@ -200,21 +298,17 @@
               <div style="font-size:18px;font-weight:700;color:#2563eb;">{{ adjDrawer.current_qty }}</div>
             </div>
           </div>
-
-          <!-- New qty -->
           <div>
-            <label class="nim-label">New Quantity (counted on-hand) <span style="color:#dc2626">*</span></label>
+            <label class="nim-label">New Quantity <span style="color:#dc2626">*</span></label>
             <input v-model.number="adjDrawer.new_qty" type="number" min="0" step="0.001" class="nim-input"
               :placeholder="`Current: ${adjDrawer.current_qty}`" style="font-size:16px;font-weight:600;" />
-            <div v-if="adjDrawer.new_qty !== '' && adjDrawer.new_qty !== null" style="margin-top:6px;font-size:12.5px;display:flex;align-items:center;gap:6px">
+            <div v-if="adjDrawer.new_qty !== '' && adjDrawer.new_qty !== null" style="margin-top:6px;font-size:12.5px">
               <span :style="{color: adjDrawer.new_qty > adjDrawer.current_qty ? '#16a34a' : adjDrawer.new_qty < adjDrawer.current_qty ? '#dc2626' : '#6b7280', fontWeight:600}">
                 {{ adjDrawer.new_qty > adjDrawer.current_qty ? `+${(adjDrawer.new_qty - adjDrawer.current_qty).toFixed(3)} increase` :
                    adjDrawer.new_qty < adjDrawer.current_qty ? `${(adjDrawer.new_qty - adjDrawer.current_qty).toFixed(3)} decrease` : 'No change' }}
               </span>
             </div>
           </div>
-
-          <!-- Reason -->
           <div>
             <label class="nim-label">Reason <span style="color:#dc2626">*</span></label>
             <select v-model="adjDrawer.reason" class="nim-input">
@@ -227,13 +321,10 @@
               <option value="Other">Other</option>
             </select>
           </div>
-
-          <!-- Notes -->
           <div>
             <label class="nim-label">Notes (optional)</label>
             <textarea v-model="adjDrawer.notes" rows="2" class="nim-input" placeholder="Any additional details…" style="resize:vertical"></textarea>
           </div>
-
         </div>
         <div class="nim-dialog-footer">
           <button class="nim-btn nim-btn-ghost" @click="adjDrawer.open=false">Cancel</button>
@@ -246,11 +337,11 @@
       </div>
     </div>
 
-    <!-- Add/Edit drawer -->
+    <!-- ── Add/Edit drawer ── -->
     <div v-if="showDrawer" class="nim-overlay" @click.self="showDrawer=false">
       <div class="nim-dialog" style="width:560px">
         <div class="nim-header">
-          <div class="nim-header-title">{{drawerMode==='add'?'New Warehouse':'Edit Warehouse'}}</div>
+          <div class="nim-header-title">{{ drawerMode==='add' ? 'New Warehouse' : 'Edit Warehouse' }}</div>
           <button class="nim-close" @click="showDrawer=false"><span v-html="icon('x')"></span></button>
         </div>
         <div class="nim-body">
@@ -263,7 +354,7 @@
             <div>
               <label class="nim-label">Warehouse Type</label>
               <select class="nim-input" v-model="form.warehouse_type">
-                <option v-for="t in WH_TYPES" :key="t" :value="t">{{WH_TYPE_META[t].icon}} {{t}}</option>
+                <option v-for="t in WH_TYPES" :key="t" :value="t">{{ WH_TYPE_META[t].icon }} {{ t }}</option>
               </select>
             </div>
           </div>
@@ -280,14 +371,14 @@
               <label class="nim-label">Country</label>
               <select class="nim-input" v-model="form.country" @change="form.state=''">
                 <option value="">— Select Country —</option>
-                <option v-for="c in COUNTRIES" :key="c">{{c}}</option>
+                <option v-for="c in COUNTRIES" :key="c">{{ c }}</option>
               </select>
             </div>
             <div>
               <label class="nim-label">State / Province</label>
               <select v-if="statesFor(form.country).length" class="nim-input" v-model="form.state">
                 <option value="">— Select State —</option>
-                <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{s}}</option>
+                <option v-for="s in statesFor(form.country)" :key="s" :value="s">{{ s }}</option>
               </select>
               <input v-else class="nim-input" v-model="form.state" placeholder="Enter state / province"/>
             </div>
@@ -310,14 +401,14 @@
           <div style="display:flex;gap:10px">
             <button class="nim-btn nim-btn-ghost" @click="showDrawer=false">Cancel</button>
             <button class="nim-btn nim-btn-primary" :disabled="saving" @click="saveWarehouse">
-              <span v-html="icon('check')"></span> {{saving?'Saving…':'Save'}}
+              <span v-html="icon('check')"></span> {{ saving ? 'Saving…' : 'Save' }}
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Stock Transfer modal -->
+    <!-- ── Stock Transfer modal ── -->
     <div v-if="showTransfer" class="nim-overlay" @click.self="showTransfer=false">
       <div class="nim-dialog" style="width:480px">
         <div class="nim-header">
@@ -349,24 +440,25 @@
           <div style="display:flex;gap:10px">
             <button class="nim-btn nim-btn-ghost" @click="showTransfer=false">Cancel</button>
             <button class="nim-btn nim-btn-primary" :disabled="transferSaving" @click="doTransfer">
-              <span v-html="icon('check')"></span> {{transferSaving?'Processing…':'Create Transfer'}}
+              <span v-html="icon('check')"></span> {{ transferSaving ? 'Processing…' : 'Create Transfer' }}
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Delete confirm -->
+    <!-- ── Delete confirm ── -->
     <div v-if="showDel" class="nim-overlay" @click.self="showDel=false">
       <div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:420px;width:100%;margin:auto">
         <div style="font-size:16px;font-weight:700;color:#1A1D23;margin-bottom:8px">Delete Warehouse?</div>
-        <div style="font-size:14px;color:#868E96;margin-bottom:24px">Delete <b>{{delTarget?.warehouse_name}}</b>? This cannot be undone.</div>
+        <div style="font-size:14px;color:#868E96;margin-bottom:24px">Delete <b>{{ delTarget?.warehouse_name }}</b>? This cannot be undone.</div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="nim-btn nim-btn-ghost" @click="showDel=false">Cancel</button>
           <button class="nim-btn" style="background:#C92A2A;color:#fff;border-color:#C92A2A" @click="doDelete">Yes, Delete</button>
         </div>
       </div>
     </div>
+
   </Teleport>
 </div>
 </template>
@@ -375,7 +467,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
-import { fmt, fmtDate, flt } from "../utils/format.js";
+import { fmt, flt } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
@@ -383,30 +475,31 @@ import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 const { toast } = useToast();
 
 const WH_TYPE_META = {
-  "Stores":             { icon: "🏪", color: "#2563eb", bg: "#F3F0FF" },
-  "Finished Goods":     { icon: "📦", color: "#1971C2", bg: "#E7F5FF" },
-  "Raw Material":       { icon: "🧲", color: "#2F9E44", bg: "#EBFBEE" },
-  "Work In Progress":   { icon: "🔧", color: "#E67700", bg: "#FFF3BF" },
-  "Transit":            { icon: "🚚", color: "#C92A2A", bg: "#FFF5F5" },
-  "Virtual":            { icon: "🔒", color: "#868E96", bg: "#F8F9FA" },
-  "Scrap":              { icon: "♻️", color: "#5C7CFA", bg: "#EDF2FF" },
+  "Stores":           { icon: "🏪", color: "#2563eb", bg: "#F3F0FF" },
+  "Finished Goods":   { icon: "📦", color: "#1971C2", bg: "#E7F5FF" },
+  "Raw Material":     { icon: "🧲", color: "#2F9E44", bg: "#EBFBEE" },
+  "Work In Progress": { icon: "🔧", color: "#E67700", bg: "#FFF3BF" },
+  "Transit":          { icon: "🚚", color: "#C92A2A", bg: "#FFF5F5" },
+  "Virtual":          { icon: "🔒", color: "#868E96", bg: "#F8F9FA" },
+  "Scrap":            { icon: "♻️", color: "#5C7CFA", bg: "#EDF2FF" },
 };
 const WH_DEFAULT = { icon: "🏭", color: "#495057", bg: "#F1F3F5" };
 const WH_TYPES = Object.keys(WH_TYPE_META);
 
 const list           = ref([]);
 const loading        = ref(false);
-const selectedWH     = ref(null);
+const selectedWH     = ref(null);    // currently selected warehouse GROUP
+const selectedChild  = ref(null);    // currently selected child warehouse
 const stockItems     = ref([]);
 const stockLoading   = ref(false);
+const search         = ref("");
+const filterType     = ref("All");
 
 const adjDrawer = reactive({
   open: false, saving: false,
   item_code: "", item_name: "", warehouse: "",
   current_qty: 0, new_qty: "", reason: "", notes: "",
 });
-const expanded       = ref(new Set());
-const search         = ref("");
 const showDrawer     = ref(false);
 const showTransfer   = ref(false);
 const showDel        = ref(false);
@@ -427,50 +520,50 @@ const transferForm = reactive({
 
 function whMeta(type) { return WH_TYPE_META[type] || WH_DEFAULT; }
 
-const flatFiltered = computed(() => {
+// Groups dropdown
+const groups = computed(() => list.value.filter((w) => w.is_group));
+
+const WH_GROUP_KEY = "wh_selected_group";
+
+const selectedGroupName = computed({
+  get: () => selectedWH.value?.name || "",
+  set: (val) => {
+    localStorage.setItem(WH_GROUP_KEY, val);
+    const g = list.value.find((w) => w.name === val);
+    if (g) {
+      selectedWH.value = g;
+      selectedChild.value = null;
+      loadStockForWarehouse(g.name);
+    }
+  },
+});
+
+// Child warehouses of selected group, filtered by search + type
+const childWarehouses = computed(() => {
+  if (!selectedWH.value) return [];
+  let result = list.value.filter((w) => w.parent_warehouse === selectedWH.value.name);
   const q = search.value.toLowerCase().trim();
-  if (!q) return list.value;
-  return list.value.filter((w) =>
-    (w.warehouse_name || w.name).toLowerCase().includes(q) ||
-    (w.city || "").toLowerCase().includes(q)
-  );
+  if (q) {
+    result = result.filter((w) =>
+      (w.warehouse_name || w.name).toLowerCase().includes(q) ||
+      (w.city || "").toLowerCase().includes(q)
+    );
+  }
+  if (filterType.value !== "All") {
+    result = result.filter((w) => (w.warehouse_type || "Stores") === filterType.value);
+  }
+  return result;
 });
 
-const treeNodes = computed(() => {
-  if (search.value.trim()) {
-    return flatFiltered.value.map((w) => ({ ...w, depth: 0, _children: [] }));
-  }
-  const map = {};
-  list.value.forEach((w) => { map[w.name] = { ...w, _children: [] }; });
-  const roots = [];
-  list.value.forEach((w) => {
-    if (w.parent_warehouse && map[w.parent_warehouse]) {
-      map[w.parent_warehouse]._children.push(map[w.name]);
-    } else {
-      roots.push(map[w.name]);
-    }
-  });
-  const flat = [];
-  function walk(node, depth) {
-    flat.push({ ...node, depth });
-    if (expanded.value.has(node.name)) {
-      node._children.forEach((c) => walk(c, depth + 1));
-    }
-  }
-  roots.forEach((r) => walk(r, 0));
-  return flat;
+const whStats = computed(() => {
+  if (!stockItems.value.length) return { value: 0, items: 0, reserved: 0, projected: 0 };
+  return {
+    value:     stockItems.value.reduce((s, r) => s + flt(r.stock_value),   0),
+    items:     stockItems.value.length,
+    reserved:  stockItems.value.reduce((s, r) => s + flt(r.reserved_qty),  0),
+    projected: stockItems.value.reduce((s, r) => s + flt(r.projected_qty), 0),
+  };
 });
-
-function toggleExpand(name, e) {
-  e.stopPropagation();
-  const s = new Set(expanded.value);
-  if (s.has(name)) s.delete(name); else s.add(name);
-  expanded.value = s;
-}
-
-function childCount(name) {
-  return list.value.filter((w) => w.parent_warehouse === name).length;
-}
 
 async function load() {
   loading.value = true;
@@ -480,9 +573,16 @@ async function load() {
                "city","state","address_line1","pincode","is_group","disabled"],
       limit: 500,
     }) || [];
-    list.value.filter((w) => w.is_group && !w.parent_warehouse).forEach((w) => {
-      const s = new Set(expanded.value); s.add(w.name); expanded.value = s;
-    });
+    // Auto-select: restore last-used group, else fall back to first group
+    if (!selectedWH.value) {
+      const saved = localStorage.getItem(WH_GROUP_KEY);
+      const pick = (saved && list.value.find((w) => w.is_group && w.name === saved))
+                   || list.value.find((w) => w.is_group);
+      if (pick) {
+        selectedWH.value = pick;
+        loadStockForWarehouse(pick.name);
+      }
+    }
   } catch { list.value = []; toast("Could not load warehouses", "error"); }
   loading.value = false;
 }
@@ -497,53 +597,57 @@ async function loadStockForWarehouse(name) {
 }
 
 async function loadItems() {
-  try { allItems.value = await apiList("Item", { fields: ["name", "item_name"], limit: 500, order: "item_name asc" }) || []; }
+  try { allItems.value = await apiList("Item", { fields: ["name","item_name"], limit: 500, order: "item_name asc" }) || []; }
   catch {}
 }
 
-function selectWarehouse(wh) {
-  selectedWH.value = wh;
-  loadStockForWarehouse(wh.name);
+function selectChild(child) {
+  if (selectedChild.value?.name === child.name) {
+    selectedChild.value = null;
+    loadStockForWarehouse(selectedWH.value.name);
+  } else {
+    selectedChild.value = child;
+    loadStockForWarehouse(child.name);
+  }
 }
 
-// ── Stock Adjustment from Warehouse page ─────────────────────────────────────
+function openNewAdjustment(wh) {
+  Object.assign(adjDrawer, {
+    open: true, saving: false,
+    item_code: "", item_name: "",
+    warehouse: wh?.name || "",
+    current_qty: 0, new_qty: "", reason: "Opening Stock", notes: "",
+  });
+}
+
 function openAdjustment(row) {
   Object.assign(adjDrawer, {
     open: true, saving: false,
     item_code:   row.item_code,
     item_name:   row.item_name || row.item_code,
-    warehouse:   selectedWH.value.name,
+    warehouse:   selectedChild.value?.name || selectedWH.value?.name || "",
     current_qty: flt(row.actual_qty),
     new_qty:     flt(row.actual_qty),
     reason:      "", notes: "",
   });
 }
 
-function openNewAdjustment() {
-  Object.assign(adjDrawer, {
-    open: true, saving: false,
-    item_code: "", item_name: "",
-    warehouse: selectedWH.value.name,
-    current_qty: 0, new_qty: "", reason: "Opening Stock", notes: "",
-  });
-}
-
 async function submitAdjustment() {
   if (adjDrawer.new_qty === "" || adjDrawer.new_qty === null) return toast("New quantity is required", "error");
-  if (!adjDrawer.reason)  return toast("Please select a reason", "error");
+  if (!adjDrawer.reason) return toast("Please select a reason", "error");
   if (!adjDrawer.item_code) return toast("Item is required", "error");
   adjDrawer.saving = true;
   try {
     await apiPOST("zoho_books_clone.api.inventory.create_inventory_adjustment", {
-      item_code:  adjDrawer.item_code,
-      warehouse:  adjDrawer.warehouse,
-      new_qty:    adjDrawer.new_qty,
-      reason:     adjDrawer.reason,
-      notes:      adjDrawer.notes || "",
+      item_code: adjDrawer.item_code,
+      warehouse: adjDrawer.warehouse,
+      new_qty:   adjDrawer.new_qty,
+      reason:    adjDrawer.reason,
+      notes:     adjDrawer.notes || "",
     });
     toast(`Stock adjusted — ${adjDrawer.item_code} set to ${adjDrawer.new_qty}`, "success");
     adjDrawer.open = false;
-    await loadStockForWarehouse(selectedWH.value.name);
+    if (selectedWH.value) await loadStockForWarehouse(selectedWH.value.name);
   } catch (e) {
     toast(e.message || "Adjustment failed", "error");
   } finally {
@@ -551,11 +655,22 @@ async function submitAdjustment() {
   }
 }
 
-function openAdd() {
+function openAddGroup() {
   drawerMode.value = "add";
   Object.assign(form, {
     name: "", warehouse_name: "", warehouse_type: "Stores",
     parent_warehouse: "", city: "", state: "", address_line1: "", pincode: "",
+    is_group: 1, disabled: 0,
+  });
+  showDrawer.value = true;
+}
+
+function openAddChild() {
+  drawerMode.value = "add";
+  Object.assign(form, {
+    name: "", warehouse_name: "", warehouse_type: "Stores",
+    parent_warehouse: selectedWH.value?.name || "",
+    city: "", state: "", address_line1: "", pincode: "",
     is_group: 0, disabled: 0,
   });
   showDrawer.value = true;
@@ -584,32 +699,22 @@ async function saveWarehouse() {
     const newName = form.warehouse_name.trim();
     const oldName = form.name;
 
-    // autoname=field:warehouse_name means name===warehouse_name.
-    // Changing the name requires an explicit rename_doc call — save alone won't update the PK.
     let activeName = oldName;
     if (drawerMode.value === "edit" && newName !== oldName) {
       await apiPOST("frappe.client.rename_doc", {
-        doctype: "Warehouse",
-        old_name: oldName,
-        new_name: newName,
+        doctype: "Warehouse", old_name: oldName, new_name: newName,
         merge: JSON.stringify(false),
       });
       activeName = newName;
     }
 
     const changes = {
-      doctype: "Warehouse",
-      name: activeName,
-      warehouse_name: newName,
-      warehouse_type: form.warehouse_type,
+      doctype: "Warehouse", name: activeName,
+      warehouse_name: newName, warehouse_type: form.warehouse_type,
       parent_warehouse: form.parent_warehouse || "",
-      city: form.city.trim(),
-      state: form.state.trim(),
-      address_line1: form.address_line1.trim(),
-      pincode: form.pincode.trim(),
-      is_group: form.is_group ? 1 : 0,
-      disabled: form.disabled ? 1 : 0,
-      company,
+      city: form.city.trim(), state: form.state.trim(),
+      address_line1: form.address_line1.trim(), pincode: form.pincode.trim(),
+      is_group: form.is_group ? 1 : 0, disabled: form.disabled ? 1 : 0, company,
     };
     let doc = changes;
     if (drawerMode.value === "edit") {
@@ -619,21 +724,13 @@ async function saveWarehouse() {
     const saved = await apiSave(doc);
     await load();
 
-    // Optimistic insert: if the reloaded list doesn't contain the saved doc
-    // (because the tenancy filter excludes it, or because of indexing lag),
-    // splice it in so the UI reflects the user's action.
     if (saved && !list.value.some((w) => w.name === saved.name)) {
       list.value = [saved, ...list.value];
     }
-
-    // After edit, update the right-panel selection to the saved record.
-    // warehouse_name changes also change the Frappe document name, so we
-    // must look up by saved.name rather than the original form.name.
     if (drawerMode.value === "edit" && saved) {
       const updated = list.value.find((w) => w.name === saved.name);
-      if (updated) {
+      if (updated && selectedWH.value?.name === saved.name) {
         selectedWH.value = updated;
-        loadStockForWarehouse(updated.name);
       }
     }
 
@@ -644,10 +741,7 @@ async function saveWarehouse() {
 }
 
 function openTransfer() {
-  Object.assign(transferForm, {
-    from_warehouse: selectedWH.value?.name || "",
-    to_warehouse: "", item_code: "", qty: 1,
-  });
+  Object.assign(transferForm, { from_warehouse: "", to_warehouse: "", item_code: "", qty: 1 });
   showTransfer.value = true;
 }
 
@@ -655,28 +749,27 @@ async function doTransfer() {
   if (!transferForm.to_warehouse || !transferForm.item_code) {
     toast("Target warehouse and item are required", "error"); return;
   }
-  if (flt(transferForm.qty) <= 0) {
-    toast("Transfer quantity must be greater than 0", "error"); return;
-  }
+  if (flt(transferForm.qty) <= 0) { toast("Transfer quantity must be greater than 0", "error"); return; }
   if (transferForm.from_warehouse === transferForm.to_warehouse) {
-    toast("Source and target warehouse must be different", "error"); return;
+    toast("Source and target must be different", "error"); return;
   }
   transferSaving.value = true;
   try {
     const company = await resolveCompany();
     const saved = await apiSave({
-      doctype: "Stock Entry",
-      company,
+      doctype: "Stock Entry", company,
       stock_entry_type: "Material Transfer",
       posting_date: new Date().toISOString().slice(0,10),
       from_warehouse: transferForm.from_warehouse,
-      to_warehouse: transferForm.to_warehouse,
-      items: [{ doctype: "Stock Entry Detail", item_code: transferForm.item_code, qty: flt(transferForm.qty), s_warehouse: transferForm.from_warehouse, t_warehouse: transferForm.to_warehouse }],
+      to_warehouse:   transferForm.to_warehouse,
+      items: [{ doctype: "Stock Entry Detail", item_code: transferForm.item_code,
+                qty: flt(transferForm.qty), s_warehouse: transferForm.from_warehouse,
+                t_warehouse: transferForm.to_warehouse }],
     });
     await apiSubmit("Stock Entry", saved.name);
     toast("Stock transfer created");
     showTransfer.value = false;
-    loadStockForWarehouse(selectedWH.value.name);
+    if (selectedWH.value) loadStockForWarehouse(selectedWH.value.name);
   } catch (e) { toast("Transfer failed: " + e.message, "error"); }
   transferSaving.value = false;
 }
@@ -687,7 +780,10 @@ async function doDelete() {
   try {
     await apiDelete("Warehouse", delTarget.value.name);
     list.value = list.value.filter((w) => w.name !== delTarget.value.name);
-    if (selectedWH.value?.name === delTarget.value.name) selectedWH.value = null;
+    if (selectedWH.value?.name === delTarget.value.name) {
+      selectedWH.value = null;
+      stockItems.value = [];
+    }
     toast("Warehouse deleted");
     showDel.value = false;
   } catch (e) { toast("Delete failed: " + e.message, "error"); }
@@ -697,52 +793,524 @@ const parentOptions = computed(() =>
   list.value.filter((w) => w.is_group).map((w) => ({ name: w.name, label: w.warehouse_name || w.name }))
 );
 
-const whStats = computed(() => {
-  if (!selectedWH.value || !stockItems.value.length) return { value: 0, items: 0, reserved: 0, projected: 0 };
-  return {
-    value:     stockItems.value.reduce((s, r) => s + flt(r.stock_value),    0),
-    items:     stockItems.value.length,
-    reserved:  stockItems.value.reduce((s, r) => s + flt(r.reserved_qty),   0),
-    projected: stockItems.value.reduce((s, r) => s + flt(r.projected_qty),  0),
-  };
-});
-
 onMounted(() => { load(); loadItems(); });
 </script>
 
 <style>
-/* ── Warehouse page — mobile responsive ── */
+/* ════════════════════════════════════════════════════════════════
+   WAREHOUSES PAGE
+   ════════════════════════════════════════════════════════════════ */
+
+.wh-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);
+  background: #f1f4f8;
+  overflow: hidden;
+}
+
+/* ── Toolbar ── */
+.wh-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid #e8edf5;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* ── Group dropdown ── */
+.wh-group-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 9px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.wh-group-prefix {
+  padding: 0 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  background: #f1f4f8;
+  border-right: 1px solid #e2e8f0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.wh-group-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.wh-group-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0 32px 0 12px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  cursor: pointer;
+  outline: none;
+  min-width: 160px;
+}
+.wh-group-chev {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Search ── */
+.wh-tb-search-wrap {
+  position: relative;
+  flex: 0 0 200px;
+}
+.wh-tb-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+  width: 14px;
+}
+.wh-tb-search-input {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 10px 8px 32px;
+  font-size: 13px;
+  color: #1e293b;
+  outline: none;
+  background: #f8fafc;
+  transition: border-color .15s, background .15s;
+  box-sizing: border-box;
+}
+.wh-tb-search-input:focus { border-color: #3b82f6; background: #fff; }
+
+/* ── Filter pills ── */
+.wh-filter-pills {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.wh-filter-pills::-webkit-scrollbar { display: none; }
+
+.wh-fpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s, border-color .12s, color .12s;
+  flex-shrink: 0;
+}
+.wh-fpill:hover { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
+.wh-fpill--active { background: #eff6ff !important; border-color: #2563eb !important; color: #2563eb !important; }
+
+/* ── Toolbar actions ── */
+.wh-tb-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Main content (scrollable) ── */
+.wh-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Section header ── */
+.wh-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wh-section-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── No-children state ── */
+.wh-no-children {
+  text-align: center;
+  padding: 32px 20px;
+  background: #fff;
+  border-radius: 14px;
+  border: 1.5px dashed #e2e8f0;
+}
+
+/* ── Cards grid ── */
+.wh-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.wh-cards-gap { margin-bottom: 4px; }
+
+/* ── Warehouse card ── */
+.wh-card {
+  background: #fff;
+  border: 1.5px solid #e8edf5;
+  border-radius: 14px;
+  padding: 16px 16px 0;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow .15s, border-color .15s;
+}
+.wh-card { cursor: pointer; }
+.wh-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.09); border-color: #93c5fd; }
+.wh-card--active {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12), 0 4px 18px rgba(0,0,0,.09) !important;
+  background: #f8fbff !important;
+}
+.wh-card--active .wh-card-name { color: #2563eb; }
+.wh-card--disabled { opacity: .55; }
+
+.wh-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.wh-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.wh-card-info { flex: 1; min-width: 0; }
+.wh-card-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+.wh-card-meta { display: flex; flex-direction: column; gap: 2px; }
+.wh-card-city { font-size: 11.5px; color: #94a3b8; }
+.wh-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+
+.wh-card-footer {
+  border-top: 1px solid #f1f4f8;
+  padding: 10px 0 12px;
+  margin-top: auto;
+}
+.wh-card-footer--actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Card shimmer ── */
+.wh-card-shimmer {
+  background: #fff;
+  border: 1.5px solid #e8edf5;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 88px;
+}
+
+/* ── Empty state ── */
+.wh-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: #94a3b8;
+  text-align: center;
+  padding: 40px;
+}
+.wh-empty-icon  { font-size: 56px; margin-bottom: 14px; }
+.wh-empty-title { font-size: 17px; font-weight: 700; color: #334155; margin-bottom: 6px; }
+.wh-empty-sub   { font-size: 13.5px; color: #94a3b8; max-width: 280px; line-height: 1.5; }
+
+/* ── Badges ── */
+.wh-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.wh-badge-blue { background: #eff6ff; color: #2563eb; }
+.wh-badge-red  { background: #fee2e2; color: #dc2626; }
+
+/* ── Action buttons ── */
+.wh-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .12s, box-shadow .12s, transform .1s;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #374151;
+  white-space: nowrap;
+}
+.wh-action-btn:hover { background: #f8fafc; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+.wh-action-btn:active { transform: translateY(1px); }
+
+.wh-action-btn--primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff; border-color: transparent;
+  box-shadow: 0 2px 6px rgba(37,99,235,.3);
+}
+.wh-action-btn--primary:hover { opacity: .9; background: linear-gradient(135deg, #3b82f6, #2563eb); }
+
+.wh-action-btn--danger {
+  color: #dc2626; border-color: #fca5a5; background: #fff5f5;
+}
+.wh-action-btn--danger:hover { background: #fee2e2; }
+
+/* ── Stats strip ── */
+.wh-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f4f8;
+}
+
+.wh-stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e8edf5;
+  border-top: 3px solid transparent;
+}
+.wh-stat-chip--blue   { border-top-color: #3b82f6; }
+.wh-stat-chip--green  { border-top-color: #22c55e; }
+.wh-stat-chip--orange { border-top-color: #f97316; }
+.wh-stat-chip--indigo { border-top-color: #6366f1; }
+
+.wh-stat-chip-icon { font-size: 20px; flex-shrink: 0; }
+.wh-stat-chip-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
+.wh-stat-chip-val { font-size: 16px; font-weight: 800; color: #0f172a; }
+.wh-stat-chip--blue   .wh-stat-chip-val { color: #2563eb; }
+.wh-stat-chip--green  .wh-stat-chip-val { color: #16a34a; }
+.wh-stat-chip--orange .wh-stat-chip-val { color: #ea580c; }
+.wh-stat-chip--indigo .wh-stat-chip-val { color: #4f46e5; }
+
+/* ── Stock section ── */
+.wh-stock-section {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e8edf5;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  overflow: hidden;
+}
+.wh-stock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid #f1f4f8;
+}
+.wh-stock-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wh-stock-count {
+  font-size: 11px;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #475569;
+  padding: 1px 8px;
+  border-radius: 20px;
+}
+.wh-stock-actions { display: flex; gap: 6px; }
+.wh-stock-shimmer { padding: 16px 20px; }
+.wh-stock-empty {
+  padding: 48px 20px;
+  text-align: center;
+  color: #94a3b8;
+}
+.wh-stock-empty-title { font-size: 14px; font-weight: 700; color: #334155; margin-bottom: 5px; }
+.wh-stock-empty-sub   { font-size: 12.5px; color: #94a3b8; }
+
+/* ── Stock table ── */
+.wh-tbl-wrap { overflow-x: auto; }
+.wh-tbl { width: 100%; border-collapse: collapse; min-width: 520px; }
+
+.wh-th {
+  padding: 10px 14px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #64748b;
+  background: #f8fafc;
+  border-bottom: 1px solid #e8edf5;
+  white-space: nowrap;
+}
+.wh-th-r { text-align: right; }
+.wh-th-c { text-align: center; }
+
+.wh-tr { border-bottom: 1px solid #f1f4f8; transition: background .1s; }
+.wh-tr:last-child { border-bottom: none; }
+.wh-tr:hover { background: #f8fafc; }
+
+.wh-td { padding: 11px 14px; font-size: 13px; color: #1e293b; vertical-align: middle; }
+.wh-td-muted   { color: #64748b; font-size: 12.5px; }
+.wh-td-r       { text-align: right; }
+.wh-td-c       { text-align: center; }
+.wh-td-qty     { font-weight: 700; color: #16a34a; }
+.wh-td-reserved { color: #ea580c; }
+.wh-td-value   { font-weight: 700; color: #2563eb; }
+
+.wh-item-name { font-size: 13px; font-weight: 600; color: #0f172a; }
+.wh-item-code { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+.wh-status-low {
+  font-size: 10.5px; font-weight: 700;
+  background: #fff7ed; color: #c2410c;
+  padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap;
+}
+.wh-status-ok {
+  font-size: 10.5px; font-weight: 700;
+  background: #f0fdf4; color: #15803d;
+  padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* ── Adjust button ── */
+.wh-adj-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #374151;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  white-space: nowrap;
+}
+.wh-adj-btn:hover { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
+.wh-adj-btn--active {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 6px rgba(37,99,235,.3);
+}
+
+.wh-stock-scope {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* ── misc ── */
+.wh-btn-label { }
+.wh-th-hide-sm { display: table-cell; }
+.wh-th-hide-md { display: table-cell; }
+
+/* ════════════════════════════════════════════
+   TABLET  (≤ 768 px)
+   ════════════════════════════════════════════ */
 @media (max-width: 768px) {
-  .wh-layout {
-    flex-direction: column !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-  .wh-left {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-height: 300px !important;
-    border-right: none !important;
-    border-bottom: 1px solid #e4e8f0 !important;
-  }
-  .wh-right {
-    overflow-y: visible !important;
-  }
-  .wh-stats-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-  .cust-table-wrap {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-  .cust-table { min-width: 600px; }
+  .wh-toolbar { padding: 10px 16px; gap: 8px; }
+  .wh-tb-search-wrap { flex: 0 0 160px; }
+  .wh-content { padding: 16px; gap: 14px; }
+  .wh-cards-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .wh-stats-strip { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .wh-th-hide-md { display: none; }
   .nim-dialog { max-width: 95vw !important; }
 }
+
+/* ════════════════════════════════════════════
+   MOBILE  (≤ 480 px)
+   ════════════════════════════════════════════ */
 @media (max-width: 480px) {
-  .wh-stats-grid { grid-template-columns: 1fr !important; }
-  .cust-table th:nth-child(3), .cust-table td:nth-child(3),
-  .cust-table th:nth-child(4), .cust-table td:nth-child(4),
-  .cust-table th:nth-child(6), .cust-table td:nth-child(6) { display: none; }
-  .cust-table { min-width: 400px; }
+  .wh-toolbar { flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
+  .wh-group-wrap { flex: 1 1 100%; order: 0; }
+  .wh-group-select { min-width: 0; width: 100%; }
+  .wh-tb-search-wrap { flex: 1 1 100%; order: 1; }
+  .wh-filter-pills { order: 3; flex: 1 1 100%; }
+  .wh-tb-actions { order: 2; margin-left: auto; }
+  .wh-btn-label { display: none; }
+
+  .wh-content { padding: 12px; gap: 12px; }
+  .wh-cards-grid { grid-template-columns: 1fr; gap: 10px; }
+  .wh-stats-strip { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 12px; }
+  .wh-stat-chip { padding: 10px 10px; }
+  .wh-stat-chip-val { font-size: 14px; }
+
+  .wh-th-hide-sm { display: none; }
+  .wh-tbl { min-width: 360px; }
+
+  .wh-section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
 </style>

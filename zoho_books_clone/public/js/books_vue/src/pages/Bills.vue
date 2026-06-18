@@ -229,12 +229,16 @@
               </div>
               <div>
                 <label class="inv-lbl">Currency</label>
-                <select v-model="form.currency" class="inv-fi" @change="form.exchange_rate=form.currency==='INR'?1:form.exchange_rate">
+                <select v-model="form.currency" class="inv-fi" @change="onBillCurrencyChange">
                   <option v-for="(sym,code) in BILL_CURRENCIES" :key="code" :value="code">{{ code }} {{ sym }}</option>
                 </select>
               </div>
               <div v-if="form.currency !== 'INR'">
-                <label class="inv-lbl">Exchange Rate</label>
+                <label class="inv-lbl">
+                  Exchange Rate
+                  <span v-if="rateLoading" class="inv-rate-badge inv-rate-loading">Fetching…</span>
+                  <span v-else-if="rateSource" :class="`inv-rate-badge inv-rate-${rateSource}`">{{ sourceLabel(rateSource) }}</span>
+                </label>
                 <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi"/>
               </div>
               <div>
@@ -759,6 +763,7 @@ import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { useExchangeRate } from "../composables/useExchangeRate.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
@@ -769,6 +774,7 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "192": 0, "195": 20, "Other": 10 };
 
 const { toast } = useToast();
+const { fetchRate, rateLoading, rateSource, sourceLabel } = useExchangeRate();
 const { confirm } = useConfirm();
 const { printDoc } = useLivePreview();
 function printBILL(d) { printDoc(d, { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
@@ -994,6 +1000,12 @@ const timelineSteps = computed(() => {
     { key: "paid",      label: overdue ? "Overdue" : "Paid", done: paid, danger: overdue && !paid, current: paid },
   ];
 });
+
+async function onBillCurrencyChange() {
+  if (form.currency === "INR") { form.exchange_rate = 1; return; }
+  const rate = await fetchRate(form.currency, "INR");
+  if (rate) form.exchange_rate = rate;
+}
 
 function openNew() {
   editingName.value = "";

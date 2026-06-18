@@ -3,6 +3,91 @@ import json
 from frappe.utils import get_url, nowdate, flt
 from zoho_books_clone.api.session import _get_company
 
+# Currencies to auto-refresh on the Settings page
+_KNOWN_CURRENCIES = ["USD", "EUR", "GBP", "AED", "SGD", "JPY", "CNY", "CAD", "AUD", "CHF", "SAR", "MYR", "QAR"]
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def get_live_exchange_rate(from_currency, to_currency="INR"):
+    """
+    Real-time exchange rate (from_currency → to_currency, default INR).
+    Flow: same-day Frappe cache → live API → stale cache.
+    """
+    from_currency = (from_currency or "").upper().strip()
+    to_currency   = (to_currency   or "INR").upper().strip()
+    if from_currency == to_currency:
+        return {"rate": 1.0, "source": "identity", "date": nowdate()}
+
+    today = nowdate()
+
+    # ── 1. Same-day cache ─────────────────────────────────────────────────────
+    cached_name = frappe.db.get_value(
+        "Currency Exchange",
+        {"from_currency": from_currency, "to_currency": to_currency, "date": today},
+        "name",
+    )
+    if cached_name:
+        rate = frappe.db.get_value("Currency Exchange", cached_name, "exchange_rate")
+        return {"rate": float(rate), "source": "cache", "date": today}
+
+    # ── 2. Live fetch from free API (no key needed) ───────────────────────────
+    try:
+        import requests as _req
+        base = from_currency.lower()
+        resp = _req.get(
+            f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{base}.json",
+            timeout=6,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        rate_val = data.get(base, {}).get(to_currency.lower())
+        if rate_val:
+            rate_val = float(rate_val)
+            # Cache in Frappe
+            try:
+                existing = frappe.db.exists("Currency Exchange",
+                    {"from_currency": from_currency, "to_currency": to_currency, "date": today})
+                if existing:
+                    frappe.db.set_value("Currency Exchange", existing, "exchange_rate", rate_val)
+                else:
+                    doc = frappe.new_doc("Currency Exchange")
+                    doc.from_currency  = from_currency
+                    doc.to_currency    = to_currency
+                    doc.exchange_rate  = rate_val
+                    doc.date           = today
+                    doc.insert(ignore_permissions=True)
+                frappe.db.commit()
+            except Exception as cache_err:
+                frappe.log_error(str(cache_err), "Exchange Rate Cache Save")
+            return {"rate": rate_val, "source": "live", "date": today}
+    except Exception as api_err:
+        frappe.log_error(str(api_err), "Live Exchange Rate API")
+
+    # ── 3. Stale cache fallback ───────────────────────────────────────────────
+    stale = frappe.db.get_value(
+        "Currency Exchange",
+        {"from_currency": from_currency, "to_currency": to_currency},
+        ["exchange_rate", "date"],
+        order_by="date desc",
+        as_dict=True,
+    )
+    if stale:
+        return {"rate": float(stale.exchange_rate), "source": "stale", "date": str(stale.date)}
+
+    return {"rate": None, "source": "unavailable", "date": today}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def refresh_all_exchange_rates():
+    """Fetch and cache live rates for all known currencies against INR. Called from Settings page."""
+    results = {}
+    for cur in _KNOWN_CURRENCIES:
+        try:
+            results[cur] = get_live_exchange_rate(cur, "INR")
+        except Exception:
+            results[cur] = {"rate": None, "source": "error"}
+    return results
+
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_invoice_email_defaults(invoice_name):
@@ -491,13 +576,24 @@ CONVERSATIONAL intents (you write the full reply):
 - "chitchat"    — casual smalltalk
 - "unknown"     — you genuinely don't understand
 
-DATA QUERY intents (backend fetches real numbers — write a 1-line intro in reply):
+DATA QUERY intents — FINANCE (backend fetches real numbers — write a 1-line intro in reply):
 - "revenue"          — revenue/sales total. Add: "period": "this_month|last_month|this_quarter|this_year|last_year"
 - "outstanding"      — total outstanding receivables
 - "top_customers"    — top customers by revenue. Add: "limit": 5
 - "overdue_count"    — count/amount of overdue invoices
 - "unpaid_bills"     — unpaid purchase bills
-- "business_summary" — overall business health report (revenue, outstanding, overdue, top customer)
+- "payment_received" — total payments collected. Add: "period": "this_month|last_month|this_quarter|this_year"
+- "expense_total"    — total purchase/expense amount. Add: "period": "this_month|last_month|this_quarter|this_year"
+- "top_suppliers"    — top suppliers by purchase amount. Add: "limit": 5
+- "profit_estimate"  — revenue minus expenses for a period. Add: "period": "..."
+- "business_summary" — overall business health report (revenue, outstanding, overdue, inventory)
+
+DATA QUERY intents — INVENTORY (backend fetches real numbers):
+- "inventory_items"     — item count summary, optionally filtered. Add: "item_group": "...", "item_type": "Product|Service|Raw Material|Finished Good"
+- "low_stock"           — items at or below their reorder level
+- "top_selling_items"   — top items by quantity sold. Add: "period": "this_month|last_month|this_quarter|this_year", "limit": 5
+- "item_groups_summary" — count of item groups and how many items each has
+- "stock_value"         — total inventory value across all warehouses
 
 NAVIGATION intents (app navigates — write a brief confirmation):
 - "show_overdue"         — filter to overdue invoices
@@ -507,9 +603,14 @@ NAVIGATION intents (app navigates — write a brief confirmation):
 - "show_bills"           — go to bills page
 - "show_quotes"          — go to quotes
 - "show_customers"       — go to customers list
+- "show_suppliers"       — go to suppliers list
 - "show_sales_orders"    — go to sales orders
 - "show_purchase_orders" — go to purchase orders
 - "show_dashboard"       — go to main dashboard
+- "show_items"           — go to inventory items page
+- "show_item_groups"     — go to item groups page
+- "show_warehouses"      — go to warehouses page
+- "show_inventory"       — go to inventory section
 - "navigate"             — specific area. Add: "path": "/path"
 
 CREATION WIZARD intents:
@@ -526,10 +627,10 @@ CREATION WIZARD RULES:
 - If user says cancel/no/never mind → use "thanks" and say it was cancelled
 
 Rules:
-- For greeting: mention 2-3 capabilities including the invoice wizard and business summary.
-- For help: list all categories (invoices wizard, data queries, summary, navigation).
+- For greeting: mention capabilities across finance AND inventory (invoice wizard, revenue, stock levels, etc.).
+- For help: list all categories (invoices wizard, finance queries, inventory queries, navigation).
 - Always reply in the same language the user wrote in.
-- Keep replies under 50 words.
+- Keep replies under 60 words.
 """
 
 _SUMMARY_SYSTEM_PROMPT = """\
@@ -650,6 +751,24 @@ def get_ai_alerts():
                 "text": f"{soon.cnt} invoice{'s' if int(soon.cnt)!=1 else ''} due within 3 days — ₹{float(soon.tot or 0):,.0f}",
                 "action": "show_unpaid",
             })
+        # Low stock items
+        try:
+            ls = frappe.db.sql("""
+                SELECT COUNT(DISTINCT i.item_code) AS cnt
+                FROM `tabItem` i
+                LEFT JOIN `tabBin` b ON b.item_code = i.item_code
+                WHERE i.is_stock_item=1 AND i.disabled=0 AND i.reorder_level>0
+                GROUP BY i.item_code HAVING COALESCE(SUM(b.actual_qty),0) <= i.reorder_level
+            """, as_dict=True)
+            ls_cnt = len(ls)
+            if ls_cnt:
+                alerts.append({
+                    "type": "low_stock", "icon": "📦",
+                    "text": f"{ls_cnt} item{'s' if ls_cnt != 1 else ''} at or below reorder level",
+                    "action": "show_items",
+                })
+        except Exception:
+            pass
         # Revenue drop vs last month
         this_start = get_first_day(today).strftime("%Y-%m-%d")
         last_start = get_first_day(add_months(today, -1)).strftime("%Y-%m-%d")
@@ -715,8 +834,42 @@ def get_customer_outstanding():
     return {r.customer: float(r.outstanding or 0) for r in rows}
 
 
+_PRO_MODE_ADDENDUM = """
+
+═══════════════════════════════════════════════════
+PRO MODE — FULL APP CONTROL ENABLED
+═══════════════════════════════════════════════════
+You can now create and modify data. Always show a preview first using the _confirm variant.
+After the user confirms (clicks the button or says yes/confirm/ok/proceed), use the non-confirm variant.
+
+PRO CONFIRM intents (show preview card — never skip this step):
+- "create_customer_confirm"   → Add: "customer_name":"...", "email":"...", "mobile_no":"..."
+- "create_supplier_confirm"   → Add: "supplier_name":"...", "email":"...", "mobile_no":"..."
+- "create_item_confirm"       → Add: "item_name":"...", "item_type":"Product|Service|Raw Material|Finished Good", "item_group":"...", "rate":N, "uom":"Nos"
+- "create_quotation_confirm"  → Add: "customer":"...", "items":[{"item_name":"..","qty":N,"rate":N}]
+- "create_payment_confirm"    → Add: "invoice":"INV-...", "amount":N, "mode":"Cash|Bank|Cheque", "customer":"..."
+- "cancel_invoice_confirm"    → Add: "invoice":"INV-...", "customer":"...", "amount":N
+- "update_item_price_confirm" → Add: "item_name":"...", "new_rate":N
+
+PRO EXECUTE intents (only after user explicitly confirms):
+- "create_customer"    — same fields as confirm
+- "create_supplier"    — same fields as confirm
+- "create_item"        — same fields as confirm
+- "create_quotation"   — same fields as confirm
+- "create_payment"     — same fields as confirm
+- "cancel_invoice"     — Add: "invoice":"INV-..."
+- "update_item_price"  — same fields as confirm
+
+PRO RULES:
+- ALWAYS use _confirm first. NEVER execute without showing a preview.
+- cancel_invoice_confirm: warn "This cannot be easily undone."
+- If you need more info before confirming, use "ask_for_info".
+- If user cancels → "thanks" intent.
+"""
+
+
 @frappe.whitelist(allow_guest=False, methods=["POST"])
-def ai_chat(messages, system=None):
+def ai_chat(messages, pro_mode=0, system=None):
     """
     Books AI — LLM-powered (Groq primary, Gemini fallback).
     Response: {reply: str, action: str|None, ...action_params}
@@ -724,20 +877,21 @@ def ai_chat(messages, system=None):
     if isinstance(messages, str):
         messages = json.loads(messages)
 
-    # Keep last 10 turns to stay within token budget
+    # Keep last 14 turns to stay within token budget
     conversation = [
         {"role": m["role"], "content": m["content"]}
         for m in messages
         if m.get("role") in ("user", "assistant") and m.get("content")
-    ][-10:]
+    ][-14:]
 
     if not conversation:
         return {"reply": "I didn't catch that — what would you like to do?"}
 
     company = _get_company(frappe.session.user)
+    sys_prompt = (_AI_SYSTEM_PROMPT + _PRO_MODE_ADDENDUM) if int(pro_mode or 0) else _AI_SYSTEM_PROMPT
 
     try:
-        parsed = _llm_parse(conversation)
+        parsed = _llm_parse(conversation, system=sys_prompt)
     except Exception as exc:
         frappe.log_error(str(exc), "AI Chat — both LLMs failed")
         return {"reply": "The AI assistant is temporarily unavailable. Please try again in a moment."}
@@ -828,6 +982,176 @@ def ai_chat(messages, system=None):
             frappe.log_error(str(e), "AI Bills")
             return {"reply": "Couldn't fetch bills data.", "action": "show_bills"}
 
+    if intent == "payment_received":
+        from_d, to_d, label = _ai_parse_period(parsed.get("period", "this_month"))
+        try:
+            row = frappe.db.sql("""
+                SELECT COALESCE(SUM(paid_amount),0) AS total, COUNT(*) AS cnt
+                FROM `tabPayment Entry`
+                WHERE docstatus=1 AND payment_type='Receive' AND company=%s AND posting_date BETWEEN %s AND %s
+            """, (company, from_d, to_d), as_dict=True)[0]
+            return {"reply": f"💵 Payments Received — {label}\n\nTotal collected: ₹{float(row.total or 0):,.2f}\nPayment entries: {int(row.cnt or 0)}"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Payment Received")
+            return {"reply": "Couldn't fetch payment data."}
+
+    if intent == "expense_total":
+        from_d, to_d, label = _ai_parse_period(parsed.get("period", "this_month"))
+        try:
+            row = frappe.db.sql("""
+                SELECT COALESCE(SUM(grand_total),0) AS total, COUNT(*) AS cnt
+                FROM `tabPurchase Invoice`
+                WHERE docstatus=1 AND company=%s AND posting_date BETWEEN %s AND %s
+            """, (company, from_d, to_d), as_dict=True)[0]
+            return {"reply": f"🧾 Expenses — {label}\n\nTotal purchase amount: ₹{float(row.total or 0):,.2f}\nBills: {int(row.cnt or 0)}"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Expense Total")
+            return {"reply": "Couldn't fetch expense data."}
+
+    if intent == "profit_estimate":
+        from_d, to_d, label = _ai_parse_period(parsed.get("period", "this_month"))
+        try:
+            rev = float(frappe.db.sql("""
+                SELECT COALESCE(SUM(grand_total),0) FROM `tabSales Invoice`
+                WHERE docstatus=1 AND company=%s AND posting_date BETWEEN %s AND %s
+            """, (company, from_d, to_d))[0][0] or 0)
+            exp = float(frappe.db.sql("""
+                SELECT COALESCE(SUM(grand_total),0) FROM `tabPurchase Invoice`
+                WHERE docstatus=1 AND company=%s AND posting_date BETWEEN %s AND %s
+            """, (company, from_d, to_d))[0][0] or 0)
+            profit = rev - exp
+            sign = "📈" if profit >= 0 else "📉"
+            return {"reply": f"{sign} Profit Estimate — {label}\n\nRevenue: ₹{rev:,.2f}\nExpenses: ₹{exp:,.2f}\nNet: ₹{profit:,.2f}\n\n(Estimate only — excludes non-invoice transactions)"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Profit Estimate")
+            return {"reply": "Couldn't compute profit estimate."}
+
+    if intent == "top_suppliers":
+        limit = min(int(parsed.get("limit") or 5), 10)
+        try:
+            rows = frappe.db.sql("""
+                SELECT supplier, SUM(grand_total) AS total, COUNT(*) AS cnt
+                FROM `tabPurchase Invoice` WHERE docstatus=1 AND company=%s
+                GROUP BY supplier ORDER BY total DESC LIMIT %s
+            """, (company, limit), as_dict=True)
+            if not rows:
+                return {"reply": "No purchase data found yet."}
+            lines = "\n".join(
+                f"{i+1}. {r.supplier} — ₹{float(r.total):,.0f} ({int(r.cnt)} bills)"
+                for i, r in enumerate(rows)
+            )
+            return {"reply": f"🏭 Top {limit} Suppliers\n\n{lines}"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Top Suppliers")
+            return {"reply": "Couldn't fetch supplier data."}
+
+    # ── INVENTORY INTENTS ─────────────────────────────────────────────────────
+    if intent == "inventory_items":
+        try:
+            ig = (parsed.get("item_group") or "").strip()
+            it = (parsed.get("item_type") or "").strip()
+            where = ["disabled=0"]
+            params = []
+            if ig:
+                where.append("item_group=%s"); params.append(ig)
+            if it:
+                where.append("item_type=%s"); params.append(it)
+            w = " AND ".join(where)
+            row = frappe.db.sql(f"""
+                SELECT COUNT(*) AS cnt, COALESCE(SUM(is_stock_item),0) AS stock_cnt
+                FROM `tabItem` WHERE {w}
+            """, params, as_dict=True)[0]
+            total = int(row.cnt or 0)
+            stock = int(row.stock_cnt or 0)
+            desc = ""
+            if ig: desc += f" in group '{ig}'"
+            if it: desc += f" of type '{it}'"
+            return {"reply": f"📦 Items{desc}\n\nTotal active: {total}\nInventory tracked: {stock}\nNon-stock / service: {total - stock}",
+                    "action": "show_items"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Inventory Items")
+            return {"reply": "Couldn't fetch item data."}
+
+    if intent == "low_stock":
+        try:
+            rows = frappe.db.sql("""
+                SELECT i.item_name, i.item_code, i.reorder_level,
+                       COALESCE(SUM(b.actual_qty),0) AS actual_qty
+                FROM `tabItem` i
+                LEFT JOIN `tabBin` b ON b.item_code = i.item_code
+                WHERE i.is_stock_item=1 AND i.disabled=0 AND i.reorder_level>0
+                GROUP BY i.item_code, i.item_name, i.reorder_level
+                HAVING actual_qty <= i.reorder_level
+                ORDER BY actual_qty ASC
+                LIMIT 10
+            """, as_dict=True)
+            if not rows:
+                return {"reply": "✅ All items are above their reorder levels — stock looks healthy!"}
+            lines = "\n".join(
+                f"• {r.item_name}: {int(r.actual_qty)} in stock (reorder at {int(r.reorder_level)})"
+                for r in rows
+            )
+            return {"reply": f"⚠️ Low Stock Items ({len(rows)} found)\n\n{lines}", "action": "show_items"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Low Stock")
+            return {"reply": "Couldn't fetch stock data."}
+
+    if intent == "top_selling_items":
+        from_d, to_d, label = _ai_parse_period(parsed.get("period", "this_month"))
+        limit = min(int(parsed.get("limit") or 5), 10)
+        try:
+            rows = frappe.db.sql("""
+                SELECT ii.item_name, SUM(ii.qty) AS total_qty, SUM(ii.amount) AS total_amt
+                FROM `tabSales Invoice Item` ii
+                JOIN `tabSales Invoice` si ON si.name = ii.parent
+                WHERE si.docstatus=1 AND si.company=%s AND si.posting_date BETWEEN %s AND %s
+                GROUP BY ii.item_name ORDER BY total_qty DESC LIMIT %s
+            """, (company, from_d, to_d, limit), as_dict=True)
+            if not rows:
+                return {"reply": f"No sales data for {label}."}
+            lines = "\n".join(
+                f"{i+1}. {r.item_name} — {int(r.total_qty or 0)} units (₹{float(r.total_amt or 0):,.0f})"
+                for i, r in enumerate(rows)
+            )
+            return {"reply": f"🔥 Top {limit} Selling Items — {label}\n\n{lines}"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Top Selling Items")
+            return {"reply": "Couldn't fetch sales item data."}
+
+    if intent == "item_groups_summary":
+        try:
+            groups = frappe.db.sql("""
+                SELECT g.name, COUNT(i.name) AS item_cnt
+                FROM `tabItem Group` g
+                LEFT JOIN `tabItem` i ON i.item_group = g.name AND i.disabled=0
+                WHERE g.is_group=0
+                GROUP BY g.name ORDER BY item_cnt DESC LIMIT 10
+            """, as_dict=True)
+            total_groups = frappe.db.count("Item Group")
+            if not groups:
+                return {"reply": "No item groups found yet.", "action": "show_item_groups"}
+            lines = "\n".join(f"• {r.name}: {int(r.item_cnt or 0)} items" for r in groups)
+            return {"reply": f"📁 Item Groups (top {len(groups)} of {total_groups} total)\n\n{lines}",
+                    "action": "show_item_groups"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Item Groups Summary")
+            return {"reply": "Couldn't fetch item group data."}
+
+    if intent == "stock_value":
+        try:
+            row = frappe.db.sql("""
+                SELECT COALESCE(SUM(actual_qty * valuation_rate), 0) AS total_value,
+                       COUNT(DISTINCT item_code) AS item_cnt
+                FROM `tabBin`
+                WHERE actual_qty > 0
+            """, as_dict=True)[0]
+            val = float(row.total_value or 0)
+            items = int(row.item_cnt or 0)
+            return {"reply": f"🏭 Total Stock Value\n\n₹{val:,.2f} across {items} item{'s' if items != 1 else ''} in stock"}
+        except Exception as e:
+            frappe.log_error(str(e), "AI Stock Value")
+            return {"reply": "Couldn't fetch stock value."}
+
     # ── BUSINESS SUMMARY (Tier 5-C) ──────────────────────────────────────────
     if intent == "business_summary":
         try:
@@ -858,10 +1182,51 @@ def ai_chat(messages, system=None):
             frappe.log_error(str(e), "AI Business Summary")
             return {"reply": "Couldn't generate summary right now."}
 
+    # ── PRO MODE — CONFIRM PREVIEWS (LLM pass-through, execution via ai_execute_pro_action) ──
+    _pro_confirm_intents = {
+        "create_customer_confirm", "create_supplier_confirm", "create_item_confirm",
+        "create_quotation_confirm", "create_payment_confirm",
+        "cancel_invoice_confirm", "update_item_price_confirm",
+    }
+    if intent in _pro_confirm_intents:
+        result = {"reply": reply or "Here's what I'll do — confirm to proceed.", "action": intent}
+        for k in ("customer_name", "supplier_name", "item_name", "item_type", "item_group",
+                  "rate", "uom", "email", "mobile_no", "customer", "items",
+                  "invoice", "amount", "mode", "new_rate", "old_rate"):
+            if parsed.get(k) is not None:
+                result[k] = parsed[k]
+        # Enrich cancel/payment with live invoice data
+        if intent in ("cancel_invoice_confirm", "create_payment_confirm"):
+            inv_name = (parsed.get("invoice") or "").strip()
+            if inv_name:
+                try:
+                    inv = frappe.get_doc("Sales Invoice", inv_name)
+                    result.setdefault("customer", inv.customer_name or inv.customer)
+                    result.setdefault("amount", float(inv.outstanding_amount or inv.grand_total))
+                except Exception:
+                    pass
+        if intent == "update_item_price_confirm":
+            item_n = (parsed.get("item_name") or "").strip()
+            if item_n and not parsed.get("old_rate"):
+                try:
+                    result["old_rate"] = float(frappe.db.get_value("Item", item_n, "standard_rate") or 0)
+                except Exception:
+                    pass
+        return result
+
+    # PRO MODE — EXECUTE (typed confirm path — button confirm goes via ai_execute_pro_action)
+    _pro_execute_intents = {
+        "create_customer", "create_supplier", "create_item",
+        "create_quotation", "create_payment", "cancel_invoice", "update_item_price",
+    }
+    if intent in _pro_execute_intents:
+        return _run_pro_action(intent, parsed, company)
+
     # ── NAVIGATION INTENTS ────────────────────────────────────────────────────
     _simple_nav = {"show_overdue", "show_unpaid", "show_all_invoices", "show_bills",
-                   "show_quotes", "show_customers", "show_sales_orders",
-                   "show_purchase_orders", "show_dashboard"}
+                   "show_quotes", "show_customers", "show_suppliers", "show_sales_orders",
+                   "show_purchase_orders", "show_dashboard",
+                   "show_items", "show_item_groups", "show_warehouses", "show_inventory"}
     if intent in _simple_nav:
         return {"reply": reply or "Navigating now.", "action": intent}
 
@@ -890,6 +1255,133 @@ def ai_chat(messages, system=None):
 
     # ── CONVERSATIONAL + UNKNOWN ──────────────────────────────────────────────
     return {"reply": reply or "I'm not sure about that. Type \"help\" to see what I can do."}
+
+
+def _run_pro_action(action, data, company):
+    """Execute a confirmed pro-mode action. `data` is a dict of parameters."""
+    try:
+        if action == "create_customer":
+            name = (data.get("customer_name") or "").strip()
+            if not name: return {"reply": "Customer name is required."}
+            doc = frappe.new_doc("Customer")
+            doc.customer_name = name
+            doc.customer_group = "All Customer Groups"
+            doc.customer_type  = "Individual"
+            if data.get("email"):     doc.email_id   = data["email"]
+            if data.get("mobile_no"): doc.mobile_no  = data["mobile_no"]
+            doc.insert(ignore_permissions=True)
+            return {"reply": f"✅ Customer **{name}** created.", "action": "show_customers"}
+
+        if action == "create_supplier":
+            name = (data.get("supplier_name") or "").strip()
+            if not name: return {"reply": "Supplier name is required."}
+            doc = frappe.new_doc("Supplier")
+            doc.supplier_name  = name
+            doc.supplier_group = "All Supplier Groups"
+            doc.supplier_type  = "Individual"
+            if data.get("email"):     doc.email_id  = data["email"]
+            if data.get("mobile_no"): doc.mobile_no = data["mobile_no"]
+            doc.insert(ignore_permissions=True)
+            return {"reply": f"✅ Supplier **{name}** created.", "action": "show_suppliers"}
+
+        if action == "create_item":
+            name = (data.get("item_name") or "").strip()
+            if not name: return {"reply": "Item name is required."}
+            doc = frappe.new_doc("Item")
+            doc.item_name  = name
+            doc.item_code  = name
+            doc.item_type  = data.get("item_type", "Product") or "Product"
+            doc.item_group = data.get("item_group") or "All Item Groups"
+            doc.stock_uom  = data.get("uom", "Nos") or "Nos"
+            doc.standard_rate = float(data.get("rate") or 0)
+            doc.insert(ignore_permissions=True)
+            return {"reply": f"✅ Item **{name}** created at ₹{doc.standard_rate:,.2f}.", "action": "show_items"}
+
+        if action == "create_quotation":
+            customer = (data.get("customer") or "").strip()
+            items    = data.get("items") or []
+            if not customer: return {"reply": "Customer name is required."}
+            if not items:    return {"reply": "Add at least one item to the quotation."}
+            doc = frappe.new_doc("Quotation")
+            doc.quotation_to     = "Customer"
+            doc.party_name       = customer
+            doc.transaction_date = nowdate()
+            doc.company          = company
+            for it in items:
+                doc.append("items", {
+                    "item_name": it.get("item_name", ""),
+                    "item_code": it.get("item_name", ""),
+                    "qty":       float(it.get("qty") or 1),
+                    "rate":      float(it.get("rate") or 0),
+                })
+            doc.insert(ignore_permissions=True)
+            return {"reply": f"✅ Quotation **{doc.name}** created for {customer} ({len(items)} item(s)).", "action": "show_quotes"}
+
+        if action == "create_payment":
+            inv_name = (data.get("invoice") or "").strip()
+            amount   = float(data.get("amount") or 0)
+            mode     = data.get("mode", "Cash") or "Cash"
+            if not inv_name: return {"reply": "Invoice name is required to record a payment."}
+            inv = frappe.get_doc("Sales Invoice", inv_name)
+            if not amount: amount = float(inv.outstanding_amount)
+            pe = frappe.new_doc("Payment Entry")
+            pe.payment_type     = "Receive"
+            pe.party_type       = "Customer"
+            pe.party            = inv.customer
+            pe.party_name       = inv.customer_name or inv.customer
+            pe.company          = inv.company
+            pe.posting_date     = nowdate()
+            pe.mode_of_payment  = mode
+            pe.paid_amount      = amount
+            pe.received_amount  = amount
+            pe.paid_to = (
+                frappe.db.get_value("Company", inv.company, "default_bank_account") or
+                frappe.db.get_value("Account", {"account_type": "Cash", "company": inv.company}, "name") or ""
+            )
+            pe.append("references", {
+                "reference_doctype":   "Sales Invoice",
+                "reference_name":      inv_name,
+                "outstanding_amount":  inv.outstanding_amount,
+                "allocated_amount":    min(amount, float(inv.outstanding_amount)),
+            })
+            pe.insert(ignore_permissions=True)
+            pe.submit()
+            status = "fully paid ✅" if amount >= float(inv.outstanding_amount) else "partially paid"
+            return {"reply": f"✅ Payment of ₹{amount:,.2f} recorded for **{inv_name}** — now {status}.", "action": "show_all_invoices"}
+
+        if action == "cancel_invoice":
+            inv_name = (data.get("invoice") or "").strip()
+            if not inv_name: return {"reply": "Invoice name is required."}
+            inv = frappe.get_doc("Sales Invoice", inv_name)
+            if inv.docstatus != 1:
+                return {"reply": f"**{inv_name}** is not submitted (status: {inv.docstatus}). Only submitted invoices can be cancelled."}
+            inv.cancel()
+            return {"reply": f"✅ Invoice **{inv_name}** has been cancelled.", "action": "show_all_invoices"}
+
+        if action == "update_item_price":
+            item_name = (data.get("item_name") or "").strip()
+            new_rate  = float(data.get("new_rate") or 0)
+            if not item_name: return {"reply": "Item name is required."}
+            frappe.db.set_value("Item", item_name, "standard_rate", new_rate)
+            frappe.db.commit()
+            return {"reply": f"✅ **{item_name}** price updated to ₹{new_rate:,.2f}.", "action": "show_items"}
+
+        return {"reply": f"Unknown pro action: {action}"}
+    except Exception as e:
+        frappe.log_error(str(e), f"AI Pro Action — {action}")
+        return {"reply": f"Action failed: {str(e)}"}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def ai_execute_pro_action(action, data):
+    """
+    Execute a confirmed pro-mode action directly (no LLM — button-confirm path).
+    Called by the frontend when user clicks ✓ Confirm on a pro action card.
+    """
+    if isinstance(data, str):
+        data = json.loads(data)
+    company = _get_company(frappe.session.user)
+    return _run_pro_action(action, data, company)
 
 
 # ── COST CENTERS ──────────────────────────────────────────────────────────────

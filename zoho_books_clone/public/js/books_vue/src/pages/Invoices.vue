@@ -410,8 +410,13 @@
               <!-- Exchange rate (only for non-INR) -->
               <div v-if="form.currency !== 'INR'" class="add-details-row2" style="margin-top:14px">
                 <div>
-                  <label class="inv-lbl">Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span></label>
-                  <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi" placeholder="e.g. 83.5"/>
+                  <label class="inv-lbl" style="display:flex;align-items:center;gap:8px">
+                    Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span>
+                    <span v-if="rateLoading" style="font-size:11px;color:#6b7280;font-weight:500">⏳ Fetching…</span>
+                    <span v-else-if="rateSource" class="inv-rate-badge" :class="`inv-rate-${rateSource}`">{{ sourceLabel() }}</span>
+                  </label>
+                  <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi"
+                    :placeholder="rateLoading ? 'Fetching live rate…' : 'e.g. 83.5'"/>
                 </div>
                 <div>
                   <label class="inv-lbl">Payment Terms</label>
@@ -1385,9 +1390,11 @@ import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import IrnQrCode from "../components/IrnQrCode.vue";
+import { useExchangeRate } from "../composables/useExchangeRate.js";
 
 const { toast } = useToast();
 const route = useRoute();
+const { fetchRate, rateLoading, rateSource, sourceLabel } = useExchangeRate();
 
 // ── e-Invoice state ────────────────────────────────────────────────────
 const eiGenerating   = ref(false);
@@ -1916,15 +1923,7 @@ async function onCurrencyChange() {
 }
 async function fetchExchangeRate(currency) {
   if (!currency || currency === "INR") return 1;
-  try {
-    const r = await apiGET("frappe.client.get_value", {
-      doctype: "Currency Exchange",
-      filters: JSON.stringify([["from_currency","=",currency],["to_currency","=","INR"]]),
-      fieldname: "exchange_rate",
-    });
-    if (r?.message?.exchange_rate) return flt(r.message.exchange_rate);
-  } catch {}
-  return null; // let caller decide fallback
+  return await fetchRate(currency, "INR");
 }
 
 // ── Customer change: auto-fill address, currency, GST treatment ───────

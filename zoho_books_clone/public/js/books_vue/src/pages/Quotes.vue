@@ -438,7 +438,11 @@
               </div>
               <div v-if="form.currency !== 'INR'" class="add-details-row2" style="margin-top:14px">
                 <div>
-                  <label class="inv-lbl">Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span></label>
+                  <label class="inv-lbl">
+                    Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span>
+                    <span v-if="rateLoading" class="inv-rate-badge inv-rate-loading">Fetching…</span>
+                    <span v-else-if="rateSource" :class="`inv-rate-badge inv-rate-${rateSource}`">{{ sourceLabel(rateSource) }}</span>
+                  </label>
                   <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi" placeholder="e.g. 83.5"/>
                 </div>
               </div>
@@ -1117,9 +1121,11 @@ import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { useExchangeRate } from "../composables/useExchangeRate.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const { fetchRate, rateLoading, rateSource, sourceLabel } = useExchangeRate();
 const route = useRoute();
 const { confirm } = useConfirm();
 const { printDoc } = useLivePreview();
@@ -1689,15 +1695,7 @@ async function onCurrencyChange() {
 }
 async function fetchExchangeRate(currency) {
   if (!currency || currency === "INR") return 1;
-  try {
-    const r = await apiGET("frappe.client.get_value", {
-      doctype: "Currency Exchange",
-      filters: JSON.stringify([["from_currency","=",currency],["to_currency","=","INR"]]),
-      fieldname: "exchange_rate",
-    });
-    if (r?.message?.exchange_rate) return flt(r.message.exchange_rate);
-  } catch {}
-  return null;
+  return await fetchRate(currency, "INR");
 }
 
 // ── Logo helpers ──────────────────────────────────────────────────────

@@ -527,14 +527,18 @@ async function saveRate() {
 async function refreshRates() {
   refreshing.value = true;
   try {
-    const res = await apiGET("zoho_books_clone.api.admin.get_currency_rates", {});
-    if (res && Array.isArray(res)) {
-      res.forEach((r) => {
-        const c = currencies.value.find((x) => x.code === r.currency_code || x.code === r.from_currency);
-        if (c) { c.mid = r.exchange_rate || r.mid || c.mid; c.buy = r.buy_rate || c.buy; c.sell = r.sell_rate || c.sell; }
+    const res = await apiGET("zoho_books_clone.api.books_data.refresh_all_exchange_rates", {});
+    if (res && typeof res === "object") {
+      Object.entries(res).forEach(([code, r]) => {
+        const c = currencies.value.find((x) => x.code === code);
+        if (c && r?.rate) { c.mid = r.rate; c.buy = r.rate; c.sell = r.rate; }
       });
+      // refresh rate history too
+      const { apiList } = await import("../api/client.js");
+      const rows = await apiList("Currency Exchange", { fields: ["from_currency","exchange_rate","date"], limit: 200, order: "date desc" });
+      rateHistory.value = rows.slice(0, 50).map((r, i) => ({ id: i+1, date: r.date, currency: r.from_currency, buy: r.exchange_rate, mid: r.exchange_rate, sell: r.exchange_rate, source: "Live", chg: 0 }));
     }
-    toast("Rates refreshed", "success");
+    toast("Rates refreshed from live feed", "success");
   } catch { toast("Could not fetch live rates — showing cached data", "warning"); }
   finally { refreshing.value = false; }
 }

@@ -11,6 +11,12 @@
         class="b-pill" :class="{active:filterTab===t.k}" @click="filterTab=t.k">{{t.l}}
       </button>
     </div>
+    <div class="it-group-filter-wrap">
+      <select class="it-group-filter-select" v-model="filterGroup">
+        <option value="">All Groups</option>
+        <option v-for="g in itemGroupsFull.filter(g => !g.is_group)" :key="g.name" :value="g.name">{{ g.name }}</option>
+      </select>
+    </div>
     <div style="display:flex;gap:6px;margin-left:auto">
       <button class="b-btn b-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" style="padding:7px 10px">
         <span v-html="icon(viewMode==='table'?'grid':'file',14)"></span>
@@ -32,7 +38,7 @@
           <tr v-else v-for="row in filtered" :key="row.name" class="clickable" @click="openEdit(row)">
             <td><span  style="font-size:12px;color:#3B5BDB">{{row.item_code||row.name}}</span></td>
             <td class="fw-600">{{row.item_name}}</td>
-            <td class="c-muted">{{row.item_group||'—'}}</td>
+            <td><span v-if="row.item_group" class="it-group-badge">{{row.item_group}}</span><span v-else class="c-muted">—</span></td>
             <td><span class="b-badge b-badge-muted" style="font-size:11px">{{row.item_type||'—'}}</span></td>
             <td class="c-muted" style="font-size:12.5px">{{row.stock_uom||'Nos'}}</td>
             <td class="ta-r fw-600">{{fmt(row.standard_rate)}}</td>
@@ -60,7 +66,8 @@
         <div class="fw-700" style="font-size:14px;margin-bottom:3px;line-height:1.3">{{row.item_name}}</div>
         <div class="c-muted" style="font-size:11px;margin-bottom:8px">{{row.item_code}}</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span class="c-muted" style="font-size:12px">{{row.item_group||'—'}}</span>
+          <span v-if="row.item_group" class="it-group-badge" style="font-size:11px">{{row.item_group}}</span>
+          <span v-else class="c-muted" style="font-size:12px">—</span>
           <span class="fw-700" style="font-size:13px;color:#2F9E44">{{fmt(row.standard_rate)}}</span>
         </div>
       </div>
@@ -108,17 +115,25 @@
               <div><label class="nim-label">Item Name <span style="color:#C92A2A">*</span></label><input class="nim-input" v-model="form.item_name" placeholder="e.g. Laptop 15-inch"/></div>
               <div><label class="nim-label">Item Code</label><input class="nim-input" v-model="form.item_code" placeholder="Auto-generated if blank"/></div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-              <div><label class="nim-label">Item Group</label>
-                <select class="nim-input" v-model="form.item_group">
-                  <option value="">— Select Group —</option>
-                  <option v-for="g in itemGroups" :key="g" :value="g">{{g}}</option>
-                </select>
-              </div>
-              <div><label class="nim-label">Item Type</label>
-                <select class="nim-input" v-model="form.item_type">
-                  <option v-for="t in ITEM_TYPES" :key="t" :value="t">{{t}}</option>
-                </select>
+            <div style="margin-bottom:12px">
+              <label class="nim-label">Item Group</label>
+              <SearchableSelect
+                v-model="form.item_group"
+                :options="leafGroupOptions"
+                placeholder="Search or create a group…"
+                :createable="true"
+                @create="createItemGroup"
+              />
+            </div>
+            <div style="margin-bottom:12px">
+              <label class="nim-label">Item Type</label>
+              <div class="it-type-pills">
+                <button v-for="t in ITEM_TYPES" :key="t" type="button"
+                  class="it-type-pill" :class="{ 'it-type-pill--active': form.item_type === t }"
+                  @click="form.item_type = t">
+                  <span>{{ ITEM_TYPE_ICONS[t] }}</span>
+                  <span>{{ t }}</span>
+                </button>
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
@@ -207,7 +222,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, onUnmounted } from "vue";
 import { apiList, apiGET, apiPOST, apiSave, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, fmtDate, flt } from "../utils/format.js";
@@ -229,6 +244,8 @@ const showDel    = ref(false);
 const delTarget  = ref(null);
 const drawerTab  = ref("basic");
 const itemGroups    = ref([]);
+const itemGroupsFull = ref([]);
+const filterGroup   = ref("");
 const warehouses    = ref([]);
 const taxTemplates  = ref([]);
 const uomList       = ref([]);
@@ -244,8 +261,13 @@ const form = reactive({
   reorder_level: 0, reorder_qty: 0, opening_stock: 0,
 });
 
-const ITEM_TYPES  = ["Product", "Service", "Raw Material", "Finished Good"];
-const VAL_METHODS = ["FIFO", "Moving Average", "LIFO"];
+const ITEM_TYPES      = ["Product", "Service", "Raw Material", "Finished Good"];
+const ITEM_TYPE_ICONS = { Product: "📦", Service: "🛠️", "Raw Material": "⚙️", "Finished Good": "✅" };
+const VAL_METHODS     = ["FIFO", "Moving Average", "LIFO"];
+
+const leafGroupOptions = computed(() =>
+  itemGroupsFull.value.filter(g => !g.is_group).map(g => ({ value: g.name, label: g.name }))
+);
 
 async function load() {
   loading.value = true;
@@ -257,7 +279,8 @@ async function load() {
     list.value = rows || [];
   } catch { list.value = []; }
   try {
-    const g = await apiList("Item Group", { fields: ["name"], order: "name asc", limit: 200 });
+    const g = await apiList("Item Group", { fields: ["name", "is_group"], order: "name asc", limit: 200 });
+    itemGroupsFull.value = g || [];
     itemGroups.value = (g || []).map((r) => r.name);
   } catch { itemGroups.value = ["All Item Groups", "Products", "Services", "Raw Materials", "Finished Goods", "Furniture"]; }
   try {
@@ -305,6 +328,24 @@ async function load() {
   loading.value = false;
 }
 
+async function reloadGroups() {
+  try {
+    const g = await apiList("Item Group", { fields: ["name", "is_group"], order: "name asc", limit: 200 });
+    itemGroupsFull.value = g || [];
+    itemGroups.value = (g || []).map(r => r.name);
+  } catch {}
+}
+
+async function createItemGroup(name) {
+  if (!name?.trim()) return;
+  try {
+    await apiSave({ doctype: "Item Group", name: name.trim(), parent_item_group: "All Item Groups", is_group: 0 });
+    await reloadGroups();
+    form.item_group = name.trim();
+    toast("Group \"" + name.trim() + "\" created");
+  } catch (e) { toast("Could not create group: " + e.message, "error"); }
+}
+
 async function reloadAccounts() {
   try {
     const company = await resolveCompany();
@@ -321,6 +362,7 @@ const filtered = computed(() => {
   if (filterTab.value === "inactive") r = r.filter((i) =>  i.disabled);
   if (filterTab.value === "services") r = r.filter((i) => !i.is_stock_item);
   if (filterTab.value === "stock")    r = r.filter((i) =>  i.is_stock_item);
+  if (filterGroup.value) r = r.filter((i) => i.item_group === filterGroup.value);
   const q = search.value.toLowerCase().trim();
   if (q) r = r.filter((i) => ((i.item_name || "") + (i.item_code || "") + (i.item_group || "")).toLowerCase().includes(q));
   return r;
@@ -449,10 +491,81 @@ async function doDelete() {
   finally { deleting.value = false; }
 }
 
-onMounted(load);
+function onHashChange() {
+  const h = window.location.hash;
+  if (h === "#/inventory/items" || h.startsWith("#/inventory/items?") || h.startsWith("#/inventory/items/")) {
+    load();
+  }
+}
+
+onMounted(() => { load(); window.addEventListener("hashchange", onHashChange); });
+onUnmounted(() => { window.removeEventListener("hashchange", onHashChange); });
 </script>
 
 <style>
+/* ── Group filter select ── */
+.it-group-filter-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.it-group-filter-select {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+  color: #374151;
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s;
+  max-width: 160px;
+}
+.it-group-filter-select:focus { border-color: #3b82f6; }
+
+/* ── Item Type pill group ── */
+.it-type-pills {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 2px;
+}
+.it-type-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f8fafc;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all .12s;
+  text-align: left;
+  font-family: inherit;
+}
+.it-type-pill:hover { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.it-type-pill--active {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+  box-shadow: 0 0 0 2px rgba(37,99,235,.12);
+}
+
+/* ── Group badge ── */
+.it-group-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 8px;
+  background: #ede9fe;
+  color: #5b21b6;
+  white-space: nowrap;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .items-tbl-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
@@ -469,6 +582,7 @@ onMounted(load);
 }
 
 @media (max-width: 480px) {
+  .it-group-filter-wrap { display: none; }
   /* also hide Type (4) */
   .items-tbl-wrap .b-table th:nth-child(4), .items-tbl-wrap .b-table td:nth-child(4) { display: none; }
   .items-tbl-wrap .b-table { min-width: 360px; }

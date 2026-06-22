@@ -123,16 +123,23 @@
       <div class="books-card-title">GST Summary</div>
       <template v-if="gstLoading"><div class="loading-shimmer" style="height:80px;border-radius:8px"></div></template>
       <template v-else-if="gst?.length">
-        <table class="books-table">
-          <thead><tr><th>Tax Type</th><th class="ta-r">Invoice Count</th><th class="ta-r">Total Tax</th></tr></thead>
-          <tbody>
-            <tr v-for="g in gst" :key="g.tax_type">
-              <td><span class="badge badge-blue">{{ g.tax_type }}</span></td>
-              <td class="ta-r mono-sm">{{ g.invoice_count }}</td>
-              <td class="ta-r mono-sm green">{{ fmt(g.total_tax) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="gst-cards">
+          <div v-for="g in gst" :key="g.tax_type" class="gst-card">
+            <div class="gst-card-header">
+              <span class="badge badge-blue">{{ g.tax_type }}</span>
+            </div>
+            <div class="gst-card-body">
+              <div class="gst-kv">
+                <span class="gst-kv-label">Invoice Count</span>
+                <span class="gst-kv-value mono-sm">{{ g.invoice_count }}</span>
+              </div>
+              <div class="gst-kv">
+                <span class="gst-kv-label">Total Tax</span>
+                <span class="gst-kv-value mono-sm green fw-600">{{ fmt(g.total_tax) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </template>
       <div v-else class="empty-msg">Run the report to see results.</div>
     </div>
@@ -147,42 +154,66 @@
       </div>
       <template v-if="arLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
       <template v-else-if="arAging.length">
-        <div style="overflow-x:auto">
-          <table class="books-table aging-table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th class="ta-r">Current</th>
-                <th class="ta-r">1–30 days</th>
-                <th class="ta-r">31–60 days</th>
-                <th class="ta-r">61–90 days</th>
-                <th class="ta-r">90+ days</th>
-                <th class="ta-r aging-total">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="r in arAging" :key="r.customer">
-                <td class="fw-600">{{r.customer_name||r.customer}}</td>
-                <td class="ta-r mono-sm">{{r.current > 0 ? fmtAmt(r.current) : '—'}}</td>
-                <td class="ta-r mono-sm" :class="r.days_1_30>0?'text-warn':''">{{r.days_1_30 > 0 ? fmtAmt(r.days_1_30) : '—'}}</td>
-                <td class="ta-r mono-sm" :class="r.days_31_60>0?'text-danger':''">{{r.days_31_60 > 0 ? fmtAmt(r.days_31_60) : '—'}}</td>
-                <td class="ta-r mono-sm" :class="r.days_61_90>0?'text-danger':''">{{r.days_61_90 > 0 ? fmtAmt(r.days_61_90) : '—'}}</td>
-                <td class="ta-r mono-sm" :class="r.days_90_plus>0?'text-danger fw-700':''">{{r.days_90_plus > 0 ? fmtAmt(r.days_90_plus) : '—'}}</td>
-                <td class="ta-r mono-sm fw-700 aging-total">{{fmtAmt(r.total)}}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr class="aging-totals-row">
-                <td class="fw-700">TOTAL</td>
-                <td class="ta-r mono-sm fw-700">{{fmtAmt(arAging.reduce((s,r)=>s+r.current,0))}}</td>
-                <td class="ta-r mono-sm fw-700">{{fmtAmt(arAging.reduce((s,r)=>s+r.days_1_30,0))}}</td>
-                <td class="ta-r mono-sm fw-700">{{fmtAmt(arAging.reduce((s,r)=>s+r.days_31_60,0))}}</td>
-                <td class="ta-r mono-sm fw-700">{{fmtAmt(arAging.reduce((s,r)=>s+r.days_61_90,0))}}</td>
-                <td class="ta-r mono-sm fw-700 text-danger">{{fmtAmt(arAging.reduce((s,r)=>s+r.days_90_plus,0))}}</td>
-                <td class="ta-r mono-sm fw-700 aging-total text-danger">{{fmtAmt(arAging.reduce((s,r)=>s+r.total,0))}}</td>
-              </tr>
-            </tfoot>
-          </table>
+        <div class="aging-cards">
+          <div v-for="r in arAging" :key="r.customer" class="aging-card">
+            <div class="aging-card-name">{{ r.customer_name || r.customer }}</div>
+            <div class="aging-buckets">
+              <div class="aging-bucket">
+                <span class="bucket-label">Current</span>
+                <span class="bucket-val mono-sm">{{ r.current > 0 ? fmtAmt(r.current) : '—' }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">1–30 days</span>
+                <span class="bucket-val mono-sm" :class="r.days_1_30>0?'text-warn':''">{{ r.days_1_30 > 0 ? fmtAmt(r.days_1_30) : '—' }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">31–60 days</span>
+                <span class="bucket-val mono-sm" :class="r.days_31_60>0?'text-danger':''">{{ r.days_31_60 > 0 ? fmtAmt(r.days_31_60) : '—' }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">61–90 days</span>
+                <span class="bucket-val mono-sm" :class="r.days_61_90>0?'text-danger':''">{{ r.days_61_90 > 0 ? fmtAmt(r.days_61_90) : '—' }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">90+ days</span>
+                <span class="bucket-val mono-sm" :class="r.days_90_plus>0?'text-danger fw-700':''">{{ r.days_90_plus > 0 ? fmtAmt(r.days_90_plus) : '—' }}</span>
+              </div>
+            </div>
+            <div class="aging-card-total">
+              <span class="bucket-label">Total</span>
+              <span class="mono-sm fw-700 text-danger">{{ fmtAmt(r.total) }}</span>
+            </div>
+          </div>
+          <!-- Totals summary card -->
+          <div class="aging-card aging-card-totals">
+            <div class="aging-card-name fw-700">TOTAL</div>
+            <div class="aging-buckets">
+              <div class="aging-bucket">
+                <span class="bucket-label">Current</span>
+                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(arAging.reduce((s,r)=>s+r.current,0)) }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">1–30 days</span>
+                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(arAging.reduce((s,r)=>s+r.days_1_30,0)) }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">31–60 days</span>
+                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(arAging.reduce((s,r)=>s+r.days_31_60,0)) }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">61–90 days</span>
+                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(arAging.reduce((s,r)=>s+r.days_61_90,0)) }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">90+ days</span>
+                <span class="bucket-val mono-sm fw-700 text-danger">{{ fmtAmt(arAging.reduce((s,r)=>s+r.days_90_plus,0)) }}</span>
+              </div>
+            </div>
+            <div class="aging-card-total">
+              <span class="bucket-label">Total</span>
+              <span class="mono-sm fw-700 text-danger">{{ fmtAmt(arAging.reduce((s,r)=>s+r.total,0)) }}</span>
+            </div>
+          </div>
         </div>
       </template>
       <div v-else class="empty-msg">{{arRan ? 'No outstanding receivables as of this date.' : 'Run the report to see results.'}}</div>
@@ -198,42 +229,66 @@
       </div>
       <template v-if="apLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
       <template v-else-if="apAging.length">
-        <div style="overflow-x:auto">
-          <table class="books-table aging-table">
-            <thead>
-              <tr>
-                <th>Vendor</th>
-                <th class="ta-r">Current</th>
-                <th class="ta-r">1–30 days</th>
-                <th class="ta-r">31–60 days</th>
-                <th class="ta-r">61–90 days</th>
-                <th class="ta-r">90+ days</th>
-                <th class="ta-r aging-total">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="r in apAging" :key="r.supplier">
-                <td class="fw-600">{{r.supplier_name||r.supplier}}</td>
-                <td class="ta-r mono-sm">{{r.current > 0 ? fmtAmt(r.current) : '—'}}</td>
-                <td class="ta-r mono-sm" :class="r.days_1_30>0?'text-warn':''">{{r.days_1_30 > 0 ? fmtAmt(r.days_1_30) : '—'}}</td>
-                <td class="ta-r mono-sm" :class="r.days_31_60>0?'text-danger':''">{{r.days_31_60 > 0 ? fmtAmt(r.days_31_60) : '—'}}</td>
-                <td class="ta-r mono-sm" :class="r.days_61_90>0?'text-danger':''">{{r.days_61_90 > 0 ? fmtAmt(r.days_61_90) : '—'}}</td>
-                <td class="ta-r mono-sm" :class="r.days_90_plus>0?'text-danger fw-700':''">{{r.days_90_plus > 0 ? fmtAmt(r.days_90_plus) : '—'}}</td>
-                <td class="ta-r mono-sm fw-700 aging-total">{{fmtAmt(r.total)}}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr class="aging-totals-row">
-                <td class="fw-700">TOTAL</td>
-                <td class="ta-r mono-sm fw-700">{{fmtAmt(apAging.reduce((s,r)=>s+r.current,0))}}</td>
-                <td class="ta-r mono-sm fw-700">{{fmtAmt(apAging.reduce((s,r)=>s+r.days_1_30,0))}}</td>
-                <td class="ta-r mono-sm fw-700">{{fmtAmt(apAging.reduce((s,r)=>s+r.days_31_60,0))}}</td>
-                <td class="ta-r mono-sm fw-700">{{fmtAmt(apAging.reduce((s,r)=>s+r.days_61_90,0))}}</td>
-                <td class="ta-r mono-sm fw-700 text-danger">{{fmtAmt(apAging.reduce((s,r)=>s+r.days_90_plus,0))}}</td>
-                <td class="ta-r mono-sm fw-700 aging-total text-danger">{{fmtAmt(apAging.reduce((s,r)=>s+r.total,0))}}</td>
-              </tr>
-            </tfoot>
-          </table>
+        <div class="aging-cards">
+          <div v-for="r in apAging" :key="r.supplier" class="aging-card">
+            <div class="aging-card-name">{{ r.supplier_name || r.supplier }}</div>
+            <div class="aging-buckets">
+              <div class="aging-bucket">
+                <span class="bucket-label">Current</span>
+                <span class="bucket-val mono-sm">{{ r.current > 0 ? fmtAmt(r.current) : '—' }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">1–30 days</span>
+                <span class="bucket-val mono-sm" :class="r.days_1_30>0?'text-warn':''">{{ r.days_1_30 > 0 ? fmtAmt(r.days_1_30) : '—' }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">31–60 days</span>
+                <span class="bucket-val mono-sm" :class="r.days_31_60>0?'text-danger':''">{{ r.days_31_60 > 0 ? fmtAmt(r.days_31_60) : '—' }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">61–90 days</span>
+                <span class="bucket-val mono-sm" :class="r.days_61_90>0?'text-danger':''">{{ r.days_61_90 > 0 ? fmtAmt(r.days_61_90) : '—' }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">90+ days</span>
+                <span class="bucket-val mono-sm" :class="r.days_90_plus>0?'text-danger fw-700':''">{{ r.days_90_plus > 0 ? fmtAmt(r.days_90_plus) : '—' }}</span>
+              </div>
+            </div>
+            <div class="aging-card-total">
+              <span class="bucket-label">Total</span>
+              <span class="mono-sm fw-700 text-danger">{{ fmtAmt(r.total) }}</span>
+            </div>
+          </div>
+          <!-- Totals summary card -->
+          <div class="aging-card aging-card-totals">
+            <div class="aging-card-name fw-700">TOTAL</div>
+            <div class="aging-buckets">
+              <div class="aging-bucket">
+                <span class="bucket-label">Current</span>
+                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(apAging.reduce((s,r)=>s+r.current,0)) }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">1–30 days</span>
+                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(apAging.reduce((s,r)=>s+r.days_1_30,0)) }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">31–60 days</span>
+                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(apAging.reduce((s,r)=>s+r.days_31_60,0)) }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">61–90 days</span>
+                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(apAging.reduce((s,r)=>s+r.days_61_90,0)) }}</span>
+              </div>
+              <div class="aging-bucket">
+                <span class="bucket-label">90+ days</span>
+                <span class="bucket-val mono-sm fw-700 text-danger">{{ fmtAmt(apAging.reduce((s,r)=>s+r.days_90_plus,0)) }}</span>
+              </div>
+            </div>
+            <div class="aging-card-total">
+              <span class="bucket-label">Total</span>
+              <span class="mono-sm fw-700 text-danger">{{ fmtAmt(apAging.reduce((s,r)=>s+r.total,0)) }}</span>
+            </div>
+          </div>
         </div>
       </template>
       <div v-else class="empty-msg">{{apRan ? 'No outstanding payables as of this date.' : 'Run the report to see results.'}}</div>
@@ -244,20 +299,31 @@
       <div class="books-card-title">Trial Balance</div>
       <template v-if="tbLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="tb?.length">
-        <div style="overflow-x:auto">
-          <table class="books-table">
-            <thead><tr><th>Account</th><th>Type</th><th class="ta-r">Opening</th><th class="ta-r">Debit</th><th class="ta-r">Credit</th><th class="ta-r">Closing</th></tr></thead>
-            <tbody>
-              <tr v-for="row in tb" :key="row.account">
-                <td style="font-size:12px">{{row.account}}</td>
-                <td><span class="badge badge-muted" style="font-size:10.5px">{{row.account_type}}</span></td>
-                <td class="ta-r mono-sm" :class="row.opening<0?'red':''">{{fmtAmt(row.opening||0)}}</td>
-                <td class="ta-r mono-sm green">{{fmtAmt(row.debit||0)}}</td>
-                <td class="ta-r mono-sm red">{{fmtAmt(row.credit||0)}}</td>
-                <td class="ta-r mono-sm fw-600" :class="row.closing<0?'red':'green'">{{fmtAmt(row.closing||0)}}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="tb-cards">
+          <div v-for="row in tb" :key="row.account" class="tb-card">
+            <div class="tb-card-top">
+              <div class="tb-account-name">{{ row.account }}</div>
+              <span class="badge badge-muted" style="font-size:10.5px">{{ row.account_type }}</span>
+            </div>
+            <div class="tb-buckets">
+              <div class="tb-bucket">
+                <span class="bucket-label">Opening</span>
+                <span class="bucket-val mono-sm" :class="row.opening<0?'red':''">{{ fmtAmt(row.opening||0) }}</span>
+              </div>
+              <div class="tb-bucket">
+                <span class="bucket-label">Debit</span>
+                <span class="bucket-val mono-sm green">{{ fmtAmt(row.debit||0) }}</span>
+              </div>
+              <div class="tb-bucket">
+                <span class="bucket-label">Credit</span>
+                <span class="bucket-val mono-sm red">{{ fmtAmt(row.credit||0) }}</span>
+              </div>
+              <div class="tb-bucket">
+                <span class="bucket-label">Closing</span>
+                <span class="bucket-val mono-sm fw-600" :class="row.closing<0?'red':'green'">{{ fmtAmt(row.closing||0) }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
       <div v-else class="empty-msg">Run the report to see results.</div>
@@ -403,6 +469,45 @@ const reports = [
 .aging-table th, .aging-table td { padding: 9px 12px; white-space: nowrap; }
 .aging-total { background: #F8F9FA; }
 .aging-totals-row td { border-top: 2px solid #E2E8F0; background: #F8F9FA; }
+
+/* GST Cards */
+.gst-cards { display: flex; flex-direction: column; gap: 10px; }
+.gst-card { background: var(--surface-2); border-radius: var(--radius-sm); padding: 14px 16px; }
+.gst-card-header { margin-bottom: 10px; }
+.gst-card-body { display: flex; flex-direction: column; gap: 6px; }
+.gst-kv { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.gst-kv-label { color: var(--text-3); font-size: 12px; }
+.gst-kv-value { font-weight: 600; }
+
+/* Aging Cards */
+.aging-cards { display: flex; flex-direction: column; gap: 10px; }
+.aging-card {
+  background: var(--surface-2); border-radius: var(--radius-sm);
+  padding: 14px 16px; border: 1px solid var(--border);
+}
+.aging-card-totals { border: 2px solid var(--border); background: #F8F9FA; }
+.aging-card-name { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+.aging-buckets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
+@media (max-width: 600px) { .aging-buckets { grid-template-columns: repeat(2, 1fr); } }
+.aging-bucket { display: flex; flex-direction: column; gap: 3px; }
+.bucket-label { font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+.bucket-val { font-size: 13px; }
+.aging-card-total {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 10px; border-top: 1px solid var(--border); font-size: 13px;
+}
+
+/* Trial Balance Cards */
+.tb-cards { display: flex; flex-direction: column; gap: 10px; }
+.tb-card {
+  background: var(--surface-2); border-radius: var(--radius-sm);
+  padding: 14px 16px; border: 1px solid var(--border);
+}
+.tb-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.tb-account-name { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
+.tb-buckets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 500px) { .tb-buckets { grid-template-columns: repeat(2, 1fr); } }
+.tb-bucket { display: flex; flex-direction: column; gap: 3px; }
 .text-warn   { color: #E67700; }
 .text-danger { color: #C92A2A; }
 .fw-600 { font-weight: 600; }

@@ -1879,7 +1879,7 @@ watch(() => form.supplier, (val) => {
   .po-view-totals-inner { min-width: unset; width: 100%; }
 
   /* Modal: near full width */
-  .po-apply-dialog { width: 98vw; border-radius: 8px; }
+  .po-apply-dialog { width: 98vw; height: 450px; border-radius: 8px; }
 
   /* Tabs */
   .inv-vtab { padding: 9px 12px; font-size: 12.5px; }

@@ -1738,7 +1738,7 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
   .inv-vtab { padding: 9px 12px; font-size: 12.5px; }
 
   /* Address modal */
-  .po-apply-dialog { width: 98vw; border-radius: 8px; }
+  .po-apply-dialog { width: 98vw; height: 450px; border-radius: 8px; }
 
   /* Payment table inside tab: hide reference column */
   .inv-items-table th:nth-child(3),

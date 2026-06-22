@@ -98,16 +98,16 @@
             </template>
             <template v-else>
               <tr v-for="inv in filteredRows" :key="inv.name" class="g1-row">
-                <td><span class="g1-code">{{ inv.name }}</span></td>
-                <td class="mono muted">{{ fmtDate(inv.posting_date) }}</td>
-                <td class="fw5">{{ inv.customer_name || inv.customer }}</td>
-                <td class="mono muted sm">{{ inv.customer_gstin || '—' }}</td>
-                <td class="muted">{{ inv.place_of_supply || '—' }}</td>
-                <td class="ta-r mono">{{ fmtCur(inv.net_total) }}</td>
-                <td class="ta-r mono muted">{{ fmtCur(taxByType(inv,'IGST')) }}</td>
-                <td class="ta-r mono muted">{{ fmtCur(taxByType(inv,'CGST')) }}</td>
-                <td class="ta-r mono muted">{{ fmtCur(taxByType(inv,'SGST')) }}</td>
-                <td class="ta-r mono fw6">{{ fmtCur(inv.grand_total) }}</td>
+                <td data-label="Invoice #"><span class="g1-code">{{ inv.name }}</span></td>
+                <td data-label="Date" class="mono muted">{{ fmtDate(inv.posting_date) }}</td>
+                <td data-label="Customer" class="fw5">{{ inv.customer_name || inv.customer }}</td>
+                <td data-label="GSTIN" class="mono muted sm">{{ inv.customer_gstin || '—' }}</td>
+                <td data-label="Place of Supply" class="muted">{{ inv.place_of_supply || '—' }}</td>
+                <td data-label="Taxable" class="ta-r mono">{{ fmtCur(inv.net_total) }}</td>
+                <td data-label="IGST" class="ta-r mono muted">{{ fmtCur(taxByType(inv,'IGST')) }}</td>
+                <td data-label="CGST" class="ta-r mono muted">{{ fmtCur(taxByType(inv,'CGST')) }}</td>
+                <td data-label="SGST" class="ta-r mono muted">{{ fmtCur(taxByType(inv,'SGST')) }}</td>
+                <td data-label="Invoice Value" class="ta-r mono fw6">{{ fmtCur(inv.grand_total) }}</td>
               </tr>
               <tr v-if="!filteredRows.length"><td colspan="10" class="g1-empty">No B2B invoices — customers need a GSTIN on their record</td></tr>
             </template>
@@ -133,13 +133,13 @@
             </template>
             <template v-else>
               <tr v-for="inv in filteredRows" :key="inv.name" class="g1-row">
-                <td><span class="g1-code">{{ inv.name }}</span></td>
-                <td class="mono muted">{{ fmtDate(inv.posting_date) }}</td>
-                <td class="fw5">{{ inv.customer_name || inv.customer }}</td>
-                <td class="muted">{{ inv.place_of_supply || '—' }}</td>
-                <td class="ta-r mono">{{ fmtCur(inv.net_total) }}</td>
-                <td class="ta-r mono fw6">{{ fmtCur(inv.total_tax) }}</td>
-                <td class="ta-r mono fw6">{{ fmtCur(inv.grand_total) }}</td>
+                <td data-label="Invoice #"><span class="g1-code">{{ inv.name }}</span></td>
+                <td data-label="Date" class="mono muted">{{ fmtDate(inv.posting_date) }}</td>
+                <td data-label="Customer" class="fw5">{{ inv.customer_name || inv.customer }}</td>
+                <td data-label="Place of Supply" class="muted">{{ inv.place_of_supply || '—' }}</td>
+                <td data-label="Taxable" class="ta-r mono">{{ fmtCur(inv.net_total) }}</td>
+                <td data-label="Tax" class="ta-r mono fw6">{{ fmtCur(inv.total_tax) }}</td>
+                <td data-label="Invoice Value" class="ta-r mono fw6">{{ fmtCur(inv.grand_total) }}</td>
               </tr>
               <tr v-if="!filteredRows.length"><td colspan="7" class="g1-empty">No B2C invoices for this period</td></tr>
             </template>
@@ -166,14 +166,14 @@
             </template>
             <template v-else>
               <tr v-for="inv in filteredRows" :key="inv.name" class="g1-row">
-                <td><span class="g1-code cdnr-code">{{ inv.name }}</span></td>
-                <td class="mono muted">{{ fmtDate(inv.posting_date) }}</td>
-                <td class="fw5">{{ inv.customer_name || inv.customer }}</td>
-                <td class="mono muted sm">{{ inv.customer_gstin || '—' }}</td>
-                <td class="mono muted">{{ inv.return_against || '—' }}</td>
-                <td class="ta-r mono">{{ fmtCur(inv.net_total) }}</td>
-                <td class="ta-r mono fw6">{{ fmtCur(inv.total_tax) }}</td>
-                <td class="ta-r mono fw6 cdnr-code">{{ fmtCur(inv.grand_total) }}</td>
+                <td data-label="Note #"><span class="g1-code cdnr-code">{{ inv.name }}</span></td>
+                <td data-label="Date" class="mono muted">{{ fmtDate(inv.posting_date) }}</td>
+                <td data-label="Customer" class="fw5">{{ inv.customer_name || inv.customer }}</td>
+                <td data-label="GSTIN" class="mono muted sm">{{ inv.customer_gstin || '—' }}</td>
+                <td data-label="Against Invoice" class="mono muted">{{ inv.return_against || '—' }}</td>
+                <td data-label="Taxable" class="ta-r mono">{{ fmtCur(inv.net_total) }}</td>
+                <td data-label="Tax" class="ta-r mono fw6">{{ fmtCur(inv.total_tax) }}</td>
+                <td data-label="Note Value" class="ta-r mono fw6 cdnr-code">{{ fmtCur(inv.grand_total) }}</td>
               </tr>
               <tr v-if="!filteredRows.length"><td colspan="8" class="g1-empty">No credit notes for this period</td></tr>
             </template>
@@ -195,12 +195,12 @@
             </template>
             <template v-else>
               <tr v-for="h in filteredRows" :key="h.hsn_code" class="g1-row">
-                <td>
+                <td data-label="HSN / SAC Code">
                   <span class="g1-code" :class="h.hsn_code==='Not Set'?'warn-code':''">{{ h.hsn_code }}</span>
                   <span v-if="h.hsn_code==='Not Set'" class="g1-warn-tag">Add HSN to items</span>
                 </td>
-                <td class="ta-r mono">{{ h.invoice_count }}</td>
-                <td class="ta-r mono fw6">{{ fmtCur(h.taxable_value) }}</td>
+                <td data-label="No. of Invoices" class="ta-r mono">{{ h.invoice_count }}</td>
+                <td data-label="Taxable Value" class="ta-r mono fw6">{{ fmtCur(h.taxable_value) }}</td>
               </tr>
               <tr v-if="!filteredRows.length"><td colspan="3" class="g1-empty">No HSN data — add HSN/SAC codes to your items</td></tr>
             </template>
@@ -428,14 +428,138 @@ onMounted(load);
 .g1-ph-title { font-size:14px; font-weight:600; color:#374151; }
 .g1-ph-sub   { font-size:12.5px; color:#9ca3af; }
 
+/* Mobile table cards */
+@media (max-width: 640px) {
+  .g1-table-wrap {
+    overflow-x: visible;
+  }
+  
+  .g1-table {
+    min-width: 0;
+    border: none;
+  }
+  
+  .g1-table thead {
+    display: none;
+  }
+  
+  .g1-table tbody {
+    display: block;
+  }
+  
+  .g1-table .g1-row {
+    display: block;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  
+  .g1-table .g1-row:hover td {
+    background: transparent;
+  }
+  
+  .g1-table .g1-row td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+    text-align: right;
+  }
+  
+  .g1-table .g1-row td:last-child {
+    border-bottom: none;
+  }
+  
+  .g1-table .g1-row td:first-child {
+    background: #f8fafc;
+    font-weight: 600;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+  }
+  
+  .g1-table .g1-row td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    flex-shrink: 0;
+  }
+  
+  .g1-table .g1-row td.ta-r {
+    text-align: right;
+  }
+  
+  /* Empty state on mobile */
+  .g1-table .g1-empty {
+    display: block;
+    text-align: center;
+    padding: 32px 20px !important;
+  }
+  
+  /* Shimmer loader on mobile */
+  .g1-table tbody tr:has(.g1-shimmer) {
+    display: block;
+    margin-bottom: 12px;
+  }
+  
+  .g1-table tbody tr:has(.g1-shimmer) td {
+    display: block;
+    padding: 12px;
+  }
+  
+  /* Specific adjustments for HSN warn tag */
+  .g1-warn-tag {
+    display: block;
+    margin-top: 4px;
+    margin-left: 0;
+  }
+  
+  /* Card top adjustments */
+  .g1-card-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .g1-tabs {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .g1-search-wrap {
+    width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
   .g1-sum-strip   { grid-template-columns: repeat(2, 1fr); }
-  .g1-search-wrap { min-width: 0; flex: 1 1 auto; }
-  .g1-tabs        { overflow-x: auto; flex-wrap: nowrap; }
 }
+
 @media (max-width: 480px) {
   .g1-page    { padding: 12px; gap: 10px; }
   .g1-toolbar { padding: 12px 14px; }
-  .g1-sum-strip { grid-template-columns: 1fr 1fr; }
+  .g1-sum-strip { grid-template-columns: 1fr; }
+  
+  .g1-sum-card {
+    padding: 12px 14px;
+  }
+  
+  .g1-controls {
+    width: 100%;
+  }
+  
+  .g1-select, .g1-btn-primary, .g1-btn-ghost {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

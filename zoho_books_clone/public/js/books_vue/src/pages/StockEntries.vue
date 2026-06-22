@@ -49,7 +49,7 @@
           <input type="date" v-model="dateTo" class="se-date-input"/>
         </div>
       </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div style="display:flex;gap:8px;">
         <button class="se-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
         <button class="se-btn-ghost" @click="exportCSV" :disabled="!sorted.length"><span v-html="icon('download',14)"></span> Export</button>
         <button class="se-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
@@ -209,7 +209,9 @@
         </div>
 
         <div class="se-section-title" style="margin-top:4px">Items</div>
-        <div class="se-items-table">
+
+        <!-- Desktop table -->
+        <div class="se-items-table se-add-items-desktop">
           <div class="se-items-head">
             <div>Item</div>
             <div>Source WH</div>
@@ -230,6 +232,45 @@
             <div style="grid-column:1/5;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Total</div>
             <div class="ta-r" style="font-weight:700;color:#0f172a">{{ fmtCur(lineTotal) }}</div>
             <div></div>
+          </div>
+          <button class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="se-add-items-mobile">
+          <div v-for="(line, idx) in lines" :key="line.id" class="se-aic">
+            <div class="se-aic-header">
+              <span class="se-aic-num">Item {{ idx + 1 }}</span>
+              <button @click="removeLine(line.id)" class="se-rm-line"><span v-html="icon('x',12)"></span></button>
+            </div>
+            <div class="se-aic-field">
+              <label class="se-label">Item</label>
+              <SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="opt=>onItemSelect(line,opt)" />
+            </div>
+            <div class="se-aic-row2">
+              <div class="se-aic-field">
+                <label class="se-label">Source WH</label>
+                <SearchableSelect v-model="line.s_warehouse" :options="warehouses" placeholder="From…" @search="fetchWarehouses" :compact="true"/>
+              </div>
+              <div class="se-aic-field">
+                <label class="se-label">Target WH</label>
+                <SearchableSelect v-model="line.t_warehouse" :options="warehouses" placeholder="To…" @search="fetchWarehouses" :compact="true"/>
+              </div>
+            </div>
+            <div class="se-aic-row2">
+              <div class="se-aic-field">
+                <label class="se-label">Qty</label>
+                <input v-model.number="line.qty" type="number" min="0" step="0.001" class="se-input ta-r" />
+              </div>
+              <div class="se-aic-field">
+                <label class="se-label">Rate (₹)</label>
+                <input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" />
+              </div>
+            </div>
+            <div class="se-aic-amount">Amount: <strong>{{ fmtCur(flt(line.qty) * flt(line.basic_rate)) }}</strong></div>
+          </div>
+          <div v-if="lines.length" class="se-aic-total">
+            <span>Total</span><strong>{{ fmtCur(lineTotal) }}</strong>
           </div>
           <button class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
         </div>
@@ -306,7 +347,9 @@
           </div>
           <div class="se-view-section" v-else-if="(viewDoc.items||[]).length">
             <div class="se-view-sec-lbl">Items ({{ viewDoc.items.length }})</div>
-            <table class="se-view-items-tbl">
+
+            <!-- Desktop table -->
+            <table class="se-view-items-tbl se-view-items-desktop">
               <thead>
                 <tr>
                   <th>Item</th>
@@ -325,12 +368,43 @@
                   </td>
                   <td class="text-muted" style="font-size:12px">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</td>
                   <td class="text-muted" style="font-size:12px">{{ it.t_warehouse||viewDoc.to_warehouse||'—' }}</td>
-                  <td class="ta-r ">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></td>
-                  <td class="ta-r ">{{ fmtCur(it.basic_rate) }}</td>
-                  <td class="ta-r " style="font-weight:600">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</td>
+                  <td class="ta-r">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></td>
+                  <td class="ta-r">{{ fmtCur(it.basic_rate) }}</td>
+                  <td class="ta-r" style="font-weight:600">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</td>
                 </tr>
               </tbody>
             </table>
+
+            <!-- Mobile item cards -->
+            <div class="se-view-items-mobile">
+              <div v-for="it in viewDoc.items" :key="it.name||it.idx" class="se-vic">
+                <div class="se-vic-top">
+                  <div>
+                    <div class="se-vic-name">{{ it.item_code }}</div>
+                    <div v-if="it.item_name && it.item_name!==it.item_code" class="se-vic-sub">{{ it.item_name }}</div>
+                  </div>
+                  <div class="se-vic-amount">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</div>
+                </div>
+                <div class="se-vic-grid">
+                  <div class="se-vic-cell">
+                    <span class="se-vic-lbl">Qty</span>
+                    <span class="se-vic-val">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></span>
+                  </div>
+                  <div class="se-vic-cell">
+                    <span class="se-vic-lbl">Rate</span>
+                    <span class="se-vic-val">{{ fmtCur(it.basic_rate) }}</span>
+                  </div>
+                  <div class="se-vic-cell">
+                    <span class="se-vic-lbl">From WH</span>
+                    <span class="se-vic-val">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</span>
+                  </div>
+                  <div class="se-vic-cell">
+                    <span class="se-vic-lbl">To WH</span>
+                    <span class="se-vic-val">{{ it.t_warehouse||viewDoc.to_warehouse||'—' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Value summary -->
@@ -833,16 +907,43 @@ textarea.se-input { resize:vertical; }
   .se-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: se-mc-sh 1.4s infinite; }
   @keyframes se-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   .se-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
-  /* View drawer items table: horizontal scroll */
-  .se-view-items-tbl { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
-  .se-view-items-tbl thead, .se-view-items-tbl tbody, .se-view-items-tbl tr { display: table; width: 100%; table-layout: fixed; }
-  .se-view-items-tbl { min-width: 420px; display: block; }
+  /* View drawer items: hide table, show cards */
+  .se-view-items-desktop { display: none !important; }
+  .se-view-items-mobile  { display: flex !important; flex-direction: column; }
+  /* Add drawer items: hide table, show cards */
+  .se-add-items-desktop  { display: none !important; }
+  .se-add-items-mobile   { display: flex !important; flex-direction: column; }
 }
 @media (max-width: 480px) {
   .se-page { padding: 12px; gap: 10px; }
   .se-fields-grid { grid-template-columns: 1fr !important; }
   .se-val-strip   { grid-template-columns: 1fr !important; }
-  .se-items-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .se-items-head, .se-items-row, .se-items-total { min-width: 480px; }
+  .se-add-items-desktop { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .se-add-items-desktop .se-items-head,
+  .se-add-items-desktop .se-items-row,
+  .se-add-items-desktop .se-items-total { min-width: 480px; }
 }
+/* ── Add-drawer item cards (mobile) ── */
+.se-add-items-mobile { display: none; flex-direction: column; gap: 10px; }
+.se-aic { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.se-aic-header { display: flex; align-items: center; justify-content: space-between; }
+.se-aic-num { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
+.se-aic-field { display: flex; flex-direction: column; gap: 4px; }
+.se-aic-row2 { display: content; gap: 8px; }
+.se-aic-amount { font-size: 12px; color: #6b7280; text-align: right; border-top: 1px solid #f3f4f6; padding-top: 8px; }
+.se-aic-total { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; color: #374151; }
+.se-aic-total strong { font-size: 14px; color: #0f172a; }
+
+/* ── View-drawer item cards (mobile) ── */
+.se-view-items-mobile { display: none; flex-direction: column; gap: 8px; }
+.se-vic { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; }
+.se-vic-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.se-vic-name { font-size: 13px; font-weight: 700; color: #0f172a; }
+.se-vic-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.se-vic-amount { font-size: 14px; font-weight: 700; color: #0f172a; flex-shrink: 0; margin-left: 8px; }
+.se-vic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.se-vic-cell { display: flex; flex-direction: column; gap: 2px; }
+.se-vic-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+.se-vic-val { font-size: 12px; font-weight: 600; color: #374151; }
+
 </style>

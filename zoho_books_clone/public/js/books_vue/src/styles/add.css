@@ -820,6 +820,9 @@
   .inv-total-row {
     width: 100% !important;
   }
+  .po-apply-dialog{
+  height: 450px;
+  }
 }
 
 @media (max-width: 375px) {

@@ -182,29 +182,30 @@
             <template v-if="viewing.irn">
               <div class="ei-sec-hdr">IRN Details</div>
               <div class="ei-irn-blk">
-                <div style="display:flex;align-items:flex-start;gap:8px">
+                <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px">
                   <div class="ei-irn-text">{{ viewing.irn }}</div>
                   <button class="ei-copy-btn" @click="copyIRN" :title="copied?'Copied!':'Copy IRN'">
                     <span v-html="icon(copied?'check':'copy',13)"></span>
                   </button>
                 </div>
-              </div>
-
-              <div class="ei-ack-row">
-                <div class="ei-meta-card">
-                  <div class="ei-meta-lbl">Ack No.</div>
-                  <div class="ei-meta-val" style="font-size:12px;word-break:break-all">{{ viewing.ack_no || '—' }}</div>
-                </div>
-                <div class="ei-meta-card">
-                  <div class="ei-meta-lbl">Ack Date</div>
-                  <div class="ei-meta-val" style="font-size:12px">{{ fmtDate(viewing.ack_date) || '—' }}</div>
+                <div class="ei-ack-row">
+                  <div>
+                    <div class="ei-meta-lbl">Ack No.</div>
+                    <div class="ei-ack-val">{{ viewing.ack_no || '—' }}</div>
+                  </div>
+                  <div>
+                    <div class="ei-meta-lbl">Ack Date</div>
+                    <div class="ei-ack-val">{{ fmtDate(viewing.ack_date) || '—' }}</div>
+                  </div>
                 </div>
               </div>
 
               <!-- QR Code -->
               <div v-if="viewing.einvoice_status !== 'Cancelled'" class="ei-qr-wrap">
                 <div class="ei-qr-label">QR Code</div>
-                <div class="ei-qr-box"><IrnQrCode :irn="viewing.irn" :size="160" /></div>
+                <div class="ei-qr-box">
+                  <IrnQrCode :irn="viewing.irn" :size="qrSize" class="ei-qr-img" />
+                </div>
               </div>
             </template>
 
@@ -288,6 +289,8 @@ const bulkProgress   = ref(0);
 const showManualForm = ref(false);
 const manualSaving   = ref(false);
 const manualForm     = ref({ irn: "", ack_no: "", ack_date: "" });
+
+const qrSize = computed(() => window.innerWidth <= 480 ? Math.min(window.innerWidth - 80, 220) : 200);
 
 const tabs = [
   { v:"all",       l:"All" },
@@ -521,40 +524,42 @@ onMounted(load);
 .ei-overlay { position:fixed; inset:0; background:rgba(15,23,42,.35); backdrop-filter:blur(2px); z-index:1000; }
 .ei-panel { position:fixed; top:0; right:-520px; width:500px; height:100vh; background:#fff; z-index:1001; display:flex; flex-direction:column; box-shadow:-8px 0 32px rgba(15,23,42,.12); transition:right .24s cubic-bezier(.32,.72,0,1); }
 .ei-panel.open { right:0; }
-.ei-panel-hdr { display:flex; align-items:flex-start; justify-content:space-between; padding:20px 22px 18px; flex-shrink:0; }
+.ei-panel-hdr { display:flex; align-items:flex-start; justify-content:space-between; padding:16px 20px 14px; flex-shrink:0; }
 .ei-panel-num { font-size:17px; font-weight:800; color:#fff; letter-spacing:-0.3px; }
 .ei-panel-cust { font-size:12.5px; color:rgba(255,255,255,.8); margin-top:3px; }
 .ei-close-btn { background:rgba(255,255,255,.18); border:none; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; flex-shrink:0; transition:background .15s; }
 .ei-close-btn:hover { background:rgba(255,255,255,.3); }
 
 /* Meta row */
-.ei-meta-row { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:14px 20px 0; flex-shrink:0; }
+.ei-meta-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px 20px 0; flex-shrink:0; }
 .ei-meta-card { background:#f8f9fc; border:1px solid #e8ecf0; border-radius:8px; padding:10px 12px; }
 .ei-meta-lbl { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; }
 .ei-meta-val { font-size:13px; font-weight:600; color:#0f172a; margin-top:3px; }
 
 /* GSTIN block */
-.ei-gstin-blk { padding:10px 20px 0; flex-shrink:0; }
-.ei-gstin-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; }
+.ei-gstin-blk { padding:8px 20px 0; flex-shrink:0; }
+.ei-gstin-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6; }
 .ei-gstin-lbl { font-size:12px; color:#6b7280; }
 .ei-gstin-val { font-size:12px; color:#374151; font-weight:600; font-variant-numeric:tabular-nums; }
 
 /* Panel body */
-.ei-panel-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:0; background:#f8fafc; }
+.ei-panel-body { flex:1; overflow-y:auto; padding:10px 20px; display:flex; flex-direction:column; gap:0; background:#f8fafc; }
 .ei-panel-footer { padding:14px 20px; border-top:1px solid #e5e7eb; display:flex; gap:8px; justify-content:flex-end; flex-shrink:0; background:#fff; }
 
 /* IRN block */
-.ei-sec-hdr { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; margin-top:16px; margin-bottom:8px; }
+.ei-sec-hdr { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; margin-top:10px; margin-bottom:6px; }
 .ei-irn-blk { background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:12px 14px; }
 .ei-irn-text { font-size:11px; color:#3730a3; word-break:break-all; line-height:1.7; flex:1; font-variant-numeric:tabular-nums; }
 .ei-copy-btn { background:none; border:1px solid #c7d2fe; border-radius:6px; padding:4px 7px; cursor:pointer; color:#4f46e5; flex-shrink:0; display:flex; align-items:center; }
 .ei-copy-btn:hover { background:#e0e7ff; }
-.ei-ack-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+.ei-ack-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; border-top:1px solid #c7d2fe; padding-top:10px; margin-top:0; }
+.ei-ack-val { font-size:12px; font-weight:600; color:#1e1b4b; margin-top:3px; word-break:break-all; }
 
 /* QR */
-.ei-qr-wrap { display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:18px; }
-.ei-qr-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; }
-.ei-qr-box { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; display:inline-flex; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.ei-qr-wrap { display:flex; align-items:center; gap:12px; margin-top:10px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,.06); width:100%; box-sizing:border-box; }
+.ei-qr-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b7280; flex-shrink:0; writing-mode:vertical-rl; text-orientation:mixed; transform:rotate(180deg); }
+.ei-qr-box { flex:1; display:flex; align-items:center; justify-content:center; }
+.ei-qr-img { display:block; width:100%; height:auto; max-width:200px; }
 
 /* Pending placeholder */
 .ei-pending-ph { display:flex; flex-direction:column; align-items:center; gap:8px; padding:32px 0; color:#9ca3af; text-align:center; }
@@ -590,10 +595,36 @@ onMounted(load);
   .ei-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: ei-mc-sh 1.4s infinite; }
   @keyframes ei-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   .ei-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+
+  /* Drawer / Panel mobile fixes */
+  .ei-panel-body { padding: 10px 14px; }
+  .ei-gstin-blk  { padding: 6px 14px 0; }
+  .ei-meta-row   { padding: 8px 14px 0; gap: 6px; }
+  .ei-panel-hdr  { padding: 14px 14px 12px; }
+  .ei-panel-footer { padding: 10px 14px; gap: 8px; }
+  .ei-panel-footer .ei-btn-ghost,
+  .ei-panel-footer .ei-btn-primary,
+  .ei-panel-footer .ei-btn-danger,
+  .ei-panel-footer .ei-btn-outline { flex: 1; justify-content: center; }
+
+  /* QR on mobile — stack vertically */
+  .ei-qr-wrap { flex-direction: column; align-items: center; padding: 12px; }
+  .ei-qr-label { writing-mode: horizontal-tb; transform: none; }
+  .ei-qr-box { flex: unset; }
+  .ei-qr-img { max-width: min(240px, 70vw); }
+
+  /* GSTIN values may be long — allow wrapping */
+  .ei-gstin-row { flex-wrap: wrap; gap: 4px; }
+  .ei-gstin-val { font-size: 11.5px; word-break: break-all; text-align: right; }
 }
 @media (max-width: 480px) {
   .ei-page   { padding: 12px; gap: 12px; }
   .ei-topbar { padding: 12px 14px; }
   .ei-meta-row { grid-template-columns: 1fr 1fr !important; }
+  .ei-qr-img { max-width: min(200px, 65vw); }
+  .ei-panel-body{overflow:visible}
+  .ei-panel{
+    overflow:scroll
+  }
 }
 </style>

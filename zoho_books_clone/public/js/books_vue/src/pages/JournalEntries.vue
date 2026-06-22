@@ -478,10 +478,10 @@
         </div>
         <div class="coa-dbody">
           <!-- Meta row -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">
+          <div class="card-row-jen">
             <div class="jen-view-meta-card">
               <div class="jen-view-meta-lbl">Status</div>
-              <span class="b-badge" :class="JE_STATUS_COLOR[viewEntry.status]||'je-s-draft'" style="margin-top:2px">{{viewEntry.status}}</span>
+              <span class="b-badge" :class="JE_STATUS_COLOR[viewEntry.status]||'je-s-draft'" style="margin-top:2px;">{{viewEntry.status}}</span>
             </div>
             <div class="jen-view-meta-card">
               <div class="jen-view-meta-lbl">Date</div>
@@ -518,18 +518,53 @@
             <div class="b-shimmer" style="height:12px;margin-bottom:8px"></div>
             <div class="b-shimmer" style="height:12px"></div>
           </div>
-          <div v-else-if="(viewEntry.lines||[]).length" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
-            <div style="display:grid;grid-template-columns:1fr 130px 130px;padding:9px 14px;background:#f8f9fc;border-bottom:1px solid #e2e8f0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b7db3">
-              <div>Account</div><div style="text-align:right">Debit (Dr)</div><div style="text-align:right">Credit (Cr)</div>
-            </div>
-            <div v-for="(l,i) in viewEntry.lines" :key="i"
-              :style="'display:grid;grid-template-columns:1fr 130px 130px;padding:10px 14px;font-size:13px;border-bottom:1px solid #f1f3f5;background:'+(i%2===1?'#fafafa':'#fff')">
-              <div style="font-weight:500;color:#1a1d23">
-                {{l.account}}
-                <span v-if="l.party" style="color:#868e96;font-size:11px;margin-left:6px">· {{l.party}}</span>
+          <div v-else-if="(viewEntry.lines||[]).length">
+            <!-- Desktop lines table -->
+            <div class="jen-view-lines-desktop" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+              <div style="display:grid;grid-template-columns:1fr 130px 130px;padding:9px 14px;background:#f8f9fc;border-bottom:1px solid #e2e8f0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b7db3">
+                <div>Account</div><div style="text-align:right">Debit (Dr)</div><div style="text-align:right">Credit (Cr)</div>
               </div>
-              <div style="text-align:right;font-weight:600;color:#c92a2a">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
-              <div style="text-align:right;font-weight:600;color:#2f9e44">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
+              <div v-for="(l,i) in viewEntry.lines" :key="i"
+                :style="'display:grid;grid-template-columns:1fr 130px 130px;padding:10px 14px;font-size:13px;border-bottom:1px solid #f1f3f5;background:'+(i%2===1?'#fafafa':'#fff')">
+                <div style="font-weight:500;color:#1a1d23">
+                  {{l.account}}
+                  <span v-if="l.party" style="color:#868e96;font-size:11px;margin-left:6px">· {{l.party}}</span>
+                </div>
+                <div style="text-align:right;font-weight:600;color:#c92a2a">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
+                <div style="text-align:right;font-weight:600;color:#2f9e44">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
+              </div>
+            </div>
+            <!-- Mobile line cards -->
+            <div class="jen-view-lines-mobile">
+              <div v-for="(l,i) in viewEntry.lines" :key="'vlmc-'+i"
+                class="jen-vlmc-card"
+                :class="flt(l.dr)>0 ? 'jen-vlmc--dr' : flt(l.cr)>0 ? 'jen-vlmc--cr' : 'jen-vlmc--none'">
+                <!-- type chip -->
+                <div class="jen-vlmc-header">
+                  <span class="jen-vlmc-chip"
+                    :class="flt(l.dr)>0 ? 'jen-vlmc-chip--dr' : flt(l.cr)>0 ? 'jen-vlmc-chip--cr' : 'jen-vlmc-chip--none'">
+                    {{ flt(l.dr)>0 ? 'DEBIT' : flt(l.cr)>0 ? 'CREDIT' : 'NONE' }}
+                  </span>
+                  <span class="jen-vlmc-idx">#{{i+1}}</span>
+                </div>
+                <!-- account name -->
+                <div class="jen-vlmc-account">
+                  {{l.account}}
+                  <span v-if="l.party" class="jen-vlmc-party">· {{l.party}}</span>
+                </div>
+                <!-- dr / cr amounts -->
+                <div class="jen-vlmc-amounts">
+                  <div class="jen-vlmc-amt jen-vlmc-amt--dr">
+                    <div class="jen-vlmc-amt-lbl">Debit (Dr)</div>
+                    <div class="jen-vlmc-amt-val jen-vlmc-amt-val--dr">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
+                  </div>
+                  <div class="jen-vlmc-divider"></div>
+                  <div class="jen-vlmc-amt jen-vlmc-amt--cr">
+                    <div class="jen-vlmc-amt-lbl">Credit (Cr)</div>
+                    <div class="jen-vlmc-amt-val jen-vlmc-amt-val--cr">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div v-else style="border:1px dashed #e2e8f0;border-radius:8px;padding:24px;text-align:center;color:#adb5bd;font-size:13px">
@@ -538,7 +573,7 @@
           </div>
         </div>
         <div class="coa-dfooter" style="justify-content:space-between">
-          <div style="font-size:12px;color:#868e96">{{viewEntry.source==='frappe'?'From Frappe':'Local record'}}</div>
+          <div style="font-size:12px;color:#868e96"></div>
           <div style="display:flex;gap:10px">
             <button v-if="viewEntry.status==='Draft'" class="b-btn b-btn-ghost" @click="viewOpen=false;openEdit(viewEntry.name)"><span v-html="icon('edit',13)"></span> Edit</button>
             <button v-if="viewEntry.status==='Submitted'" class="b-btn b-btn-ghost" style="border-color:rgba(201,42,42,.4);color:#c92a2a" @click="viewOpen=false;confirmAction(viewEntry.name,'cancel')"><span v-html="icon('cancel',13)"></span> Cancel</button>
@@ -549,7 +584,7 @@
     </div>
 
     <div v-if="showConf" class="coa-drawer-bg" @click.self="showConf=false" style="justify-content:center;align-items:center">
-      <div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:440px;width:100%;border:1px solid #e2e8f0">
+      <div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:440px;width:100%;border:1px solid #e2e8f0;margin:10px">
         <div style="font-size:17px;font-weight:700;margin-bottom:8px">{{confType==='delete'?'Delete Entry?':'Cancel Entry?'}}</div>
         <div style="font-size:14px;color:#868e96;margin-bottom:24px;line-height:1.5">
           {{confType==='delete'?'This journal entry will be permanently removed.':'This will mark the entry as Cancelled. It cannot be edited after cancellation.'}}
@@ -855,9 +890,18 @@ onMounted(load);
   display: flex;
 }
 
+/* ── Default: view drawer mobile line cards hidden ── */
+.jen-view-lines-mobile {
+  display: none;
+}
+.card-row-jen {
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px
+}
 /* ── Activate card layout only on 375 px – 425.98 px ── */
 @media (min-width: 375px) and (max-width: 425.98px) {
-
+.card-row-jen{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px
+}
   /* Hide desktop action bar, show mobile action bar */
   .jen-desktop-bar {
     display: none !important;
@@ -1490,16 +1534,109 @@ onMounted(load);
     align-items: stretch !important;
   }
 
-  .coa-dfooter > div:last-child {
+  /* ── View drawer: account lines ── */
+
+  /* Hide desktop grid table */
+  .jen-view-lines-desktop { display: none !important; }
+
+  /* Show mobile cards */
+  .jen-view-lines-mobile {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
 
-  .coa-dfooter button {
-    width: 100% !important;
-    justify-content: center;
+  /* Individual line card */
+  .jen-vlmc-card {
+    border: 1px solid #e5e7eb;
+    border-left: 3px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
+  .jen-vlmc--dr   { border-left-color: #c92a2a; }
+  .jen-vlmc--cr   { border-left-color: #2f9e44; }
+  .jen-vlmc--none { border-left-color: #d1d5db; }
+
+  /* Card header: chip + index */
+  .jen-vlmc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px 6px;
+    background: #fafafa;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .jen-vlmc-chip {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 9px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .jen-vlmc-chip--dr   { color: #c92a2a; background: #fff5f5; border-color: rgba(201,42,42,.2); }
+  .jen-vlmc-chip--cr   { color: #2f9e44; background: #f0fff4; border-color: rgba(47,158,68,.2); }
+  .jen-vlmc-chip--none { color: #868e96; background: #f8f9fa; border-color: #e5e7eb; }
+
+  .jen-vlmc-idx {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #9ca3af;
+  }
+
+  /* Account name */
+  .jen-vlmc-account {
+    padding: 8px 10px 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1d23;
+    line-height: 1.4;
+  }
+  .jen-vlmc-party {
+    font-size: 11px;
+    font-weight: 400;
+    color: #868e96;
+    margin-left: 4px;
+  }
+
+  /* Dr / Cr amounts row */
+  .jen-vlmc-amounts {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    border-top: 1px solid #f3f4f6;
+  }
+  .jen-vlmc-divider {
+    width: 1px;
+    background: #f3f4f6;
+    margin: 0;
+  }
+
+  .jen-vlmc-amt {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 10px 10px;
+  }
+  .jen-vlmc-amt--dr { background: #fff9f9; }
+  .jen-vlmc-amt--cr { background: #f0fff4; }
+
+  .jen-vlmc-amt-lbl {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #9ca3af;
+  }
+  .jen-vlmc-amt-val {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .jen-vlmc-amt-val--dr { color: #c92a2a; }
+  .jen-vlmc-amt-val--cr { color: #2f9e44; }
 
 } /* end @media 375px–425.98px */
 </style>

@@ -92,7 +92,10 @@
 .pill-Unpaid  .sales-pill-count { background: #fef3c7; color: #d97706; }
 .pill-Overdue .sales-pill-count { background: #fee2e2; color: #dc2626; }
 .pill-Paid    .sales-pill-count { background: #d1fae5; color: #059669; }
-
+.pill-Draft   .sales-pill-count .active {  color: #ffffff !important; }
+.pill-Unpaid  .sales-pill-count .active {  color: #ffffff !important; }
+.pill-Overdue .sales-pill-count .active {  color: #ffffff !important; }
+.pill-Paid    .sales-pill-count .active {  color: #ffffff !important; }
 /* Toolbar action buttons */
 .sales-actions {
   display: flex;

@@ -1427,4 +1427,7 @@ input[type=date].b-input { color-scheme: light; }
   .dc-items-head {
     min-width: 319px !important;
   }
+  .card-row-jen{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px
+}
 }

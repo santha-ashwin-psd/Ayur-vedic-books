@@ -2,7 +2,7 @@
   <div class="ia-page">
     <div class="ia-actions">
       <div class="ia-search-wrap"><span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span><input v-model="search" placeholder="Search adjustments…" class="ia-search-input" /></div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div style="display:flex;gap:8px;">
         <button class="ia-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
         <button class="ia-btn-ghost" @click="exportCSV" :disabled="!sorted.length"><span v-html="icon('download',14)"></span> Export</button>
         <button class="ia-btn-primary" @click="openNew()"><span v-html="icon('plus',13)"></span> New Adjustment</button>
@@ -406,5 +406,6 @@ textarea.ia-input{resize:vertical;}
   .ia-page { padding: 12px; gap: 12px; }
   .ia-qty-grid  { grid-template-columns: 1fr 1fr !important; }
   .ia-meta-grid { grid-template-columns: 1fr !important; }
+  .ia-actions{display:contents;}
 }
 </style>

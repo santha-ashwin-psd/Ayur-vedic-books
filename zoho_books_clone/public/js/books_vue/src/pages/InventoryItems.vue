@@ -17,7 +17,7 @@
         <option v-for="g in itemGroupsFull.filter(g => !g.is_group)" :key="g.name" :value="g.name">{{ g.name }}</option>
       </select>
     </div>
-    <div style="display:flex;gap:6px;margin-left:auto">
+    <div style="display:flex;gap:6px;">
       <button class="b-btn b-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" style="padding:7px 10px">
         <span v-html="icon(viewMode==='table'?'grid':'file',14)"></span>
       </button>
@@ -171,7 +171,7 @@
                 </select>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="display:contents;gap:12px">
               <div><label class="nim-label">Income Account</label><SearchableSelect v-model="form.income_account" :options="accountsList" placeholder="Select income account…" :createable="true" createDoctype="Account" @create="reloadAccounts"/></div>
               <div><label class="nim-label">Expense Account</label><SearchableSelect v-model="form.expense_account" :options="accountsList" placeholder="Select expense account…" :createable="true" createDoctype="Account" @create="reloadAccounts"/></div>
             </div>

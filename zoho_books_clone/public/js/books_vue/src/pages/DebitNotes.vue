@@ -27,11 +27,11 @@
       <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Debit Notes</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="dnTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ dnTrends.total.up?'↑':'↓' }} {{ dnTrends.total.pct }}% vs last month</div></div></div></div>
       <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='issued'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Issued</div><div class="bk-kpi-value bk-kpi-green">{{ counts.issued }}</div><div class="bk-kpi-trend" :class="dnTrends.issued.up?'bk-trend-up':'bk-trend-down'">{{ dnTrends.issued.up?'↑':'↓' }} {{ dnTrends.issued.pct }}% vs last month</div></div></div></div>
       <div class="bk-kpi-card"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Open Balance</div><div class="bk-kpi-value bk-kpi-amber" style="font-size:18px">{{ fmtCur(summary.openBalance) }}</div><div class="bk-kpi-trend bk-trend-neutral">unapplied debit</div></div></div></div>
-      <div class="bk-kpi-card"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#f3f4f6"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Value</div><div class="bk-kpi-value" style="font-size:18px">{{ fmtCur(summary.totalValue) }}</div><div class="bk-kpi-trend" :class="dnTrends.value.up?'bk-trend-up':'bk-trend-down'">{{ dnTrends.value.up?'↑':'↓' }} {{ dnTrends.value.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Debit Value</div><div class="bk-kpi-value bk-kpi-green" style="font-size:18px">{{ fmtCur(summary.totalValue) }}</div><div class="bk-kpi-trend" :class="dnTrends.value.up?'bk-trend-up':'bk-trend-down'">{{ dnTrends.value.up?'↑':'↓' }} {{ dnTrends.value.pct }}% vs last month</div></div></div></div>
     </div>
     <div class="bk-stat-grid">
       <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ dnThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
-      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Value</div><div class="bk-stat-value" style="font-size:16px">{{ fmtCur(dnThisMonth.value) }}</div></div><div class="bk-stat-icon" style="background:#f8fafc;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Value</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">{{ fmtCur(dnThisMonth.value) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
       <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Draft</div><div class="bk-stat-value">{{ counts.draft }}</div></div><div class="bk-stat-icon" style="background:#f8fafc;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div></div></div>
       <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg Debit Value</div><div class="bk-stat-value" style="font-size:16px">{{ fmtCur(dnAvg) }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
     </div>
@@ -80,6 +80,7 @@
                 <button class="inv-act-btn" @click="openView(d)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="d.docstatus===0" class="inv-act-btn" @click="openEdit(d)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button v-if="d.docstatus===1 && balanceFor(d.name)>0" class="inv-act-btn dn-act-apply" @click="applyDN(d)" title="Apply to Bill">↳</button>
+                <button v-if="d.docstatus===1" class="inv-act-btn dn-act-cancel" @click="cancelDN(d)" title="Cancel Debit Note"><span v-html="icon('x',12)"></span></button>
                 <button v-if="d.docstatus===0 || d.docstatus===2" class="inv-act-btn dn-act-del" @click="deleteDN(d)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
@@ -165,13 +166,69 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:dnCollapsed.vendor}">
-            <div class="inv-fg inv-fg2">
-              <div class="dn-field" style="grid-column:1/-1">
-                <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
-                <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…"
+
+            <!-- Vendor selector (shown when no vendor selected) -->
+            <template v-if="!form.supplier">
+              <div class="dn-field" style="margin-bottom:0">
+                <label class="inv-lbl">Vendor <span class="inv-req">*</span> <span class="dn-one-only-badge">one only</span></label>
+                <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Search and select a vendor…"
                   :createable="true" createDoctype="Supplier"
                   @search="fetchVendors" @select="onVendorSelect" />
               </div>
+            </template>
+
+            <!-- Locked vendor card (shown once vendor is selected) -->
+            <template v-else>
+              <div class="dn-vendor-locked-card">
+                <!-- Loading skeleton -->
+                <div v-if="vendorDetailLoading" class="dn-vl-loading">
+                  <span class="dn-spinner"></span> Loading vendor details…
+                </div>
+                <template v-else>
+                  <div class="dn-vl-header">
+                    <div class="dn-vl-avatar">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <div class="dn-vl-info">
+                      <div class="dn-vl-name">{{ vendorDetail?.supplier_name || form.supplier }}</div>
+                      <div class="dn-vl-sub">{{ vendorDetail?.supplier_group || vendorDetail?.supplier_type || 'Vendor' }}</div>
+                    </div>
+                    <button class="dn-vl-change-btn" @click="changeVendor" title="Change vendor">
+                      <span v-html="icon('edit',12)"></span> Change
+                    </button>
+                  </div>
+                  <div class="dn-vl-details">
+                    <div class="dn-vl-detail-item" v-if="vendorDetail?.payment_terms_template || vendorDetail?.payment_terms">
+                      <span class="dn-vl-detail-lbl">Payment Terms</span>
+                      <span class="dn-vl-detail-val">{{ vendorDetail.payment_terms_template || vendorDetail.payment_terms }}</span>
+                    </div>
+                    <div class="dn-vl-detail-item" v-if="vendorDetail?.default_currency">
+                      <span class="dn-vl-detail-lbl">Currency</span>
+                      <span class="dn-vl-detail-val">{{ vendorDetail.default_currency }}</span>
+                    </div>
+                    <div class="dn-vl-detail-item" v-if="vendorDetail?.email_id">
+                      <span class="dn-vl-detail-lbl">Email</span>
+                      <a class="dn-vl-detail-val dn-vl-link" :href="`mailto:${vendorDetail.email_id}`">{{ vendorDetail.email_id }}</a>
+                    </div>
+                    <div class="dn-vl-detail-item" v-if="vendorDetail?.mobile_no">
+                      <span class="dn-vl-detail-lbl">Phone</span>
+                      <a class="dn-vl-detail-val dn-vl-link" :href="`tel:${vendorDetail.mobile_no}`">{{ vendorDetail.mobile_no }}</a>
+                    </div>
+                    <div class="dn-vl-detail-item">
+                      <span class="dn-vl-detail-lbl">Bills Found</span>
+                      <span class="dn-vl-detail-val" style="color:#2563eb;font-weight:700">{{ bills.length }}</span>
+                    </div>
+                    <div class="dn-vl-detail-item" v-if="vendorDetail?.tax_id">
+                      <span class="dn-vl-detail-lbl">Tax ID / GST</span>
+                      <span class="dn-vl-detail-val mono-sm">{{ vendorDetail.tax_id }}</span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Date, Reason, Cost Center — always shown -->
+            <div class="inv-fg inv-fg2" style="margin-top:12px">
               <div class="dn-field">
                 <label class="inv-lbl">Date <span class="inv-req">*</span></label>
                 <input v-model="form.posting_date" type="date" class="inv-fi" />
@@ -195,6 +252,7 @@
                 </select>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -543,23 +601,30 @@
           <template v-if="viewTab==='details'">
             <div class="dn-meta-grid">
               <div><div class="dn-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}</div></div>
-              <div><div class="dn-meta-lbl">Return Against</div><div class="mono-sm">{{ viewDoc.return_against||'—' }}</div></div>
+              <div><div class="dn-meta-lbl">Return Against</div>
+                <DocLink v-if="viewDoc.return_against" doctype="Purchase Invoice" :name="viewDoc.return_against" />
+                <span v-else class="mono-sm text-muted">—</span>
+              </div>
               <div><div class="dn-meta-lbl">Total Debit</div><div class="mono-sm" style="color:#7c2d12;font-weight:600">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div></div>
               <div><div class="dn-meta-lbl">Available Balance</div>
                 <div class="mono-sm" :class="viewBalance>0?'text-danger':'text-success'">{{ fmtCur(viewBalance) }}</div>
               </div>
+              <div v-if="viewReason"><div class="dn-meta-lbl">Reason</div>
+                <div class="mono-sm" style="color:#374151">{{ viewReason }}</div>
+              </div>
               <div v-if="viewDoc.cost_center"><div class="dn-meta-lbl">Cost Center</div>
                 <div class="mono-sm" style="color:#059669">{{ viewDoc.cost_center }}</div>
               </div>
-              <div v-if="viewDoc.remarks"><div class="dn-meta-lbl">Reason / Notes</div>
-                <div class="mono-sm" style="color:#374151">{{ viewDoc.remarks }}</div>
+              <div v-if="viewDoc.remarks"><div class="dn-meta-lbl">Notes</div>
+                <div class="mono-sm" style="color:#6b7280;font-style:italic">{{ viewDoc.remarks }}</div>
               </div>
             </div>
 
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
             <template v-else-if="viewItems.length">
               <div class="inv-sec-lbl">Line Items</div>
-              <div class="dn-view-items">
+              <!-- Desktop table -->
+              <div class="dn-view-items dn-view-items--desktop">
                 <div class="dn-view-items-head"><span>Item</span><span>HSN/SAC</span><span>UOM</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span></div>
                 <div v-for="it in viewItems" :key="it.name" class="dn-view-items-row">
                   <span>{{ it.item_name||it.item_code }}</span>
@@ -568,6 +633,30 @@
                   <span class="ta-r mono-sm">{{ Math.abs(it.qty||0) }}</span>
                   <span class="ta-r mono-sm">{{ fmtCur(it.rate) }}</span>
                   <span class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(Math.abs(it.amount||0)) }}</span>
+                </div>
+              </div>
+              <!-- Mobile cards -->
+              <div class="dn-view-items--mobile">
+                <div v-for="(it, idx) in viewItems" :key="it.name" class="dn-vi-card">
+                  <div class="dn-vi-card-header">
+                    <span class="dn-vi-card-num">#{{ idx + 1 }}</span>
+                    <span class="dn-vi-card-name">{{ it.item_name||it.item_code }}</span>
+                    <span class="dn-vi-card-amount">{{ fmtCur(Math.abs(it.amount||0)) }}</span>
+                  </div>
+                  <div class="dn-vi-card-meta">
+                    <div class="dn-vi-meta-item">
+                      <span class="dn-vi-meta-lbl">Qty</span>
+                      <span class="dn-vi-meta-val">{{ Math.abs(it.qty||0) }}</span>
+                    </div>
+                    <div class="dn-vi-meta-item">
+                      <span class="dn-vi-meta-lbl">Rate</span>
+                      <span class="dn-vi-meta-val">{{ fmtCur(it.rate) }}</span>
+                    </div>
+                    <div class="dn-vi-meta-item dn-vi-meta-item--amount">
+                      <span class="dn-vi-meta-lbl">Amount</span>
+                      <span class="dn-vi-meta-val dn-vi-meta-val--amount">{{ fmtCur(Math.abs(it.amount||0)) }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               <!-- Tax + Grand total block -->
@@ -586,42 +675,88 @@
 
           <template v-if="viewTab==='applied'">
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
-            <div v-else-if="viewApplications.length">
-              <div class="dn-app-head"><span>Bill</span><span>Date</span><span>Payment Entry</span><span class="ta-r">Amount Applied</span></div>
-              <div v-for="a in viewApplications" :key="a.payment_entry" class="dn-app-row">
-                <span class="mono-sm inv-link">{{ a.bill }}</span>
-                <span class="mono-sm">{{ fmtDate(a.date) }}</span>
-                <span class="mono-sm text-muted">{{ a.payment_entry }}</span>
-                <span class="ta-r mono-sm" style="font-weight:600;color:#059669">{{ fmtCur(a.amount) }}</span>
+            <template v-else>
+              <!-- Balance strip -->
+              <div class="dn-balance-strip">
+                <div class="dn-bs-cell">
+                  <div class="dn-bs-lbl">Total Debit</div>
+                  <div class="dn-bs-val">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</div>
+                </div>
+                <div class="dn-bs-sep">−</div>
+                <div class="dn-bs-cell">
+                  <div class="dn-bs-lbl">Applied</div>
+                  <div class="dn-bs-val">{{ fmtCur(appliedTotal) }}</div>
+                </div>
+                <div class="dn-bs-sep">=</div>
+                <div class="dn-bs-cell dn-bs-cell--avail">
+                  <div class="dn-bs-lbl">Available</div>
+                  <div class="dn-bs-val dn-bs-val--avail">{{ fmtCur(viewBalance) }}</div>
+                </div>
               </div>
-            </div>
-            <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
-              No applications yet.
-              <div v-if="viewBalance>0 && viewDoc.docstatus===1" style="margin-top:8px">
-                <button class="add-btn-draft" @click="applyDN(viewDoc)" style="font-size:12px;padding:6px 12px">↳ Apply to Bill</button>
+
+              <div v-if="groupedApplications.length">
+                <div v-for="grp in groupedApplications" :key="grp.bill" class="dn-app-group">
+                  <div class="dn-app-group-header">
+                    <DocLink doctype="Purchase Invoice" :name="grp.bill" />
+                    <span class="dn-app-group-total">{{ fmtCur(grp.total) }}</span>
+                  </div>
+                  <div v-for="a in grp.entries" :key="a.payment_entry" class="dn-app-group-row">
+                    <span class="mono-sm text-muted" style="font-size:11px">{{ fmtDate(a.date) }}</span>
+                    <DocLink :doctype="a.ref_doctype||'Journal Entry'" :name="a.payment_entry" />
+                    <span class="ta-r mono-sm" style="font-weight:600;color:#059669">{{ fmtCur(a.amount) }}</span>
+                  </div>
+                </div>
               </div>
-            </div>
+              <div v-else style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">
+                No applications yet.
+                <div v-if="viewBalance>0 && viewDoc.docstatus===1" style="margin-top:8px">
+                  <button class="add-btn-draft" @click="applyDN(viewDoc)" style="font-size:12px;padding:6px 12px">↳ Apply to Bill</button>
+                </div>
+              </div>
+            </template>
           </template>
         </div>
 
-        <div class="inv-dfooter">
-          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
-            <span v-html="icon('edit',13)"></span> Edit
-          </button>
-          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitDraftDN(viewDoc)">
-            <span v-html="icon('check',13)"></span> Submit
-          </button>
-          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" @click="emailDN(viewDoc)">
-            <span v-html="icon('mail',13)"></span> Email
-          </button>
-          <button class="form-btn form-btn-outline" @click="printDN(viewDoc)" title="Print preview">
-            🖨 Print
-          </button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="add-btn-draft" @click="applyDN(viewDoc)">↳ Apply to Bill</button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-outline" @click="refundDN(viewDoc)">↩ Refund</button>
-          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="cancelDN(viewDoc)">Cancel</button>
-          <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="form-btn form-btn-danger" @click="deleteDN(viewDoc)">Delete</button>
+        <div class="dn-view-footer">
+          <!-- Primary actions row -->
+          <div class="dn-vf-primary">
+            <button v-if="viewDoc.docstatus===0" class="dn-vf-btn dn-vf-btn-submit" @click="submitDraftDN(viewDoc)">
+              <span v-html="icon('check',14)"></span> Submit
+            </button>
+            <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="dn-vf-btn dn-vf-btn-apply" @click="applyDN(viewDoc)">
+              ↳ <div class="dn-view-action-btn">Apply to Bill</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="dn-vf-btn dn-vf-btn-auto" @click="autoApplyDN(viewDoc)">
+              ⚡<div class="dn-view-action-btn">Auto Apply</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="dn-vf-btn dn-vf-btn-refund" @click="refundDN(viewDoc)">
+              ↩ <div class="dn-view-action-btn">Refund Debit</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1 && viewBalance>0 && viewBalance<10" class="dn-vf-btn dn-vf-btn-outline" @click="writeOffDN(viewDoc)">
+              ✎ <div class="dn-view-action-btn">Write Off</div>
+            </button>
+          </div>
+          <!-- Secondary actions row -->
+          <div class="dn-vf-secondary">
+            <button class="dn-vf-sec-btn" @click="viewOpen=false">
+              <span v-html="icon('x',13)"></span> <div class="dn-view-action-btn">Close</div>
+            </button>
+            <button v-if="viewDoc.docstatus===0" class="dn-vf-sec-btn" @click="openEdit(viewDoc);viewOpen=false">
+              <span v-html="icon('edit',13)"></span> <div class="dn-view-action-btn">Edit</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1" class="dn-vf-sec-btn" @click="emailDN(viewDoc)">
+              <span v-html="icon('mail',13)"></span> <div class="dn-view-action-btn">Email</div>
+            </button>
+            <button class="dn-vf-sec-btn" @click="printDN(viewDoc)">
+              <span v-html="icon('printer',13)"></span> <div class="dn-view-action-btn">Print</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1" class="dn-vf-sec-btn dn-vf-sec-danger" @click="cancelDN(viewDoc)">
+              <span v-html="icon('x-circle',13)"></span> <div class="dn-view-action-btn">Cancel</div>
+            </button>
+            <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="dn-vf-sec-btn dn-vf-sec-danger" @click="deleteDN(viewDoc)">
+              <span v-html="icon('trash',13)"></span> <div class="dn-view-action-btn">Delete</div>
+            </button>
+          </div>
         </div>
       </template>
     </div>
@@ -634,16 +769,53 @@
         <button class="inv-dclose" @click="applyModal.open=false"><span v-html="icon('x',16)"></span></button>
       </div>
       <div class="inv-dbody">
-        <div style="font-size:12.5px;color:#374151">Available Balance: <strong>{{ fmtCur(applyModal.balance) }}</strong></div>
+        <!-- Debit balance pill -->
+        <div class="dn-balance-pill">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Debit Available: <strong>{{ fmtCur(applyModal.balance) }}</strong>
+        </div>
+
+        <!-- Bill selector -->
         <div class="dn-field">
           <label class="inv-lbl">Target Bill <span class="inv-req">*</span></label>
-          <select v-model="applyModal.bill" class="inv-fi">
+          <select v-model="applyModal.bill" class="inv-fi" @change="onApplyBillChange">
             <option value="">— Select bill —</option>
             <option v-for="b in applyModal.openBills" :key="b.name" :value="b.name">
-              {{ b.name }} · {{ fmtCur(b.outstanding_amount) }} due
+              {{ b.name === applyModal.originBill ? '★ ' : '' }}{{ b.name }} · {{ fmtCur(b.outstanding_amount) }} due{{ b.name === applyModal.originBill ? ' (original)' : '' }}
             </option>
           </select>
         </div>
+
+        <!-- Bill summary card (shown after selection) -->
+        <div v-if="applyModal.bill" class="dn-inv-summary">
+          <div v-if="applyModal.summaryLoading" class="dn-summary-loading">
+            <span class="dn-spinner"></span> Loading bill details…
+          </div>
+          <template v-else-if="applyModal.summary">
+            <div class="dn-summary-header">
+              <span class="dn-summary-inv-name">{{ applyModal.bill }}</span>
+              <span class="dn-summary-badge" :class="'dn-badge-' + (applyModal.summary.status || 'Unpaid').toLowerCase().replace(' ','-')">
+                {{ applyModal.summary.status }}
+              </span>
+            </div>
+            <div class="dn-summary-grid">
+              <div class="dn-summary-cell">
+                <div class="dn-summary-label">Bill Amount</div>
+                <div class="dn-summary-value">{{ fmtCur(applyModal.summary.grand_total) }}</div>
+              </div>
+              <div class="dn-summary-cell">
+                <div class="dn-summary-label">Paid</div>
+                <div class="dn-summary-value dn-val-paid">{{ fmtCur(applyModal.summary.total_paid) }}</div>
+              </div>
+              <div class="dn-summary-cell dn-summary-cell-outstanding">
+                <div class="dn-summary-label">Outstanding</div>
+                <div class="dn-summary-value dn-val-outstanding">{{ fmtCur(applyModal.summary.outstanding) }}</div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Amount to apply -->
         <div class="dn-field">
           <label class="inv-lbl">Amount to Apply <span class="inv-req">*</span></label>
           <input v-model.number="applyModal.amount" type="number" min="0.01" :max="applyModal.balance" step="0.01" class="inv-fi ta-r" />
@@ -713,6 +885,7 @@ import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
 import BulkActionBar from "../components/BulkActionBar.vue";
 import TimelineStepper from "../components/TimelineStepper.vue";
+import DocLink from "../components/DocLink.vue";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
@@ -720,35 +893,44 @@ const { printDoc } = useLivePreview();
 function printDN(d) { printDoc(d, { title: "DEBIT NOTE", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
 
 const { openEmail } = useEmailDialog();
-const { statusLabel, statusCls, statusBg } = useDocStatus({
-  fallbackDraftLabel: "Draft",
-  fallbackSubmittedLabel: "Issued",
-  paidStatuses: ["return"],
-  pendingStatuses: ["return"],
-  completedStatuses: ["return"],
-  outstandingField: "_unused",
-  dueDateField: "_unused",
-  overdueCheck: () => false,
-});
+function dnStatus(d) {
+  if (d.docstatus === 2) return "cancelled";
+  if (d.docstatus === 0) return "draft";
+  const total = Math.abs(flt(d.grand_total || 0));
+  const avail = flt(_balances.value[d.name] || 0);
+  if (avail <= 0.005)        return "applied";
+  if (avail < total - 0.005) return "partial";
+  return "issued";
+}
+function statusLabel(d) {
+  return { draft: "Draft", issued: "Issued", partial: "Partially Applied", applied: "Applied", cancelled: "Cancelled" }[dnStatus(d)] || "—";
+}
+function statusCls(d) {
+  return { draft: "dn-st-draft", issued: "dn-st-issued", partial: "dn-st-partial", applied: "dn-st-applied", cancelled: "dn-st-cancelled" }[dnStatus(d)] || "";
+}
 
 const activeTab = ref("all");
 const tabs = [
   { key: "all",       label: "All" },
   { key: "draft",     label: "Draft" },
   { key: "issued",    label: "Issued" },
+  { key: "partial",   label: "Partially Applied" },
+  { key: "applied",   label: "Applied" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
-const viewLoading = ref(false), viewItems = ref([]), viewApplications = ref([]), viewBalance = ref(0);
+const viewLoading = ref(false), viewItems = ref([]), viewApplications = ref([]), viewBalance = ref(0), viewReason = ref("");
 const vendors = ref([]), items = ref([]), bills = ref([]), lines = ref([]);
 const sortCol = ref("posting_date"), sortDir = ref("desc");
 const selectedBillDocs = ref([]);
 const billSearchVal = ref("");
 const billLoading = ref(false);
 const _suppressVendorSelect = ref(false);
+const vendorDetail = ref(null);
+const vendorDetailLoading = ref(false);
 
 // Balance cache by DN name
 const _balances = ref({});
@@ -770,8 +952,7 @@ const dnCollapsed = reactive({ vendor: false, bill: false, items: false, notes: 
 
 const dnTaxes = ref([]);
 const taxTemplates = ref([]);
-// Apply-to-bill modal
-const applyModal = reactive({ open: false, saving: false, dnName: "", balance: 0, bill: "", amount: 0, openBills: [] });
+const applyModal = reactive({ open: false, saving: false, dnName: "", balance: 0, bill: "", originBill: "", amount: 0, openBills: [], summary: null, summaryLoading: false });
 // Refund modal
 const refundModal = reactive({ open: false, saving: false, dnName: "", balance: 0, amount: 0, mode: "Bank Transfer", reference: "" });
 
@@ -815,11 +996,18 @@ async function load() {
   finally { loading.value = false; }
 }
 
-const counts = computed(() => ({
-  draft:     list.value.filter(d => d.docstatus === 0).length,
-  issued:    list.value.filter(d => d.docstatus === 1).length,
-  cancelled: list.value.filter(d => d.docstatus === 2).length,
-}));
+const counts = computed(() => {
+  let draft = 0, issued = 0, partial = 0, applied = 0, cancelled = 0;
+  for (const d of list.value) {
+    const s = dnStatus(d);
+    if (s === "draft")      draft++;
+    else if (s === "issued")    issued++;
+    else if (s === "partial")   partial++;
+    else if (s === "applied")   applied++;
+    else if (s === "cancelled") cancelled++;
+  }
+  return { draft, issued, partial, applied, cancelled };
+});
 const summary = computed(() => ({
   totalValue:  list.value.filter(d => d.docstatus === 1).reduce((s, d) => s + Math.abs(flt(d.grand_total)), 0),
   openBalance: Object.values(_balances.value).reduce((s, v) => s + flt(v), 0),
@@ -837,9 +1025,9 @@ const dnTrends = computed(()=>({
 
 const filtered = computed(() => {
   let r = list.value;
-  if (activeTab.value === "draft")     r = r.filter(d => d.docstatus === 0);
-  if (activeTab.value === "issued")    r = r.filter(d => d.docstatus === 1);
-  if (activeTab.value === "cancelled") r = r.filter(d => d.docstatus === 2);
+  const t = activeTab.value;
+  if (t === "draft" || t === "issued" || t === "partial" || t === "applied" || t === "cancelled")
+    r = r.filter(d => dnStatus(d) === t);
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
     r = r.filter(x => (x.name || "").toLowerCase().includes(q)
@@ -931,17 +1119,34 @@ const timelineSteps = computed(() => {
   if (!d) return [];
   if (d.docstatus === 2) {
     return [
-      { key: "draft", label: "Draft", done: true },
-      { key: "issued", label: "Issued", done: true },
+      { key: "draft",     label: "Draft",     done: true },
+      { key: "issued",    label: "Issued",    done: true },
       { key: "cancelled", label: "Cancelled", danger: true, current: true },
     ];
   }
-  const fullyApplied = d.docstatus === 1 && viewBalance.value <= 0;
+  const st = dnStatus(d);
+  const isDraft   = st === "draft";
+  const isIssued  = st === "issued";
+  const isPartial = st === "partial";
+  const isApplied = st === "applied";
   return [
-    { key: "draft",   label: "Draft",   done: true },
-    { key: "issued",  label: "Issued",  done: d.docstatus >= 1, current: d.docstatus === 1 && !fullyApplied },
-    { key: "closed",  label: "Closed",  done: fullyApplied, current: fullyApplied },
+    { key: "draft",   label: "Draft",            done: !isDraft,               current: isDraft },
+    { key: "issued",  label: "Issued",            done: isPartial || isApplied, current: isIssued },
+    { key: "partial", label: "Partially Applied", done: isApplied,              current: isPartial },
+    { key: "applied", label: "Applied",           done: isApplied,              current: isApplied },
   ];
+});
+
+const appliedTotal = computed(() => viewApplications.value.reduce((s, a) => s + flt(a.amount), 0));
+const groupedApplications = computed(() => {
+  const groups = {};
+  for (const a of viewApplications.value) {
+    const key = a.bill || "—";
+    if (!groups[key]) groups[key] = { bill: key, total: 0, entries: [] };
+    groups[key].total += flt(a.amount);
+    groups[key].entries.push(a);
+  }
+  return Object.values(groups);
 });
 
 // ── Create / Edit ─────────────────────────────────────────────────────────
@@ -951,6 +1156,7 @@ function openNew() {
   lines.value = [blankLine()];
   selectedBillDocs.value = [];
   billSearchVal.value = "";
+  vendorDetail.value = null;
   fetchVendors(""); fetchItems(""); fetchCostCenters(); bills.value = [];
   drawerOpen.value = true;
 }
@@ -962,8 +1168,12 @@ async function openEdit(d) {
   lines.value = [blankLine()];
   selectedBillDocs.value = [];
   billSearchVal.value = "";
+  vendorDetail.value = null;
   fetchVendors(""); fetchItems(""); fetchCostCenters();
-  if (d.supplier) fetchBills("");
+  if (d.supplier) {
+    fetchBills("");
+    apiGet("Supplier", d.supplier).then(doc => { vendorDetail.value = doc; }).catch(() => {});
+  }
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Purchase Invoice", d.name);
@@ -1005,10 +1215,12 @@ async function openView(d) {
   viewItems.value = [];
   viewApplications.value = [];
   viewBalance.value = 0;
+  viewReason.value = "";
   try {
     const doc = await apiGet("Purchase Invoice", d.name);
     viewItems.value = doc?.items || [];
     if (doc) viewDoc.value = { ...viewDoc.value, ...doc };
+    if (doc?.remarks) viewReason.value = doc.remarks.split(" — ")[0].trim();
     if (d.docstatus === 1) {
       const [bal, apps] = await Promise.all([
         apiGET("zoho_books_clone.api.docs.get_debit_note_balance", { debit_note_name: d.name }).catch(() => null),
@@ -1046,10 +1258,24 @@ async function fetchBills(q = "") {
     bills.value = r.map(x => ({ ...x, label: x.name + (x.supplier_name ? ` · ${x.supplier_name}` : ""), value: x.name }));
   } catch { bills.value = []; }
 }
-function onVendorSelect(opt) {
+async function onVendorSelect(opt) {
   if (_suppressVendorSelect.value) return;
   clearBills();
   fetchBills("");
+  vendorDetail.value = null;
+  if (!form.supplier) return;
+  vendorDetailLoading.value = true;
+  try {
+    const doc = await apiGet("Supplier", form.supplier);
+    vendorDetail.value = doc;
+  } catch { vendorDetail.value = null; }
+  finally { vendorDetailLoading.value = false; }
+}
+function changeVendor() {
+  form.supplier = "";
+  vendorDetail.value = null;
+  clearBills();
+  bills.value = [];
 }
 async function addBill(opt) {
   const billName = opt?.value ?? opt;
@@ -1187,26 +1413,46 @@ async function emailDN(d) {
   });
 }
 async function applyDN(d) {
-  // Load open bills for the same vendor
   try {
-    const r = await apiList("Purchase Invoice", {
-      fields: ["name", "outstanding_amount", "grand_total"],
-      filters: [["is_return", "=", 0], ["docstatus", "=", 1], ["supplier", "=", d.supplier], ["outstanding_amount", ">", 0]],
-      limit: 50, order: "posting_date desc, creation desc",
-    });
+    const [r, balData] = await Promise.all([
+      apiList("Purchase Invoice", {
+        fields: ["name", "outstanding_amount", "grand_total", "posting_date"],
+        filters: [["is_return", "=", 0], ["docstatus", "=", 1], ["supplier", "=", d.supplier], ["outstanding_amount", ">", 0]],
+        limit: 50, order: "posting_date asc",
+      }),
+      apiGET("zoho_books_clone.api.docs.get_debit_note_balance", { debit_note_name: d.name }).catch(() => null),
+    ]);
     if (!r.length) { toast.info("No open bills for this vendor"); return; }
-    const balance = balanceFor(d.name) || viewBalance.value || Math.abs(flt(d.grand_total));
-    const returnAgainst = d.return_against || "";
-    const matchedBill = r.find(b => b.name === returnAgainst);
-    const defaultBill = matchedBill?.name || r[0]?.name || "";
-    const defaultOutstanding = flt(matchedBill?.outstanding_amount ?? r[0]?.outstanding_amount ?? 0);
+    const balance = flt(balData?.balance ?? 0) || balanceFor(d.name) || Math.abs(flt(d.grand_total));
+    if (balance <= 0) { toast.info("No available debit balance"); return; }
+    const originBill = d.return_against || "";
+    const sorted = [...r].sort((a, b) => {
+      if (a.name === originBill) return -1;
+      if (b.name === originBill) return 1;
+      return 0;
+    });
     Object.assign(applyModal, {
-      open: true, saving: false, dnName: d.name, balance,
-      bill: defaultBill,
-      amount: Math.min(balance, defaultOutstanding),
-      openBills: r,
+      open: true, saving: false, dnName: d.name, balance, originBill,
+      bill: "", amount: 0, openBills: sorted, summary: null, summaryLoading: false,
     });
   } catch (e) { toast.error(e.message || "Failed to load bills"); }
+}
+async function onApplyBillChange() {
+  applyModal.summary = null;
+  if (!applyModal.bill) return;
+  applyModal.summaryLoading = true;
+  try {
+    const doc = await apiGet("Purchase Invoice", applyModal.bill);
+    const paid = Math.abs(flt(doc?.grand_total || 0)) - Math.abs(flt(doc?.outstanding_amount || 0));
+    applyModal.summary = {
+      grand_total: Math.abs(flt(doc?.grand_total || 0)),
+      total_paid: paid,
+      outstanding: Math.abs(flt(doc?.outstanding_amount || 0)),
+      status: doc?.status || "Unpaid",
+    };
+    applyModal.amount = Math.min(applyModal.balance, applyModal.summary.outstanding);
+  } catch { toast.error("Failed to load bill details"); }
+  finally { applyModal.summaryLoading = false; }
 }
 async function submitApply() {
   if (!applyModal.bill || applyModal.amount <= 0) return;
@@ -1240,6 +1486,42 @@ async function cancelDN(d) {
     toast.success("Debit Note cancelled");
     await load(); if (viewDoc.value?.name === d.name) await openView(d);
   } catch (e) { toast.error(e.message || "Cancel failed"); }
+}
+async function autoApplyDN(d) {
+  try {
+    const [r, balData] = await Promise.all([
+      apiList("Purchase Invoice", {
+        fields: ["name", "outstanding_amount", "posting_date"],
+        filters: [["is_return","=",0],["docstatus","=",1],["supplier","=",d.supplier],["outstanding_amount",">",0]],
+        limit: 50, order: "posting_date asc",
+      }),
+      apiGET("zoho_books_clone.api.docs.get_debit_note_balance", { debit_note_name: d.name }).catch(() => null),
+    ]);
+    if (!r.length) { toast.info("No open bills for this vendor"); return; }
+    const balance = flt(balData?.balance ?? 0);
+    if (balance <= 0) { toast.info("No available debit balance"); return; }
+    const oldest = r[0];
+    const applyAmt = Math.min(balance, flt(oldest.outstanding_amount));
+    if (!await confirm({ title: "Auto-Apply Debit", body: `Apply ${fmtCur(applyAmt)} to ${oldest.name} (oldest open bill)?`, okLabel: "Apply" })) return;
+    await apiPOST("zoho_books_clone.api.docs.apply_debit_note_to_bill", {
+      debit_note: d.name, bill: oldest.name, amount: applyAmt,
+    });
+    toast.success(`Applied ${fmtCur(applyAmt)} to ${oldest.name}`);
+    await load();
+    if (viewDoc.value?.name === d.name) await openView(viewDoc.value);
+  } catch (e) { toast.error(e.message || "Auto-apply failed"); }
+}
+async function writeOffDN(d) {
+  const balData = await apiGET("zoho_books_clone.api.docs.get_debit_note_balance", { debit_note_name: d.name }).catch(() => null);
+  const balance = flt(balData?.balance ?? 0);
+  if (balance <= 0) { toast.info("No balance to write off"); return; }
+  if (!await confirm({ title: "Write Off Balance", body: `Write off the remaining balance of ${fmtCur(balance)} on ${d.name}? A Journal Entry will be created.`, okLabel: "Write Off" })) return;
+  try {
+    const r = await apiPOST("zoho_books_clone.api.docs.write_off_debit_note", { debit_note_name: d.name });
+    toast.success(`Balance written off — ${r?.journal_entry || "JE created"}`);
+    await load();
+    if (viewDoc.value?.name === d.name) await openView(viewDoc.value);
+  } catch (e) { toast.error(e.message || "Write-off failed"); }
 }
 async function refundDN(d) {
   const balData = await apiGET("zoho_books_clone.api.docs.get_debit_note_balance", { debit_note_name: d.name }).catch(() => null);
@@ -1801,5 +2083,195 @@ onMounted(load);
   .dn-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: dn-shimmer 1.4s infinite; }
   @keyframes dn-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   .dn-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+}
+
+/* ── Status badges ── */
+.dn-st-draft    { background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb; }
+.dn-st-issued   { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+.dn-st-partial  { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+.dn-st-applied  { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+.dn-st-cancelled{ background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+
+/* ── 2-row view footer ── */
+.dn-view-footer { border-top: 1px solid #e5e7eb; background: #fafafa; }
+.dn-vf-primary {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 12px 16px 8px; border-bottom: 1px solid #f0f0f0;
+}
+.dn-vf-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; border: none; transition: opacity .15s;
+}
+.dn-vf-btn:disabled { opacity: .5; cursor: not-allowed; }
+.dn-vf-btn-submit { background: #2563eb; color: #fff; }
+.dn-vf-btn-apply  { background: #7c2d12; color: #fff; }
+.dn-vf-btn-auto   { background: #7c3aed; color: #fff; }
+.dn-vf-btn-refund { background: #0f766e; color: #fff; }
+.dn-vf-btn-outline{ background: #fff; color: #374151; border: 1px solid #d1d5db; }
+.dn-view-action-btn { display: inline; }
+.dn-vf-secondary {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 8px 16px 12px;
+}
+.dn-vf-sec-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: 1px solid #e5e7eb; background: #fff; color: #6b7280;
+  transition: background .12s;
+}
+.dn-vf-sec-btn:hover { background: #f3f4f6; }
+.dn-vf-sec-danger { color: #dc2626 !important; border-color: #fecaca !important; }
+.dn-vf-sec-danger:hover { background: #fff1f2 !important; }
+
+/* ── Balance strip (Applied To tab) ── */
+.dn-balance-strip {
+  display: flex; align-items: center; gap: 0;
+  background: linear-gradient(135deg,#7c2d12,#c2410c);
+  border-radius: 10px; overflow: hidden; margin-bottom: 16px;
+}
+.dn-bs-cell {
+  flex: 1; padding: 12px 16px; text-align: center;
+}
+.dn-bs-cell--avail { background: rgba(0,0,0,.15); }
+.dn-bs-lbl { font-size: 10px; font-weight: 700; color: rgba(255,255,255,.7); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+.dn-bs-val { font-size: 14px; font-weight: 700; color: #fff; }
+.dn-bs-val--avail { color: #fef08a; }
+.dn-bs-sep { font-size: 16px; font-weight: 700; color: rgba(255,255,255,.5); padding: 0 4px; }
+
+/* ── Grouped applications ── */
+.dn-app-group { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+.dn-app-group-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb;
+  font-size: 12.5px; font-weight: 600;
+}
+.dn-app-group-total { color: #059669; font-weight: 700; }
+.dn-app-group-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 12px; border-bottom: 1px solid #f3f4f6; font-size: 12px;
+}
+.dn-app-group-row:last-child { border-bottom: none; }
+
+/* ── Mobile item cards ── */
+.dn-view-items--mobile { display: none; flex-direction: column; gap: 8px; }
+.dn-vi-card { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff; }
+.dn-vi-card-header {
+  display: flex; align-items: center; gap: 8px;
+  background: #fafafa; padding: 10px 12px; border-bottom: 1px solid #f0f0f0;
+}
+.dn-vi-card-num  { font-size: 11px; font-weight: 800; color: #c2410c; min-width: 20px; flex-shrink: 0; }
+.dn-vi-card-name { flex: 1; font-size: 13px; font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dn-vi-card-amount { font-size: 13.5px; font-weight: 700; color: #7c2d12; flex-shrink: 0; }
+.dn-vi-card-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; }
+.dn-vi-meta-item { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-right: 1px solid #f3f4f6; }
+.dn-vi-meta-item:last-child { border-right: none; }
+.dn-vi-meta-item--amount { background: #fff8f6; }
+.dn-vi-meta-lbl { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; }
+.dn-vi-meta-val { font-size: 12.5px; font-weight: 600; color: #374151; }
+.dn-vi-meta-val--amount { color: #7c2d12; font-weight: 700; }
+@media (max-width: 768px) {
+  .dn-view-items--desktop { display: none !important; }
+  .dn-view-items--mobile  { display: flex; }
+}
+
+/* ── Balance pill (Apply modal) ── */
+.dn-balance-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px;
+  padding: 8px 12px; font-size: 12.5px; color: #c2410c; font-weight: 500;
+  margin-bottom: 14px;
+}
+
+/* ── Bill summary card (Apply modal) ── */
+.dn-inv-summary { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+.dn-summary-loading { display: flex; align-items: center; gap: 8px; padding: 14px; font-size: 12.5px; color: #6b7280; }
+.dn-spinner {
+  width: 14px; height: 14px; border: 2px solid #e5e7eb; border-top-color: #c2410c;
+  border-radius: 50%; animation: dn-spin .7s linear infinite; display: inline-block;
+}
+@keyframes dn-spin { to { transform: rotate(360deg); } }
+.dn-summary-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; background: #fafafa; border-bottom: 1px solid #f0f0f0;
+}
+.dn-summary-inv-name { font-size: 12.5px; font-weight: 700; color: #111827; }
+.dn-summary-badge {
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  border: 1px solid currentColor;
+}
+.dn-badge-unpaid    { color: #dc2626; background: #fef2f2; }
+.dn-badge-paid      { color: #15803d; background: #f0fdf4; }
+.dn-badge-overdue   { color: #9a3412; background: #fff7ed; }
+.dn-badge-partially-paid { color: #b45309; background: #fffbeb; }
+.dn-summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+.dn-summary-cell { padding: 8px 12px; border-right: 1px solid #f3f4f6; }
+.dn-summary-cell:last-child { border-right: none; }
+.dn-summary-cell-outstanding { background: #fff7f5; }
+.dn-summary-label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+.dn-summary-value { font-size: 13px; font-weight: 600; color: #374151; }
+.dn-val-paid        { color: #15803d; }
+.dn-val-outstanding { color: #c2410c; font-weight: 700; }
+
+/* ── One-only badge on vendor label ── */
+.dn-one-only-badge {
+  display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; background: #eff6ff; color: #2563eb;
+  border: 1px solid #bfdbfe; border-radius: 4px; padding: 1px 5px; margin-left: 5px;
+  vertical-align: middle;
+}
+
+/* ── Locked vendor card ── */
+.dn-vendor-locked-card {
+  border: 2px solid #c2410c; border-radius: 10px; overflow: hidden;
+  background: linear-gradient(135deg,#fff7f5,#fff); margin-bottom: 2px;
+}
+.dn-vl-loading {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 16px; font-size: 12.5px; color: #6b7280;
+}
+.dn-vl-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-bottom: 1px solid #fed7aa; background: rgba(194,65,12,.05);
+}
+.dn-vl-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg,#7c2d12,#c2410c);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.dn-vl-avatar svg { stroke: #fff; }
+.dn-vl-info { flex: 1; min-width: 0; }
+.dn-vl-name {
+  font-size: 14px; font-weight: 700; color: #1a1d23;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dn-vl-sub { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+.dn-vl-change-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
+  color: #6b7280; background: #fff; border: 1px solid #e5e7eb;
+  cursor: pointer; flex-shrink: 0; transition: background .12s;
+}
+.dn-vl-change-btn:hover { background: #f3f4f6; color: #374151; }
+.dn-vl-details {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+}
+.dn-vl-detail-item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 12px; border-right: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6;
+}
+.dn-vl-detail-item:nth-child(3n) { border-right: none; }
+.dn-vl-detail-lbl {
+  font-size: 10px; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.dn-vl-detail-val { font-size: 12.5px; font-weight: 600; color: #374151; }
+.dn-vl-link { color: #2563eb; text-decoration: none; }
+.dn-vl-link:hover { text-decoration: underline; }
+@media (max-width: 480px) {
+  .dn-vl-details { grid-template-columns: 1fr 1fr; }
+  .dn-vl-detail-item:nth-child(3n) { border-right: 1px solid #f3f4f6; }
+  .dn-vl-detail-item:nth-child(2n) { border-right: none; }
 }
 </style>

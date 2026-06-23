@@ -234,7 +234,7 @@
               <div class="cn-field">
                 <label class="inv-lbl">Cost Center</label>
                 <select v-model="form.cost_center" class="inv-fi">
-                  <option value="">— None —</option>
+                  <option value="">— Select —</option>
                   <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
                 </select>
               </div>

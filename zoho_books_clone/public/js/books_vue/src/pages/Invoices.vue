@@ -748,6 +748,11 @@
 
       <!-- Top header: number + badge | Receive Payment CTA -->
       <div class="inv-view-header">
+        <div style="
+              display: flex;
+              justify-content: space-between;
+              width: -webkit-fill-available;
+          ">
         <div class="inv-view-header-left">
           <div class="inv-view-title-row">
             <span class="inv-view-number">{{ viewInv.name }}</span>
@@ -766,12 +771,13 @@
           <button v-if="viewInv.outstanding_amount>0&&viewInv.docstatus===1"
                   class="inv-view-cta"
                   @click="openPayment(viewInv)">
-            <span v-html="icon('indianrupee',15)"></span> Receive Payment
+            <span v-html="icon('indianrupee',15)"></span> <div class="ab-label"> Receive Payment</div>
           </button>
           <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
             <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
           </button>
         </div>
+      </div>
       </div>
 
       <!-- Main white card -->
@@ -1162,7 +1168,7 @@
                         <DocLink v-if="a.journal_entry" doctype="Journal Entry" :name="a.journal_entry" />
                         <span v-else class="text-muted mono-sm">—</span>
                       </td>
-                      <td class="td-r" style="font-weight:600;color:#7c3aed">{{ fmtAmt(a.amount) }}</td>
+                      <td class="td-r" style="font-weight:600;width: -webkit-fill-available !important;color:#7c3aed">{{ fmtAmt(a.amount) }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2972,6 +2978,7 @@ watch(() => route.query, (q) => {
 
 @media (max-width: 480px) {
   .inv-page > .inv-mobile-summary { grid-template-columns: 1fr !important; }
+  .inv-view-cta .ab-label{display:none;}
 }
 
 /* ── e-Invoice status dot (list row) ── */

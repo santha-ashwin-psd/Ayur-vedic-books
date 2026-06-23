@@ -317,7 +317,7 @@
             <!-- <button class="nim-btn nim-btn-primary" style="font-size:13px;background:#E67700;border-color:#E67700" @click="openAdd">
               <span v-html="icon('plus',13)"></span> New Transaction
             </button> -->
-            <button class="nim-btn" style="background:none;color:#9CA3AF;border:1px solid #E5E7EB;width:32px;height:32px;padding:0;display:grid;place-items:center" @click="closeVendor" title="Close">
+            <button class="nim-btn" style="background:#fff;color:#374151;border:1px solid #E5E7EB;width:32px;height:32px;padding:0;display:grid;place-items:center" @click="closeVendor" title="Close">
               <span v-html="icon('x',14)"></span>
             </button>
           </div>
@@ -471,22 +471,54 @@
             <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
             <div style="font-size:12.5px;color:#9CA3AF">Bills and payments for {{selectedVendor.supplier_name}} will appear here.</div>
           </div>
-          <div v-else class="ven-txn-wrap" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:scroll">
-            <div style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB;min-width:560px">
-              <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span>
+          <div v-else class="ven-txn-wrap" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+            <!-- Desktop table -->
+            <div class="ven-txn-desktop">
+              <div style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB;min-width:560px">
+                <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span>
+              </div>
+              <div v-for="t in vendorTxnsVisible" :key="t.type+'-'+t.name"
+                style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:560px">
+                <span :style="{
+                  fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
+                  background: t.type==='Bill' ? '#FEF3C7' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
+                  color: t.type==='Bill' ? '#92400E' : t.type==='Payment' ? '#059669' : '#991B1B'
+                }">{{t.type}}</span>
+                <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
+                <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
+                <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmtCur(Math.abs(t.amount))}}</span>
+                <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):''}}</span>
+              </div>
             </div>
-            <div v-for="t in vendorTxns" :key="t.type+'-'+t.name"
-              style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:560px">
-              <span :style="{
-                fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
-                background: t.type==='Bill' ? '#FEF3C7' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
-                color: t.type==='Bill' ? '#92400E' : t.type==='Payment' ? '#059669' : '#991B1B'
-              }">{{t.type}}</span>
-              <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
-              <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
-              <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmtCur(Math.abs(t.amount))}}</span>
-              <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):''}}</span>
+
+            <!-- Mobile card view -->
+            <div class="ven-txn-mobile-cards">
+              <div v-for="t in vendorTxnsVisible" :key="'mc-'+t.type+'-'+t.name" class="ven-txn-mc">
+                <div class="ven-txn-mc-top">
+                  <span class="ven-txn-mc-badge" :style="{
+                    background: t.type==='Bill' ? '#FEF3C7' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
+                    color: t.type==='Bill' ? '#92400E' : t.type==='Payment' ? '#059669' : '#991B1B'
+                  }">{{t.type}}</span>
+                  <span class="ven-txn-mc-amount" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmtCur(Math.abs(t.amount))}}</span>
+                </div>
+                <div class="ven-txn-mc-mid">
+                  <span class="ven-txn-mc-ref">{{t.name}}</span>
+                  <span class="ven-txn-mc-date">{{fmtDate(t.date)}}</span>
+                </div>
+                <div v-if="t.outstanding>0" class="ven-txn-mc-outstanding">
+                  Outstanding: <strong>{{fmtCur(t.outstanding)}}</strong>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <!-- Load More — transactions -->
+          <div v-if="vendorTxnsHasMore" class="ven-load-more-wrap">
+            <span class="ven-load-more-count">Showing {{vendorTxnsVisible.length}} of {{vendorTxns.length}}</span>
+            <button class="ven-load-more-btn" @click="txnPage++">Load more</button>
+          </div>
+          <div v-else-if="vendorTxns.length > TXN_PAGE_SIZE" class="ven-load-more-wrap ven-load-more-end">
+            All {{vendorTxns.length}} transactions shown
           </div>
         </div>
 
@@ -504,24 +536,64 @@
           </div>
           <div v-if="detailLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading statement…</div>
           <div v-else style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
-            <div style="display:grid;grid-template-columns:100px 160px 100px 110px 110px 130px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
-              <span>Date</span><span>Reference</span><span>Type</span><span style="text-align:right">Debit</span><span style="text-align:right">Credit</span><span style="text-align:right">Balance</span>
+            <!-- Desktop table -->
+            <div class="ven-stmt-desktop">
+              <div style="display:grid;grid-template-columns:100px 160px 100px 110px 110px 130px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB">
+                <span>Date</span><span>Reference</span><span>Type</span><span style="text-align:right">Debit</span><span style="text-align:right">Credit</span><span style="text-align:right">Balance</span>
+              </div>
+              <div v-if="!vendorStatement.rows?.length" style="padding:24px;text-align:center;color:#9CA3AF;font-size:13px">No statement rows for this period.</div>
+              <div v-for="(r,i) in stmtRowsVisible" :key="r.ref+'-'+i"
+                style="display:grid;grid-template-columns:100px 160px 100px 110px 110px 130px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
+                <span style="color:#6B7280">{{fmtDate(r.date)}}</span>
+                <span style="color:#2563EB;font-weight:600">{{r.ref}}</span>
+                <span style="font-size:11px;color:#6B7280">{{r.type}}</span>
+                <span style="text-align:right;color:#059669">{{r.debit>0?fmtCur(r.debit):'—'}}</span>
+                <span style="text-align:right;color:#E67700">{{r.credit>0?fmtCur(r.credit):'—'}}</span>
+                <span style="text-align:right;font-weight:700;color:#111827">{{fmtCur(r.balance)}}</span>
+              </div>
             </div>
-            <div v-if="!vendorStatement.rows?.length" style="padding:24px;text-align:center;color:#9CA3AF;font-size:13px">No statement rows for this period.</div>
-            <div v-for="(r,i) in (vendorStatement.rows || [])" :key="r.ref+'-'+i"
-              style="display:grid;grid-template-columns:100px 160px 100px 110px 110px 130px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center">
-              <span style="color:#6B7280">{{fmtDate(r.date)}}</span>
-              <span style="color:#2563EB;font-weight:600">{{r.ref}}</span>
-              <span style="font-size:11px;color:#6B7280">{{r.type}}</span>
-              <span style="text-align:right;color:#059669">{{r.debit>0?fmtCur(r.debit):'—'}}</span>
-              <span style="text-align:right;color:#E67700">{{r.credit>0?fmtCur(r.credit):'—'}}</span>
-              <span style="text-align:right;font-weight:700;color:#111827">{{fmtCur(r.balance)}}</span>
+
+            <!-- Mobile card view -->
+            <div class="ven-stmt-mobile-cards">
+              <div v-if="!vendorStatement.rows?.length" style="padding:24px;text-align:center;color:#9CA3AF;font-size:13px">No statement rows for this period.</div>
+              <div v-for="(r,i) in stmtRowsVisible" :key="'smc-'+r.ref+'-'+i" class="ven-stmt-mc">
+                <div class="ven-stmt-mc-top">
+                  <span class="ven-stmt-mc-ref">{{r.ref}}</span>
+                  <span class="ven-stmt-mc-type">{{r.type}}</span>
+                </div>
+                <div class="ven-stmt-mc-date">{{fmtDate(r.date)}}</div>
+                <div class="ven-stmt-mc-amounts">
+                  <div v-if="r.debit>0" class="ven-stmt-mc-debit">
+                    <span class="ven-stmt-mc-lbl">Debit</span>
+                    <span>{{fmtCur(r.debit)}}</span>
+                  </div>
+                  <div v-if="r.credit>0" class="ven-stmt-mc-credit">
+                    <span class="ven-stmt-mc-lbl">Credit</span>
+                    <span>{{fmtCur(r.credit)}}</span>
+                  </div>
+                  <div class="ven-stmt-mc-balance">
+                    <span class="ven-stmt-mc-lbl">Balance</span>
+                    <span>{{fmtCur(r.balance)}}</span>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <!-- Load More — statement rows -->
+            <div v-if="stmtRowsHasMore" class="ven-load-more-wrap" style="border-top:1px solid #F3F4F6">
+              <span class="ven-load-more-count">Showing {{stmtRowsVisible.length}} of {{vendorStatement.rows.length}}</span>
+              <button class="ven-load-more-btn" @click="stmtPage++">Load more</button>
+            </div>
+            <div v-else-if="vendorStatement.rows?.length > STMT_PAGE_SIZE" class="ven-load-more-wrap ven-load-more-end" style="border-top:1px solid #F3F4F6">
+              All {{vendorStatement.rows.length}} rows shown
+            </div>
+
+            <!-- Totals footer -->
             <div v-if="vendorStatement.rows?.length" style="background:#F9FAFB;padding:12px 14px;border-top:2px solid #E5E7EB;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;font-size:12.5px">
               <div><span style="color:#6B7280">Billed:</span> <strong style="color:#E67700">{{fmtCur(vendorStatement.totals?.billed || 0)}}</strong></div>
               <div><span style="color:#6B7280">Paid:</span> <strong style="color:#059669">{{fmtCur(vendorStatement.totals?.paid || 0)}}</strong></div>
               <div><span style="color:#6B7280">Debit Notes:</span> <strong style="color:#059669">{{fmtCur(vendorStatement.totals?.debit_notes || 0)}}</strong></div>
-              <div style="text-align:right"><span style="color:#6B7280">Closing Balance:</span> <strong style="color:#111827">{{fmtCur(vendorStatement.totals?.closing_balance || 0)}}</strong></div>
+              <div><span style="color:#6B7280">Closing Balance:</span> <strong style="color:#111827">{{fmtCur(vendorStatement.totals?.closing_balance || 0)}}</strong></div>
             </div>
           </div>
         </div>
@@ -625,8 +697,8 @@
             </div>
             <div class="inv-field">
               <label class="inv-lbl">Mobile</label>
-              <div style="display:flex">
-                <select v-model="form.mobile_code" style="width:85px;border-right:none;border-top-right-radius:0;border-bottom-right-radius:0;text-align:center;background:#f9fafb;padding:0 5px" class="inv-fi"
+              <div style="display:flex;min-width:0">
+                <select v-model="form.mobile_code" style="width:85px;flex-shrink:0;flex-grow:0;border:1px solid #d1d5db;border-right:none;border-top-right-radius:0;border-bottom-right-radius:0;border-top-left-radius:6px;border-bottom-left-radius:6px;text-align:center;background:#f9fafb;padding:0 5px;font-size:13px;height:38px;outline:none"
                   @change="delete formErrors.mobile_no; if(form.mobile_no) validateField('mobile_no')">
                   <option value="+91">🇮🇳 +91</option>
                   <option value="+1">🇺🇸 +1</option>
@@ -647,9 +719,8 @@
                   <option value="+86">🇨🇳 +86</option>
                   <option value="+81">🇯🇵 +81</option>
                 </select>
-                <input v-model="form.mobile_no" class="inv-fi"
-                  style="border-top-left-radius:0;border-bottom-left-radius:0;flex:1"
-                  :style="formErrors.mobile_no?'border-color:#dc2626;background:#fff5f5':form.mobile_no&&!formErrors.mobile_no?'border-color:#2f9e44':''"
+                <input v-model="form.mobile_no"
+                  :style="`border:1px solid #d1d5db;border-top-left-radius:0;border-bottom-left-radius:0;border-top-right-radius:6px;border-bottom-right-radius:6px;flex:1 1 0%;width:0;min-width:0;padding:0 10px;font-size:13px;height:38px;outline:none;background:#fff;${formErrors.mobile_no?'border-color:#dc2626;background:#fff5f5':form.mobile_no&&!formErrors.mobile_no?'border-color:#2f9e44':''}`"
                   placeholder="Mobile number"
                   @input="form.mobile_no=form.mobile_no.replace(/\D/g,''); delete formErrors.mobile_no"
                   @blur="validateField('mobile_no')"/>
@@ -1134,6 +1205,16 @@ const balancesByVendor   = ref({});       // {vendor_name: outstanding} — for 
 const detailLoading      = ref(false);
 const stmtRange          = reactive({ from: "", to: "" });
 
+// ── Load-more pagination ───────────────────────────────────────────────────
+const TXN_PAGE_SIZE  = 10;
+const STMT_PAGE_SIZE = 10;
+const txnPage        = ref(1);
+const stmtPage       = ref(1);
+const vendorTxnsVisible  = computed(() => vendorTxns.value.slice(0, txnPage.value  * TXN_PAGE_SIZE));
+const vendorTxnsHasMore  = computed(() => vendorTxns.value.length > txnPage.value  * TXN_PAGE_SIZE);
+const stmtRowsVisible    = computed(() => (vendorStatement.value.rows || []).slice(0, stmtPage.value * STMT_PAGE_SIZE));
+const stmtRowsHasMore    = computed(() => (vendorStatement.value.rows || []).length > stmtPage.value * STMT_PAGE_SIZE);
+
 // Bulk selection (for the flat table)
 const selectedRows = ref(new Set());
 const bulkBusy = ref(false);
@@ -1151,6 +1232,8 @@ async function selectVendor(v) {
   vendorSummary.value = {};
   vendorTxns.value = [];
   vendorStatement.value = { rows: [], totals: {} };
+  txnPage.value = 1;
+  stmtPage.value = 1;
   try {
     const [sum, txns, fullDoc] = await Promise.all([
       apiGET("zoho_books_clone.api.docs.get_vendor_summary", { vendor: v.name }).catch(() => ({})),
@@ -1168,6 +1251,7 @@ function closeVendor() { selectedVendor.value = null; }
 async function loadStatement() {
   if (!selectedVendor.value) return;
   detailLoading.value = true;
+  stmtPage.value = 1;
   try {
     vendorStatement.value = await apiGET("zoho_books_clone.api.docs.get_vendor_statement", {
       vendor: selectedVendor.value.name,
@@ -1415,9 +1499,43 @@ onMounted(async () => {
 .vt-footer { padding: 9px 16px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; background: #fafafa; }
 .vt-footer strong { color: #6b7280; font-weight: 600; }
 
-/* ── Mobile card view (Option A) ── */
+/* ── Mobile card view ── */
 .ven-mobile-cards { display: none; }
 .ven-desktop-table { display: table; }
+
+/* ── Transactions / Statement: mobile cards hidden by default ── */
+.ven-txn-mobile-cards  { display: none; }
+.ven-stmt-mobile-cards { display: none; }
+
+/* ── Load-more bar ── */
+.ven-load-more-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #FAFAFA;
+}
+.ven-load-more-end {
+  justify-content: center;
+  color: #9CA3AF;
+  font-size: 12px;
+}
+.ven-load-more-count {
+  font-size: 12px;
+  color: #6B7280;
+}
+.ven-load-more-btn {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #2563EB;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 7px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: background .13s;
+}
+.ven-load-more-btn:hover { background: #DBEAFE; }
 
 @media (max-width: 768px) {
   .ven-desktop-table { display: none !important; }
@@ -1453,8 +1571,96 @@ onMounted(async () => {
   }
   .ven-recv-table td { font-size: 12px !important; padding: 8px !important; }
 
-  /* ── Transactions tab: horizontal scroll ── */
-  .ven-txn-wrap { overflow-x: auto !important; }
+  /* ── Transactions tab: switch to card view ── */
+  .ven-txn-wrap { overflow: visible !important; border: none !important; background: transparent !important; }
+  .ven-txn-desktop { display: none !important; }
+  .ven-txn-mobile-cards { display: flex; flex-direction: column; gap: 8px; }
+  .ven-txn-mc { background: #fff; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px 14px; }
+  .ven-txn-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .ven-txn-mc-badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .ven-txn-mc-amount { font-size: 14px; font-weight: 700; }
+  .ven-txn-mc-mid { display: flex; align-items: center; justify-content: space-between; }
+  .ven-txn-mc-ref { font-size: 13px; font-weight: 600; color: #2563EB; }
+  .ven-txn-mc-date { font-size: 12px; color: #6B7280; }
+  .ven-txn-mc-outstanding { margin-top: 8px; padding-top: 8px; border-top: 1px solid #F3F4F6; font-size: 12px; color: #E67700; }
+
+  /* ── Statement tab: card view ── */
+  .ven-stmt-desktop { display: none !important; }
+  .ven-stmt-mobile-cards { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+  .ven-stmt-mc { background: #fff; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px 14px; }
+  .ven-stmt-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .ven-stmt-mc-ref { font-size: 13.5px; font-weight: 600; color: #2563EB; }
+  .ven-stmt-mc-type { font-size: 11px; font-weight: 600; color: #6B7280; background: #F3F4F6; padding: 2px 8px; border-radius: 10px; }
+  .ven-stmt-mc-date { font-size: 12px; color: #6B7280; margin-bottom: 8px; }
+  .ven-stmt-mc-amounts { display: flex; gap: 12px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid #F3F4F6; }
+  .ven-stmt-mc-debit  { display: flex; flex-direction: column; font-size: 13px; font-weight: 700; color: #059669; }
+  .ven-stmt-mc-credit { display: flex; flex-direction: column; font-size: 13px; font-weight: 700; color: #E67700; }
+  .ven-stmt-mc-balance { display: flex; flex-direction: column; font-size: 13px; font-weight: 700; color: #111827; margin-left: auto; text-align: right; }
+  .ven-stmt-mc-lbl { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #9CA3AF; margin-bottom: 2px; }
+
+  /* ── Statement KPIs: 1-col on mobile (inline-style override) ── */
+  .ven-stmt-kpis { grid-template-columns: 1fr !important; gap: 8px !important; }
+
+  /* ── New/Edit Vendor form: stack multi-col grids to 1 col ── */
+  .ven-form-grid2 { grid-template-columns: 1fr !important; }
+  .ven-form-grid3 { grid-template-columns: 1fr !important; }
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns:1fr 1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  :deep(.inv-add-drawer),
+  :deep(.ven-add-drawer) {
+    width: 100vw !important;
+    right: -100vw !important;
+    max-width: 100vw !important;
+  }
+  :deep(.inv-add-drawer.open),
+  :deep(.ven-add-drawer.open) { right: 0 !important; }
+
+  /* ── Tab bar: scrollable, no wrapping ── */
+  :deep(.inv-view-tabs) {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0;
+  }
+  :deep(.inv-view-tabs)::-webkit-scrollbar { display: none; }
+  :deep(.inv-vtab) {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 12.5px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* ── Bank Details grid: force single column ── */
+  .ven-bank-grid { grid-template-columns: 1fr !important; }
+  .ven-bank-full { grid-column: span 1 !important; }
+
+  /* ── Drawer footer: sticky row layout ── */
+  :deep(.inv-dfooter) {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+    position: sticky;
+    bottom: 0;
+    background: #fafbfd;
+    border-top: 1px solid #e8ecf0;
+    z-index: 10;
+  }
+  :deep(.inv-dfooter) .form-btn {
+    flex: 1 !important;
+    min-width: 0 !important;
+    font-size: 13px !important;
+    padding: 10px 8px !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+  :deep(.inv-dfooter) .form-btn-primary { flex: 2 !important; }
 }
 
 @media (max-width: 480px) {

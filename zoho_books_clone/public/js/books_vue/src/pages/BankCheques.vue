@@ -410,6 +410,7 @@ onMounted(load);
   .chq-meta-grid { grid-template-columns: 1fr !important; }
   .chq-dh-amt-val { font-size: 20px; }
   .chq-life-input { flex-wrap: wrap; }
+  .chq-filter-pills{display: contents;}
   .chq-life-input input { min-width: 0; flex: 1 1 100%; }
 }
 </style>

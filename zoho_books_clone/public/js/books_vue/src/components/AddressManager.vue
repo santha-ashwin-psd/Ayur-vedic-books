@@ -306,4 +306,11 @@ onMounted(() => { if (!isPending.value) loadAddresses(); });
 .am-btn-save { background: #3B5BDB; border: none; border-radius: 7px; padding: 7px 18px; font-size: 13px; font-weight: 600; color: #fff; cursor: pointer; font-family: inherit; transition: background .12s; }
 .am-btn-save:hover:not(:disabled) { background: #2f4ab8; }
 .am-btn-save:disabled { opacity: .55; cursor: default; }
+
+@media (max-width: 768px) {
+  .am-form-grid { grid-template-columns: 1fr !important; }
+  .am-span2 { grid-column: span 1 !important; }
+  .am-form-footer { flex-direction: row; }
+  .am-btn-cancel, .am-btn-save { flex: 1; text-align: center; }
+}
 </style>

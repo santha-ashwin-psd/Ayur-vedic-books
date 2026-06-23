@@ -775,6 +775,7 @@ const form = reactive({ customer: "", posting_date: todayStr(), return_against: 
 const invoiceSummary = reactive({ data: null, loading: false });
 const cnTaxes = ref([]);
 const taxTemplates = ref([]);
+const taxAccountHead = ref("");
 
 const applyModal = reactive({ open: false, saving: false, cnName: "", balance: 0, invoice: "", originInv: "", amount: 0, openInvoices: [], summary: null, summaryLoading: false });
 const refundModal = reactive({ open: false, saving: false, cnName: "", balance: 0, amount: 0, mode: "Bank Transfer", reference: "" });
@@ -872,13 +873,27 @@ function toggle(n) { const s = new Set(selected.value); s.has(n) ? s.delete(n) :
 function toggleAll(e) { selected.value = e.target.checked ? new Set(sorted.value.map(c => c.name)) : new Set(); }
 
 const subtotal = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
-const cnTaxLines = computed(() =>
-  cnTaxes.value.map(t => ({
-    description: t.description || t.tax_type || "Tax",
-    rate: Number(t.rate || 0),
-    amount: Math.round(subtotal.value * Number(t.rate || 0) / 100 * 100) / 100,
-  }))
-);
+const cnTaxLines = computed(() => {
+  // If invoice is selected, inherit its taxes applied against the subtotal
+  if (cnTaxes.value.length) {
+    return cnTaxes.value.map(t => ({
+      description: t.description || t.tax_type || "Tax",
+      rate: Number(t.rate || 0),
+      amount: Math.round(subtotal.value * Number(t.rate || 0) / 100 * 100) / 100,
+    }));
+  }
+  // Otherwise aggregate from per-line tax_code selections (mirrors Invoices.vue)
+  const map = {};
+  for (const l of lines.value) {
+    if (!l.tax_code || !l.amount) continue;
+    const tmpl = taxTemplates.value.find(t => t.name === l.tax_code);
+    const rate = tmpl?.rate ?? 0;
+    if (!rate) continue;
+    if (!map[l.tax_code]) map[l.tax_code] = { description: l.tax_code, rate, amount: 0 };
+    map[l.tax_code].amount += Math.round(flt(l.amount) * rate / 100 * 100) / 100;
+  }
+  return Object.values(map);
+});
 const cnGrandTotal = computed(() => subtotal.value + cnTaxLines.value.reduce((s, t) => s + t.amount, 0));
 
 const appliedTotal = computed(() => viewApplications.value.reduce((s, a) => s + flt(a.amount), 0));
@@ -943,7 +958,7 @@ async function openEdit(c) {
         qty: Math.abs(i.qty || 0), rate: Math.abs(i.rate || 0),
         uom: i.uom || "Nos", discount_percentage: Math.abs(i.discount_percentage || 0),
         discount_amount: Math.abs(i.discount_amount || 0),
-        amount: Math.abs(i.amount || 0), tax_code: i.item_tax_template || "", collapsed: true,
+        amount: Math.abs(i.amount || 0), tax_code: i.tax_code || i.item_tax_template || "", collapsed: true,
       }));
     }
     // Restore taxes from the saved CN
@@ -1032,7 +1047,7 @@ async function onInvoiceSelect(opt) {
         uom: i.uom || "Nos", discount_percentage: Math.abs(i.discount_percentage || 0),
         discount_amount: Math.abs(i.discount_amount || 0),
         amount: Math.round(Math.abs(i.qty || 1) * Math.abs(i.rate || 0) * 100) / 100,
-        tax_code: i.item_tax_template || "", collapsed: true,
+        tax_code: i.tax_code || i.item_tax_template || "", collapsed: true,
       }));
       toast.success(`Loaded ${doc.items.length} item(s) from ${invName}`);
     }
@@ -1057,6 +1072,7 @@ async function onItemChange(line) {
       if (doc?.hsn_code) line.hsn_code = doc.hsn_code;
       if (!flt(line.rate) && doc?.standard_rate) line.rate = flt(doc.standard_rate);
       if (doc?.stock_uom) line.uom = doc.stock_uom;
+      if (doc?.tax_code) line.tax_code = doc.tax_code;
       calcLine(line);
     } catch {}
   }
@@ -1074,10 +1090,23 @@ function calcLine(l) {
 async function fetchTaxTemplates() {
   try {
     const co = await resolveCompany();
-    const r = await apiList("Tax Template", {
-      fields: ["name", "title"], filters: [["company","=",co],["disabled","=",0]], limit: 50
+    const r = await apiList("Account", { fields: ["name"], filters: [["company","=",co],["account_type","=","Tax"],["is_group","=",0]], limit: 1 });
+    taxAccountHead.value = r[0]?.name || "";
+  } catch {}
+  try {
+    const co = await resolveCompany();
+    const templates = await apiList("Tax Template", {
+      fields: ["name"], filters: [["disabled","=",0]], limit: 50
     });
-    taxTemplates.value = r;
+    const withRates = await Promise.all((templates || []).map(async t => {
+      try {
+        const doc = await apiGet("Tax Template", t.name);
+        const rate = doc?.taxes?.[0]?.tax_rate ?? doc?.taxes?.[0]?.rate ?? 0;
+        const account = doc?.taxes?.[0]?.account_head || taxAccountHead.value;
+        return { name: t.name, rate: Number(rate), account };
+      } catch { return { name: t.name, rate: 0, account: taxAccountHead.value }; }
+    }));
+    taxTemplates.value = withRates;
   } catch { taxTemplates.value = []; }
 }
 async function fetchCostCenters() {
@@ -1145,10 +1174,16 @@ async function saveCN(submit) {
         description: l.description, hsn_code: l.hsn_code || "",
         qty: flt(l.qty), rate: flt(l.rate), uom: l.uom || "Nos",
         discount_percentage: flt(l.discount_percentage), discount_amount: flt(l.discount_amount),
-        amount: flt(l.amount),
+        amount: flt(l.amount), tax_code: l.tax_code || "",
       }));
 
-    const taxesJson = JSON.stringify(cnTaxes.value);
+    const taxPayload = cnTaxes.value.length
+      ? cnTaxes.value
+      : cnTaxLines.value.map(tl => {
+          const tmpl = taxTemplates.value.find(t => t.name === tl.description);
+          return { tax_type: tmpl?.account || taxAccountHead.value, description: tl.description, rate: tl.rate };
+        });
+    const taxesJson = JSON.stringify(taxPayload);
     if (!editingName.value && submit === 1) {
       // New + submit → backend API which wires GL accounts and CN- naming
       const r = await apiPOST("zoho_books_clone.api.docs.create_credit_note", {

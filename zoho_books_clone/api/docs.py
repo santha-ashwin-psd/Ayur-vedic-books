@@ -1675,6 +1675,7 @@ def create_credit_note():
             "qty":            -abs(flt(it.get("qty", 1))),
             "rate":           flt(it.get("rate", 0)),
             "income_account": income_account,
+            "tax_code":       it.get("tax_code") or "",
         }
         for it in items_raw if (it.get("item_code") or it.get("item_name"))
     ]
@@ -1805,6 +1806,7 @@ def save_credit_note_draft():
             "qty":            -abs(flt(it.get("qty", 1))),
             "rate":           flt(it.get("rate", 0)),
             "income_account": income_account,
+            "tax_code":       it.get("tax_code") or "",
         }
         for it in items_raw if (it.get("item_code") or it.get("item_name"))
     ]

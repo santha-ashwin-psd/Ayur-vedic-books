@@ -648,7 +648,9 @@
               <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
               <template v-else-if="fulfill.lines.length">
                 <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Status: <strong>{{ fulfill.computed_status }}</strong></div>
-                <div class="po-fulfill-tbl">
+
+                <!-- Desktop table -->
+                <div class="po-fulfill-tbl po-fulfill-desktop">
                   <div class="po-fulfill-head">
                     <span>Item</span><span class="ta-r">Ordered</span><span class="ta-r">Received</span>
                     <span class="ta-r">Billed</span><span class="ta-r">Remaining</span>
@@ -661,6 +663,32 @@
                     <span class="ta-r mono-sm text-danger">{{ l.remaining_to_receive }} / {{ l.remaining_to_bill }}</span>
                   </div>
                 </div>
+
+                <!-- Mobile cards -->
+                <div class="po-fulfill-mobile">
+                  <div v-for="l in fulfill.lines" :key="l.name" class="po-fulfill-card">
+                    <div class="po-fulfill-card-name">{{ l.item_name || l.item_code }}</div>
+                    <div class="po-fulfill-card-grid">
+                      <div class="po-fulfill-card-cell">
+                        <span class="po-fulfill-card-lbl">Ordered</span>
+                        <span class="po-fulfill-card-val">{{ l.qty }}</span>
+                      </div>
+                      <div class="po-fulfill-card-cell">
+                        <span class="po-fulfill-card-lbl">Received</span>
+                        <span class="po-fulfill-card-val" :class="l.received_qty>=l.qty?'text-success':'text-muted'">{{ l.received_qty }}</span>
+                      </div>
+                      <div class="po-fulfill-card-cell">
+                        <span class="po-fulfill-card-lbl">Billed</span>
+                        <span class="po-fulfill-card-val" :class="l.billed_qty>=l.qty?'text-success':'text-muted'">{{ l.billed_qty }}</span>
+                      </div>
+                      <div class="po-fulfill-card-cell">
+                        <span class="po-fulfill-card-lbl">Remaining</span>
+                        <span class="po-fulfill-card-val text-danger">{{ l.remaining_to_receive }} / {{ l.remaining_to_bill }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div v-if="hasUnreceived" style="display:flex;justify-content:flex-end;margin-top:12px">
                   <button class="inv-view-cta" @click="markAllReceived" :disabled="actionRunning">
                     <span v-html="icon('truck',14)"></span> Mark All Received
@@ -678,7 +706,9 @@
               <template v-else>
                 <template v-if="links.bills.length">
                   <div class="inv-sec-lbl">Vendor Bills</div>
-                  <div class="inv-items-wrap">
+
+                  <!-- Desktop table -->
+                  <div class="inv-items-wrap po-bills-desktop">
                     <table class="inv-items-table">
                       <thead>
                         <tr>
@@ -697,6 +727,23 @@
                         </tr>
                       </tbody>
                     </table>
+                  </div>
+
+                  <!-- Mobile cards -->
+                  <div class="po-bills-mobile">
+                    <div v-for="b in links.bills" :key="b.name" class="po-bill-card">
+                      <div class="po-bill-card-top">
+                        <span class="po-bill-card-name">{{ b.name }}</span>
+                        <span class="po-bill-card-total">{{ fmtCur(b.grand_total) }}</span>
+                      </div>
+                      <div class="po-bill-card-meta">
+                        <span class="text-muted">{{ fmtDate(b.posting_date) }}</span>
+                        <span>
+                          <span class="po-bill-card-lbl">Outstanding:</span>
+                          <span class="text-danger" style="font-weight:600;margin-left:4px">{{ fmtCur(b.outstanding_amount) }}</span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </template>
                 <div v-if="!links.bills.length" style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
@@ -1808,13 +1855,7 @@ watch(() => form.supplier, (val) => {
   .po-view-items-row  > *:nth-child(2),
   .po-view-items-row  > *:nth-child(3) { display: none; }
 
-  /* Fulfillment table: simplify to 3 cols */
-  .po-fulfill-head { grid-template-columns: 2fr 80px 90px; }
-  .po-fulfill-row  { grid-template-columns: 2fr 80px 90px; }
-  .po-fulfill-head > *:nth-child(4),
-  .po-fulfill-head > *:nth-child(5),
-  .po-fulfill-row  > *:nth-child(4),
-  .po-fulfill-row  > *:nth-child(5) { display: none; }
+  /* Fulfillment table: replaced by cards at ≤768px (see bottom of styles) */
 
   /* Totals block */
   .po-totals { flex-direction: column; gap: 12px; }
@@ -1897,18 +1938,7 @@ watch(() => form.supplier, (val) => {
   /* Timeline wrapper: no extra padding on mobile, component handles its own */
   .inv-tl-wrap { padding: 0; }
 
-  /* Fulfillment grid → 3 visible cols, hide billed & remaining */
-  .po-fulfill-tbl { overflow-x: auto !important; overflow-y: visible !important; -webkit-overflow-scrolling: touch; }
-  .po-fulfill-head,
-  .po-fulfill-row  { grid-template-columns: 1.8fr 52px 60px !important; font-size: 11px !important; }
-  .po-fulfill-head > *:nth-child(4), .po-fulfill-head > *:nth-child(5),
-  .po-fulfill-row  > *:nth-child(4), .po-fulfill-row  > *:nth-child(5) { display: none !important; }
-
-  /* Linked bills table: scroll */
-  .inv-items-wrap  { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .inv-items-table { min-width: 340px; font-size: 11.5px !important; }
-  .inv-items-table th,
-  .inv-items-table td { padding: 7px 10px !important; }
+  /* Fulfillment + linked bills: replaced by mobile cards at ≤768px */
 }
 
 /* ── Mobile card layout override (≤ 425px) ── */
@@ -1982,5 +2012,98 @@ watch(() => form.supplier, (val) => {
 
 @media (max-width: 480px) {
   .view-toggle-btn { display: none !important; }
+}
+
+/* ── Fulfillment mobile/desktop visibility ── */
+.po-fulfill-mobile { display: none; }
+.po-fulfill-desktop { display: flex; }
+
+/* ── Linked bills mobile/desktop visibility ── */
+.po-bills-mobile  { display: none; }
+.po-bills-desktop { display: block; }
+
+/* ── Fulfillment mobile cards ── */
+.po-fulfill-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.po-fulfill-card-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1a1d23;
+  margin-bottom: 10px;
+}
+.po-fulfill-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+.po-fulfill-card-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.po-fulfill-card-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #9ca3af;
+}
+.po-fulfill-card-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Linked bills mobile cards ── */
+.po-bill-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.po-bill-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.po-bill-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2563eb;
+}
+.po-bill-card-total {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+.po-bill-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6b7280;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.po-bill-card-lbl {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .po-fulfill-desktop { display: none !important; }
+  .po-fulfill-mobile  { display: block; }
+
+  .po-bills-desktop { display: none !important; }
+  .po-bills-mobile  { display: block; }
 }
 </style>

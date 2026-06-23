@@ -171,7 +171,7 @@
       <div class="se-dheader" :style="'background:'+typeGradient(form.stock_entry_type)">
         <button class="se-dclose se-dclose-abs" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
         <div class="se-dh-top">
-          <div class="se-dh-ico"><span v-html="icon('stack',20)"></span></div>
+          <div class="se-dh-ico"><span v-html="icon('stack',20)" style="color:#fff"></span></div>
           <div>
             <div class="se-dh-title" style="color:#fff">New Stock Entry</div>
             <div class="se-dh-sub" style="color:rgba(255,255,255,.75)">Record a stock movement</div>

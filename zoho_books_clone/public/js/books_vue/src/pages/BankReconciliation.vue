@@ -55,7 +55,7 @@
 
     <div v-if="ran" class="br-section-title">Bank Transactions (Statement)</div>
     <div v-if="ran" class="br-card">
-      <table class="br-table">
+      <table class="br-table br-table--desktop">
         <thead>
           <tr>
             <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /></th>
@@ -116,6 +116,60 @@
           </template>
         </tbody>
       </table>
+
+      <!-- Mobile cards -->
+      <div class="br-cards--mobile">
+        <div v-if="loading">
+          <div v-for="n in 4" :key="n" class="br-card-shimmer"></div>
+        </div>
+        <template v-else-if="displayRows.length">
+          <div v-for="t in displayRows" :key="t.name" class="br-card">
+            <div class="br-card-header">
+              <input type="checkbox" :checked="selected.has(t.name)" @change="toggleSelect(t.name)" class="br-card-chk" />
+              <span class="br-card-date mono-sm">{{ fmtDate(t.date) }}</span>
+              <span class="br-badge" :class="t.status==='Reconciled'?'badge-green':'badge-orange'">{{ t.status||'Unreconciled' }}</span>
+            </div>
+            <div class="br-card-desc">{{ t.description||'—' }}</div>
+            <div v-if="t.reference_number" class="br-card-ref mono-sm">Ref: {{ t.reference_number }}</div>
+            <div class="br-card-amounts">
+              <div v-if="flt(t.deposit)>0" class="br-card-amt-item">
+                <span class="br-card-amt-lbl">Deposit</span>
+                <span class="br-card-amt-val green">{{ fmtCur(t.deposit) }}</span>
+              </div>
+              <div v-if="flt(t.withdrawal)>0" class="br-card-amt-item">
+                <span class="br-card-amt-lbl">Withdrawal</span>
+                <span class="br-card-amt-val red">{{ fmtCur(t.withdrawal) }}</span>
+              </div>
+            </div>
+            <div v-if="t.status!=='Reconciled'" class="br-card-actions">
+              <button class="br-match-btn" @click.stop="suggestMatches(t)" :disabled="matchingFor===t.name">
+                {{ matchingFor===t.name ? '…' : '🔍 Suggest Match' }}
+              </button>
+            </div>
+            <div v-if="suggestions[t.name]" class="br-suggest-panel" style="margin-top:10px">
+              <div style="font-size:12px;font-weight:600;color:#1e40af;margin-bottom:8px">
+                🤖 {{ suggestions[t.name].matches.length }} candidate payment{{ suggestions[t.name].matches.length===1?'':'s' }} for ₹{{ fmtCur(suggestions[t.name].bt_amount) }} ({{ suggestions[t.name].bt_direction==='in'?'received':'paid out' }})
+              </div>
+              <div v-if="!suggestions[t.name].matches.length" style="font-size:12.5px;color:#6b7280;padding:8px">No Payment Entries matched on amount + date. You can mark this row Reconciled manually if you reviewed it.</div>
+              <div v-for="m in suggestions[t.name].matches" :key="m.name" class="br-suggest-card">
+                <div class="br-suggest-meta">
+                  <span class="br-num">{{ m.name }}</span>
+                  <span class="br-score" :style="`background:${m.score>=80?'#dcfce7':m.score>=50?'#fef3c7':'#fee2e2'};color:${m.score>=80?'#16a34a':m.score>=50?'#d97706':'#dc2626'}`">{{ m.score.toFixed(0) }}% confidence</span>
+                </div>
+                <div class="br-suggest-info"><span>{{ m.party_name || m.party }} · {{ fmtDate(m.payment_date) }} · {{ m.mode_of_payment||'—' }}</span></div>
+                <div class="br-suggest-amt">{{ fmtCur(m.paid_amount) }}</div>
+                <button class="br-match-confirm" @click="confirmMatch(t, m)" :disabled="matchingFor===m.name">
+                  {{ matchingFor===m.name ? '…' : '✓ Match' }}
+                </button>
+              </div>
+              <button class="br-suggest-close" @click="suggestions[t.name]=null">close</button>
+            </div>
+          </div>
+        </template>
+        <div v-else class="br-empty" style="padding:32px 16px;text-align:center">
+          {{ transactions.length ? 'No transactions match this filter' : 'No transactions in this period' }}
+        </div>
+      </div>
     </div>
 
     <div v-if="!ran" class="br-placeholder">
@@ -337,21 +391,31 @@ onMounted(async()=>{
 .br-suggest-close:hover{color:#1d4ed8;text-decoration:underline;}
 
 /* ── Responsive ── */
+/* Mobile card styles */
+.br-cards--mobile { display: none; flex-direction: column; gap: 10px; }
+.br-card-shimmer { height: 90px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ebee 50%,#f3f4f6 75%); background-size: 200% 100%; border-radius: 10px; animation: br-shimmer 1.2s infinite; margin-bottom: 8px; }
+.br-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; background: #fff; display: flex; flex-direction: column; gap: 6px; }
+.br-card-header { display: flex; align-items: center; gap: 8px; }
+.br-card-chk { flex-shrink: 0; }
+.br-card-date { flex: 1; font-size: 12px; color: #374151; font-weight: 600; }
+.br-card-desc { font-size: 13px; color: #111827; font-weight: 500; }
+.br-card-ref { font-size: 11.5px; color: #9ca3af; }
+.br-card-amounts { display: flex; gap: 16px; margin-top: 2px; }
+.br-card-amt-item { display: flex; flex-direction: column; gap: 2px; }
+.br-card-amt-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9ca3af; }
+.br-card-amt-val { font-size: 13.5px; font-weight: 700; }
+.br-card-actions { margin-top: 4px; }
+.br-card-actions .br-match-btn { width: 100%; justify-content: center; }
+
 @media (max-width: 768px) {
-  .br-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .br-table { min-width: 520px; }
-  /* hide Reference column */
-  .br-table th:nth-child(4), .br-table td:nth-child(4) { display: none; }
+  .br-table--desktop { display: none !important; }
+  .br-cards--mobile { display: flex; }
   .br-toolbar-right { flex-wrap: wrap; gap: 8px; }
   .br-search-wrap { min-width: 0; flex: 1 1 auto; }
 }
 
 @media (max-width: 480px) {
   .br-page { padding: 12px; gap: 12px; }
-  /* also hide Match column — table still scrollable so Suggest button reachable */
-  .br-table th:nth-child(8), .br-table td:nth-child(8) { display: none; }
-  .br-table { min-width: 360px; }
-  /* suggest card: 2-col instead of 4 */
   .br-suggest-card { grid-template-columns: 1fr auto; }
   .br-suggest-info { grid-column: 1 / -1; }
 }

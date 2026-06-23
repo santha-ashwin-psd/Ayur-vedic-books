@@ -2,16 +2,18 @@
   <div class="rec-page">
     <!-- ============================================================ TOOLBAR -->
     <div class="rec-actions">
-      <div class="rec-search-wrap">
-        <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-        <input v-model="search" placeholder="Search recurring bills…" class="rec-search-input" />
+      <div class="rec-list-actions">
+        <div class="rec-search-wrap">
+          <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+          <input v-model="search" placeholder="Search recurring bills…" class="rec-search-input" />
+        </div>
+        <div class="rec-pills">
+          <button v-for="t in tabs" :key="t.key" class="rec-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">
+            {{ t.label }}
+          </button>
+        </div>
       </div>
-      <div class="rec-pills">
-        <button v-for="t in tabs" :key="t.key" class="rec-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">
-          {{ t.label }}
-        </button>
-      </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div style="display:flex;gap:8px;">
         <button class="rec-btn-ghost" @click="load" :disabled="loading">
           <span v-html="icon('refresh',14)"></span>
         </button>
@@ -870,7 +872,7 @@ textarea.rec-input{resize:vertical;min-height:72px;}
 .rb-info-name{font-weight:700;color:#1d4ed8;font-size:14px;}
 /* ── Vendor readonly field ── */
 .rb-readonly-field{display:flex;align-items:center;gap:8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:7px;padding:8px 12px;font-size:13px;color:#374151;font-weight:500;}
-
+.rec-list-actions{display:contents;}
 /* ═══════════════════════════════════════════════════
    RESPONSIVE MEDIA QUERIES
    ═══════════════════════════════════════════════════ */
@@ -928,6 +930,10 @@ textarea.rec-input{resize:vertical;min-height:72px;}
 
 /* ── Timeline: dots-only at ≤ 540px ── */
 @media (max-width: 540px) {
+  
+  .rec-list-actions{display:block; width :stretch;}
+  .rec-pills{justify-content: space-evenly;}
+  .rec-search-wrap{ margin-bottom:5px;}
   .rec-timeline { padding: 10px 12px; gap: 0; }
   .rec-tl-lbl   { display: none !important; }
   .rec-tl-step  { min-width: 0; }

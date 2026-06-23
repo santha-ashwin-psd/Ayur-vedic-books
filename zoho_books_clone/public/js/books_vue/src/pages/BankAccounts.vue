@@ -6,7 +6,7 @@
         <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
         <input v-model="search" placeholder="Search bank accounts…" class="ba-search-input" />
       </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div class="ba-primary-btn">
         <button class="ba-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
         <button class="ba-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Account</button>
       </div>
@@ -614,7 +614,7 @@ onMounted(load);
 .ba-quick{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 8px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;font:inherit;font-size:12px;font-weight:600;color:#334155;cursor:pointer;transition:border-color .15s,background .15s,color .15s;}
 .ba-quick:hover{border-color:#2563eb;background:#eff6ff;color:#1d4ed8;}
 .ba-quick span{color:#2563eb;}
-
+.ba-primary-btn{display:flex;gap:8px;margin-left:auto;}
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .ba-drawer      { width: 100% !important; right: -100% !important; max-width: 100%; }
@@ -633,5 +633,6 @@ onMounted(load);
   .ba-vb-val { font-size: 20px; }
   .ba-vb-recon { text-align: left; }
   .ba-filter-meta { flex-wrap: wrap; gap: 8px; }
+  .ba-primary-btn{display:flex;gap:8px;margin:0}
 }
 </style>

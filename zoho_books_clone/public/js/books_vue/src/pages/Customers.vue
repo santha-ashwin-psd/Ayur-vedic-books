@@ -309,7 +309,7 @@
             <button class="nim-btn" style="background:#fff;color:#374151;border:1px solid #E5E7EB;font-size:13px" @click="openEdit(selectedCustomer.name)">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
-            <button class="nim-btn" style="background:none;color:#9CA3AF;border:1px solid #E5E7EB;width:32px;height:32px;padding:0;display:grid;place-items:center" @click="closeCustomer" title="Close">
+            <button class="nim-btn" style="background:#fff;color:#374151;border:1px solid #E5E7EB;width:32px;height:32px;padding:0;display:grid;place-items:center" @click="closeCustomer" title="Close">
               <span v-html="icon('x',14)"></span>
             </button>
           </div>
@@ -330,7 +330,7 @@
             Transactions
             <span v-if="custTxns.length" style="background:#16a34a;color:#fff;padding:1px 7px;border-radius:999px;font-size:11px;margin-left:4px">{{custTxns.length}}</span>
           </button>
-          <button @click="activeCustomerTab='statement'; loadStatement()"
+          <button @click="activeCustomerTab='statement'"
             :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
               color:activeCustomerTab==='statement'?'#16a34a':'#6B7280',
               borderBottom:activeCustomerTab==='statement'?'2px solid #16a34a':'2px solid transparent',marginBottom:'-2px'}">
@@ -402,19 +402,19 @@
               <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6">
                 <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">RECEIVABLES</span>
               </div>
-              <table class="cus-recv-table" style="width:100%;border-collapse:collapse">
+              <table class="cus-recv-table" style="width:100%;border-collapse:collapse;table-layout:fixed">
                 <thead>
                   <tr style="border-bottom:1px solid #F3F4F6">
-                    <th style="text-align:left;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px">CURRENCY</th>
-                    <th style="text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 12px">OUTSTANDING RECEIVABLES</th>
-                    <th style="text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px">UNUSED CREDITS</th>
+                    <th style="width:28%;text-align:left;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px;white-space:normal;word-break:break-word;line-height:1.3">CURRENCY</th>
+                    <th style="width:36%;text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 12px;white-space:normal;word-break:break-word;line-height:1.3">OUTSTANDING RECEIVABLES</th>
+                    <th style="width:36%;text-align:right;font-size:10.5px;font-weight:600;color:#9CA3AF;padding:8px 16px;white-space:normal;word-break:break-word;line-height:1.3">UNUSED CREDITS</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px">{{ selectedCustomer.default_currency || "INR" }}</td>
-                    <td style="font-size:13px;font-weight:600;text-align:right;padding:10px 12px;" :style="{color: selectedCustomer.outstanding>0?'#dc2626':'#111827'}">{{fmt(selectedCustomer.outstanding||0)}}</td>
-                    <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;">{{ fmt(selectedCustomer.unused_credits||0) }}</td>
+                    <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px;overflow:hidden;text-overflow:ellipsis">{{ selectedCustomer.default_currency || "INR" }}</td>
+                    <td style="font-size:13px;font-weight:600;text-align:right;padding:10px 12px;overflow:hidden;text-overflow:ellipsis" :style="{color: selectedCustomer.outstanding>0?'#dc2626':'#111827'}">{{fmt(selectedCustomer.outstanding||0)}}</td>
+                    <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;overflow:hidden;text-overflow:ellipsis">{{ fmt(selectedCustomer.unused_credits||0) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -458,37 +458,75 @@
 
         <!-- Transactions tab -->
         <div v-else-if="activeCustomerTab==='transactions'">
-          <div v-if="custTxnsLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading transactions…</div>
+          <!-- Skeleton loader -->
+          <div v-if="custTxnsLoading" class="cus-txn-skeleton">
+            <div v-for="n in 5" :key="n" class="cus-txn-sk-row">
+              <div class="cus-sk-pill"></div>
+              <div class="cus-sk-line cus-sk-line-md"></div>
+              <div class="cus-sk-line cus-sk-line-sm"></div>
+              <div class="cus-sk-line cus-sk-line-sm" style="margin-left:auto"></div>
+            </div>
+          </div>
           <div v-else-if="!custTxns.length" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5" style="margin:0 auto 12px;display:block"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             <div style="font-size:14px;font-weight:600;color:#374151;margin-bottom:6px">No transactions yet</div>
             <div style="font-size:12.5px;color:#9CA3AF">Invoices and payments for {{selectedCustomer.customer_name}} will appear here.</div>
           </div>
           <div v-else class="cus-txn-wrap" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:scroll">
-            <div style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB;min-width:560px">
-              <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span>
+            <div class="cus-txn-desktop">
+              <div style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB;min-width:560px">
+                <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span>
+              </div>
+              <div v-for="t in custTxnsVisible" :key="t.type+'-'+t.name"
+                style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:560px">
+                <span :style="{
+                  fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
+                  background: t.type==='Invoice' ? '#DBEAFE' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
+                  color: t.type==='Invoice' ? '#1E40AF' : t.type==='Payment' ? '#059669' : '#991B1B'
+                }">{{t.type}}</span>
+                <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
+                <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
+                <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmt(Math.abs(t.amount))}}</span>
+                <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#dc2626' : '#9CA3AF'}">{{t.outstanding>0?fmt(t.outstanding):''}}</span>
+              </div>
             </div>
-            <div v-for="t in custTxns" :key="t.type+'-'+t.name"
-              style="display:grid;grid-template-columns:100px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:560px">
-              <span :style="{
-                fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
-                background: t.type==='Invoice' ? '#DBEAFE' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
-                color: t.type==='Invoice' ? '#1E40AF' : t.type==='Payment' ? '#059669' : '#991B1B'
-              }">{{t.type}}</span>
-              <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
-              <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
-              <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmt(Math.abs(t.amount))}}</span>
-              <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#dc2626' : '#9CA3AF'}">{{t.outstanding>0?fmt(t.outstanding):''}}</span>
-             
+
+            <!-- Mobile card view -->
+            <div class="cus-txn-mobile-cards">
+              <div v-for="t in custTxnsVisible" :key="'mc-'+t.type+'-'+t.name" class="cus-txn-mc">
+                <div class="cus-txn-mc-top">
+                  <span class="cus-txn-mc-badge" :style="{
+                    background: t.type==='Invoice' ? '#DBEAFE' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
+                    color: t.type==='Invoice' ? '#1E40AF' : t.type==='Payment' ? '#059669' : '#991B1B'
+                  }">{{t.type}}</span>
+                  <span class="cus-txn-mc-amount" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmt(Math.abs(t.amount))}}</span>
+                </div>
+                <div class="cus-txn-mc-mid">
+                  <span class="cus-txn-mc-ref">{{t.name}}</span>
+                  <span class="cus-txn-mc-date">{{fmtDate(t.date)}}</span>
+                </div>
+                <div v-if="t.outstanding>0" class="cus-txn-mc-outstanding">
+                  Outstanding: <strong>{{fmt(t.outstanding)}}</strong>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <!-- Load More — transactions -->
+          <div v-if="custTxnsHasMore" class="cus-load-more-wrap">
+            <span class="cus-load-more-count">Showing {{custTxnsVisible.length}} of {{custTxns.length}}</span>
+            <button class="cus-load-more-btn" @click="txnPage++">Load more</button>
+          </div>
+          <div v-else-if="custTxns.length" class="cus-load-more-wrap cus-load-more-end">
+            All {{custTxns.length}} transactions shown
           </div>
         </div>
 
         <!-- Statement tab -->
         <div v-else-if="activeCustomerTab==='statement'">
           <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-            <button class="nim-btn" style="border:1px solid #E5E7EB" @click="loadStatement" :disabled="stmtLoading">
-              <span v-if="stmtLoading">Loading…</span><span v-else>Refresh</span>
+            <button class="nim-btn" style="border:1px solid #E5E7EB" @click="stmtLoaded=false; loadStatement()" :disabled="stmtLoading">
+              <span v-if="stmtLoading">Loading…</span><span v-else>↺ Refresh</span>
             </button>
             <div style="margin-left:auto;display:flex;gap:8px">
               <button v-if="stmt && stmt.email" class="nim-btn" style="border:1px solid #E5E7EB" @click="sendStatement" :disabled="sendingStmt">
@@ -496,7 +534,22 @@
               </button>
             </div>
           </div>
-          <div v-if="stmtLoading" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:24px;text-align:center;color:#9CA3AF">Loading statement…</div>
+          <!-- Skeleton loader -->
+          <div v-if="stmtLoading" class="cus-stmt-skeleton">
+            <div class="cus-stmt-sk-kpis">
+              <div v-for="n in 3" :key="n" class="cus-stmt-sk-kpi">
+                <div class="cus-sk-line cus-sk-line-sm" style="margin-bottom:8px"></div>
+                <div class="cus-sk-line cus-sk-line-lg"></div>
+              </div>
+            </div>
+            <div class="cus-txn-skeleton" style="margin-top:0">
+              <div v-for="n in 4" :key="n" class="cus-txn-sk-row">
+                <div class="cus-sk-line cus-sk-line-md"></div>
+                <div class="cus-sk-line cus-sk-line-sm"></div>
+                <div class="cus-sk-line cus-sk-line-sm" style="margin-left:auto"></div>
+              </div>
+            </div>
+          </div>
           <div v-else-if="!stmt" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:40px;text-align:center;color:#9CA3AF">
             <div style="font-size:32px;margin-bottom:8px">📄</div>
             <div style="font-size:13.5px;font-weight:600;color:#374151;margin-bottom:4px">No statement loaded</div>
@@ -524,15 +577,43 @@
               <div v-if="!stmt.invoices.length" style="padding:24px;text-align:center;color:#9CA3AF;font-size:13px">No outstanding invoices</div>
               <template v-else>
                 <div style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px;padding:12px 14px;background:#F9FAFB;border-bottom:1px solid #E5E7EB">OUTSTANDING INVOICES</div>
-                <div v-for="inv in stmt.invoices" :key="inv.name"
-                  style="display:grid;grid-template-columns:160px 100px 100px auto 80px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:480px">
-                  <span style="color:#2563EB;font-weight:600">{{inv.name}}</span>
-                  <span style="color:#6B7280">{{inv.posting_date}}</span>
-                  <span style="color:#6B7280">{{inv.due_date}}</span>
-                  <span style="text-align:right;font-weight:600">₹{{fmtStmt(inv.outstanding_amount)}}</span>
-                  <span :style="'padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;text-align:center;'+(inv.is_overdue?'background:#FFF5F5;color:#C92A2A':'background:#EBFBEE;color:#2F9E44')">
-                    {{inv.is_overdue ? 'Overdue' : 'Due'}}
-                  </span>
+                <div class="cus-stmt-desktop">
+                  <div v-for="inv in stmtInvsVisible" :key="inv.name"
+                    style="display:grid;grid-template-columns:160px 100px 100px auto 80px;gap:8px;padding:8px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:480px">
+                    <span style="color:#2563EB;font-weight:600">{{inv.name}}</span>
+                    <span style="color:#6B7280">{{inv.posting_date}}</span>
+                    <span style="color:#6B7280">{{inv.due_date}}</span>
+                    <span style="text-align:right;font-weight:600">₹{{fmtStmt(inv.outstanding_amount)}}</span>
+                    <span :style="'padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;text-align:center;'+(inv.is_overdue?'background:#FFF5F5;color:#C92A2A':'background:#EBFBEE;color:#2F9E44')">
+                      {{inv.is_overdue ? 'Overdue' : 'Due'}}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Mobile card view -->
+                <div class="cus-stmt-mobile-cards">
+                  <div v-for="inv in stmtInvsVisible" :key="'mc-'+inv.name" class="cus-stmt-mc">
+                    <div class="cus-stmt-mc-top">
+                      <span class="cus-stmt-mc-name">{{inv.name}}</span>
+                      <span class="cus-stmt-mc-badge" :style="inv.is_overdue?'background:#FFF5F5;color:#C92A2A':'background:#EBFBEE;color:#2F9E44'">
+                        {{inv.is_overdue ? 'Overdue' : 'Due'}}
+                      </span>
+                    </div>
+                    <div class="cus-stmt-mc-mid">
+                      <span>Posted {{inv.posting_date}}</span>
+                      <span>Due {{inv.due_date}}</span>
+                    </div>
+                    <div class="cus-stmt-mc-amount">₹{{fmtStmt(inv.outstanding_amount)}}</div>
+                  </div>
+                </div>
+
+                <!-- Load More — statement invoices -->
+                <div v-if="stmtInvsHasMore" class="cus-load-more-wrap" style="border-top:1px solid #F3F4F6">
+                  <span class="cus-load-more-count">Showing {{stmtInvsVisible.length}} of {{stmt.invoices.length}}</span>
+                  <button class="cus-load-more-btn" @click="stmtPage++">Load more</button>
+                </div>
+                <div v-else-if="stmt.invoices.length > STMT_PAGE_SIZE" class="cus-load-more-wrap cus-load-more-end" style="border-top:1px solid #F3F4F6">
+                  All {{stmt.invoices.length}} invoices shown
                 </div>
               </template>
             </div>
@@ -734,8 +815,8 @@
               </div>
               <div>
                 <label class="inv-lbl">Mobile</label>
-                <div style="display:flex;gap:0">
-                  <select v-model="form.mobile_code" class="inv-fi" style="width:90px;border-right:none;border-radius:8px 0 0 8px;background:#f8f9fc;cursor:pointer;flex-shrink:0;padding:0 6px"
+                <div class="cus-mobile-row" style="display:flex;gap:0">
+                  <select v-model="form.mobile_code" class="inv-fi cus-mobile-code" style="width:90px;border-right:none;border-radius:8px 0 0 8px;background:#f8f9fc;cursor:pointer;flex-shrink:0;padding:0 6px"
                     @change="delete formErrors.mobile_no; if(form.mobile_no) validateField('mobile_no')">
                     <option value="+91">🇮🇳 +91</option>
                     <option value="+1">🇺🇸 +1</option>
@@ -898,8 +979,8 @@
           <!-- Bank Tab -->
           <template v-else-if="drawerTab==='bank'">
             <div class="inv-sec-lbl" style="margin-top:0">Bank Account</div>
-            <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-              <div style="grid-column:span 2">
+            <div class="cus-form-grid2 cus-bank-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div class="cus-bank-full" style="grid-column:span 2">
                 <label class="inv-lbl">Bank Name</label>
                 <input v-model="form.bank_name" class="inv-fi" placeholder="HDFC Bank, SBI, ICICI…"/>
               </div>
@@ -1515,21 +1596,40 @@ const selectedCustomer = ref(null);
 const activeCustomerTab = ref("overview");
 const custTxns = ref([]);
 const custTxnsLoading = ref(false);
+const custTxnsLoaded  = ref(false);          // ← lazy flag
+const txnPage = ref(1);                       // ← load-more page
+const TXN_PAGE_SIZE = 10;
 const custSectionCollapsed = reactive({ address: false, otherDetails: false });
+
+async function loadTransactions() {
+  if (!selectedCustomer.value || custTxnsLoaded.value) return;
+  custTxnsLoading.value = true;
+  try {
+    const txns = await apiGET("zoho_books_clone.api.docs.get_customer_transactions", {
+      customer: selectedCustomer.value.name, limit: 100,
+    }).catch(() => []);
+    custTxns.value = txns || [];
+    custTxnsLoaded.value = true;
+  } catch (e) { /* keep panel open */ }
+  custTxnsLoading.value = false;
+}
 
 async function selectCustomer(c) {
   selectedCustomer.value = c;
   activeCustomerTab.value = "overview";
-  stmt.value = null;
+  stmt.value        = null;
+  stmtLoaded.value  = false;
+  stmtPage.value    = 1;
+  custTxns.value    = [];
+  custTxnsLoaded.value = false;
+  txnPage.value     = 1;
   Object.assign(custSectionCollapsed, { address: false, otherDetails: false });
-  custTxns.value = [];
+  // Only load the full customer doc (lightweight) — tabs load on demand
   custTxnsLoading.value = true;
   try {
-    const [txns, fullDoc] = await Promise.all([
-      apiGET("zoho_books_clone.api.docs.get_customer_transactions", { customer: c.name, limit: 100 }).catch(() => []),
-      apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Customer", name: c.name }).catch(() => null),
-    ]);
-    custTxns.value = txns || [];
+    const fullDoc = await apiGET("zoho_books_clone.api.docs.get_doc", {
+      doctype: "Customer", name: c.name,
+    }).catch(() => null);
     if (fullDoc) selectedCustomer.value = { ...c, ...fullDoc, outstanding: c.outstanding || 0, unused_credits: c.unused_credits || 0 };
   } catch (e) { /* keep panel open */ }
   custTxnsLoading.value = false;
@@ -1542,17 +1642,28 @@ function custInitials(name) {
 // ── Customer Statement ──
 const stmt        = ref(null);
 const stmtLoading = ref(false);
+const stmtLoaded  = ref(false);             // ← lazy flag
+const stmtPage    = ref(1);                 // ← load-more page
+const STMT_PAGE_SIZE = 10;
 const sendingStmt = ref(false);
 const fmtStmt = (v) => Number(v||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// ── Load-more computed slices ──
+const custTxnsVisible   = computed(() => custTxns.value.slice(0, txnPage.value * TXN_PAGE_SIZE));
+const custTxnsHasMore   = computed(() => custTxns.value.length > txnPage.value * TXN_PAGE_SIZE);
+const stmtInvsVisible   = computed(() => stmt.value ? stmt.value.invoices.slice(0, stmtPage.value * STMT_PAGE_SIZE) : []);
+const stmtInvsHasMore   = computed(() => stmt.value ? stmt.value.invoices.length > stmtPage.value * STMT_PAGE_SIZE : false);
+
+
 async function loadStatement() {
-  if (!selectedCustomer.value) return;
+  if (!selectedCustomer.value || stmtLoaded.value) return;
   stmtLoading.value = true;
   try {
     const co = await resolveCompany();
     stmt.value = await apiGET("zoho_books_clone.db.queries.get_customer_statement", {
       customer: selectedCustomer.value.name, company: co,
     });
+    stmtLoaded.value = true;
   } catch (e) { toast("Could not load statement: " + e.message, "error"); }
   stmtLoading.value = false;
 }
@@ -1570,7 +1681,10 @@ async function sendStatement() {
   sendingStmt.value = false;
 }
 
-watch(activeCustomerTab, (t) => { if (t === "statement" && !stmt.value) loadStatement(); });
+watch(activeCustomerTab, (t) => {
+  if (t === "transactions" && !custTxnsLoaded.value) loadTransactions();
+  if (t === "statement"    && !stmtLoaded.value)     loadStatement();
+});
 
 // ── Bulk actions ────────────────────────────────────────────────────────────
 async function bulkSetDisabled(disable) {
@@ -1740,9 +1854,98 @@ onMounted(load);
 .vt-footer { padding: 9px 16px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; background: #fafafa; }
 .vt-footer strong { color: #6b7280; font-weight: 600; }
 
+/* ── Mobile number field: prevent inv-fi width:100% from overriding select ── */
+.cus-mobile-row { display: flex; gap: 0; }
+.cus-mobile-code.inv-fi { width: 90px !important; flex-shrink: 0 !important; min-width: 0 !important; box-sizing: border-box; }
+.cus-mobile-row .inv-fi:not(.cus-mobile-code) { flex: 1 !important; width: 0 !important; min-width: 0 !important; }
+
+/* ── Load More ── */
+.cus-load-more-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+}
+.cus-load-more-end {
+  justify-content: center;
+  font-size: 12px;
+  color: #9CA3AF;
+  font-style: italic;
+}
+.cus-load-more-count {
+  font-size: 12px;
+  color: #6B7280;
+}
+.cus-load-more-btn {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #2563EB;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 7px;
+  padding: 5px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .12s;
+}
+.cus-load-more-btn:hover { background: #DBEAFE; }
+
+/* ── Skeleton shimmer ── */
+@keyframes cus-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.cus-sk-base {
+  background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: cus-shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+.cus-sk-pill  { width: 64px; height: 22px; flex-shrink: 0; border-radius: 10px; }
+.cus-sk-line  { height: 13px; border-radius: 4px; }
+.cus-sk-line-sm  { width: 80px; }
+.cus-sk-line-md  { width: 140px; }
+.cus-sk-line-lg  { width: 100px; height: 22px; border-radius: 5px; }
+.cus-sk-pill, .cus-sk-line {
+  background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: cus-shimmer 1.4s infinite;
+}
+.cus-txn-skeleton {
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.cus-txn-sk-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  border-bottom: 1px solid #F3F4F6;
+}
+.cus-txn-sk-row:last-child { border-bottom: none; }
+.cus-stmt-sk-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.cus-stmt-sk-kpi {
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
 /* ── Mobile card view (Option A) ── */
 .cus-mobile-cards { display: none; }
 .cus-desktop-table { display: table; }
+
+/* Mobile card views: hidden by default, shown only ≤768px */
+.cus-txn-mobile-cards { display: none; }
+.cus-stmt-mobile-cards { display: none; }
 
 @media (max-width: 768px) {
   .cus-desktop-table { display: none !important; }
@@ -1778,17 +1981,105 @@ onMounted(load);
   }
   .cus-recv-table td { font-size: 12px !important; padding: 8px !important; }
 
-  /* ── Transactions tab: horizontal scroll ── */
-  .cus-txn-wrap { overflow-x: auto !important; }
+  /* (mobile-card defaults declared above this media query, before the breakpoint) */
+  /* ── Transactions tab: switch to card view ── */
+  .cus-txn-wrap { overflow: visible !important; border: none !important; background: transparent !important; }
+  .cus-txn-desktop { display: none !important; }
 
-  /* ── Statement tab: 1-col KPI grid + scroll invoices ── */
+  /* ── Statement tab: 1-col KPI grid + card view for invoices ── */
   .cus-stmt-kpis { grid-template-columns: 1fr !important; gap: 8px !important; }
-  .cus-stmt-inv-wrap { overflow-x: auto !important; }
+  .cus-stmt-sk-kpis { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .cus-stmt-inv-wrap { overflow: visible !important; }
+  .cus-stmt-desktop { display: none !important; }
 
   /* ── New/Edit Customer form: stack multi-col grids to 1 col ── */
+  /* Class-based (scoped — these work when the class is on this component's elements) */
   .cus-form-grid2 { grid-template-columns: 1fr !important; }
   .cus-form-grid3 { grid-template-columns: 1fr !important; }
-  .cus-form-grid2 [style*="grid-column:span 2"] { grid-column: span 1 !important; }
+  /* Inline-style grids directly in this template (attr selector beats inline without !important) */
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns:1fr 1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  :deep(.inv-add-drawer),
+  :deep(.cus-add-drawer) {
+    width: 100vw !important;
+    right: -100vw !important;
+    max-width: 100vw !important;
+  }
+  :deep(.inv-add-drawer.open),
+  :deep(.cus-add-drawer.open) { right: 0 !important; }
+
+  /* ── Tab bar: scrollable, no wrapping ── */
+  :deep(.inv-view-tabs) {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0;
+  }
+  :deep(.inv-view-tabs)::-webkit-scrollbar { display: none; }
+  :deep(.inv-vtab) {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 12.5px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* ── Bank Details grid: force single column (overrides inline style) ── */
+  .cus-bank-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .cus-bank-full {
+    grid-column: span 1 !important;
+  }
+
+  /* ── Drawer footer: sticky, proper row layout ── */
+  :deep(.inv-dfooter) {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+    position: sticky;
+    bottom: 0;
+    background: #fafbfd;
+    border-top: 1px solid #e8ecf0;
+    z-index: 10;
+  }
+  :deep(.inv-dfooter) .form-btn {
+    flex: 1 !important;
+    min-width: 0 !important;
+    font-size: 13px !important;
+    padding: 10px 8px !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+  :deep(.inv-dfooter) .form-btn-primary {
+    flex: 2 !important;
+  }
+
+  /* ── Transactions: mobile cards ── */
+  .cus-txn-mobile-cards { display: flex; flex-direction: column; gap: 8px; }
+  .cus-txn-mc { background: #fff; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px 14px; }
+  .cus-txn-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .cus-txn-mc-badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .cus-txn-mc-amount { font-size: 14px; font-weight: 700; }
+  .cus-txn-mc-mid { display: flex; align-items: center; justify-content: space-between; }
+  .cus-txn-mc-ref { font-size: 13px; font-weight: 600; color: #2563EB; }
+  .cus-txn-mc-date { font-size: 12px; color: #6B7280; }
+  .cus-txn-mc-outstanding { margin-top: 8px; padding-top: 8px; border-top: 1px solid #F3F4F6; font-size: 12px; color: #dc2626; }
+
+  /* ── Statement: mobile cards ── */
+  .cus-stmt-mobile-cards { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+  .cus-stmt-mc { background: #fff; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px 14px; }
+  .cus-stmt-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .cus-stmt-mc-name { font-size: 13.5px; font-weight: 600; color: #2563EB; }
+  .cus-stmt-mc-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .cus-stmt-mc-mid { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #6B7280; margin-bottom: 6px; }
+  .cus-stmt-mc-amount { font-size: 15px; font-weight: 700; color: #111827; text-align: right; }
 }
 
 @media (max-width: 480px) {

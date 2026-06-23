@@ -439,27 +439,29 @@
 
         <!-- Top header: bill number + badge | Pay CTA -->
         <div class="inv-view-header bill-view-page-header">
-          <div class="inv-view-header-left">
-            <div class="inv-view-title-row">
-              <span class="inv-view-number">{{ viewDoc.name }}</span>
-              <span class="inv-hdr-badge" :class="statusCls(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+          <div style="display: flex;justify-content: space-between;width: stretch;">
+            <div class="inv-view-header-left">
+              <div class="inv-view-title-row">
+                <span class="inv-view-number">{{ viewDoc.name }}</span>
+                <span class="inv-hdr-badge" :class="statusCls(viewDoc)">{{ statusLabel(viewDoc) }}</span>
+              </div>
+              <div class="inv-view-subtitle">
+                {{ viewDoc.supplier_name || viewDoc.supplier }}
+                <span v-if="viewDoc.due_date"> · Due {{ fmtDate(viewDoc.due_date) }}
+                  <span v-if="isOverdue(viewDoc)" style="color:#dc2626">(overdue)</span>
+                </span>
+              </div>
             </div>
-            <div class="inv-view-subtitle">
-              {{ viewDoc.supplier_name || viewDoc.supplier }}
-              <span v-if="viewDoc.due_date"> · Due {{ fmtDate(viewDoc.due_date) }}
-                <span v-if="isOverdue(viewDoc)" style="color:#dc2626">(overdue)</span>
-              </span>
+            <div class="bill-view-cta-wrap">
+              <button v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1"
+                      class="inv-view-cta"
+                      @click="payBill(viewDoc)">
+                <span v-html="icon('indianrupee',15)"></span> Record Payment
+              </button>
+              <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
+                <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
+              </button>
             </div>
-          </div>
-          <div class="bill-view-cta-wrap">
-            <button v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1"
-                    class="inv-view-cta"
-                    @click="payBill(viewDoc)">
-              <span v-html="icon('indianrupee',15)"></span> Record Payment
-            </button>
-            <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
-              <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
-            </button>
           </div>
         </div>
 
@@ -644,25 +646,41 @@
           <template v-if="viewTab==='payments'">
             <div class="inv-tab-body">
               <div v-if="viewLoading" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">Loading payments…</div>
-              <div v-else-if="viewPayments.length" class="inv-items-wrap">
-                <table class="inv-items-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Mode</th>
-                      <th>Reference</th>
-                      <th class="th-r">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="p in viewPayments" :key="p.name">
-                      <td class="mono-sm">{{ fmtDate(p.payment_date) }}</td>
-                      <td>{{ p.mode_of_payment || '—' }}</td>
-                      <td class="mono-sm text-muted">{{ p.reference_no || '—' }}</td>
-                      <td class="td-r" style="font-weight:600;color:#059669">{{ fmtCur(p.paid_amount) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div v-else-if="viewPayments.length">
+                <!-- Desktop/tablet table -->
+                <div class="inv-items-wrap bil-pay-desktop-table">
+                  <table class="inv-items-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Mode</th>
+                        <th>Reference</th>
+                        <th class="th-r">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="p in viewPayments" :key="p.name">
+                        <td class="mono-sm">{{ fmtDate(p.payment_date) }}</td>
+                        <td>{{ p.mode_of_payment || '—' }}</td>
+                        <td class="mono-sm text-muted">{{ p.reference_no || '—' }}</td>
+                        <td class="td-r" style="font-weight:600;color:#059669">{{ fmtCur(p.paid_amount) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <!-- Mobile card view -->
+                <div class="bil-pay-mobile-cards">
+                  <div v-for="p in viewPayments" :key="p.name" class="bil-pay-mc">
+                    <div class="bil-pay-mc-top">
+                      <span class="bil-pay-mc-date">{{ fmtDate(p.payment_date) }}</span>
+                      <span class="bil-pay-mc-amount">{{ fmtCur(p.paid_amount) }}</span>
+                    </div>
+                    <div class="bil-pay-mc-bottom">
+                      <span class="bil-pay-mc-mode">{{ p.mode_of_payment || '—' }}</span>
+                      <span class="bil-pay-mc-ref">{{ p.reference_no || '—' }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div v-else style="text-align:center;padding:40px 24px;color:#9ca3af;font-size:13px">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3" style="margin-bottom:10px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
@@ -1659,11 +1677,13 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
   /* Toolbar: wrap search + pills + buttons */
   .sales-toolbar { flex-wrap: wrap; gap: 8px; }
 
-  /* View page header: allow wrapping */
-  .bill-view-page-header { padding: 12px 14px 8px; gap: 10px; }
-  .inv-view-header-left { flex: 1 1 100%; }
-  .inv-view-cta { width: 100%; justify-content: center; }
-  .inv-view-number { font-size: 16px; }
+  /* View page header: keep title + buttons on one row */
+  .bill-view-page-header { padding: 12px 14px 8px; gap: 8px; flex-wrap: nowrap; align-items: center; }
+  .inv-view-header-left { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+  .inv-view-number { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .inv-view-title-row { flex-wrap: nowrap; gap: 6px; }
+  .inv-hdr-badge { flex-shrink: 0; }
+  .bill-view-cta-wrap { flex-shrink: 0; }
 
   /* Details meta: 2-col (overrides inline grid-template-columns:repeat(3,1fr)) */
   .inv-details-meta { grid-template-columns: repeat(2, 1fr) !important; }
@@ -1740,14 +1760,6 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
   /* Address modal */
   .po-apply-dialog { width: 98vw; height: 450px; border-radius: 8px; }
 
-  /* Payment table inside tab: hide reference column */
-  .inv-items-table th:nth-child(3),
-  .inv-items-table td:nth-child(3) { display: none; }
-
-  /* Payments tab table: scrollable */
-  .inv-items-wrap  { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .inv-items-table { min-width: 320px; font-size: 11.5px !important; }
-  .inv-items-table th, .inv-items-table td { padding: 7px 10px !important; }
 }
 
 
@@ -1776,15 +1788,32 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
   .bil-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 
-/* ── View drawer header: keep buttons on one row ──────────────────── */
-.bill-view-cta-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* ── Payments tab: mobile card view ──────────────────────────────── */
+.bil-pay-mobile-cards { display: none; }
 
 @media (max-width: 768px) {
-  .bill-view-page-header { flex-wrap: nowrap !important; align-items: center !important; }
-  .inv-view-header-left  { flex: 1 1 auto !important; min-width: 0 !important; }
-  .bill-view-cta-wrap    { flex-shrink: 0 !important; }
-  .inv-view-cta          { width: auto !important; }
+  .bil-pay-desktop-table { display: none !important; }
+  .bil-pay-mobile-cards { display: flex; flex-direction: column; gap: 8px; padding: 2px 0; }
+  .bil-pay-mc {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .bil-pay-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .bil-pay-mc-date { font-size: 13px; font-weight: 600; color: #1a1d23; }
+  .bil-pay-mc-amount { font-size: 14px; font-weight: 700; color: #059669; }
+  .bil-pay-mc-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .bil-pay-mc-mode {
+    font-size: 11.5px; font-weight: 600; color: #2563eb;
+    background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 5px; padding: 2px 8px;
+  }
+  .bil-pay-mc-ref { font-size: 11.5px; color: #868e96; font-family: ui-monospace, monospace; }
 }
+
+/* ── View drawer header: keep buttons on one row ──────────────────── */
+.bill-view-cta-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 /* ── Mobile card layout (≤ 425px) ────────────────────────────────── */
 @media (max-width: 425px) {

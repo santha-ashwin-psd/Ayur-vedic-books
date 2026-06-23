@@ -850,15 +850,17 @@ PRO CONFIRM intents (show preview card — never skip this step):
 - "create_payment_confirm"    → Add: "invoice":"INV-...", "amount":N, "mode":"Cash|Bank|Cheque", "customer":"..."
 - "cancel_invoice_confirm"    → Add: "invoice":"INV-...", "customer":"...", "amount":N
 - "update_item_price_confirm" → Add: "item_name":"...", "new_rate":N
+- "create_purchase_order_confirm" → Add: "supplier":"...", "item_code":"...", "qty":N, "rate":N
 
 PRO EXECUTE intents (only after user explicitly confirms):
-- "create_customer"    — same fields as confirm
-- "create_supplier"    — same fields as confirm
-- "create_item"        — same fields as confirm
-- "create_quotation"   — same fields as confirm
-- "create_payment"     — same fields as confirm
-- "cancel_invoice"     — Add: "invoice":"INV-..."
-- "update_item_price"  — same fields as confirm
+- "create_customer"         — same fields as confirm
+- "create_supplier"         — same fields as confirm
+- "create_item"             — same fields as confirm
+- "create_quotation"        — same fields as confirm
+- "create_payment"          — same fields as confirm
+- "cancel_invoice"          — Add: "invoice":"INV-..."
+- "update_item_price"       — same fields as confirm
+- "create_purchase_order"   — same fields as confirm
 
 PRO RULES:
 - ALWAYS use _confirm first. NEVER execute without showing a preview.
@@ -1187,12 +1189,14 @@ def ai_chat(messages, pro_mode=0, system=None):
         "create_customer_confirm", "create_supplier_confirm", "create_item_confirm",
         "create_quotation_confirm", "create_payment_confirm",
         "cancel_invoice_confirm", "update_item_price_confirm",
+        "create_purchase_order_confirm",
     }
     if intent in _pro_confirm_intents:
         result = {"reply": reply or "Here's what I'll do — confirm to proceed.", "action": intent}
         for k in ("customer_name", "supplier_name", "item_name", "item_type", "item_group",
                   "rate", "uom", "email", "mobile_no", "customer", "items",
-                  "invoice", "amount", "mode", "new_rate", "old_rate"):
+                  "invoice", "amount", "mode", "new_rate", "old_rate",
+                  "supplier", "item_code", "qty"):
             if parsed.get(k) is not None:
                 result[k] = parsed[k]
         # Enrich cancel/payment with live invoice data
@@ -1218,6 +1222,7 @@ def ai_chat(messages, pro_mode=0, system=None):
     _pro_execute_intents = {
         "create_customer", "create_supplier", "create_item",
         "create_quotation", "create_payment", "cancel_invoice", "update_item_price",
+        "create_purchase_order",
     }
     if intent in _pro_execute_intents:
         return _run_pro_action(intent, parsed, company)
@@ -1365,6 +1370,49 @@ def _run_pro_action(action, data, company):
             frappe.db.set_value("Item", item_name, "standard_rate", new_rate)
             frappe.db.commit()
             return {"reply": f"✅ **{item_name}** price updated to ₹{new_rate:,.2f}.", "action": "show_items"}
+
+        if action == "create_purchase_order":
+            supplier  = (data.get("supplier") or "").strip()
+            item_code = (data.get("item_code") or "").strip()
+            qty       = float(data.get("qty") or 1)
+            rate      = float(data.get("rate") or 0)
+            if not supplier:  return {"reply": "Supplier name is required."}
+            if not item_code: return {"reply": "Item code is required."}
+            # Create and submit Purchase Order
+            po = frappe.new_doc("Purchase Order")
+            po.supplier      = supplier
+            po.company       = company
+            po.schedule_date = frappe.utils.add_days(nowdate(), 7)
+            po.append("items", {
+                "item_code":     item_code,
+                "qty":           qty,
+                "rate":          rate,
+                "schedule_date": po.schedule_date,
+            })
+            po.insert(ignore_permissions=True)
+            po.submit()
+            # Also create a Material Receipt so stock is available immediately
+            default_wh = (
+                frappe.db.get_value("Warehouse", {"company": company, "is_group": 0}, "name") or
+                frappe.db.get_value("Warehouse", {"is_group": 0}, "name") or ""
+            )
+            if default_wh:
+                se = frappe.new_doc("Stock Entry")
+                se.stock_entry_type = "Material Receipt"
+                se.company          = company
+                se.append("items", {
+                    "item_code":  item_code,
+                    "qty":        qty,
+                    "basic_rate": rate,
+                    "t_warehouse": default_wh,
+                })
+                se.insert(ignore_permissions=True)
+                se.submit()
+            frappe.db.commit()
+            return {
+                "reply": f"✅ Purchase order created and **{int(qty)} unit(s) of {item_code}** received into stock. You can now proceed with the invoice.",
+                "action": None,
+            }
 
         return {"reply": f"Unknown pro action: {action}"}
     except Exception as e:
@@ -1770,3 +1818,131 @@ def get_customer_unused_credits():
             result[info["customer"]] = result.get(info["customer"], 0.0) + balance
 
     return result
+
+# ── Price List helpers ────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_price_list_detail(price_list_name):
+    """Returns item_count, avg_rate, and active_count for a given price list."""
+    today = frappe.utils.nowdate()
+    rows = frappe.db.sql("""
+        SELECT
+            COUNT(*) AS item_count,
+            COALESCE(AVG(price_list_rate), 0) AS avg_rate,
+            SUM(
+                CASE WHEN
+                    (valid_from IS NULL OR valid_from <= %s) AND
+                    (valid_upto IS NULL OR valid_upto >= %s)
+                THEN 1 ELSE 0 END
+            ) AS active_count
+        FROM `tabItem Price`
+        WHERE price_list = %s
+    """, (today, today, price_list_name), as_dict=True)
+    r = rows[0] if rows else {}
+    return {
+        "item_count":   int(r.get("item_count") or 0),
+        "avg_rate":     float(r.get("avg_rate") or 0),
+        "active_count": int(r.get("active_count") or 0),
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def duplicate_price_list(source_name, new_name):
+    """Creates a copy of source_name price list with all its item prices."""
+    new_name = (new_name or "").strip()
+    if not new_name:
+        frappe.throw("New name is required")
+    if frappe.db.exists("Price List", new_name):
+        frappe.throw(f"A price list named '{new_name}' already exists")
+
+    src = frappe.get_doc("Price List", source_name)
+    new_pl = frappe.new_doc("Price List")
+    new_pl.price_list_name = new_name
+    new_pl.currency = src.currency
+    new_pl.selling  = src.selling
+    new_pl.buying   = src.buying
+    new_pl.enabled  = 1
+    new_pl.insert(ignore_permissions=True)
+
+    prices = frappe.db.get_all(
+        "Item Price",
+        filters={"price_list": source_name},
+        fields=["item_code", "item_name", "price_list_rate", "uom", "packing_unit", "valid_from", "valid_upto"],
+        limit=2000,
+    )
+    for p in prices:
+        np = frappe.new_doc("Item Price")
+        np.price_list      = new_pl.name
+        np.item_code       = p.item_code
+        np.item_name       = p.item_name
+        np.price_list_rate = p.price_list_rate
+        np.uom             = p.uom or "Nos"
+        np.packing_unit    = p.packing_unit
+        np.valid_from      = p.valid_from
+        np.valid_upto      = p.valid_upto
+        np.insert(ignore_permissions=True)
+
+    frappe.db.commit()
+    return {"name": new_pl.name, "item_count": len(prices)}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def bulk_create_item_prices(price_list, rows_json):
+    """Bulk-creates Item Price docs from a parsed CSV rows array."""
+    import json as _json
+    rows = _json.loads(rows_json) if isinstance(rows_json, str) else rows_json
+    created, errors = 0, []
+    for i, r in enumerate(rows):
+        try:
+            doc = frappe.new_doc("Item Price")
+            doc.price_list      = price_list
+            doc.item_code       = r.get("item_code", "").strip()
+            doc.item_name       = r.get("item_name", "").strip() or doc.item_code
+            doc.price_list_rate = float(r.get("price_list_rate") or r.get("rate") or 0)
+            doc.uom             = r.get("uom", "Nos").strip() or "Nos"
+            doc.packing_unit    = int(r.get("min_qty") or 0)
+            doc.valid_from      = r.get("valid_from") or None
+            doc.valid_upto      = r.get("valid_upto") or None
+            doc.insert(ignore_permissions=True)
+            created += 1
+        except Exception as e:
+            errors.append({"row": i + 1, "error": str(e)})
+    frappe.db.commit()
+    return {"created": created, "errors": errors}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_top_sold_items(limit=7):
+    """Returns top N items by total quantity sold across submitted Sales Invoices.
+    Falls back to most-recently-modified items if no sales history exists."""
+    limit = int(limit or 7)
+    rows = frappe.db.sql("""
+        SELECT sii.item_code, sii.item_name, SUM(sii.qty) AS total_sold
+        FROM `tabSales Invoice Item` sii
+        INNER JOIN `tabSales Invoice` si ON si.name = sii.parent
+        WHERE si.docstatus = 1
+        GROUP BY sii.item_code, sii.item_name
+        ORDER BY total_sold DESC
+        LIMIT %s
+    """, (limit,), as_dict=True)
+    if not rows:
+        rows = frappe.db.get_all(
+            "Item",
+            fields=["item_code", "item_name"],
+            order_by="modified desc",
+            limit=limit,
+        )
+    return rows
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_item_warehouse_stock(item_code):
+    """Returns warehouses that have positive stock for the given item_code."""
+    rows = frappe.db.get_all(
+        "Bin",
+        filters=[["item_code", "=", item_code], ["actual_qty", ">", 0]],
+        fields=["warehouse", "actual_qty"],
+        order_by="actual_qty desc",
+        limit=10,
+    )
+    return rows

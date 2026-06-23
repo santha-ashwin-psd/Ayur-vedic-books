@@ -338,7 +338,7 @@ onMounted(load);
 .g3-body-layout { display:grid; grid-template-columns:1fr 340px; gap:14px; align-items:start; }
 .g3-left  { display:flex; flex-direction:column; }
 .g3-right { display:flex; flex-direction:column; }
-@media(max-width:900px) { .g3-body-layout { grid-template-columns:1fr; } }
+@media(max-width:900px) { .g3-body-layout { grid-template-columns:1fr; gap:10px; } }
 
 /* Cards */
 .g3-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
@@ -385,12 +385,24 @@ onMounted(load);
 .g3-shimmer { height:13px; background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%); border-radius:4px; animation:shimmer 1.4s infinite; background-size:200% 100%; }
 
 @media (max-width: 768px) {
-  .g3-card  { overflow-x: auto !important; }
-  .g3-table { min-width: 380px; }
+  .g3-page      { padding: 14px; gap: 10px; }
+  .g3-toolbar   { padding: 12px 14px; }
+  /* Summary strip: 2-col at tablet */
+  .g3-sum-strip { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Tables scroll within cards */
+  .g3-card      { overflow-x: auto; }
+  .g3-table     { min-width: 380px; font-size: 11.5px; }
+  .g3-table th  { padding: 7px 10px; }
+  .g3-row td    { padding: 7px 10px !important; }
+  .g3-total-row td { padding: 7px 10px !important; }
+  /* Net tax payable panel */
+  .g3-summary   { padding: 12px; }
 }
 @media (max-width: 480px) {
-  .g3-page    { padding: 12px; gap: 10px; }
-  .g3-toolbar { padding: 12px 14px; }
+  .g3-page      { padding: 10px; gap: 8px; }
+  .g3-toolbar   { padding: 10px 12px; }
   .g3-sum-strip { grid-template-columns: 1fr !important; }
+  .g3-sum-val   { font-size: 15px; }
+  .g3-sum-amount-lg { font-size: 15px; }
 }
 </style>

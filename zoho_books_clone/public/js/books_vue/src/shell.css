@@ -576,6 +576,172 @@
 }
 .bv-ai-chip:hover { background: #e8f0fe; border-color: var(--bv-accent); color: var(--bv-accent); }
 
+/* Customer suggestion chips inside chat messages */
+.bv-ai-cust-chips {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-top: 10px;
+}
+.bv-ai-cust-chips-label {
+  font-size: 11px; color: var(--bv-text-3); font-weight: 500; flex-basis: 100%;
+}
+.bv-ai-cust-chip {
+  background: #eff6ff; border: 1px solid #bfdbfe;
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12.5px; font-weight: 500; cursor: pointer; color: #1d4ed8;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.bv-ai-cust-chip:hover { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+
+/* Item suggestion chips */
+.bv-ai-item-chips {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-top: 10px;
+}
+.bv-ai-item-chips-label {
+  font-size: 11px; color: var(--bv-text-3); font-weight: 500; flex-basis: 100%;
+}
+.bv-ai-item-chip {
+  background: #f0fdf4; border: 1px solid #86efac;
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12.5px; font-weight: 500; cursor: pointer; color: #15803d;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.bv-ai-item-chip:hover { background: #dcfce7; border-color: #4ade80; color: #166534; }
+
+/* Warehouse stock chips */
+.bv-ai-wh-chips {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-top: 10px;
+}
+.bv-ai-wh-chips-label {
+  font-size: 11px; color: var(--bv-text-3); font-weight: 500; flex-basis: 100%;
+}
+.bv-ai-wh-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: #faf5ff; border: 1px solid #d8b4fe;
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12.5px; font-weight: 500; cursor: pointer; color: #7e22ce;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.bv-ai-wh-chip:hover { background: #f3e8ff; border-color: #c084fc; color: #6b21a8; }
+.bv-ai-wh-qty {
+  font-size: 11px; font-weight: 400; color: #a855f7;
+  background: #ede9fe; border-radius: 10px; padding: 1px 7px;
+}
+/* No-stock action panel */
+.bv-ai-nostock-panel {
+  margin-top: 10px; padding: 12px 14px;
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+}
+.bv-ai-nostock-title {
+  font-size: 13px; color: #92400e; font-weight: 600; margin-bottom: 4px;
+}
+.bv-ai-nostock-sub {
+  font-size: 11.5px; color: #b45309; margin-bottom: 10px;
+}
+.bv-ai-nostock-actions {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.bv-ai-nostock-btn {
+  border-radius: 20px; padding: 5px 14px; font-size: 12.5px;
+  font-weight: 500; cursor: pointer; border: 1px solid transparent;
+  transition: background .15s, border-color .15s;
+}
+.bv-ai-nostock-btn--primary { background: #854d0e; color: #fff; border-color: #78350f; }
+.bv-ai-nostock-btn--primary:hover { background: #713f12; }
+.bv-ai-nostock-btn--secondary { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+.bv-ai-nostock-btn--secondary:hover { background: #dcfce7; }
+.bv-ai-nostock-btn--ghost { background: transparent; color: #64748b; border-color: #cbd5e1; }
+.bv-ai-nostock-btn--ghost:hover { background: #f1f5f9; }
+
+/* Goal pending banner */
+.bv-ai-goal-banner {
+  padding: 7px 14px; font-size: 12px; color: #1e40af;
+  background: #eff6ff; border-bottom: 1px solid #bfdbfe; flex-shrink: 0;
+}
+
+/* Supplier chips */
+.bv-ai-sup-chips {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px;
+}
+.bv-ai-sup-chips-label {
+  font-size: 11px; color: var(--bv-text-3); font-weight: 500; flex-basis: 100%;
+}
+.bv-ai-sup-chip {
+  background: #fff7ed; border: 1px solid #fed7aa;
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12.5px; font-weight: 500; cursor: pointer; color: #c2410c;
+  transition: background .15s, border-color .15s;
+}
+.bv-ai-sup-chip:hover { background: #ffedd5; border-color: #fb923c; color: #9a3412; }
+
+/* Payment mode chips */
+.bv-ai-pay-chips {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px;
+}
+.bv-ai-pay-chips-label {
+  font-size: 11px; color: var(--bv-text-3); font-weight: 500; flex-basis: 100%;
+}
+.bv-ai-pay-chip {
+  background: #f0fdfa; border: 1px solid #99f6e4;
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12.5px; font-weight: 500; cursor: pointer; color: #0f766e;
+  transition: background .15s, border-color .15s;
+}
+.bv-ai-pay-chip:hover { background: #ccfbf1; border-color: #2dd4bf; color: #0d5c56; }
+
+/* Unpaid invoice chips */
+.bv-ai-inv-chips {
+  display: flex; flex-direction: column; gap: 6px; margin-top: 10px;
+}
+.bv-ai-inv-chips-label {
+  font-size: 11px; color: var(--bv-text-3); font-weight: 500;
+}
+.bv-ai-inv-chip {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  background: #fffbeb; border: 1px solid #fde68a;
+  border-radius: 10px; padding: 7px 12px;
+  font-size: 12.5px; font-weight: 500; cursor: pointer; color: #92400e;
+  transition: background .15s, border-color .15s; text-align: left;
+}
+.bv-ai-inv-chip:hover { background: #fef9c3; border-color: #fbbf24; }
+.bv-ai-inv-name { font-weight: 600; font-size: 12.5px; }
+.bv-ai-inv-meta { font-size: 11px; color: #b45309; font-weight: 400; }
+
+/* Yes / No chips */
+.bv-ai-yn-chips {
+  display: flex; gap: 8px; margin-top: 10px;
+}
+.bv-ai-yn-chip {
+  border-radius: 20px; padding: 6px 18px;
+  font-size: 13px; font-weight: 600; cursor: pointer; border: 1.5px solid transparent;
+  transition: background .15s, border-color .15s;
+}
+.bv-ai-yn-chip--yes { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+.bv-ai-yn-chip--yes:hover { background: #dcfce7; border-color: #4ade80; }
+.bv-ai-yn-chip--no { background: #fef2f2; border-color: #fca5a5; color: #b91c1c; }
+.bv-ai-yn-chip--no:hover { background: #fee2e2; border-color: #f87171; }
+
+/* Price list chips */
+.bv-ai-pl-chips {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px;
+}
+.bv-ai-pl-chips-label {
+  font-size: 11px; color: var(--bv-text-3); font-weight: 500; flex-basis: 100%;
+}
+.bv-ai-pl-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: #f5f3ff; border: 1px solid #ddd6fe;
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12.5px; font-weight: 500; cursor: pointer; color: #6d28d9;
+  transition: background .15s, border-color .15s;
+}
+.bv-ai-pl-chip:hover { background: #ede9fe; border-color: #c4b5fd; color: #5b21b6; }
+.bv-ai-pl-currency {
+  font-size: 11px; font-weight: 400; color: #8b5cf6;
+  background: #ede9fe; border-radius: 8px; padding: 1px 6px;
+}
+
 /* Input bar */
 .bv-ai-input {
   display: flex; gap: 8px; padding: 10px 12px;

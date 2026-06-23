@@ -2,7 +2,7 @@
 <div class="b-page pl-root">
 
   <!-- ══ A. SIDEBAR ══ -->
-  <div class="pl-sidebar" :class="{ 'pl-sidebar-mobile-open': mobileSidebarOpen }">
+  <div class="pl-sidebar">
 
     <!-- A1. Header -->
     <div class="pl-sidebar-head">
@@ -76,14 +76,38 @@
     </div>
   </div>
 
-  <!-- Mobile overlay backdrop -->
-  <div v-if="mobileSidebarOpen" class="pl-mob-overlay" @click="mobileSidebarOpen=false"></div>
+  <!-- ══ MOBILE TOOLBAR (≤768px) ══ -->
+  <div class="pl-mob-toolbar">
+    <!-- Price list picker -->
+    <div class="pl-mob-group-wrap">
+      <span class="pl-mob-group-prefix">List</span>
+      <div class="pl-mob-group-select-wrap">
+        <select class="pl-mob-group-select"
+          :value="selectedList?.name || ''"
+          @change="e => { const pl = priceLists.find(p => p.name === e.target.value); if (pl) selectList(pl); }">
+          <option value="">— Select list —</option>
+          <option v-for="pl in filteredLists" :key="pl.name" :value="pl.name">
+            {{ pl.name }} ({{ pl.selling && pl.buying ? 'Both' : pl.selling ? 'Selling' : 'Buying' }})
+          </option>
+        </select>
+        <span class="pl-mob-group-chev" v-html="icon('chevD', 12)"></span>
+      </div>
+    </div>
 
-  <!-- Mobile FAB toggle -->
-  <button class="pl-mob-sidebar-toggle" @click="mobileSidebarOpen=!mobileSidebarOpen"
-    :title="mobileSidebarOpen ? 'Close' : 'Price Lists'">
-    <span v-html="icon(mobileSidebarOpen ? 'x' : 'menu', 20)"></span>
-  </button>
+    <!-- Tab filter -->
+    <div class="pl-mob-tab-row">
+      <button v-for="t in listTabs" :key="t.k"
+        class="pl-mob-tab-pill" :class="{ active: listTab === t.k }"
+        @click="listTab = t.k">{{ t.label }}</button>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <!-- New button -->
+    <button class="pl-mob-new-btn" @click="openNewListDialog">
+      <span v-html="icon('plus', 13)"></span>
+    </button>
+  </div>
 
   <!-- ══ B. CONTENT PANEL ══ -->
   <div class="pl-content">
@@ -102,7 +126,7 @@
     <template v-else>
 
       <!-- B2a. Header -->
-      <div class="pl-panel-head">
+      <div class="pl-panel-head pl-mob-panel-head">
         <div class="pl-panel-title-row">
           <h2 class="pl-panel-name">{{ selectedList.name }}</h2>
           <span :class="typeBadgeClass(selectedList)">{{ typeLabel(selectedList) }}</span>
@@ -205,6 +229,43 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- B2d-mob. Card list (mobile) -->
+      <div class="pl-item-cards">
+        <template v-if="loadingPrices">
+          <div v-for="n in 5" :key="n" class="pl-item-card-shimmer b-shimmer"></div>
+        </template>
+        <div v-else-if="!pagedPrices.length" class="b-empty">
+          {{ itemSearch ? 'No items match your search' : 'No item prices yet — tap "Add Item" to start' }}
+        </div>
+        <div v-else v-for="(p, i) in pagedPrices" :key="p.name"
+          class="pl-item-card" @click="openEditDrawer(p)">
+
+          <div class="pl-item-card-top">
+            <div class="pl-item-card-codewrap">
+              <span class="pl-item-card-idx">{{ pageOffset + i + 1 }}</span>
+              <span class="pl-item-card-code">{{ p.item_code }}</span>
+            </div>
+            <button @click.stop="confirmDeletePrice(p)"
+              class="pl-item-card-delete"
+              v-html="icon('trash', 14)"></button>
+          </div>
+
+          <div class="pl-item-card-name">{{ p.item_name || p.item_code }}</div>
+
+          <div class="pl-item-card-bottom">
+            <div class="pl-item-card-meta">
+              <span>{{ p.uom || 'Nos' }}</span>
+              <span v-if="p.packing_unit"> · Min {{ p.packing_unit }}</span>
+              <span v-if="p.valid_from"> · From {{ fmtDate(p.valid_from) }}</span>
+              <span v-if="p.valid_upto" :class="['pl-item-card-validity', validityClass(p)]">
+                {{ validityLabel(p) }}
+              </span>
+            </div>
+            <div class="pl-item-card-rate">{{ fmtRate(p.price_list_rate) }}</div>
+          </div>
+        </div>
       </div>
 
       <!-- B2e. Pagination -->
@@ -1493,6 +1554,92 @@ onUnmounted(() => {
 .pl-row-delete { opacity: 0; transition: opacity .15s; }
 .pl-row:hover .pl-row-delete { opacity: 1; }
 
+/* Item cards (mobile) — hidden by default, shown ≤768px */
+.pl-item-cards { display: none; }
+.pl-item-card {
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color .12s, box-shadow .12s;
+}
+.pl-item-card:hover { border-color: #C7D2FE; box-shadow: 0 1px 4px rgba(59,91,219,.08); }
+.pl-item-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pl-item-card-codewrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.pl-item-card-idx {
+  font-size: 11px;
+  color: #ADB5BD;
+  flex-shrink: 0;
+}
+.pl-item-card-code {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #3B5BDB;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pl-item-card-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #C92A2A;
+  padding: 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: flex;
+}
+.pl-item-card-delete:active { background: #FFF5F5; }
+.pl-item-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1A1D23;
+  margin-top: 4px;
+}
+.pl-item-card-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pl-item-card-meta {
+  font-size: 11.5px;
+  color: #868E96;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.pl-item-card-validity {
+  font-size: 10.5px !important;
+  padding: 1px 7px !important;
+  margin-left: 2px;
+}
+.pl-item-card-rate {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2F9E44;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.pl-item-card-shimmer {
+  height: 76px;
+  border-radius: 12px;
+}
+
 /* Pagination */
 .pl-pagination {
   display: flex;
@@ -1674,9 +1821,10 @@ onUnmounted(() => {
 .pl-import-err-row td { background: #FFF5F5; }
 .pl-import-ok-row  td { background: #F0FFF4; }
 
-/* Mobile FAB + overlay (hidden on desktop) */
-
 /* ══ RESPONSIVE BREAKPOINTS ══════════════════════════════════════════════════ */
+
+/* Mobile toolbar: hidden on desktop */
+.pl-mob-toolbar { display: none; }
 
 /* Tablet: 768px – 1024px */
 @media (max-width: 1024px) {
@@ -1689,60 +1837,139 @@ onUnmounted(() => {
 
 /* Mobile: < 768px */
 @media (max-width: 768px) {
+  /* Switch to single-column, sidebar hidden */
   .pl-root { grid-template-columns: 1fr; gap: 0; }
+  .pl-sidebar { display: none; }
 
-  /* Sidebar: off-canvas from left */
-  .pl-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 280px;
-    z-index: 500;
-    border-radius: 0;
-    max-height: 100dvh;
-    transform: translateX(-100%);
-    transition: transform .25s ease;
-    box-shadow: none;
-  }
-  .pl-sidebar.pl-sidebar-mobile-open {
-    transform: translateX(0);
-    box-shadow: 4px 0 28px rgba(0,0,0,.25);
+  /* Show mobile toolbar */
+  .pl-mob-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #fff;
+    border-bottom: 1px solid #E2E8F0;
+    flex-wrap: wrap;
   }
 
-  /* Show overlay and FAB */
-  .pl-mob-overlay { display: block; }
-  .pl-mob-sidebar-toggle {
+  /* Group-like price list picker */
+  .pl-mob-group-wrap {
+    display: flex;
+    align-items: center;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .pl-mob-group-prefix {
+    padding: 0 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #6B7280;
+    background: #F8F9FC;
+    border-right: 1px solid #E2E8F0;
+    white-space: nowrap;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .pl-mob-group-select-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+  .pl-mob-group-select {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 8px 28px 8px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1A1D23;
+    font-family: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    cursor: pointer;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pl-mob-group-chev {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #868E96;
+  }
+
+  /* Tab pills row */
+  .pl-mob-tab-row {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .pl-mob-tab-pill {
+    background: #fff;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 5px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .pl-mob-tab-pill.active {
+    background: #3B5BDB;
+    color: #fff;
+    border-color: #3B5BDB;
+  }
+
+  /* New button (icon only) */
+  .pl-mob-new-btn {
     display: inline-flex;
-    position: fixed;
-    bottom: 20px;
-    left: 16px;
-    z-index: 501;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
     background: #3B5BDB;
     color: #fff;
     border: none;
-    border-radius: 50%;
-    width: 48px;
-    height: 48px;
+    border-radius: 8px;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(59,91,219,.5);
-    align-items: center;
-    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity .12s;
   }
+  .pl-mob-new-btn:hover { opacity: .88; }
 
-  /* Content: no gap from (hidden) sidebar */
-  .pl-content { padding-bottom: 76px; }
+  /* Content: full width */
+  .pl-content { padding-bottom: 24px; }
+
+  /* Panel head: tighter on mobile */
+  .pl-mob-panel-head { padding: 12px 14px 10px; }
 
   /* Toolbar wrap */
   .pl-toolbar { flex-wrap: wrap; gap: 6px; }
   .pl-toolbar-search { max-width: 100%; flex: unset; width: 100%; }
 
-  /* Table: hide more columns, scroll */
+  /* Table: hide, show card list instead */
   .pl-col-uom    { display: none; }
   .pl-col-minqty { display: none; }
   .pl-col-dates  { display: none; }
-  .pl-tbl-card   { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .pl-tbl-card .b-table { min-width: 300px; }
+  .pl-tbl-card   { display: none; }
+  .pl-item-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
   /* Drawer: bottom sheet */
   .pl-drawer-backdrop { align-items: flex-end; }
@@ -1774,5 +2001,14 @@ onUnmounted(() => {
 
   /* Empty state: tighter padding */
   .pl-empty-state { padding: 48px 24px; }
+}
+
+/* Extra small: < 480px */
+@media (max-width: 480px) {
+  .pl-mob-toolbar { padding: 10px 12px; gap: 6px; }
+  .pl-mob-tab-row { order: 2; width: 100%; }
+  .pl-mob-tab-pill { flex: 1; text-align: center; }
+  .pl-mob-group-wrap { order: 0; }
+  .pl-mob-new-btn { order: 1; }
 }
 </style>

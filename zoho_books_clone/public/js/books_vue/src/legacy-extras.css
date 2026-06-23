@@ -76,6 +76,7 @@
 .b-badge-red    { background: #FFE3E3; color: #C92A2A; }
 .b-badge-blue   { background: #E7F5FF; color: #1971C2; }
 .b-badge-muted  { background: #F1F3F5; color: #868E96; }
+.b-badge-purple  { background: #F3F0FF; color: #6741D9; }
 
 /* Filter pill row */
 .b-filter-row { display: inline-flex; gap: 4px; flex-wrap: wrap; }

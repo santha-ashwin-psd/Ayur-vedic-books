@@ -317,6 +317,7 @@ def save_doc(doc):
             "Sales Invoice":    "INV-.YYYY.-.#####",
             "Purchase Invoice": "PINV-.YYYY.-.#####",
             "Auto Repeat":      "SUBS-.YYYY.-.#####",
+            "Item Price":       "IP-.YYYY.-.#####",
         }
         if doctype in _NAMING_DEFAULTS and not doc.get("naming_series"):
             doc["naming_series"] = _NAMING_DEFAULTS[doctype]

@@ -299,7 +299,7 @@ onMounted(() => { if (!isPending.value) loadAddresses(); });
 .am-span2 { grid-column: span 2; }
 .am-lbl { font-size: 11.5px; font-weight: 600; color: #374151; }
 .am-req { color: #dc2626; }
-.am-input { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px; font-size: 13px; font-family: inherit; outline: none; color: #111827; transition: border-color .12s; }
+.am-input { width: 100%; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px; font-size: 13px; font-family: inherit; outline: none; color: #111827; transition: border-color .12s; }
 .am-input:focus { border-color: #3B5BDB; box-shadow: 0 0 0 3px #3B5BDB1a; }
 .am-form-footer { display: flex; justify-content: flex-end; gap: 8px; }
 .am-btn-cancel { background: none; border: 1px solid #d1d5db; border-radius: 7px; padding: 7px 16px; font-size: 13px; font-weight: 500; cursor: pointer; color: #374151; font-family: inherit; }

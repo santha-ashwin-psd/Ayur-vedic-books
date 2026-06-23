@@ -138,13 +138,11 @@
       <div class="inv-dh">
         <div class="dn-dheader-left">
           <div class="dn-dheader-ico" :class="editingName?'edit':''">
-            <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg></span>
+            <span v-html="icon(editingName?'edit':'file-minus',18)"></span>
           </div>
           <div>
             <div class="inv-dh-title">{{ editingName ? 'Edit Debit Note' : 'New Debit Note' }}</div>
-            <div class="inv-dh-sub">
-              {{ editingName ? editingName : 'Issue a debit against a vendor bill' }}
-            </div>
+            <div class="inv-dh-sub">{{ editingName ? editingName : 'Issue a debit against a vendor bill' }}</div>
           </div>
         </div>
         <button class="inv-dclose" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
@@ -166,73 +164,55 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:dnCollapsed.vendor}">
-
-            <!-- Vendor selector (shown when no vendor selected) -->
-            <template v-if="!form.supplier">
-              <div class="dn-field" style="margin-bottom:0">
-                <label class="inv-lbl">Vendor <span class="inv-req">*</span> <span class="dn-one-only-badge">one only</span></label>
-                <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Search and select a vendor…"
+            <div class="inv-fg inv-fg2">
+              <div class="dn-field" style="grid-column:1/-1">
+                <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
+                <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…"
                   :createable="true" createDoctype="Supplier"
                   @search="fetchVendors" @select="onVendorSelect" />
               </div>
-            </template>
-
-            <!-- Locked vendor card (shown once vendor is selected) -->
-            <template v-else>
-              <div class="dn-vendor-locked-card">
-                <!-- Loading skeleton -->
-                <div v-if="vendorDetailLoading" class="dn-vl-loading">
-                  <span class="dn-spinner"></span> Loading vendor details…
-                </div>
-                <template v-else>
-                  <div class="dn-vl-header">
-                    <div class="dn-vl-avatar">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    </div>
-                    <div class="dn-vl-info">
-                      <div class="dn-vl-name">{{ vendorDetail?.supplier_name || form.supplier }}</div>
-                      <div class="dn-vl-sub">{{ vendorDetail?.supplier_group || vendorDetail?.supplier_type || 'Vendor' }}</div>
-                    </div>
-                    <button class="dn-vl-change-btn" @click="changeVendor" title="Change vendor">
-                      <span v-html="icon('edit',12)"></span> Change
-                    </button>
-                  </div>
-                  <div class="dn-vl-details">
-                    <div class="dn-vl-detail-item" v-if="vendorDetail?.payment_terms_template || vendorDetail?.payment_terms">
-                      <span class="dn-vl-detail-lbl">Payment Terms</span>
-                      <span class="dn-vl-detail-val">{{ vendorDetail.payment_terms_template || vendorDetail.payment_terms }}</span>
-                    </div>
-                    <div class="dn-vl-detail-item" v-if="vendorDetail?.default_currency">
-                      <span class="dn-vl-detail-lbl">Currency</span>
-                      <span class="dn-vl-detail-val">{{ vendorDetail.default_currency }}</span>
-                    </div>
-                    <div class="dn-vl-detail-item" v-if="vendorDetail?.email_id">
-                      <span class="dn-vl-detail-lbl">Email</span>
-                      <a class="dn-vl-detail-val dn-vl-link" :href="`mailto:${vendorDetail.email_id}`">{{ vendorDetail.email_id }}</a>
-                    </div>
-                    <div class="dn-vl-detail-item" v-if="vendorDetail?.mobile_no">
-                      <span class="dn-vl-detail-lbl">Phone</span>
-                      <a class="dn-vl-detail-val dn-vl-link" :href="`tel:${vendorDetail.mobile_no}`">{{ vendorDetail.mobile_no }}</a>
-                    </div>
-                    <div class="dn-vl-detail-item">
-                      <span class="dn-vl-detail-lbl">Bills Found</span>
-                      <span class="dn-vl-detail-val" style="color:#2563eb;font-weight:700">{{ bills.length }}</span>
-                    </div>
-                    <div class="dn-vl-detail-item" v-if="vendorDetail?.tax_id">
-                      <span class="dn-vl-detail-lbl">Tax ID / GST</span>
-                      <span class="dn-vl-detail-val mono-sm">{{ vendorDetail.tax_id }}</span>
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </template>
-
-            <!-- Date, Reason, Cost Center — always shown -->
-            <div class="inv-fg inv-fg2" style="margin-top:12px">
               <div class="dn-field">
                 <label class="inv-lbl">Date <span class="inv-req">*</span></label>
                 <input v-model="form.posting_date" type="date" class="inv-fi" />
               </div>
+              <div class="dn-field">
+                <label class="inv-lbl">Against Bill</label>
+                <SearchableSelect v-model="form.return_against" :options="bills"
+                  placeholder="Select bill (optional)…" @search="fetchBills" @select="onBillSelect" />
+              </div>
+
+              <!-- Bill summary shown after selecting Against Bill -->
+              <div v-if="form.return_against" class="dn-field" style="grid-column:1/-1">
+                <div class="dn-inv-summary">
+                  <div v-if="billSummary.loading" class="dn-summary-loading">
+                    <span class="dn-spinner"></span> Loading bill details…
+                  </div>
+                  <template v-else-if="billSummary.data">
+                    <div class="dn-summary-header">
+                      <span class="dn-summary-inv-name">{{ form.return_against }}</span>
+                      <span class="dn-summary-badge"
+                        :class="'dn-badge-' + (billSummary.data.status || 'unpaid').toLowerCase().replace(/\s+/g, '-')">
+                        {{ billSummary.data.status }}
+                      </span>
+                    </div>
+                    <div class="dn-summary-grid">
+                      <div class="dn-summary-cell">
+                        <div class="dn-summary-label">Bill Amount</div>
+                        <div class="dn-summary-value">{{ fmtCur(billSummary.data.grand_total) }}</div>
+                      </div>
+                      <div class="dn-summary-cell">
+                        <div class="dn-summary-label">Paid</div>
+                        <div class="dn-summary-value dn-val-paid">{{ fmtCur(billSummary.data.total_paid) }}</div>
+                      </div>
+                      <div class="dn-summary-cell dn-summary-cell-outstanding">
+                        <div class="dn-summary-label">Outstanding</div>
+                        <div class="dn-summary-value dn-val-outstanding">{{ fmtCur(billSummary.data.outstanding) }}</div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
               <div class="dn-field">
                 <label class="inv-lbl">Reason</label>
                 <select v-model="form.reason" class="inv-fi">
@@ -247,122 +227,15 @@
               <div class="dn-field">
                 <label class="inv-lbl">Cost Center</label>
                 <select v-model="form.cost_center" class="inv-fi">
-                  <option value="">— Select —</option>
+                  <option value="">— None —</option>
                   <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
                 </select>
               </div>
             </div>
-
           </div>
         </div>
 
-        <!-- ══ CARD 2: Bill Selection ══ -->
-        <div class="add-card">
-          <div class="add-card-header" @click="dnCollapsed.bill=!dnCollapsed.bill">
-            <div class="add-card-title">
-              <span class="add-card-title-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              </span>
-              Bills to Debit Against
-            </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span v-if="selectedBillDocs.length" class="dn-bill-loaded-badge">{{ selectedBillDocs.length }} Bill{{ selectedBillDocs.length > 1 ? 's' : '' }} Loaded</span>
-              <span class="add-card-chevron" :class="{collapsed:dnCollapsed.bill}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-              </span>
-            </div>
-          </div>
-          <div class="add-card-body" :class="{collapsed:dnCollapsed.bill}">
-
-            <!-- No vendor yet -->
-            <div v-if="!form.supplier" class="dn-bill-ph">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Select a vendor first to view their bills
-            </div>
-
-            <!-- Vendor selected — always show search + bill list -->
-            <template v-else>
-              <!-- Search bar (always visible) -->
-              <div class="dn-field">
-                <label class="inv-lbl">Add Bill <span class="inv-opt">(select one or more)</span></label>
-                <SearchableSelect v-model="billSearchVal"
-                  :options="bills.filter(b => !selectedBillDocs.find(d => d.name === b.value))"
-                  placeholder="Search bills for this vendor…"
-                  @search="fetchBills" @select="addBill" />
-              </div>
-              <div v-if="!bills.length && !billLoading && !selectedBillDocs.length" class="dn-no-bills-note">
-                No submitted bills found for this vendor.
-              </div>
-
-              <!-- List of added bill mini-cards -->
-              <div v-if="selectedBillDocs.length" class="dn-bill-list">
-                <div v-for="doc in selectedBillDocs" :key="doc.name" class="dn-bill-mini-card">
-                  <div class="dn-bill-mini-hdr">
-                    <div>
-                      <span class="dn-bill-num">{{ doc.name }}</span>
-                      <span class="dn-bill-meta" style="margin-left:8px">{{ doc.supplier_name || doc.supplier }} · {{ fmtDate(doc.posting_date) }}</span>
-                    </div>
-                    <button class="dn-remove-bill-btn" @click="removeBillDoc(doc.name)" title="Remove this bill">×</button>
-                  </div>
-                  <div class="dn-bill-mini-amounts">
-                    <div class="dn-bill-amount-item">
-                      <span class="dn-bill-amount-lbl">Grand Total</span>
-                      <span class="dn-bill-amount-val">{{ fmtCur(Math.abs(doc.grand_total||0)) }}</span>
-                    </div>
-                    <div class="dn-bill-amount-sep">·</div>
-                    <div class="dn-bill-amount-item">
-                      <span class="dn-bill-amount-lbl">Outstanding</span>
-                      <span class="dn-bill-amount-val outstanding">{{ fmtCur(Math.abs(doc.outstanding_amount||0)) }}</span>
-                    </div>
-                    <div class="dn-bill-amount-sep">·</div>
-                    <div class="dn-bill-amount-item">
-                      <span class="dn-bill-amount-lbl">Items</span>
-                      <span class="dn-bill-amount-val">{{ doc.items?.length || 0 }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Combined totals (only when 2+ bills) -->
-                <div v-if="selectedBillDocs.length > 1" class="dn-bill-combined">
-                  <span class="dn-bill-combined-lbl">Combined</span>
-                  <div class="dn-bill-amount-item">
-                    <span class="dn-bill-amount-lbl">Grand Total</span>
-                    <span class="dn-bill-amount-val">{{ fmtCur(totalGrand) }}</span>
-                  </div>
-                  <div class="dn-bill-amount-sep">·</div>
-                  <div class="dn-bill-amount-item">
-                    <span class="dn-bill-amount-lbl">Outstanding</span>
-                    <span class="dn-bill-amount-val outstanding">{{ fmtCur(totalOutstanding) }}</span>
-                  </div>
-                  <div class="dn-bill-amount-sep">·</div>
-                  <div class="dn-bill-amount-item">
-                    <span class="dn-bill-amount-lbl">Items</span>
-                    <span class="dn-bill-amount-val">{{ lines.length }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Preset strip (only when at least one bill added) -->
-              <div v-if="selectedBillDocs.length" class="dn-preset-strip">
-                <span class="dn-preset-lbl">Quick Debit:</span>
-                <button class="dn-preset-btn" :class="{active:debitPreset==='full'}" @click="applyPreset('full')">
-                  Full Bill
-                </button>
-                <button class="dn-preset-btn" :class="{active:debitPreset==='outstanding'}" @click="applyPreset('outstanding')"
-                  :disabled="!totalOutstanding" title="Debit only the outstanding amount">
-                  Outstanding Only
-                </button>
-                <button class="dn-preset-btn" :class="{active:debitPreset==='selective'}" @click="applyPreset('selective')">
-                  Selective
-                </button>
-                <span v-if="debitPreset==='custom'" class="dn-preset-custom-badge">Custom</span>
-              </div>
-            </template>
-
-          </div>
-        </div>
-
-        <!-- ══ CARD 3: Debit Items ══ -->
+        <!-- ══ CARD 2: Debit Items ══ -->
         <div class="add-card">
           <div class="add-card-header" @click="dnCollapsed.items=!dnCollapsed.items">
             <div class="add-card-title">
@@ -372,175 +245,123 @@
               Debit Items
             </div>
             <div style="display:flex;align-items:center;gap:10px">
-              <span v-if="selectedBillDocs.length" class="dn-lines-badge">{{ lines.length }} line{{ lines.length!==1?'s':'' }}</span>
+              <span class="dn-lines-badge">{{ lines.length }} line{{ lines.length!==1?'s':'' }}</span>
               <span class="add-card-chevron" :class="{collapsed:dnCollapsed.items}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
               </span>
             </div>
           </div>
           <div class="add-card-body" :class="{collapsed:dnCollapsed.items}" style="padding:0">
-
-            <!-- No bill selected placeholder -->
-            <div v-if="!selectedBillDocs.length" class="dn-items-ph">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              Add a bill above to load its line items
-            </div>
-
-            <!-- Bill(s) loaded — deep item table -->
-            <template v-else>
-              <!-- Select-all toolbar -->
-              <div class="dn-items-toolbar">
-                <label class="dn-select-all-label">
-                  <input type="checkbox" :checked="lines.every(l=>l.included)" @change="e=>lines.forEach(l=>l.included=e.target.checked)" />
-                  <span>Select All</span>
-                </label>
-                <span class="dn-toolbar-sep"></span>
-                <span class="dn-toolbar-hint">{{ includedCt }} of {{ lines.length }} items included</span>
-              </div>
-
-              <!-- Deep rows -->
-              <div class="dn-items-table" style="border:none;border-radius:0;border-bottom:1px solid #e5e7eb">
-                <div class="dn-items-head dn-items-head-deep">
-                  <div></div>
-                  <div>Item</div>
-                  <div class="ta-r">Orig Qty</div>
-                  <div>Mode</div>
-                  <div>Debit Input</div>
-                  <div class="ta-r">Rate</div>
-                  <div class="ta-r">Debit Amt</div>
-                  <div></div>
-                </div>
-                <template v-for="group in groupedLines" :key="group.billName">
-                  <!-- Bill group header (only shown when 2+ bills) -->
-                  <div v-if="selectedBillDocs.length > 1" class="dn-bill-group-header">
-                    <span class="dn-bill-group-name">{{ group.billName || 'Unassigned' }}</span>
-                    <span class="dn-bill-group-total">{{ fmtCur(group.items.reduce((s,l)=>s+flt(l.original_amount),0)) }}</span>
+            <!-- Expandable item cards -->
+            <div class="dn-item-cards">
+              <div v-for="(line, idx) in lines" :key="line.id" class="dn-item-card">
+                <!-- Card header -->
+                <div class="dn-item-card-header" @click="line.collapsed = !line.collapsed">
+                  <span class="dn-item-card-num">#{{ idx + 1 }}</span>
+                  <span class="dn-item-card-title">{{ line.item_name || line.item_code || 'Line Item' }}</span>
+                  <div class="dn-item-card-subtotal">
+                    <span class="dn-item-subtotal-label">SUBTOTAL</span>
+                    <span class="dn-item-amount">{{ fmtCur(line.amount) }}</span>
                   </div>
-                <div v-for="line in group.items" :key="line.id"
-                  class="dn-items-row-deep-wrap"
-                  :class="{'dn-row-excluded': !line.included}">
-                  <div class="dn-items-row dn-items-row-deep">
-                    <!-- Checkbox -->
-                    <div class="dn-row-check">
-                      <input type="checkbox" v-model="line.included" />
+                  <span class="dn-item-chevron" :class="{collapsed: line.collapsed}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                  <button class="dn-item-rm" @click.stop="removeLine(line.id)">
+                    <span v-html="icon('x', 12)"></span>
+                  </button>
+                </div>
+                <!-- Card body -->
+                <div class="dn-item-card-body" v-show="!line.collapsed">
+                  <div class="dn-item-col dn-item-col--left">
+                    <div class="dn-item-field">
+                      <label>Item Name <span class="inv-req">*</span></label>
+                      <SearchableSelect v-model="line.item_code" :options="items"
+                        placeholder="Search item or service" :createable="true" createDoctype="Item"
+                        @search="fetchItems" @update:modelValue="onItemChange(line)" />
                     </div>
-                    <!-- Item name + orig amount -->
-                    <div class="dn-item-deep-name">
-                      <span class="dn-item-name">{{ line.item_name || line.item_code || '—' }}</span>
-                      <span class="dn-item-orig-amt">{{ fmtCur(line.original_amount) }}</span>
+                    <div class="dn-item-field" style="margin-top:12px">
+                      <label>Description</label>
+                      <textarea v-model="line.description" class="inv-fi dn-item-desc-ta" rows="3" maxlength="500" placeholder="Item description…"></textarea>
+                      <div class="dn-field-hint">{{ (line.description||'').length }}/500</div>
                     </div>
-                    <!-- Orig qty -->
-                    <div class="ta-r dn-orig-qty">{{ line.original_qty }}</div>
-                    <!-- Mode pill -->
-                    <div class="dn-mode-cell">
-                      <div class="dn-mode-pill-group">
-                        <button class="dn-mode-pill" :class="{active:line.mode==='qty'}" @click="line.mode='qty'" :disabled="!line.included" title="Qty Return">Qty</button>
-                        <button class="dn-mode-pill" :class="{active:line.mode==='amount'}" @click="line.mode='amount'" :disabled="!line.included" title="Price Adjustment">Amt</button>
-                        <button class="dn-mode-pill" :class="{active:line.mode==='pct'}" @click="line.mode='pct'" :disabled="!line.included" title="Percentage">%</button>
+                  </div>
+                  <div class="dn-item-col dn-item-col--right">
+                    <div class="dn-item-num-row">
+                      <div class="dn-item-field">
+                        <label>HSN/SAC</label>
+                        <input v-model="line.hsn_code" class="inv-fi" placeholder="e.g. 998314" />
+                      </div>
+                      <div class="dn-item-field">
+                        <label>UOM</label>
+                        <select v-model="line.uom" class="inv-fi">
+                          <option>Nos</option><option>Kg</option><option>Ltr</option>
+                          <option>Hrs</option><option>Pcs</option><option>Box</option>
+                          <option>Mtr</option><option>Set</option>
+                        </select>
                       </div>
                     </div>
-                    <!-- Debit Input (changes by mode) -->
-                    <div class="dn-debit-input-cell">
-                      <!-- Qty mode -->
-                      <template v-if="line.mode==='qty'">
-                        <div class="dn-input-wrap">
-                          <input v-model.number="line.qty" type="number" min="0" :max="line.original_qty" step="0.001"
-                            class="dn-deep-input" :disabled="!line.included" @input="syncLineAmount(line)" />
-                          <span class="dn-input-sfx">units</span>
-                        </div>
-                      </template>
-                      <!-- Amount mode -->
-                      <template v-else-if="line.mode==='amount'">
-                        <div class="dn-input-wrap">
-                          <span class="dn-input-pfx">₹</span>
-                          <input v-model.number="line.custom_amount" type="number" min="0" step="0.01"
-                            class="dn-deep-input" :disabled="!line.included" @input="syncLineAmount(line)" />
-                        </div>
-                      </template>
-                      <!-- Pct mode -->
-                      <template v-else>
-                        <div class="dn-input-wrap">
-                          <input v-model.number="line.pct" type="number" min="0" max="100" step="1"
-                            class="dn-deep-input" :disabled="!line.included" @input="syncLineAmount(line)" />
-                          <span class="dn-input-sfx">%</span>
-                        </div>
-                        <div class="dn-pct-hint">= {{ fmtCur(effectiveAmount(line)) }}</div>
-                      </template>
+                    <div class="dn-item-num-row">
+                      <div class="dn-item-field">
+                        <label>Qty</label>
+                        <input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-fi" @input="calcLine(line)" />
+                      </div>
+                      <div class="dn-item-field">
+                        <label>Rate (₹)</label>
+                        <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)" />
+                      </div>
                     </div>
-                    <!-- Rate -->
-                    <div class="ta-r mono-sm dn-rate-cell">{{ fmtCur(line.rate) }}</div>
-                    <!-- Debit amount -->
-                    <div class="ta-r mono-sm dn-deep-amt" :class="{'dn-amt-excluded': !line.included}">
-                      {{ line.included ? fmtCur(effectiveAmount(line)) : '—' }}
-                    </div>
-                    <!-- Remove -->
-                    <div><button @click="removeLine(line.id)" class="inv-rm-line"><span v-html="icon('x',12)"></span></button></div>
-                  </div>
-                  <!-- Per-row progress bar -->
-                  <div v-if="line.included && line.original_amount > 0" class="dn-debit-progress-wrap">
-                    <div class="dn-debit-progress-bar"
-                      :style="`width:${Math.min(100, Math.round(effectiveAmount(line)/line.original_amount*100))}%`">
+                    <div class="dn-item-num-row">
+                      <div class="dn-item-field">
+                        <label>Discount %</label>
+                        <input v-model.number="line.discount_percentage" type="number" min="0" max="100" step="0.1" class="inv-fi" @input="calcLine(line)" />
+                      </div>
+                      <div class="dn-item-field">
+                        <label>Tax Template</label>
+                        <select v-model="line.tax_code" class="inv-fi">
+                          <option value="">— No Tax —</option>
+                          <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.title || t.name }}</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
-                </template>
               </div>
-
-              <!-- Summary panel -->
-              <div class="dn-summary-panel">
-                <div class="dn-summary-row">
-                  <span class="dn-summary-lbl">Bill Total</span>
-                  <span class="dn-summary-bar-wrap">
-                    <span class="dn-summary-bar" style="width:100%;background:#e5e7eb"></span>
-                  </span>
-                  <span class="dn-summary-val">{{ fmtCur(billTotal) }}</span>
-                  <span class="dn-summary-pct">100%</span>
-                </div>
-                <div class="dn-summary-row">
-                  <span class="dn-summary-lbl">Debit Total</span>
-                  <span class="dn-summary-bar-wrap">
-                    <span class="dn-summary-bar" :style="`width:${debitPct}%;background:#ea580c`"></span>
-                  </span>
-                  <span class="dn-summary-val" style="color:#7c2d12;font-weight:700">{{ fmtCur(subtotal) }}</span>
-                  <span class="dn-summary-pct">{{ debitPct }}%</span>
-                </div>
-                <div class="dn-summary-divider"></div>
-                <div class="dn-summary-row">
-                  <span class="dn-summary-lbl">Remaining</span>
-                  <span class="dn-summary-bar-wrap"></span>
-                  <span class="dn-summary-val" :style="remaining < 0 ? 'color:#dc2626' : 'color:#16a34a'">
-                    {{ fmtCur(Math.abs(remaining)) }}{{ remaining < 0 ? ' (over)' : '' }}
-                  </span>
-                  <span class="dn-summary-pct"></span>
-                </div>
-                <div class="dn-summary-row">
-                  <span class="dn-summary-lbl">Items</span>
-                  <span class="dn-summary-bar-wrap"></span>
-                  <span class="dn-summary-val" style="color:#6b7280">{{ includedCt }} of {{ lines.length }} included</span>
-                  <span class="dn-summary-pct"></span>
-                </div>
-                <template v-if="dnTaxLines.length">
-                  <div class="dn-summary-divider"></div>
-                  <div v-for="tl in dnTaxLines" :key="tl.description" class="dn-summary-row">
-                    <span class="dn-summary-lbl">{{ tl.description }} ({{ tl.rate }}%)</span>
-                    <span class="dn-summary-bar-wrap"></span>
-                    <span class="dn-summary-val" style="color:#6b7280">{{ fmtCur(tl.amount) }}</span>
-                    <span class="dn-summary-pct"></span>
-                  </div>
-                  <div class="dn-summary-row" style="border-top:2px solid #fdba74;padding-top:6px;margin-top:2px">
-                    <span class="dn-summary-lbl" style="font-weight:700">Grand Total</span>
-                    <span class="dn-summary-bar-wrap"></span>
-                    <span class="dn-summary-val" style="color:#7c2d12;font-weight:800">{{ fmtCur(dnGrandTotal) }}</span>
-                    <span class="dn-summary-pct"></span>
-                  </div>
-                </template>
+            </div>
+            <div style="padding:10px 16px 4px">
+              <button class="inv-add-line-btn" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+            </div>
+            <!-- Totals -->
+            <div class="dn-form-totals">
+              <div v-if="dnTaxLines.length" class="dn-tax-note">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Tax rates inherited from bill {{ form.return_against }}
               </div>
-            </template>
-
+              <div class="po-totals" style="justify-content:flex-end">
+                <div class="po-totals-right" style="min-width:260px">
+                  <div class="po-total-row">
+                    <span>Subtotal</span>
+                    <span>{{ fmtCur(subtotal) }}</span>
+                  </div>
+                  <template v-if="dnTaxLines.length">
+                    <div v-for="tl in dnTaxLines" :key="tl.description" class="po-total-row dn-tax-row">
+                      <span>{{ tl.description }} ({{ tl.rate }}%)</span>
+                      <span>{{ fmtCur(tl.amount) }}</span>
+                    </div>
+                  </template>
+                  <div v-else class="po-total-row dn-tax-row">
+                    <span>Tax</span><span>{{ fmtCur(0) }}</span>
+                  </div>
+                  <div class="po-total-row dn-grand-total-row">
+                    <span>Total Debit</span>
+                    <span>{{ fmtCur(dnGrandTotal) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- ══ CARD 4: Notes ══ -->
+        <!-- ══ CARD 3: Notes ══ -->
         <div class="add-card">
           <div class="add-card-header" @click="dnCollapsed.notes=!dnCollapsed.notes">
             <div class="add-card-title">
@@ -554,8 +375,8 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:dnCollapsed.notes}">
-            <textarea v-model="form.remark" rows="3" maxlength="500" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
-              <div class="exp-field-hint" :class="{'exp-field-hint-err': form.remark.length >= 500}">{{ form.remark.length }}/500 characters</div>
+            <textarea v-model="form.notes" rows="3" class="inv-fi" placeholder="Internal note (optional)…" maxlength="500"></textarea>
+            <div class="dn-field-hint">{{ (form.notes||'').length }}/500</div>
           </div>
         </div>
 
@@ -925,20 +746,13 @@ const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const viewLoading = ref(false), viewItems = ref([]), viewApplications = ref([]), viewBalance = ref(0), viewReason = ref("");
 const vendors = ref([]), items = ref([]), bills = ref([]), lines = ref([]);
 const sortCol = ref("posting_date"), sortDir = ref("desc");
-const selectedBillDocs = ref([]);
-const billSearchVal = ref("");
-const billLoading = ref(false);
-const _suppressVendorSelect = ref(false);
-const vendorDetail = ref(null);
-const vendorDetailLoading = ref(false);
 
 // Balance cache by DN name
 const _balances = ref({});
 function balanceFor(name) { return flt(_balances.value[name] || 0); }
 
 let _id = 1;
-const blankLine = () => ({ id: _id++, item_code: "", item_name: "", description: "", original_qty: 1, original_amount: 0, qty: 1, rate: 0, included: true, mode: "qty", custom_amount: 0, pct: 100, amount: 0 });
-const debitPreset = ref("full");
+const blankLine = () => ({ id: _id++, item_code: "", item_name: "", description: "", hsn_code: "", uom: "Nos", qty: 1, rate: 0, discount_percentage: 0, discount_amount: 0, amount: 0, tax_code: "", collapsed: false });
 const costCenters = ref([]);
 async function fetchCostCenters() {
   try {
@@ -947,11 +761,13 @@ async function fetchCostCenters() {
     costCenters.value = r.map(c => c.name);
   } catch { costCenters.value = []; }
 }
-const form = reactive({ supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", cost_center: "", remark: "" });
-const dnCollapsed = reactive({ vendor: false, bill: false, items: false, notes: true });
+const form = reactive({ supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", notes: "", cost_center: "" });
+const dnCollapsed = reactive({ vendor: false, items: false, notes: true });
+const billSummary = reactive({ data: null, loading: false });
 
 const dnTaxes = ref([]);
 const taxTemplates = ref([]);
+const taxAccountHead = ref("");
 const applyModal = reactive({ open: false, saving: false, dnName: "", balance: 0, bill: "", originBill: "", amount: 0, openBills: [], summary: null, summaryLoading: false });
 // Refund modal
 const refundModal = reactive({ open: false, saving: false, dnName: "", balance: 0, amount: 0, mode: "Bank Transfer", reference: "" });
@@ -1052,67 +868,9 @@ const allChecked = computed(() => sorted.value.length > 0 && sorted.value.every(
 function toggle(n) { const s = new Set(selected.value); s.has(n) ? s.delete(n) : s.add(n); selected.value = s; }
 function toggleAll(e) { selected.value = e.target.checked ? new Set(sorted.value.map(d => d.name)) : new Set(); }
 
-function effectiveAmount(line) {
-  if (!line.included) return 0;
-  if (line.mode === "amount") return Math.round(flt(line.custom_amount) * 100) / 100;
-  if (line.mode === "pct")    return Math.round(flt(line.original_amount) * flt(line.pct) / 100 * 100) / 100;
-  return Math.round(flt(line.qty) * flt(line.rate) * 100) / 100;
-}
-function syncLineAmount(line) {
-  line.amount = effectiveAmount(line);
-}
-function applyPreset(preset) {
-  debitPreset.value = preset;
-  if (preset === "full") {
-    lines.value.forEach(l => { l.included = true; l.mode = "qty"; l.qty = l.original_qty; l.pct = 100; l.amount = effectiveAmount(l); });
-  } else if (preset === "outstanding") {
-    lines.value.forEach(l => { l.included = true; l.mode = "qty"; l.qty = l.original_qty; l.pct = 100; l.amount = effectiveAmount(l); });
-    const outstanding = totalOutstanding.value;
-    let running = 0;
-    for (const l of lines.value) {
-      const ea = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100;
-      if (running + ea <= outstanding) {
-        running += ea; l.amount = ea;
-      } else {
-        const rem = Math.round((outstanding - running) * 100) / 100;
-        if (rem <= 0) { l.included = false; l.amount = 0; }
-        else { l.mode = "amount"; l.custom_amount = rem; l.amount = rem; running = outstanding; }
-        // exclude the rest
-        const idx = lines.value.indexOf(l);
-        lines.value.slice(idx + 1).forEach(r => { r.included = false; r.amount = 0; });
-        break;
-      }
-    }
-  } else if (preset === "selective") {
-    lines.value.forEach(l => { l.included = false; l.amount = 0; });
-  }
-}
-watch(lines, () => {
-  if (!selectedBillDocs.value.length) return;
-  const allFull = lines.value.every(l => l.included && l.mode === "qty" && l.qty === l.original_qty);
-  if (!allFull && (debitPreset.value === "full" || debitPreset.value === "outstanding")) {
-    debitPreset.value = "custom";
-  }
-}, { deep: true });
-
-const subtotal       = computed(() => lines.value.reduce((s, l) => s + (l.included ? flt(l.amount) : 0), 0));
-const dnTaxLines     = computed(() => dnTaxes.value.map(t => ({ description: t.description || t.tax_type || "Tax", rate: Number(t.rate || 0), amount: Math.round(subtotal.value * Number(t.rate || 0) / 100 * 100) / 100 })));
-const dnGrandTotal   = computed(() => subtotal.value + dnTaxLines.value.reduce((s, t) => s + t.amount, 0));
-const billTotal      = computed(() => lines.value.reduce((s, l) => s + flt(l.original_amount), 0));
-const debitPct       = computed(() => billTotal.value ? Math.min(100, Math.round(subtotal.value / billTotal.value * 100)) : 0);
-const totalOutstanding = computed(() => selectedBillDocs.value.reduce((s, d) => s + Math.abs(flt(d.outstanding_amount || 0)), 0));
-const totalGrand     = computed(() => selectedBillDocs.value.reduce((s, d) => s + Math.abs(flt(d.grand_total || 0)), 0));
-const remaining      = computed(() => totalOutstanding.value - subtotal.value);
-const includedCt     = computed(() => lines.value.filter(l => l.included).length);
-const groupedLines   = computed(() => {
-  const map = new Map();
-  for (const l of lines.value) {
-    const k = l.bill_name || "";
-    if (!map.has(k)) map.set(k, []);
-    map.get(k).push(l);
-  }
-  return [...map.entries()].map(([billName, items]) => ({ billName, items }));
-});
+const subtotal    = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
+const dnTaxLines  = computed(() => dnTaxes.value.map(t => ({ description: t.description || t.tax_type || "Tax", rate: Number(t.rate || 0), amount: Math.round(subtotal.value * Number(t.rate || 0) / 100 * 100) / 100 })));
+const dnGrandTotal = computed(() => subtotal.value + dnTaxLines.value.reduce((s, t) => s + t.amount, 0));
 
 const timelineSteps = computed(() => {
   const d = viewDoc.value;
@@ -1152,59 +910,40 @@ const groupedApplications = computed(() => {
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", cost_center: "", remark: "" });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), return_against: "", reason: "Vendor Overcharge", notes: "", cost_center: "" });
+  billSummary.data = null; billSummary.loading = false;
+  dnTaxes.value = [];
   lines.value = [blankLine()];
-  selectedBillDocs.value = [];
-  billSearchVal.value = "";
-  vendorDetail.value = null;
-  fetchVendors(""); fetchItems(""); fetchCostCenters(); bills.value = [];
+  Object.assign(dnCollapsed, { vendor: false, items: false, notes: true });
+  fetchVendors(""); fetchItems(""); fetchBills(""); fetchTaxTemplates(); fetchCostCenters();
   drawerOpen.value = true;
 }
 async function openEdit(d) {
   editingName.value = d.name;
-  _suppressVendorSelect.value = true;
-  Object.assign(form, { supplier: d.supplier || "", posting_date: d.posting_date || todayStr(), return_against: d.return_against || "", reason: "Vendor Overcharge", cost_center: d.cost_center || "", remark: d.remark ||"" });
-  _suppressVendorSelect.value = false;
+  dnTaxes.value = [];
+  Object.assign(form, { supplier: d.supplier || "", posting_date: d.posting_date || todayStr(), return_against: d.return_against || "", reason: "Vendor Overcharge", notes: "", cost_center: "" });
+  billSummary.data = null; billSummary.loading = false;
   lines.value = [blankLine()];
-  selectedBillDocs.value = [];
-  billSearchVal.value = "";
-  vendorDetail.value = null;
-  fetchVendors(""); fetchItems(""); fetchCostCenters();
-  if (d.supplier) {
-    fetchBills("");
-    apiGet("Supplier", d.supplier).then(doc => { vendorDetail.value = doc; }).catch(() => {});
-  }
+  Object.assign(dnCollapsed, { vendor: false, items: false, notes: true });
+  fetchVendors(""); fetchItems(""); fetchBills(""); fetchTaxTemplates(); fetchCostCenters();
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Purchase Invoice", d.name);
-    const billRef = d.return_against || "";
-    if (doc?.cost_center) form.cost_center = doc.cost_center;
     if (doc?.items?.length) {
-      lines.value = doc.items.map(i => {
-        const qty = Math.abs(i.qty || 0);
-        const rate = Math.abs(i.rate || 0);
-        const origAmt = Math.abs(i.amount || 0) || Math.round(qty * rate * 100) / 100;
-        return {
-          id: _id++, item_code: i.item_code || "", item_name: i.item_name || i.item_code || "",
-          description: i.description || "",
-          original_qty: qty, original_amount: origAmt,
-          qty, rate,
-          bill_name: billRef,
-          included: true, mode: "qty",
-          custom_amount: origAmt, pct: 100,
-          amount: origAmt,
-        };
-      });
+      lines.value = doc.items.map(i => ({
+        id: _id++, item_code: i.item_code || "", item_name: i.item_name || i.item_code || "",
+        description: i.description || "", hsn_code: i.hsn_code || "",
+        qty: Math.abs(i.qty || 0), rate: Math.abs(i.rate || 0),
+        uom: i.uom || "Nos", discount_percentage: Math.abs(i.discount_percentage || 0),
+        discount_amount: Math.abs(i.discount_amount || 0),
+        amount: Math.abs(i.amount || 0), tax_code: i.tax_code || i.item_tax_template || "", collapsed: true,
+      }));
     }
-    if (doc?.remark) {
-        form.remark = doc.remark;
-    }
-    if (billRef) {
-      try {
-        const billDoc = await apiGet("Purchase Invoice", billRef);
-        selectedBillDocs.value = [billDoc];
-      } catch {}
-    }
+    dnTaxes.value = (doc?.taxes || [])
+      .map(t => ({ tax_type: t.account_head || "", description: t.description || "", rate: Number(t.rate || 0) }))
+      .filter(t => t.tax_type);
+    if (doc?.remarks) form.notes = doc.remarks;
+    if (doc?.cost_center) form.cost_center = doc.cost_center;
   } catch {}
 }
 async function openView(d) {
@@ -1254,123 +993,121 @@ async function fetchBills(q = "") {
     const f = [["is_return", "=", 0], ["docstatus", "=", 1]];
     if (form.supplier) f.push(["supplier", "=", form.supplier]);
     if (q) f.push(["name", "like", "%" + q + "%"]);
-    const r = await apiList("Purchase Invoice", { fields: ["name", "supplier", "supplier_name", "outstanding_amount"], filters: f, limit: 30 });
-    bills.value = r.map(x => ({ ...x, label: x.name + (x.supplier_name ? ` · ${x.supplier_name}` : ""), value: x.name }));
+    const r = await apiList("Purchase Invoice", { fields: ["name", "supplier", "supplier_name", "grand_total", "outstanding_amount", "status"], filters: f, limit: 50 });
+    bills.value = r.map(x => {
+      const due = Number(x.outstanding_amount || 0);
+      const total = Number(x.grand_total || 0);
+      const dueStr = due > 0 ? ` · ₹${due.toLocaleString("en-IN",{minimumFractionDigits:2})} due` : " · Paid";
+      return { ...x, label: `${x.name}${dueStr}${x.supplier_name ? ` · ${x.supplier_name}` : ""}`, value: x.name };
+    });
   } catch { bills.value = []; }
 }
-async function onVendorSelect(opt) {
-  if (_suppressVendorSelect.value) return;
-  clearBills();
+function onVendorSelect(opt) {
+  if (opt?.value) form.supplier = opt.value;
+  form.return_against = "";
+  billSummary.data = null;
+  dnTaxes.value = [];
   fetchBills("");
-  vendorDetail.value = null;
-  if (!form.supplier) return;
-  vendorDetailLoading.value = true;
-  try {
-    const doc = await apiGet("Supplier", form.supplier);
-    vendorDetail.value = doc;
-  } catch { vendorDetail.value = null; }
-  finally { vendorDetailLoading.value = false; }
 }
-function changeVendor() {
-  form.supplier = "";
-  vendorDetail.value = null;
-  clearBills();
-  bills.value = [];
-}
-async function addBill(opt) {
+async function onBillSelect(opt) {
   const billName = opt?.value ?? opt;
-  if (!billName || selectedBillDocs.value.find(d => d.name === billName)) return;
-  billLoading.value = true;
+  billSummary.data = null;
+  dnTaxes.value = [];
+  if (!billName) return;
+  billSummary.loading = true;
   try {
     const doc = await apiGet("Purchase Invoice", billName);
-    selectedBillDocs.value.push(doc);
+    dnTaxes.value = (doc?.taxes || [])
+      .map(t => ({ tax_type: t.account_head || "", description: t.description || "", rate: Number(t.rate || 0) }))
+      .filter(t => t.tax_type);
     if (doc?.items?.length) {
-      const newLines = doc.items.map(i => {
-        const qty = Math.abs(i.qty || 0);
-        const rate = Math.abs(i.rate || 0);
-        const origAmt = Math.abs(i.amount || 0) || Math.round(qty * rate * 100) / 100;
-        return {
-          id: _id++,
-          bill_name: doc.name,
-          item_code: i.item_code || "",
-          item_name: i.item_name || i.item_code || "",
-          description: i.description || i.item_name || "",
-          original_qty: qty,
-          original_amount: origAmt,
-          qty,
-          rate,
-          included: true,
-          mode: "qty",
-          custom_amount: origAmt,
-          pct: 100,
-          amount: Math.round(qty * rate * 100) / 100,
-        };
-      });
-      // Remove the blank placeholder line if it's the only line
-      if (lines.value.length === 1 && !lines.value[0].item_code) lines.value = [];
-      lines.value.push(...newLines);
+      lines.value = doc.items.map(i => ({
+        id: _id++, item_code: i.item_code || "", item_name: i.item_name || i.item_code || "",
+        description: i.description || i.item_name || "", hsn_code: i.hsn_code || "",
+        qty: Math.abs(i.qty || 1), rate: Math.abs(i.rate || 0),
+        uom: i.uom || "Nos", discount_percentage: Math.abs(i.discount_percentage || 0),
+        discount_amount: Math.abs(i.discount_amount || 0),
+        amount: Math.round(Math.abs(i.qty || 1) * Math.abs(i.rate || 0) * 100) / 100,
+        tax_code: i.tax_code || i.item_tax_template || "", collapsed: true,
+      }));
+      toast.success(`Loaded ${doc.items.length} item(s) from ${billName}`);
     }
     if (!form.supplier && doc?.supplier) form.supplier = doc.supplier;
-    // Merge taxes from this bill into dnTaxes (deduplicate by account_head)
-    if (doc?.taxes?.length) {
-      const existing = new Map(dnTaxes.value.map(t => [t.tax_type, t]));
-      for (const t of doc.taxes) {
-        const key = t.account_head || "";
-        if (key && !existing.has(key)) {
-          existing.set(key, { tax_type: key, description: t.description || key, rate: Number(t.rate || 0) });
-        }
-      }
-      dnTaxes.value = [...existing.values()];
-    }
-    debitPreset.value = "full";
-    billSearchVal.value = "";
+    const paid = Math.abs(flt(doc?.grand_total || 0)) - Math.abs(flt(doc?.outstanding_amount || 0));
+    billSummary.data = {
+      grand_total: Math.abs(flt(doc?.grand_total || 0)),
+      total_paid: Math.max(0, paid),
+      outstanding: Math.abs(flt(doc?.outstanding_amount || 0)),
+      status: doc?.status || "Unpaid",
+    };
   } catch {}
-  billLoading.value = false;
+  finally { billSummary.loading = false; }
 }
-function removeBillDoc(name) {
-  selectedBillDocs.value = selectedBillDocs.value.filter(d => d.name !== name);
-  lines.value = lines.value.filter(l => l.bill_name !== name);
-  if (!selectedBillDocs.value.length) { lines.value = [blankLine()]; debitPreset.value = "full"; }
+async function onItemChange(line) {
+  const it = items.value.find(i => i.name === line.item_code || i.value === line.item_code);
+  if (it) { line.item_name = it.item_name || it.name || line.item_code; line.rate = flt(it.rate || it.standard_rate || 0); line.uom = it.stock_uom || "Nos"; calcLine(line); }
+  if (line.item_code) {
+    try {
+      const doc = await apiGet("Item", line.item_code);
+      if (doc?.item_name) line.item_name = doc.item_name;
+      if (doc?.description && !line.description) line.description = doc.description;
+      if (doc?.hsn_code) line.hsn_code = doc.hsn_code;
+      if (!flt(line.rate) && doc?.standard_rate) line.rate = flt(doc.standard_rate);
+      if (doc?.stock_uom) line.uom = doc.stock_uom;
+      if (doc?.tax_code) line.tax_code = doc.tax_code;
+      calcLine(line);
+    } catch {}
+  }
 }
-function clearBills() {
-  selectedBillDocs.value = [];
-  billSearchVal.value = "";
-  lines.value = [blankLine()];
-  debitPreset.value = "full";
-  form.return_against = "";
-  dnTaxes.value = [];
-}
-function onItemSelect(line, opt) { line.item_code = opt?.value ?? opt; if (opt?.rate) { line.rate = Number(opt.rate) || 0; calcLine(line); } }
 function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
-function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
+function calcLine(l) {
+  if (l.discount_percentage > 100) l.discount_percentage = 100;
+  if (l.discount_percentage < 0) l.discount_percentage = 0;
+  const base = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100;
+  const disc = Math.round(base * flt(l.discount_percentage) / 100 * 100) / 100;
+  l.discount_amount = disc;
+  l.amount = base - disc;
+}
+async function fetchTaxTemplates() {
+  try {
+    const co = await resolveCompany();
+    const r = await apiList("Account", { fields: ["name"], filters: [["company","=",co],["account_type","=","Tax"],["is_group","=",0]], limit: 1 });
+    taxAccountHead.value = r?.[0]?.name || "";
+  } catch {}
+  try {
+    const templates = await apiList("Purchase Taxes and Charges Template", { fields: ["name","title"], filters: [["disabled","=",0]], limit: 50 });
+    taxTemplates.value = (templates || []).map(t => ({ name: t.name, title: t.title || t.name }));
+  } catch { taxTemplates.value = []; }
+}
 
 async function saveDN(submit) {
   if (!form.supplier) return toast.error("Vendor is required");
-  const activeLines = lines.value.filter(l => l.included && (l.item_code || l.item_name) && effectiveAmount(l) > 0);
-  if (!activeLines.length) return toast.error("At least one included item with amount > 0 is required");
-  if (form.remark.length > 500) return toast.error("Internal note cannot exceed 500 characters");
-  // Set return_against to first selected bill
-  form.return_against = selectedBillDocs.value[0]?.name || "";
+  const activeLines = lines.value.filter(l => l.item_code && flt(l.qty) > 0);
+  if (!activeLines.length) return toast.error("At least one item with quantity > 0 is required");
   drawerSaving.value = true;
   try {
+    const itemsPayload = activeLines.map(l => ({
+      item_code: l.item_code, item_name: l.item_name || l.item_code,
+      description: l.description || l.item_name || l.item_code,
+      hsn_code: l.hsn_code || "",
+      qty: flt(l.qty), rate: flt(l.rate), uom: l.uom || "Nos",
+      discount_percentage: flt(l.discount_percentage), discount_amount: flt(l.discount_amount),
+      amount: flt(l.amount), tax_code: l.tax_code || "",
+    }));
+    const taxPayload = dnTaxes.value.length
+      ? dnTaxes.value
+      : dnTaxLines.value.map(tl => ({ tax_type: taxAccountHead.value, description: tl.description, rate: tl.rate }));
     if (!editingName.value) {
-      const itemsPayload = activeLines.map(l => ({
-        item_code: l.item_code || l.item_name,
-        item_name: l.item_name || l.item_code,
-        description: l.description,
-        qty: l.mode === "qty" ? flt(l.qty) : 1,
-        rate: l.mode === "qty" ? flt(l.rate) : effectiveAmount(l),
-      }));
       const r = await apiPOST("zoho_books_clone.api.docs.create_debit_note", {
         vendor: form.supplier,
         against_bill: form.return_against || "",
         date: form.posting_date,
         reason: form.reason,
+        notes: form.notes || "",
         cost_center: form.cost_center || "",
-        remark: form.remark || "",
         items: JSON.stringify(itemsPayload),
-        taxes: JSON.stringify(dnTaxes.value),
+        taxes: JSON.stringify(taxPayload),
         draft_only: submit ? 0 : 1,
       });
       toast.success(`Debit Note ${r?.debit_note || ""} ${submit ? "submitted" : "saved as draft"}`);
@@ -1382,14 +1119,22 @@ async function saveDN(submit) {
         posting_date: form.posting_date,
         is_return: 1, return_against: form.return_against || null,
         cost_center: form.cost_center || "",
-        remark: form.remark || "",
+        remarks: form.notes || "",
         items: activeLines.map(l => ({
           doctype: "Purchase Invoice Item",
-          item_code: l.item_code,
+          item_code: l.item_code, item_name: l.item_name || l.item_code,
           description: l.description || l.item_code,
-          qty: l.mode === "qty" ? -Math.abs(flt(l.qty)) : -1,
-          rate: l.mode === "qty" ? flt(l.rate) : effectiveAmount(l),
-          amount: -Math.abs(effectiveAmount(l)),
+          hsn_code: l.hsn_code || "", uom: l.uom || "Nos",
+          qty: -Math.abs(flt(l.qty)), rate: flt(l.rate),
+          discount_percentage: flt(l.discount_percentage),
+          amount: -Math.abs(flt(l.amount)),
+        })),
+        taxes: taxPayload.map(t => ({
+          doctype: "Purchase Taxes and Charges",
+          charge_type: "On Net Total",
+          account_head: t.tax_type,
+          description: t.description || t.tax_type,
+          rate: Number(t.rate || 0),
         })),
       };
       const saved = await apiSave(doc);
@@ -1666,23 +1411,45 @@ onMounted(load);
 /* ── Field helpers ── */
 .dn-field { display: flex; flex-direction: column; gap: 4px; }
 
-/* ── Items line table ── */
-.dn-items-table {
-  display: flex; flex-direction: column;
-  border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+/* ── Item cards (add/edit drawer) ── */
+.dn-item-cards { display: flex; flex-direction: column; gap: 8px; padding: 8px 14px 0; }
+.dn-item-card {
+  border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;
+  background: #fff; transition: box-shadow .15s;
 }
-.dn-items-head {
-  display: grid;
-  grid-template-columns: 2fr 2fr 80px 100px 100px 32px;
-  gap: 8px; background: #f9fafb; padding: 8px 12px;
-  font-size: 11.5px; font-weight: 600; color: #374151;
+.dn-item-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.dn-item-card-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; background: #f9fafb; border-bottom: 1px solid #f0f0f0;
+  cursor: pointer; user-select: none;
 }
-.dn-items-row {
-  display: grid;
-  grid-template-columns: 2fr 2fr 80px 100px 100px 32px;
-  gap: 8px; padding: 8px 12px;
-  border-top: 1px solid #f3f4f6; align-items: center;
+.dn-item-card-num  { font-size: 10.5px; font-weight: 800; color: #c2410c; min-width: 22px; }
+.dn-item-card-title { flex: 1; font-size: 13px; font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dn-item-card-subtotal { display: flex; flex-direction: column; align-items: flex-end; gap: 0; flex-shrink: 0; }
+.dn-item-subtotal-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; }
+.dn-item-amount { font-size: 13px; font-weight: 700; color: #7c2d12; }
+.dn-item-rm { border: none; background: none; color: #d1d5db; font-size: 18px; font-weight: 700; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; transition: color .12s; }
+.dn-item-rm:hover { color: #dc2626; }
+.dn-item-card-body {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  padding: 12px 14px;
 }
+.dn-item-col { display: flex; flex-direction: column; gap: 10px; }
+.dn-item-field { display: flex; flex-direction: column; gap: 3px; }
+.dn-item-field label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+.dn-item-num-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+/* ── Form totals ── */
+.dn-form-totals {
+  border-top: 1px solid #e5e7eb; margin: 4px 14px 0;
+  padding: 10px 0;
+}
+.dn-tax-note { font-size: 12px; color: #6b7280; padding: 2px 0; }
+.dn-tax-row { color: #6b7280; font-size: 12.5px; }
+.dn-grand-total-row { font-size: 15px; font-weight: 700; color: #7c2d12; border-top: 2px solid #e5e7eb; padding-top: 10px; margin-top: 4px; }
+.dn-field-hint { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+/* ── Totals (legacy compat) ── */
 .dn-total-row { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #374151; padding: 8px 0; }
 .dn-total-row.grand { font-weight: 700; font-size: 15px; color: #111827; border-top: 2px solid #e5e7eb; padding-top: 10px; }
 
@@ -1834,176 +1601,6 @@ onMounted(load);
   padding: 8px 0; color: #6b7280;
 }
 
-/* ── Preset strip ── */
-.dn-preset-strip {
-  display: flex; align-items: center; gap: 6px;
-  margin-top: 14px; padding-top: 12px;
-  border-top: 1px dashed #fed7aa;
-  flex-wrap: wrap;
-}
-.dn-preset-lbl { font-size: 11px; font-weight: 600; color: #9a3412; text-transform: uppercase; letter-spacing: .04em; margin-right: 2px; }
-.dn-preset-btn {
-  font: inherit; font-size: 12px; font-weight: 600;
-  padding: 4px 12px; border-radius: 20px; cursor: pointer;
-  border: 1.5px solid #e5e7eb; background: #f9fafb; color: #374151;
-  transition: all .15s;
-}
-.dn-preset-btn:hover:not(:disabled) { border-color: #ea580c; color: #ea580c; background: #fff7ed; }
-.dn-preset-btn.active { background: #ea580c; color: #fff; border-color: #ea580c; }
-.dn-preset-btn:disabled { opacity: .4; cursor: not-allowed; }
-.dn-preset-custom-badge {
-  font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
-  background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;
-}
-
-/* ── Deep items toolbar ── */
-.dn-items-toolbar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 16px; background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb; font-size: 12.5px;
-}
-.dn-select-all-label { display: flex; align-items: center; gap: 6px; cursor: pointer; color: #374151; font-weight: 500; }
-.dn-toolbar-sep { width: 1px; height: 14px; background: #e5e7eb; }
-.dn-toolbar-hint { color: #9ca3af; font-size: 12px; }
-
-/* ── Deep items table (8 cols) ── */
-.dn-items-head-deep {
-  grid-template-columns: 28px 2fr 70px 100px 150px 90px 110px 28px !important;
-}
-.dn-items-row-deep {
-  grid-template-columns: 28px 2fr 70px 100px 150px 90px 110px 28px !important;
-  padding: 6px 12px;
-}
-.dn-items-row-deep-wrap {
-  border-top: 1px solid #f0f2f5;
-}
-.dn-items-row-deep-wrap:first-child { border-top: none; }
-.dn-row-excluded { opacity: 0.45; }
-
-/* Item name cell */
-.dn-item-deep-name { display: flex; flex-direction: column; justify-content: center; padding: 2px 0; }
-.dn-item-orig-amt { font-size: 11px; color: #9ca3af; margin-top: 1px; }
-
-/* Mode pill group */
-.dn-mode-cell { display: flex; align-items: center; }
-.dn-mode-pill-group { display: flex; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.dn-mode-pill {
-  font: inherit; font-size: 11px; font-weight: 600; padding: 3px 7px;
-  border: none; background: #f9fafb; color: #6b7280; cursor: pointer;
-  border-right: 1px solid #e5e7eb; transition: all .12s;
-}
-.dn-mode-pill:last-child { border-right: none; }
-.dn-mode-pill:hover:not(:disabled) { background: #f3f4f6; color: #374151; }
-.dn-mode-pill.active { background: #ea580c; color: #fff; }
-.dn-mode-pill:disabled { cursor: not-allowed; }
-
-/* Debit input cell */
-.dn-debit-input-cell { display: flex; flex-direction: column; justify-content: center; gap: 2px; }
-.dn-input-wrap { display: flex; align-items: center; gap: 4px; }
-.dn-input-pfx { font-size: 12px; color: #6b7280; font-weight: 600; }
-.dn-input-sfx { font-size: 11px; color: #9ca3af; }
-.dn-deep-input {
-  width: 72px; border: 1px solid #e2e8f0; border-radius: 5px;
-  padding: 4px 6px; font-size: 12.5px; text-align: right;
-  outline: none; font-family: inherit;
-}
-.dn-deep-input:focus { border-color: #ea580c; box-shadow: 0 0 0 2px rgba(234,88,12,.08); }
-.dn-deep-input:disabled { background: #f9fafb; color: #9ca3af; }
-.dn-pct-hint { font-size: 11px; color: #6b7280; padding-left: 2px; }
-
-/* Debit amount col */
-.dn-deep-amt { font-weight: 600; color: #7c2d12; padding: 8px 0; }
-.dn-amt-excluded { color: #d1d5db !important; font-weight: 400; font-style: italic; }
-
-/* Per-row progress bar */
-.dn-debit-progress-wrap {
-  height: 3px; background: #fee2e2; margin: 0 12px 4px;
-  border-radius: 2px; overflow: hidden;
-}
-.dn-debit-progress-bar {
-  height: 100%; background: #ea580c; border-radius: 2px;
-  transition: width .2s;
-}
-
-/* Row checkbox */
-.dn-row-check { display: flex; align-items: center; justify-content: center; }
-
-/* ── Summary panel ── */
-.dn-summary-panel {
-  margin: 0; padding: 12px 16px;
-  border-top: 2px solid #e5e7eb;
-  background: #fafafa;
-  display: flex; flex-direction: column; gap: 6px;
-}
-.dn-summary-row {
-  display: grid; grid-template-columns: 90px 1fr 120px 40px;
-  align-items: center; gap: 10px; font-size: 12.5px;
-}
-.dn-summary-lbl { font-weight: 600; color: #6b7280; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em; }
-.dn-summary-bar-wrap {
-  height: 6px; background: #f3f4f6; border-radius: 3px; overflow: hidden; position: relative;
-}
-.dn-summary-bar {
-  position: absolute; top: 0; left: 0; height: 100%; border-radius: 3px; transition: width .3s;
-}
-.dn-summary-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: #111827; }
-.dn-summary-pct { text-align: right; font-size: 11px; color: #9ca3af; }
-.dn-summary-divider { height: 1px; background: #e5e7eb; margin: 2px 0; }
-
-/* ── Multi-bill list ── */
-.dn-bill-list {
-  display: flex; flex-direction: column; gap: 0;
-  border: 1px solid #fed7aa; border-radius: 8px; overflow: hidden;
-  margin-top: 10px;
-}
-.dn-bill-mini-card {
-  padding: 10px 14px; background: #fff8f5;
-  border-bottom: 1px solid #fed7aa;
-}
-.dn-bill-mini-card:last-child { border-bottom: none; }
-.dn-bill-mini-hdr {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  margin-bottom: 8px;
-}
-.dn-remove-bill-btn {
-  border: 1px solid #fed7aa; background: #fff; color: #ea580c;
-  border-radius: 5px; padding: 2px 8px; font-size: 13px; font-weight: 700;
-  cursor: pointer; line-height: 1; font-family: inherit; flex-shrink: 0;
-  transition: all .15s;
-}
-.dn-remove-bill-btn:hover { background: #fff7ed; border-color: #ea580c; }
-.dn-bill-mini-amounts {
-  display: flex; align-items: center; gap: 0; flex-wrap: wrap;
-}
-
-/* ── Combined totals strip ── */
-.dn-bill-combined {
-  display: flex; align-items: center; gap: 0; flex-wrap: wrap;
-  padding: 8px 14px;
-  background: linear-gradient(90deg, #fff7ed, #fef9f5);
-  border-top: 1px dashed #fed7aa;
-}
-.dn-bill-combined-lbl {
-  font-size: 11px; font-weight: 800; color: #9a3412;
-  text-transform: uppercase; letter-spacing: .05em;
-  margin-right: 12px; flex-shrink: 0;
-}
-
-/* ── Bill group header row in items table ── */
-.dn-bill-group-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 5px 12px; background: #fff7ed;
-  border-top: 1px solid #fed7aa;
-  border-bottom: 1px solid #fde68a;
-}
-.dn-bill-group-header:first-child { border-top: none; }
-.dn-bill-group-name {
-  font-size: 11.5px; font-weight: 700; color: #9a3412;
-  text-transform: uppercase; letter-spacing: .04em;
-}
-.dn-bill-group-total { font-size: 11.5px; font-weight: 600; color: #7c2d12; }
-.exp-field-hint { font-size:11.5px;color:#9ca3af;margin-top:4px;text-align:right; }
-.exp-field-hint-err { color:#dc2626;font-weight:600; }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
@@ -2213,65 +1810,4 @@ onMounted(load);
 .dn-val-paid        { color: #15803d; }
 .dn-val-outstanding { color: #c2410c; font-weight: 700; }
 
-/* ── One-only badge on vendor label ── */
-.dn-one-only-badge {
-  display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; background: #eff6ff; color: #2563eb;
-  border: 1px solid #bfdbfe; border-radius: 4px; padding: 1px 5px; margin-left: 5px;
-  vertical-align: middle;
-}
-
-/* ── Locked vendor card ── */
-.dn-vendor-locked-card {
-  border: 2px solid #c2410c; border-radius: 10px; overflow: hidden;
-  background: linear-gradient(135deg,#fff7f5,#fff); margin-bottom: 2px;
-}
-.dn-vl-loading {
-  display: flex; align-items: center; gap: 8px;
-  padding: 14px 16px; font-size: 12.5px; color: #6b7280;
-}
-.dn-vl-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px; border-bottom: 1px solid #fed7aa; background: rgba(194,65,12,.05);
-}
-.dn-vl-avatar {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: linear-gradient(135deg,#7c2d12,#c2410c);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.dn-vl-avatar svg { stroke: #fff; }
-.dn-vl-info { flex: 1; min-width: 0; }
-.dn-vl-name {
-  font-size: 14px; font-weight: 700; color: #1a1d23;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.dn-vl-sub { font-size: 11px; color: #9ca3af; margin-top: 1px; }
-.dn-vl-change-btn {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
-  color: #6b7280; background: #fff; border: 1px solid #e5e7eb;
-  cursor: pointer; flex-shrink: 0; transition: background .12s;
-}
-.dn-vl-change-btn:hover { background: #f3f4f6; color: #374151; }
-.dn-vl-details {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
-}
-.dn-vl-detail-item {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 9px 12px; border-right: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6;
-}
-.dn-vl-detail-item:nth-child(3n) { border-right: none; }
-.dn-vl-detail-lbl {
-  font-size: 10px; font-weight: 700; color: #9ca3af;
-  text-transform: uppercase; letter-spacing: .05em;
-}
-.dn-vl-detail-val { font-size: 12.5px; font-weight: 600; color: #374151; }
-.dn-vl-link { color: #2563eb; text-decoration: none; }
-.dn-vl-link:hover { text-decoration: underline; }
-@media (max-width: 480px) {
-  .dn-vl-details { grid-template-columns: 1fr 1fr; }
-  .dn-vl-detail-item:nth-child(3n) { border-right: 1px solid #f3f4f6; }
-  .dn-vl-detail-item:nth-child(2n) { border-right: none; }
-}
 </style>

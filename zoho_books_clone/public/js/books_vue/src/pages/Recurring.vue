@@ -11,7 +11,7 @@
           {{ t.label }}<span v-if="t.count!=null" class="sales-pill-count">{{ t.count }}</span>
         </button>
       </div>
-      <div style="display:flex;gap:8px;margin-left:auto">
+      <div style="display:flex;gap:8px;">
         <button class="sales-btn-ghost" @click="exportCSV" :disabled="!sorted.length" title="Export to CSV">
           <span v-html="icon('download',14)"></span> CSV
         </button>
@@ -110,6 +110,54 @@
           </template>
         </tbody>
       </table>
+    </div>
+
+    <!-- ============================================================ MOBILE CARD LIST -->
+    <div class="rec-mobile-list">
+      <template v-if="loading">
+        <div v-for="n in 5" :key="n" class="rec-mob-card">
+          <div class="shimmer" style="height:80px;border-radius:8px"></div>
+        </div>
+      </template>
+      <template v-else>
+        <div v-if="!sorted.length" class="rec-empty-wrap">
+          <div class="rec-empty-icon" v-html="icon('repeat',32)"></div>
+          <div class="rec-empty-title">No subscriptions yet</div>
+          <div class="rec-empty-sub">Create a recurring subscription to auto-generate invoices, bills, or journals on a schedule.</div>
+          <button class="sales-btn-primary" @click="openNew" style="margin-top:12px"><span v-html="icon('plus',13)"></span> Create your first subscription</button>
+        </div>
+        <div v-for="r in paged" :key="r.name" class="rec-mob-card" @click="openView(r)">
+          <div class="rec-mob-card-top">
+            <div class="rec-mob-card-info">
+              <span class="inv-link rec-mob-name">{{ r.name }}</span>
+              <span v-if="r.subscription_name" class="rec-mob-sub-name">{{ r.subscription_name }}</span>
+            </div>
+            <span class="inv-status-badge" :class="statusClass(r.ui_status)">{{ r.ui_status }}</span>
+          </div>
+          <div class="rec-mob-card-mid">
+            <span v-if="r.party" class="rec-mob-party">{{ r.party }}</span>
+            <span v-else class="text-muted">—</span>
+            <span class="rec-mob-freq">{{ freqLabel(r.frequency) }}</span>
+          </div>
+          <div class="rec-mob-card-ref" v-if="r.reference_document">
+            <span class="rec-mob-ref-label">{{ r.reference_doctype }}</span>
+            <DocLink :doctype="r.reference_doctype" :name="r.reference_document" @click.stop />
+          </div>
+          <div class="rec-mob-card-bot">
+            <span class="rec-mob-next" :class="r.is_due ? 'text-accent' : ''">
+              <span v-html="icon('calendar',12)"></span>
+              Next: {{ fmtDate(r.next_schedule_date) || '—' }}
+              <span v-if="r.is_due" class="rec-due-dot"></span>
+            </span>
+            <div class="rec-mob-actions" @click.stop>
+              <button class="inv-act-btn" @click="openView(r)" title="View"><span v-html="icon('eye',13)"></span></button>
+              <button v-if="r.ui_status==='Active'" class="inv-act-btn" @click="quickAction(r,'pause')" title="Pause"><span v-html="icon('pause',13)"></span></button>
+              <button v-else-if="r.ui_status==='Paused'" class="inv-act-btn" @click="quickAction(r,'resume')" title="Resume"><span v-html="icon('play',13)"></span></button>
+              <button class="inv-act-btn rec-act-danger" @click="quickAction(r,'delete')" title="Delete"><span v-html="icon('trash',13)"></span></button>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
 
     <div v-if="!loading && sorted.length">
@@ -1075,6 +1123,100 @@ function exportCSV() {
 @media (max-width: 480px) {
   .rec-timeline { display:none; }
   .rec-va-btn-text { display: none; }
+}
+
+/* ── Mobile card list ── */
+.rec-mobile-list { display: none; }
+
+@media (max-width: 768px) {
+  /* Hide desktop table, show cards */
+  .inv-table-wrap { display: none; }
+  .rec-mobile-list { display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; }
+
+  /* Toolbar adjustments */
+  .sales-toolbar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  .sales-pills { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
+  .sales-search { order: 1; flex: 1; min-width: 0; }
+  .sales-toolbar > div:last-child { order: 2; margin-left: 0 !important; }
+
+  /* KPI grids */
+  .bk-kpi-grid-4 { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .bk-stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* Card styles */
+  .rec-mob-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.06);
+    cursor: pointer;
+    transition: box-shadow .15s, border-color .15s;
+  }
+  .rec-mob-card:active { box-shadow: 0 2px 8px rgba(15,23,42,.1); border-color: #bfdbfe; }
+
+  .rec-mob-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .rec-mob-card-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .rec-mob-name { font-size: 13px; font-weight: 700; color: #2563eb; }
+  .rec-mob-sub-name { font-size: 13px; color: #111827; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .rec-mob-card-mid {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .rec-mob-party { font-size: 13px; color: #374151; font-weight: 500; }
+  .rec-mob-freq {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f3f4f6;
+    border-radius: 6px;
+    padding: 2px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .rec-mob-card-ref {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .rec-mob-ref-label {
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    flex-shrink: 0;
+  }
+
+  .rec-mob-card-bot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px solid #f3f4f6;
+    gap: 8px;
+  }
+  .rec-mob-next {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .rec-mob-actions { display: flex; align-items: center; gap: 4px; }
 }
 .rec-meta-value {
   font-size: 13px;

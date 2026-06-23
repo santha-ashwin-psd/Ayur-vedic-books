@@ -382,7 +382,8 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:cnCollapsed.notes}">
-            <textarea v-model="form.notes" rows="3" class="inv-fi" placeholder="Internal note (optional)…"></textarea>
+            <textarea v-model="form.notes" rows="3" class="inv-fi" placeholder="Internal note (optional)…" maxlength="500"></textarea>
+            <div class="cn-field-hint">{{ (form.notes||'').length }}/500</div>
           </div>
         </div>
 
@@ -401,17 +402,16 @@
     <div v-if="viewOpen" class="inv-drawer-bg" @click.self="viewOpen=false"></div>
     <div class="cn-drawer cn-view-drawer" :class="{open:viewOpen}">
       <template v-if="viewDoc">
-        <div class="inv-view-header">
-          <div class="cn-view-head-body">
+        <div class="inv-view-header cn-view-header-fixed">
+          <div class="inv-view-head-cn">
             <div class="cn-view-head-left">
               <div class="inv-view-number">{{ viewDoc.name }}</div>
               <div class="inv-view-subtitle">
                 <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer }}</DocLink>
               </div>
             </div>
+            <button class="inv-dclose cn-vclose-fixed" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
           </div>
-          <button class="inv-dclose cn-vclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-          
         </div>
 
         <div class="cn-stepper-wrap"><TimelineStepper :steps="timelineSteps" /></div>
@@ -441,13 +441,38 @@
             <div v-if="viewLoading" style="text-align:center;padding:24px;color:#6b7280;font-size:13px">Loading…</div>
             <template v-else-if="viewItems.length">
               <div class="inv-sec-lbl">Line Items</div>
-              <div class="cn-view-items">
+              <!-- Desktop table -->
+              <div class="cn-view-items cn-view-items--desktop">
                 <div class="cn-view-items-head"><span>Item</span><span class="ta-r">Qty</span><span class="ta-r">Rate</span><span class="ta-r">Amount</span></div>
                 <div v-for="it in viewItems" :key="it.name" class="cn-view-items-row">
                   <span>{{ it.item_name||it.item_code }}</span>
                   <span class="ta-r mono-sm">{{ Math.abs(it.qty||0) }}</span>
                   <span class="ta-r mono-sm">{{ fmtCur(it.rate) }}</span>
                   <span class="ta-r mono-sm" style="font-weight:600">{{ fmtCur(Math.abs(it.amount||0)) }}</span>
+                </div>
+              </div>
+              <!-- Mobile cards -->
+              <div class="cn-view-items--mobile">
+                <div v-for="(it, idx) in viewItems" :key="it.name" class="cn-vi-card">
+                  <div class="cn-vi-card-header">
+                    <span class="cn-vi-card-num">#{{ idx + 1 }}</span>
+                    <span class="cn-vi-card-name">{{ it.item_name||it.item_code }}</span>
+                    <span class="cn-vi-card-amount">{{ fmtCur(Math.abs(it.amount||0)) }}</span>
+                  </div>
+                  <div class="cn-vi-card-meta">
+                    <div class="cn-vi-meta-item">
+                      <span class="cn-vi-meta-lbl">Qty</span>
+                      <span class="cn-vi-meta-val">{{ Math.abs(it.qty||0) }}</span>
+                    </div>
+                    <div class="cn-vi-meta-item">
+                      <span class="cn-vi-meta-lbl">Rate</span>
+                      <span class="cn-vi-meta-val">{{ fmtCur(it.rate) }}</span>
+                    </div>
+                    <div class="cn-vi-meta-item cn-vi-meta-item--amount">
+                      <span class="cn-vi-meta-lbl">Amount</span>
+                      <span class="cn-vi-meta-val cn-vi-meta-val--amount">{{ fmtCur(Math.abs(it.amount||0)) }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               <!-- Totals: subtotal + taxes + grand total -->
@@ -521,26 +546,46 @@
           </template>
         </div>
 
-        <div class="inv-dfooter">
-          <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
-            <span v-html="icon('edit',13)"></span> Edit
-          </button>
-          <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitDraftCN(viewDoc)">
-            <span v-html="icon('check',13)"></span> Submit
-          </button>
-          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" @click="emailCN(viewDoc)">
-            <span v-html="icon('mail',13)"></span> Email
-          </button>
-          <button class="form-btn form-btn-outline" @click="printCN(viewDoc)" title="Print preview">
-            🖨 Print
-          </button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-primary" @click="applyCN(viewDoc)">↳ Apply to Invoice</button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-outline" @click="autoApplyCN(viewDoc)" title="Auto-apply to oldest open invoice">⚡ Auto Apply</button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="form-btn form-btn-outline" @click="refundCN(viewDoc)">↩ Refund Credit</button>
-          <button v-if="viewDoc.docstatus===1 && viewBalance>0 && viewBalance<10" class="form-btn form-btn-outline" @click="writeOffCN(viewDoc)" title="Write off small residual balance">✎ Write Off</button>
-          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-danger" @click="cancelCN(viewDoc)">Cancel</button>
-          <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="form-btn form-btn-danger" @click="deleteCN(viewDoc)">Delete</button>
+        <div class="cn-view-footer">
+          <!-- Primary actions row — contextual, full-width prominence -->
+          <div class="cn-vf-primary">
+            <button v-if="viewDoc.docstatus===0" class="cn-vf-btn cn-vf-btn-submit" @click="submitDraftCN(viewDoc)">
+              <span v-html="icon('check',14)"></span> Submit
+            </button>
+            <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="cn-vf-btn cn-vf-btn-apply" @click="applyCN(viewDoc)">
+              ↳ <div class="cn-view-action-btn">Apply to Invoice</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="cn-vf-btn cn-vf-btn-auto" @click="autoApplyCN(viewDoc)">
+              ⚡<div class="cn-view-action-btn">Auto Apply</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="cn-vf-btn cn-vf-btn-refund" @click="refundCN(viewDoc)">
+              ↩  <div class="cn-view-action-btn">Refund Credit</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1 && viewBalance>0 && viewBalance<10" class="cn-vf-btn cn-vf-btn-outline" @click="writeOffCN(viewDoc)">
+              ✎ <div class="cn-view-action-btn">Write Off</div>
+            </button>
+          </div>
+          <!-- Secondary actions row — compact icon+label buttons -->
+          <div class="cn-vf-secondary">
+            <button class="cn-vf-sec-btn" @click="viewOpen=false">
+              <span v-html="icon('x',13)"></span> <div class="cn-view-action-btn">Close</div>
+            </button>
+            <button v-if="viewDoc.docstatus===0" class="cn-vf-sec-btn" @click="openEdit(viewDoc);viewOpen=false">
+              <span v-html="icon('edit',13)"></span> <div class="cn-view-action-btn">Edit</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1" class="cn-vf-sec-btn" @click="emailCN(viewDoc)">
+              <span v-html="icon('mail',13)"></span> <div class="cn-view-action-btn">Email</div>
+            </button>
+            <button class="cn-vf-sec-btn" @click="printCN(viewDoc)">
+              <span v-html="icon('printer',13)"></span> <div class="cn-view-action-btn">Print</div>
+            </button>
+            <button v-if="viewDoc.docstatus===1" class="cn-vf-sec-btn cn-vf-sec-danger" @click="cancelCN(viewDoc)">
+              <span v-html="icon('x-circle',13)"></span> <div class="cn-view-action-btn">Cancel</div>
+            </button>
+            <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="cn-vf-sec-btn cn-vf-sec-danger" @click="deleteCN(viewDoc)">
+              <span v-html="icon('trash',13)"></span> <div class="cn-view-action-btn">Delete</div>
+            </button>
+          </div>
         </div>
       </template>
     </div>
@@ -1029,7 +1074,7 @@ function calcLine(l) {
 async function fetchTaxTemplates() {
   try {
     const co = await resolveCompany();
-    const r = await apiList("Sales Taxes and Charges Template", {
+    const r = await apiList("Tax Template", {
       fields: ["name", "title"], filters: [["company","=",co],["disabled","=",0]], limit: 50
     });
     taxTemplates.value = r;
@@ -1336,7 +1381,11 @@ onMounted(async () => {
 .cn-drawer.open { right: 0; }
 .cn-view-drawer { width: 625px; right: -625px; }
 .cn-view-drawer.open { right: 0; }
-
+.inv-view-head-cn{
+  display: flex;
+    justify-content: space-between;
+    width: -webkit-fill-available;
+}
 /* ── Body tray for add-cards ── */
 .cn-dbody { background: #f0f4f8; padding: 14px; display: flex; flex-direction: column; gap: 0; }
 
@@ -1436,11 +1485,95 @@ onMounted(async () => {
 }
 
 /* ── View panel header ── */
-.cn-view-head-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.cn-view-header-fixed {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
 .cn-view-head-left { display: flex; flex-direction: column; gap: 2px; }
 .cn-view-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
 .cn-view-amount { font-size: 22px; font-weight: 800; color: #1a1a2e; line-height: 1; }
-.cn-vclose { align-self: flex-end; margin-left: auto; margin-bottom: 4px; }
+.cn-vclose-fixed {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── View drawer footer ── */
+.cn-view-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+/* Primary row: stacks of action buttons */
+.cn-vf-primary {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.cn-vf-btn {
+  flex: 1;
+  min-width: fit-content;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.cn-vf-btn-submit  { background: #2563eb; color: #fff; }
+.cn-vf-btn-apply   { background: #2563eb; color: #fff; }
+.cn-vf-btn-auto    { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+.cn-vf-btn-refund  { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+.cn-vf-btn-outline { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+/* Secondary row: compact icon+label buttons */
+.cn-vf-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cn-vf-sec-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+  white-space: nowrap;
+}
+.cn-vf-sec-btn:hover { background: #f3f4f6; }
+.cn-vf-sec-danger { color: #dc2626; border-color: #fecaca; }
+.cn-vf-sec-danger:hover { background: #fff1f2; }
+
+/* Mobile overrides for the view drawer */
+@media (max-width: 768px) {
+  .cn-view-drawer {
+    width: 100vw !important;
+    right: -100vw !important;
+    max-width: 100vw;
+  }
+  .cn-view-drawer.open { right: 0 !important; }
+  .cn-vf-btn { flex: unset; width: 100%; }
+  .cn-vf-secondary { flex-wrap: wrap; gap: 6px; }
+  .cn-vf-sec-btn { flex: 1; justify-content: center; }
+  /* KPI grid on mobile */
+  :deep(.bk-kpi-grid),
+  :deep(.bk-kpi-grid-4) { display: none !important; }
+}
 
 /* ── Meta/detail 2-col grid ── */
 .cn-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -1457,6 +1590,44 @@ onMounted(async () => {
   display: grid; grid-template-columns: 2.5fr 70px 90px 100px;
   gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6;
   align-items: center; font-size: 12.5px;
+}
+/* Mobile line-item cards */
+.cn-view-items--mobile { display: none; flex-direction: column; gap: 8px; }
+.cn-vi-card {
+  border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff;
+}
+.cn-vi-card-header {
+  display: flex; align-items: center; gap: 8px;
+  background: #fafafa; padding: 10px 12px; border-bottom: 1px solid #f0f0f0;
+}
+.cn-vi-card-num {
+  font-size: 11px; font-weight: 800; color: #dc2626; min-width: 20px; flex-shrink: 0;
+}
+.cn-vi-card-name {
+  flex: 1; font-size: 13px; font-weight: 600; color: #111827;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.cn-vi-card-amount {
+  font-size: 13.5px; font-weight: 700; color: #7f1d1d; flex-shrink: 0;
+}
+.cn-vi-card-meta {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
+}
+.cn-vi-meta-item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 12px; border-right: 1px solid #f3f4f6;
+}
+.cn-vi-meta-item:last-child { border-right: none; }
+.cn-vi-meta-item--amount { background: #fff8f8; }
+.cn-vi-meta-lbl {
+  font-size: 10px; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.cn-vi-meta-val { font-size: 12.5px; font-weight: 600; color: #374151; }
+.cn-vi-meta-val--amount { color: #7f1d1d; font-weight: 700; }
+@media (max-width: 768px) {
+  .cn-view-items--desktop { display: none !important; }
+  .cn-view-items--mobile { display: flex; }
 }
 .cn-view-totals {
   margin-top: 8px; border: 1px solid #e5e7eb; border-radius: 6px;
@@ -1657,8 +1828,6 @@ onMounted(async () => {
 .cn-item-num-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .cn-item-desc-ta { resize: vertical; min-height: 70px; font-size: 12.5px; }
 .cn-field-hint { font-size: 10.5px; color: #9ca3af; text-align: right; }
-
-/* ── Mobile card view (Option A) ── */
 .cn-mobile-cards { display: none; }
 .cn-desktop-table { display: table; }
 
@@ -1681,5 +1850,18 @@ onMounted(async () => {
   .cn-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: cn-shimmer 1.4s infinite; }
   @keyframes cn-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   .cn-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+  /* ── Add-drawer item card: single column on mobile ── */
+  .cn-item-card-body { grid-template-columns: 1fr; }
+  .cn-item-col--left { border-right: none; border-bottom: 1px solid #f0f2f5; padding-bottom: 10px; }
+  .cn-item-col--right { padding-top: 10px; }
+  .cn-item-card-header { flex-wrap: nowrap; gap: 6px; padding: 10px 12px; }
+  .cn-item-card-num { min-width: 18px; font-size: 11px; }
+  .cn-item-card-title { font-size: 12px; }
+  .cn-item-subtotal-label { font-size: 9px; }
+  .cn-item-amount { font-size: 12px; }
+  .cn-item-desc-ta { min-height: 56px; }
+}
+@media (max-width: 480px) {
+  .cn-view-action-btn{display:none;}
 }
 </style>

@@ -348,7 +348,8 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:pmtCollapsed.notes}">
-            <textarea v-model="form.remarks" rows="3" class="inv-fi" placeholder="Optional notes about this payment…"></textarea>
+            <textarea v-model="form.remarks" rows="3" maxlength="500" class="inv-fi" placeholder="Optional notes about this payment…"></textarea>
+            <div style="text-align:right;font-size:12px;color:#94a3b8;margin-top:4px;">{{ (form.remarks || '').length }}/500</div>
           </div>
         </div>
 

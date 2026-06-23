@@ -78,6 +78,9 @@
           <button v-if="r._source==='dn' && r.docstatus===0" class="dc-mob-act" @click.stop="submitOne(r)" title="Submit">
             <span v-html="icon('check', 15)"></span>
           </button>
+          <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled'" class="dc-mob-act dc-mob-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel">
+            <span v-html="icon('x', 15)"></span>
+          </button>
           <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="dc-mob-act dc-mob-act-del" @click.stop="deleteTarget={row:r,mode:'delete'}" title="Delete">
             <span v-html="icon('trash', 15)"></span>
           </button>
@@ -216,7 +219,7 @@
                   <div class="dc-info-val dc-info-link"><DocLink doctype="Sales Order" :name="viewDoc.sales_order" /></div>
                 </div>
                 <div v-if="viewDoc.billing_address||viewDoc.shipping_address" class="dc-info-item dc-info-full">
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px">
+                  <div class="view-address-grid">
                     <div v-if="viewDoc.billing_address">
                       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
                         <span v-html="icon('map-pin',12)" style="color:#6b7280"></span>
@@ -256,7 +259,9 @@
                 Items
                 <span class="dc-item-count">{{ (viewDoc.items||[]).length }} line{{ (viewDoc.items||[]).length!==1?'s':'' }}</span>
               </div>
-              <table class="inv-table dc-items-tbl">
+
+              <!-- Desktop table (hidden on mobile) -->
+              <table class="inv-table dc-items-tbl dc-items-tbl-desktop">
                 <thead>
                   <tr>
                     <th style="width:32px">#</th>
@@ -284,6 +289,33 @@
                   </tr>
                 </tbody>
               </table>
+
+              <!-- Mobile cards (shown only on mobile) -->
+              <div class="dc-view-items-mob">
+                <div v-if="!(viewDoc.items||[]).length" class="dc-view-items-empty">No items</div>
+                <div v-for="(it,i) in viewDoc.items||[]" :key="it.name||it.item_code" class="dc-view-item-card">
+                  <div class="dc-vic-num">#{{ i+1 }}</div>
+                  <div class="dc-vic-body">
+                    <div class="dc-vic-name">{{ it.item_name||it.item_code }}</div>
+                    <div v-if="it.item_code&&it.item_name&&it.item_code!==it.item_name" class="dc-vic-code">{{ it.item_code }}</div>
+                    <div v-if="it.description" class="dc-vic-desc">{{ it.description }}</div>
+                    <div class="dc-vic-meta-row">
+                      <div class="dc-vic-meta">
+                        <span class="dc-vic-meta-lbl">Qty</span>
+                        <span class="dc-vic-meta-val">{{ it.qty }}</span>
+                      </div>
+                      <div class="dc-vic-meta">
+                        <span class="dc-vic-meta-lbl">UOM</span>
+                        <span class="dc-vic-meta-val">{{ it.uom||'Nos' }}</span>
+                      </div>
+                      <div v-if="it.warehouse||viewDoc.set_warehouse" class="dc-vic-meta">
+                        <span class="dc-vic-meta-lbl">Warehouse</span>
+                        <span class="dc-vic-meta-val">{{ it.warehouse||viewDoc.set_warehouse }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -454,43 +486,64 @@
                 </span>
               </div>
             </div>
-            <div class="add-card-body" :class="{collapsed:collapsed.items}" style="padding:0">
-              <div class="dc-items-head">
-                <div>Item</div><div>Description</div><div class="ta-r">Qty</div><div>UOM</div><div></div>
+            <div class="add-card-body" :class="{collapsed:collapsed.items}" style="padding:16px 16px 8px">
+              <div class="po-item-cards">
+                <div v-for="(it,i) in form.items" :key="it._id" class="po-item-card">
+                  <!-- Card header: collapse toggle + item name + remove -->
+                  <div class="po-item-card-header" @click="it.collapsed=!it.collapsed">
+                    <span class="po-item-card-num">#{{ i+1 }}</span>
+                    <span class="po-item-card-title">{{ it.item_code || 'Line Item' }}</span>
+                    <div class="po-item-card-subtotal">
+                      <span class="po-item-card-subtotal-label">QTY</span>
+                      <span class="po-item-card-amount dc-qty-val">{{ it.qty || '—' }}</span>
+                    </div>
+                    <span class="po-item-card-chevron" :class="{collapsed:it.collapsed}">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </span>
+                    <button @click.stop="removeItem(i)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
+                  </div>
+                  <!-- Card body: fields -->
+                  <div class="po-item-card-body dc-item-card-body" v-show="!it.collapsed">
+                    <div class="po-item-col po-item-col--left">
+                      <div class="po-item-field">
+                        <label>Item <span class="inv-req">*</span></label>
+                        <SearchableSelect
+                          v-model="it.item_code"
+                          :options="items"
+                          placeholder="Search item…"
+                          :createable="true"
+                          createDoctype="Item"
+                          @search="fetchItems"
+                          @select="opt => onItemSelect(it, opt)"
+                        />
+                      </div>
+                      <div class="po-item-field" style="margin-top:14px">
+                        <label>Description</label>
+                        <textarea v-model="it.description" class="inv-fi po-item-desc-ta" rows="4" maxlength="500" placeholder="Enter item description…"></textarea>
+                        <div class="exp-field-hint" :class="{'exp-field-hint-err': (it.description||'').length >= 500}">{{ (it.description||'').length }}/500</div>
+                      </div>
+                    </div>
+                    <div class="po-item-col po-item-col--right">
+                      <div class="po-item-num-row">
+                        <div class="po-item-field">
+                          <label>Qty <span class="inv-req">*</span></label>
+                          <input class="inv-fi" type="number" v-model.number="it.qty" placeholder="1" min="0.01" step="0.01"/>
+                        </div>
+                        <div class="po-item-field">
+                          <label>UOM</label>
+                          <input class="inv-fi" v-model="it.uom" placeholder="Nos"/>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div v-for="(it,i) in form.items" :key="i" class="dc-item-row" style="padding:6px 10px">
-                <div>
-                  <SearchableSelect
-                    v-model="it.item_code"
-                    :options="items"
-                    placeholder="Select item…"
-                    :createable="true"
-                    createDoctype="Item"
-                    @search="fetchItems"
-                    @select="opt => onItemSelect(it, opt)"
-                  />
-                </div>
-                <div>
-                  <input class="inv-fi" v-model="it.description" maxlength="500" placeholder="Description"/>
-                </div>
-                <div>
-                  <input class="inv-fi ta-r" type="number" v-model.number="it.qty" placeholder="Qty" min="0.01" step="0.01"/>
-                </div>
-                <div>
-                  <input class="inv-fi" v-model="it.uom" placeholder="Nos"/>
-                </div>
-                <div>
-                  <button class="add-line-del" style="opacity:1" @click="removeItem(i)"><span v-html="icon('trash',12)"></span></button>
-                </div>
-              </div>
-              <div v-if="!form.items.length" style="padding:14px 10px">
-                <div class="dc-items-empty">No items yet — click Add Item</div>
-              </div>
-              <div class="add-new-line-row" style="padding:6px 14px;border-top:1px solid #f0f3f7">
-                <button class="add-new-line-btn" @click="addItem">
-                  <span v-html="icon('plus',12)"></span> Add new line
-                </button>
-              </div>
+
+              <div v-if="!form.items.length" class="dc-items-empty" style="padding:20px 0 8px">No items yet — click Add Item</div>
+
+              <button class="inv-add-line-btn" style="margin-top:12px" @click="addItem">
+                <span v-html="icon('plus',12)"></span> Add Item
+              </button>
             </div>
           </div>
 
@@ -516,25 +569,25 @@
 
 
     <!-- ADD NEW ADDRESS MODAL -->
-    <div v-if="addrModal.open" class="inv-drawer-bg" style="z-index:70" @click.self="addrModal.open=false"></div>
-    <div v-if="addrModal.open" class="po-addr-modal" style="z-index:71">
-      <div class="po-addr-modal-header">
-        <span>Add New Address</span>
-        <button class="po-addr-modal-close" @click="addrModal.open=false" v-html="icon('x',16)"></button>
+    <div v-if="addrModal.open" class="inv-drawer-bg" style="z-index:8050;background:rgba(15,23,42,.35)" @click.self="addrModal.open=false"></div>
+    <div v-if="addrModal.open" class="po-apply-dialog" style="z-index:8100">
+      <div class="inv-dh" style="border-bottom:1px solid #e5e7eb;padding:16px 20px">
+        <div class="inv-dh-title" style="font-size:15px">Add New Address</div>
+        <button class="inv-dclose" @click="addrModal.open=false"><span v-html="icon('x',16)"></span></button>
       </div>
-      <div class="po-addr-modal-body">
-        <div class="po-addr-form-grid">
+      <div class="inv-dbody" style="padding:20px;overflow-y:auto;flex:1">
+        <div class="inv-fg inv-fg2">
           <div style="grid-column:1/-1">
             <label class="inv-lbl">Address Title <span class="inv-req">*</span></label>
-            <input class="inv-fi" v-model="addrModal.title" placeholder="e.g. Head Office, Warehouse"/>
+            <input class="inv-fi" v-model="addrModal.address_title" placeholder="e.g. Head Office, Warehouse"/>
           </div>
           <div style="grid-column:1/-1">
             <label class="inv-lbl">Address Line 1 <span class="inv-req">*</span></label>
-            <input class="inv-fi" v-model="addrModal.line1" placeholder="Street / Building"/>
+            <input class="inv-fi" v-model="addrModal.address_line1" placeholder="Street / Building"/>
           </div>
           <div style="grid-column:1/-1">
             <label class="inv-lbl">Address Line 2</label>
-            <input class="inv-fi" v-model="addrModal.line2" placeholder="Area / Landmark"/>
+            <input class="inv-fi" v-model="addrModal.address_line2" placeholder="Area / Landmark"/>
           </div>
           <div>
             <label class="inv-lbl">City</label>
@@ -568,15 +621,11 @@
               <option value="Other">Other</option>
             </select>
           </div>
-          <div>
-            <label class="inv-lbl">GST / Tax ID</label>
-            <input class="inv-fi" v-model="addrModal.gstin" placeholder="GSTIN (optional)"/>
-          </div>
         </div>
       </div>
-      <div class="po-addr-modal-footer">
-        <button class="add-btn-cancel" @click="addrModal.open=false">Cancel</button>
-        <button class="add-btn-draft" @click="saveNewAddress" :disabled="addrModal.saving">
+      <div class="inv-dfooter" style="padding:14px 20px">
+        <button class="form-btn form-btn-outline" @click="addrModal.open=false" :disabled="addrModal.saving">Cancel</button>
+        <button class="form-btn form-btn-primary" @click="saveNewAddress" :disabled="addrModal.saving">
           {{ addrModal.saving ? 'Saving…' : 'Save Address' }}
         </button>
       </div>
@@ -661,7 +710,8 @@ const collapsed   = reactive({ details: false, transport: false, items: false })
 const customerAddresses = ref([]);
 const addrModal = reactive({
   open: false, forField: "shipping", saving: false,
-  title: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "India", address_type: "Shipping", gstin: "",
+  address_title: "", address_type: "Shipping",
+  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India",
 });
 
 const selectedBillingAddr  = computed(() => customerAddresses.value.find(a => a.name === form.billing_address_name) || null);
@@ -674,7 +724,7 @@ const warehouses = ref([]);
 const salesOrders = ref([]);
 
 let _lineId = 1;
-const blankItem = () => ({ _id: _lineId++, item_code: "", item_name: "", description: "", qty: 1, uom: "Nos" });
+const blankItem = () => ({ _id: _lineId++, item_code: "", item_name: "", description: "", qty: 1, uom: "Nos", collapsed: false });
 
 const form = reactive({
   customer: "",
@@ -1046,6 +1096,7 @@ async function openEdit(r) {
         description: it.description || "",
         qty:         flt(it.qty) || 1,
         uom:         it.uom || "Nos",
+        collapsed:   false,
       }));
       if (doc?.remarks)               form.remarks = doc.remarks;
       if (doc?.set_warehouse)         form.set_warehouse = doc.set_warehouse;
@@ -1070,6 +1121,7 @@ async function openEdit(r) {
         description: it.description || "",
         qty:         flt(it.delivered_qty || it.qty) || 1,
         uom:         it.uom || "Nos",
+        collapsed:   false,
       }));
     } catch {}
   }
@@ -1192,35 +1244,35 @@ function onShippingAddrSelect(opt) {
 }
 function openAddrModal(field) {
   const addrType = field === "billing" ? "Billing" : "Shipping";
-  Object.assign(addrModal, { open: true, saving: false, forField: field, address_type: addrType, title: "", line1: "", line2: "", city: "", state: "", pincode: "", country: "India", gstin: "" });
+  Object.assign(addrModal, { open: true, saving: false, forField: field, address_type: addrType, address_title: "", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
 }
 
 async function saveNewAddress() {
-  if (!addrModal.title || !addrModal.line1) { toast.error("Title and Address Line 1 are required"); return; }
+  if (!addrModal.address_title.trim()) { toast.error("Address Title is required"); return; }
+  if (!addrModal.address_line1.trim()) { toast.error("Address Line 1 is required"); return; }
   addrModal.saving = true;
   try {
     const addrDoc = {
       doctype: "Address",
-      address_title: addrModal.title,
+      address_title: addrModal.address_title,
       address_type:  addrModal.address_type || "Shipping",
-      address_line1: addrModal.line1,
-      address_line2: addrModal.line2 || "",
+      address_line1: addrModal.address_line1,
+      address_line2: addrModal.address_line2 || "",
       city:          addrModal.city || "",
       state:         addrModal.state || "",
       pincode:       addrModal.pincode || "",
       country:       addrModal.country || "India",
-      gstin:         addrModal.gstin || "",
-      links: [{ doctype: "Address", link_doctype: "Customer", link_name: form.customer }],
+      links: form.customer ? [{ doctype: "Address", link_doctype: "Customer", link_name: form.customer }] : [],
     };
     const saved = await apiSave(addrDoc);
-    addrModal.open = false;
+    toast.success("Address saved");
     await fetchCustomerAddresses(form.customer);
     const newAddr = customerAddresses.value.find(a => a.name === saved?.name) || customerAddresses.value[customerAddresses.value.length - 1];
     if (newAddr) {
       if (addrModal.forField === "billing") { form.billing_address_name = newAddr.name; form.billing_address = formatAddress(newAddr); }
       else { form.shipping_address_name = newAddr.name; form.shipping_address = formatAddress(newAddr); }
     }
-    toast.success("Address saved");
+    addrModal.open = false;
   } catch (e) { toast.error(e.message || "Failed to save address"); }
   finally { addrModal.saving = false; }
 }
@@ -1249,6 +1301,7 @@ async function onSOSelect(opt) {
         description: it.description || "",
         qty:         flt(Math.max(0, flt(it.qty) - flt(it.delivered_qty))) || flt(it.qty) || 1,
         uom:         it.uom || "Nos",
+        collapsed:   false,
       })).filter(it => it.qty > 0);
       if (!form.items.length) form.items = [blankItem()];
       toast.success(`Loaded ${so.items.length} item(s) from ${soName}`);
@@ -1764,9 +1817,12 @@ onMounted(async () => {
 
   /* Hide the desktop table and stat grid on mobile */
   .inv-table-wrap,
-  .bk-kpi-grid,
-  .bk-kpi-grid-4,
   .bk-stat-grid {
+    display: none !important;
+  }
+  /* bk-kpi-grid is a global class — needs :deep() to pierce scoped styles */
+  :deep(.bk-kpi-grid),
+  :deep(.bk-kpi-grid-4) {
     display: none !important;
   }
 }
@@ -1805,5 +1861,107 @@ onMounted(async () => {
   top: 12px;
   right: 12px;
   flex-shrink: 0;
+}
+
+/* ── Mobile cancel button in card actions ── */
+.dc-mob-act-cancel { color: #d97706 !important; }
+.dc-mob-act-cancel:hover { background: #fef3c7 !important; }
+
+/* ── Item card: qty display in header ── */
+.dc-qty-val {
+  font-size: 16px !important;
+}
+
+/* ── Item card body: 60/40 split (description left, qty+uom right) ── */
+.dc-item-card-body {
+  grid-template-columns: 3fr 2fr !important;
+}
+
+/* ── Mobile view-drawer item cards ── */
+.dc-view-items-mob { display: none; }
+
+@media (max-width: 480px) {
+  /* Hide desktop table in view drawer items section */
+  .dc-items-tbl-desktop { display: none !important; }
+
+  /* Show mobile item cards */
+  .dc-view-items-mob {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 0 2px;
+  }
+  .dc-view-items-empty {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 13px;
+    padding: 20px 0;
+  }
+  .dc-view-item-card {
+    display: flex;
+    gap: 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .dc-vic-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ca3af;
+    min-width: 22px;
+    padding-top: 2px;
+    flex-shrink: 0;
+  }
+  .dc-vic-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .dc-vic-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.3;
+  }
+  .dc-vic-code {
+    font-size: 11px;
+    color: #9ca3af;
+    font-family: monospace;
+  }
+  .dc-vic-desc {
+    font-size: 12.5px;
+    color: #6b7280;
+    line-height: 1.5;
+    margin-top: 2px;
+    word-break: break-word;
+  }
+  .dc-vic-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .dc-vic-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .dc-vic-meta-lbl {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+  .dc-vic-meta-val {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+  }
 }
 </style>

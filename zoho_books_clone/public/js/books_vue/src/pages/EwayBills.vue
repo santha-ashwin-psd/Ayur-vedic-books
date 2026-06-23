@@ -948,7 +948,7 @@ function exportCSV() {
 .ew-overlay{position:fixed;inset:0;background:rgba(15,23,42,.32);backdrop-filter:blur(2px);z-index:40;}
 .ew-drawer{position:fixed;top:0;right:-560px;bottom:0;width:560px;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-12px 0 32px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s cubic-bezier(.32,.72,0,1);}
 .ew-drawer.open{right:0;}
-.ew-view-drawer{width:620px;right:-620px;}.ew-view-drawer.open{right:0;}
+.ew-view-drawer{width:530px;right:-530px;}.ew-view-drawer.open{right:0;}
 
 .ew-dheader{display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}
 .ew-dheader-left{display:flex;align-items:flex-start;gap:12px;}
@@ -1020,9 +1020,9 @@ function exportCSV() {
 .ew-gen-card-body.collapsed{display:none;}
 /* Key-value row layout for view sections */
 .ew-kv-list{display:flex;flex-direction:column;}
-.ew-kv-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f2f5;gap:12px;}
+.ew-kv-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;gap:12px;}
 .ew-kv-row:last-child{border-bottom:none;}
-.ew-kv-lbl{font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0;}
+.ew-kv-lbl{font-size:12px;font-weight:600;color:#111827;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0;}
 .ew-kv-val{font-size:13px;color:#374151;text-align:right;}
 
 /* Toolbar button group */
@@ -1054,7 +1054,7 @@ function exportCSV() {
 }
 
 @media(max-width:475px) {
-  .ew-view-actbar { display: flex; justify-content: space-between; }
+  .ew-view-actbar { display: flex; justify-content: space-evenly; }
   .ew-va-btn-text { display: none; }
   .ew-page { padding: 12px 10px 20px !important; gap: 14px !important; box-sizing: border-box !important; background: #fff !important; }
   .ew-view-stats { display: flex; }

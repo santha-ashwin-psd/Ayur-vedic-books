@@ -899,6 +899,9 @@
   margin-left: 6px;
 }
 
+.view-address-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:20px
+}
 /* ══════════════════════════════════════════════
    RESPONSIVE
    ══════════════════════════════════════════════ */
@@ -1003,6 +1006,9 @@
   .inv-log-time         { font-size: 11px; }
 
   .rp-row { grid-template-columns: 1fr; }
+  .view-address-grid{
+    display:contents;
+  }
 }
 
 /* ── Touch devices ── */

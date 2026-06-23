@@ -739,7 +739,7 @@
                     <div class="inv-bottom-card-title"><span v-html="icon('map-pin',14)"></span> Addresses</div>
                   </div>
                   <div class="inv-bottom-card-body">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                    <div class="view-address-grid">
                       <div v-if="viewDoc.billing_address">
                         <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
                           <span v-html="icon('map-pin',12)" style="color:#6b7280"></span>

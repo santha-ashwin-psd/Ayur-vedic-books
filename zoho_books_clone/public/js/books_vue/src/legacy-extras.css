@@ -429,4 +429,6 @@
 [class*="-pill"].pill-issued    { background: linear-gradient(135deg,#f0fdf4,#fff) !important; border-color:#bbf7d0 !important; color:#16a34a; }
 [class*="-pill"].pill-generated { background: linear-gradient(135deg,#f0fdf4,#fff) !important; border-color:#bbf7d0 !important; color:#16a34a; }
 [class*="-pill"].pill-Receive   { background: linear-gradient(135deg,#f0fdf4,#fff) !important; border-color:#bbf7d0 !important; color:#16a34a; }
+[class*="-pill"].pill-Receive.active   { background:green !important; border-color:#bbf7d0 !important; color:#16a34a; }
 [class*="-pill"].pill-Pay       { background: linear-gradient(135deg,#fef2f2,#fff) !important; border-color:#fecaca !important; color:#dc2626; }
+[class*="-pill"].pill-Pay.active { background: red !important; border-color:#fecaca !important; color:#dc2626; }

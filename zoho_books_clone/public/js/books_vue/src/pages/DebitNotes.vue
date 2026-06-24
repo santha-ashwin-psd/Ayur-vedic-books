@@ -138,7 +138,7 @@
       <div class="inv-dh">
         <div class="dn-dheader-left">
           <div class="dn-dheader-ico" :class="editingName?'edit':''">
-            <span v-html="icon(editingName?'edit':'file-minus',18)"></span>
+            <span v-html="icon(editingName?'edit':'file',18)"></span>
           </div>
           <div>
             <div class="inv-dh-title">{{ editingName ? 'Edit Debit Note' : 'New Debit Note' }}</div>
@@ -1076,8 +1076,8 @@ async function fetchTaxTemplates() {
     taxAccountHead.value = r?.[0]?.name || "";
   } catch {}
   try {
-    const templates = await apiList("Purchase Taxes and Charges Template", { fields: ["name","title"], filters: [["disabled","=",0]], limit: 50 });
-    taxTemplates.value = (templates || []).map(t => ({ name: t.name, title: t.title || t.name }));
+    const templates = await apiList("Tax Template", { fields: ["name","template_name"], filters: [["disabled","=",0]], limit: 50 });
+    taxTemplates.value = (templates || []).map(t => ({ name: t.name, title: t.template_name || t.name }));
   } catch { taxTemplates.value = []; }
 }
 
@@ -1130,7 +1130,7 @@ async function saveDN(submit) {
           amount: -Math.abs(flt(l.amount)),
         })),
         taxes: taxPayload.map(t => ({
-          doctype: "Purchase Taxes and Charges",
+          doctype: "Tax Line",
           charge_type: "On Net Total",
           account_head: t.tax_type,
           description: t.description || t.tax_type,
@@ -1431,13 +1431,13 @@ onMounted(load);
 .dn-item-rm { border: none; background: none; color: #d1d5db; font-size: 18px; font-weight: 700; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; transition: color .12s; }
 .dn-item-rm:hover { color: #dc2626; }
 .dn-item-card-body {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  padding: 12px 14px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  padding: 14px 16px;
 }
 .dn-item-col { display: flex; flex-direction: column; gap: 10px; }
-.dn-item-field { display: flex; flex-direction: column; gap: 3px; }
+.dn-item-field { display: flex; flex-direction: column; gap: 4px; }
 .dn-item-field label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
-.dn-item-num-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.dn-item-num-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 /* ── Form totals ── */
 .dn-form-totals {
@@ -1623,6 +1623,11 @@ onMounted(load);
 
   /* view drawer head */
   .dn-view-head-body { flex-wrap: wrap; gap: 8px; }
+
+  /* Line item card: stack left + right columns vertically */
+  .dn-item-card-body { grid-template-columns: 1fr; gap: 10px; padding: 12px 14px; }
+  /* Keep 2-col grid for num fields — fits fine at full drawer width */
+  .dn-item-num-row { grid-template-columns: 1fr 1fr; gap: 8px; }
 }
 
 @media (max-width: 480px) {

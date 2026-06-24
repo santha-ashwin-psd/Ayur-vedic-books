@@ -832,6 +832,40 @@ def get_customer_outstanding():
     return {r.customer: float(r.outstanding or 0) for r in rows}
 
 
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def get_customer_last_invoice():
+    """Return {customer: {name, date, amount}} of the most recent submitted Sales Invoice."""
+    company = _get_company(frappe.session.user)
+    rows = frappe.db.sql("""
+        SELECT customer, name, posting_date, grand_total
+        FROM `tabSales Invoice`
+        WHERE docstatus=1 AND is_return=0 AND company=%s
+        ORDER BY posting_date DESC, creation DESC
+    """, company, as_dict=True)
+    out = {}
+    for r in rows:
+        if r.customer not in out:   # first row per customer = most recent
+            out[r.customer] = {
+                "name": r.name,
+                "date": str(r.posting_date) if r.posting_date else "",
+                "amount": float(r.grand_total or 0),
+            }
+    return out
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def get_vendor_outstanding():
+    """Return {supplier: outstanding_amount} for all suppliers with open bills."""
+    company = _get_company(frappe.session.user)
+    rows = frappe.db.sql("""
+        SELECT supplier, COALESCE(SUM(outstanding_amount), 0) AS outstanding
+        FROM `tabPurchase Invoice`
+        WHERE docstatus=1 AND is_return=0 AND outstanding_amount>0 AND company=%s
+        GROUP BY supplier
+    """, company, as_dict=True)
+    return {r.supplier: float(r.outstanding or 0) for r in rows}
+
+
 _PRO_MODE_ADDENDUM = """
 
 ═══════════════════════════════════════════════════

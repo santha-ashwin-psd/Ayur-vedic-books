@@ -134,7 +134,7 @@
       "fieldname": "customer_type",
       "fieldtype": "Select",
       "label": "Customer Type",
-      "options": "Company\nIndividual",
+      "options": "Company\nIndividual\nGovernment\nDealer\nDistributor",
       "default": "Company"
     },
     {

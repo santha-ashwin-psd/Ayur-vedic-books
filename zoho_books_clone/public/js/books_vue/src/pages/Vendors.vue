@@ -62,9 +62,8 @@
               </th>
               <th class="vt-th">Vendor Name</th>
               <th class="vt-th">Type</th>
-              <!-- <th class="vt-th vt-th-num">Outstanding</th> -->
               <th class="vt-th">GSTIN</th>
-              <!-- <th class="vt-th">Email</th> -->
+              <th class="vt-th vt-th-num">Outstanding</th>
               <th class="vt-th">Mobile</th>
               <th class="vt-th">City / State</th>
               <th class="vt-th">Status</th>
@@ -106,13 +105,15 @@
               <td class="vt-td">
                 <span class="vt-badge" :class="v.supplier_type==='Company' ? 'vt-badge-blue' : 'vt-badge-gray'">{{v.supplier_type||'—'}}</span>
               </td>
-              <!-- <td class="vt-td vt-td-num">
-                <span :class="balancesByVendor[v.name]>0 ? 'vt-amount-due' : 'vt-amount-nil'">
-                  {{ balancesByVendor[v.name]>0 ? fmtCur(balancesByVendor[v.name]) : '—' }}
+              <td class="vt-td vt-td-mono">
+                <span v-if="v.tax_id">{{v.tax_id}}</span>
+                <span v-else class="vt-badge vt-badge-amber">Unregistered</span>
+              </td>
+              <td class="vt-td vt-td-num">
+                <span :class="(balancesByVendor[v.name]||0)>0 ? 'vt-amount-due' : 'vt-amount-nil'">
+                  {{ (balancesByVendor[v.name]||0)>0 ? fmtCur(balancesByVendor[v.name]) : '—' }}
                 </span>
-              </td> -->
-              <td class="vt-td vt-td-mono">{{v.tax_id||'—'}}</td>
-              <!-- <td class="vt-td vt-td-secondary">{{v.email_id||'—'}}</td> -->
+              </td>
               <td class="vt-td vt-td-secondary">{{v.mobile_no||'—'}}</td>
               <td class="vt-td vt-td-secondary">{{v.city ? (v.city + (v.state ? ', '+v.state : '')) : '—'}}</td>
               <td class="vt-td">
@@ -151,6 +152,12 @@
               <div class="ven-mc-meta">
                 <span>{{ v.mobile_no || '—' }}</span>
                 <span>{{ v.city ? (v.city + (v.state ? ', '+v.state : '')) : '—' }}</span>
+              </div>
+              <div class="ven-mc-meta">
+                <span :style="(balancesByVendor[v.name]||0)>0 ? 'color:#E67700;font-weight:600' : ''">
+                  {{ (balancesByVendor[v.name]||0)>0 ? fmtCur(balancesByVendor[v.name])+' payable' : 'No balance' }}
+                </span>
+                <span>{{ v.tax_id || 'Unregistered' }}</span>
               </div>
               <div class="ven-mc-footer">
                 <button class="ven-mc-btn" @click.stop="openEdit(v.name)">Edit</button>
@@ -474,20 +481,22 @@
           <div v-else class="ven-txn-wrap" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
             <!-- Desktop table -->
             <div class="ven-txn-desktop">
-              <div style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB;min-width:560px">
-                <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span>
+              <div style="display:grid;grid-template-columns:90px 150px 95px 110px 110px 100px 120px;gap:8px;background:#F9FAFB;padding:10px 14px;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;border-bottom:1px solid #E5E7EB;min-width:660px">
+                <span>Type</span><span>Reference</span><span>Date</span><span style="text-align:right">Amount</span><span style="text-align:right">Outstanding</span><span style="text-align:center">Status</span><span style="text-align:right">Balance</span>
               </div>
               <div v-for="t in vendorTxnsVisible" :key="t.type+'-'+t.name"
-                style="display:grid;grid-template-columns:90px 160px 100px 130px 130px auto;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:560px">
+                style="display:grid;grid-template-columns:90px 150px 95px 110px 110px 100px 120px;gap:8px;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:12.5px;align-items:center;min-width:660px">
                 <span :style="{
                   fontSize:'10.5px',fontWeight:700,padding:'2px 8px',borderRadius:'10px',display:'inline-block',width:'fit-content',
                   background: t.type==='Bill' ? '#FEF3C7' : t.type==='Payment' ? '#D1FAE5' : '#FEE2E2',
                   color: t.type==='Bill' ? '#92400E' : t.type==='Payment' ? '#059669' : '#991B1B'
                 }">{{t.type}}</span>
-                <span style="color:#2563EB;font-weight:600">{{t.name}}</span>
+                <span style="color:#2563EB;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{t.name}}</span>
                 <span style="color:#6B7280">{{fmtDate(t.date)}}</span>
                 <span style="text-align:right;font-weight:600" :style="{color: t.amount<0 ? '#059669' : '#374151'}">{{fmtCur(Math.abs(t.amount))}}</span>
-                <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):''}}</span>
+                <span style="text-align:right;" :style="{color: t.outstanding>0 ? '#E67700' : '#9CA3AF'}">{{t.outstanding>0?fmtCur(t.outstanding):'—'}}</span>
+                <span style="text-align:center"><span :style="'font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;'+txnStatusStyle(t)">{{txnStatusLabel(t)}}</span></span>
+                <span style="text-align:right;font-weight:700;color:#111827">{{fmtCur(t.balance)}}</span>
               </div>
             </div>
 
@@ -504,6 +513,10 @@
                 <div class="ven-txn-mc-mid">
                   <span class="ven-txn-mc-ref">{{t.name}}</span>
                   <span class="ven-txn-mc-date">{{fmtDate(t.date)}}</span>
+                </div>
+                <div class="ven-txn-mc-mid" style="margin-top:4px">
+                  <span :style="'font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;'+txnStatusStyle(t)">{{txnStatusLabel(t)}}</span>
+                  <span style="font-size:12px;color:#6B7280">Balance: <strong style="color:#111827">{{fmtCur(t.balance)}}</strong></span>
                 </div>
                 <div v-if="t.outstanding>0" class="ven-txn-mc-outstanding">
                   Outstanding: <strong>{{fmtCur(t.outstanding)}}</strong>
@@ -865,7 +878,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGET, apiSave, apiDelete, resolveCompany } from "../api/client.js";
+import { apiList, apiGET, apiSave, apiDelete, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import AddressManager from "../components/AddressManager.vue";
 import { fmt, fmtDate } from "../utils/format.js";
@@ -1187,11 +1200,18 @@ async function doDelete() {
   if (!deleteTarget.value) return;
   deleting.value = true;
   try {
-    await apiDelete("Supplier", deleteTarget.value.name);
+    const delName = deleteTarget.value.name;
+    await apiPOST("zoho_books_clone.api.docs.safe_delete_party", {
+      doctype: "Supplier", name: delName,
+    });
     toast("Vendor deleted");
     showDelete.value = false;
     deleteTarget.value = null;
+    if (selectedVendor.value && selectedVendor.value.name === delName) {
+      selectedVendor.value = null;
+    }
     await load();
+    loadAllBalances();
   } catch (e) {
     toast(e.message || "Could not delete vendor", "error");
   } finally { deleting.value = false; }
@@ -1213,8 +1233,37 @@ const TXN_PAGE_SIZE  = 10;
 const STMT_PAGE_SIZE = 10;
 const txnPage        = ref(1);
 const stmtPage       = ref(1);
-const vendorTxnsVisible  = computed(() => vendorTxns.value.slice(0, txnPage.value  * TXN_PAGE_SIZE));
+// Transactions enriched with a running payable balance (oldest → newest).
+// vendorTxns is newest-first; we walk it in reverse to accumulate, then expose
+// the balance after each transaction keyed back onto the newest-first list.
+const vendorTxnsWithBalance = computed(() => {
+  const asc = [...vendorTxns.value].reverse();   // oldest first
+  let running = 0;
+  const balById = new Map();
+  for (const t of asc) {
+    running += Number(t.amount || 0);            // Bill +, Payment/Debit Note −
+    balById.set(t.type + "-" + t.name, running);
+  }
+  return vendorTxns.value.map(t => ({ ...t, balance: balById.get(t.type + "-" + t.name) || 0 }));
+});
+const vendorTxnsVisible  = computed(() => vendorTxnsWithBalance.value.slice(0, txnPage.value  * TXN_PAGE_SIZE));
 const vendorTxnsHasMore  = computed(() => vendorTxns.value.length > txnPage.value  * TXN_PAGE_SIZE);
+
+// Human-friendly status label for a transaction row
+function txnStatusLabel(t) {
+  if (t.docstatus === 2) return "Cancelled";
+  if (t.docstatus === 0) return "Draft";
+  return t.status || "Submitted";
+}
+function txnStatusStyle(t) {
+  const label = txnStatusLabel(t);
+  if (label === "Cancelled") return "background:#F3F4F6;color:#6B7280";
+  if (label === "Draft")     return "background:#FEF9C3;color:#854D0E";
+  if (label === "Paid")      return "background:#D1FAE5;color:#059669";
+  if (label === "Overdue")   return "background:#FEE2E2;color:#991B1B";
+  if (label === "Partly Paid") return "background:#FEF3C7;color:#92400E";
+  return "background:#DBEAFE;color:#1E40AF";
+}
 const stmtRowsVisible    = computed(() => (vendorStatement.value.rows || []).slice(0, stmtPage.value * STMT_PAGE_SIZE));
 const stmtRowsHasMore    = computed(() => (vendorStatement.value.rows || []).length > stmtPage.value * STMT_PAGE_SIZE);
 
@@ -1363,19 +1412,13 @@ function fmtCur(v) {
 }
 
 async function loadAllBalances() {
-  // Pull outstanding for every vendor in parallel — bounded to avoid hammering server
-  const names = list.value.map(v => v.name);
-  if (!names.length) return;
-  const chunks = [];
-  for (let i = 0; i < names.length; i += 8) chunks.push(names.slice(i, i + 8));
-  const map = {};
-  for (const chunk of chunks) {
-    const results = await Promise.all(chunk.map(n =>
-      apiGET("zoho_books_clone.api.docs.get_vendor_summary", { vendor: n }).catch(() => null)
-    ));
-    chunk.forEach((n, i) => { if (results[i]) map[n] = results[i].outstanding || 0; });
+  // Single batched query for every vendor's outstanding payables
+  try {
+    const map = await apiGET("zoho_books_clone.api.books_data.get_vendor_outstanding");
+    balancesByVendor.value = map || {};
+  } catch {
+    balancesByVendor.value = {};
   }
-  balancesByVendor.value = map;
 }
 
 onMounted(async () => {
@@ -1491,6 +1534,7 @@ onMounted(async () => {
 .vt-badge-red   .vt-badge-dot { background: #ef4444; }
 .vt-badge-blue  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .vt-badge-gray  { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+.vt-badge-amber { background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; }
 .vt-empty { padding: 52px 24px; text-align: center; }
 .vt-empty-icon {
   margin: 0 auto 14px; width: 56px; height: 56px; border-radius: 14px;

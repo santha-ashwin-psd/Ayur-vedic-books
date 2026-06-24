@@ -20,9 +20,11 @@
           <input v-model="search" placeholder="Search customers…" class="sales-search-input" autocomplete="off"/>
         </div>
         <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
-        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
+        <button class="sales-btn-ghost" @click="triggerImport" title="Import customers from CSV"><span v-html="icon('upload',13)"></span> Import</button>
+        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> Export</button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
         <button class="sales-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
+        <input ref="importInput" type="file" accept=".csv,text/csv" style="display:none" @change="importCSV" />
       </div>
     </div>
 
@@ -71,6 +73,8 @@
               <th class="vt-th">Customer Name</th>
               <th class="vt-th">Type</th>
               <th class="vt-th">GSTIN</th>
+              <th class="vt-th vt-th-num">Outstanding</th>
+              <th class="vt-th">Last Invoice</th>
               <th class="vt-th">Mobile</th>
               <th class="vt-th">City / State</th>
               <th class="vt-th">Status</th>
@@ -80,11 +84,11 @@
           <tbody>
             <template v-if="loading">
               <tr v-for="n in 6" :key="n" class="vt-row-shimmer">
-                <td colspan="9"><div class="shimmer" style="height:12px;border-radius:3px;width:65%"></div></td>
+                <td colspan="11"><div class="shimmer" style="height:12px;border-radius:3px;width:65%"></div></td>
               </tr>
             </template>
             <tr v-else-if="!filtered.length">
-              <td colspan="9" class="vt-empty">
+              <td colspan="11" class="vt-empty">
                 <div class="vt-empty-icon">
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
@@ -110,9 +114,24 @@
                 </div>
               </td>
               <td class="vt-td">
-                <span class="vt-badge" :class="c.customer_type==='Company' ? 'vt-badge-blue' : 'vt-badge-gray'">{{c.customer_type||'—'}}</span>
+                <span class="vt-badge" :class="c.customer_type && c.customer_type!=='Individual' ? 'vt-badge-blue' : 'vt-badge-gray'">{{c.customer_type||'—'}}</span>
               </td>
-              <td class="vt-td vt-td-mono">{{c.tax_id||'—'}}</td>
+              <td class="vt-td vt-td-mono">
+                <span v-if="c.tax_id">{{c.tax_id}}</span>
+                <span v-else class="vt-badge vt-badge-amber">Unregistered</span>
+              </td>
+              <td class="vt-td vt-td-num">
+                <span :class="(c.outstanding||0)>0 ? 'vt-amount-due' : 'vt-amount-nil'">
+                  {{ (c.outstanding||0)>0 ? fmt(c.outstanding) : '—' }}
+                </span>
+              </td>
+              <td class="vt-td vt-td-secondary">
+                <template v-if="lastInvoiceByCust[c.name]">
+                  <div class="vt-lastinv-ref">{{ lastInvoiceByCust[c.name].name }}</div>
+                  <div class="vt-lastinv-date">{{ fmtDate(lastInvoiceByCust[c.name].date) }} · {{ fmt(lastInvoiceByCust[c.name].amount) }}</div>
+                </template>
+                <span v-else>—</span>
+              </td>
               <td class="vt-td vt-td-secondary">{{c.mobile_no||'—'}}</td>
               <td class="vt-td vt-td-secondary">{{c.city ? (c.city + (c.state ? ', '+c.state : '')) : '—'}}</td>
               <td class="vt-td">
@@ -151,6 +170,12 @@
               <div class="cus-mc-meta">
                 <span>{{ c.mobile_no || '—' }}</span>
                 <span>{{ c.city ? (c.city + (c.state ? ', '+c.state : '')) : '—' }}</span>
+              </div>
+              <div class="cus-mc-meta">
+                <span :style="(c.outstanding||0)>0 ? 'color:#dc2626;font-weight:600' : ''">
+                  {{ (c.outstanding||0)>0 ? fmt(c.outstanding)+' due' : 'No balance' }}
+                </span>
+                <span>{{ lastInvoiceByCust[c.name] ? 'Last: '+lastInvoiceByCust[c.name].name : '—' }}</span>
               </div>
               <div class="cus-mc-footer">
                 <button class="cus-mc-btn" @click.stop="openEdit(c.name)">Edit</button>
@@ -440,9 +465,14 @@
                   <span style="color:#6B7280">Customer Type</span>
                   <span style="font-weight:600;color:#111827">{{selectedCustomer.customer_type||'Company'}}</span>
                 </div>
-                <div v-if="selectedCustomer.tax_id" style="display:flex;justify-content:space-between;font-size:12.5px">
+                <div style="display:flex;justify-content:space-between;font-size:12.5px">
                   <span style="color:#6B7280">GSTIN / Tax ID</span>
-                  <span style="font-weight:600;color:#111827">{{selectedCustomer.tax_id}}</span>
+                  <span v-if="selectedCustomer.tax_id" style="font-weight:600;color:#111827">{{selectedCustomer.tax_id}}</span>
+                  <span v-else style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:12px;background:#fff7ed;color:#b45309">Unregistered</span>
+                </div>
+                <div v-if="selectedCustomer.tds_applicable" style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">TDS</span>
+                  <span style="font-weight:600;color:#111827">Applicable{{ selectedCustomer.tds_section ? ' · '+selectedCustomer.tds_section : '' }}</span>
                 </div>
               </div>
             </div>
@@ -670,15 +700,12 @@
 
             <div style="margin-bottom:20px">
               <label class="inv-lbl" style="margin-bottom:8px;display:block">Customer Type</label>
-              <div style="display:flex;gap:24px">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:#374151">
-                  <input type="radio" v-model="form.customer_type" value="Company" style="width:16px;height:16px;accent-color:#3B5BDB;cursor:pointer"/>
-                  Business
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;font-weight:500;color:#374151">
-                  <input type="radio" v-model="form.customer_type" value="Individual" style="width:16px;height:16px;accent-color:#3B5BDB;cursor:pointer"/>
-                  Individual
-                </label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <button v-for="opt in CUSTOMER_TYPES" :key="opt" type="button"
+                  @click="form.customer_type=opt"
+                  :style="'padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;border:1.5px solid '+(form.customer_type===opt?'#16a34a':'#e2e8f0')+';background:'+(form.customer_type===opt?'#f0fdf4':'#fff')+';color:'+(form.customer_type===opt?'#15803d':'#6b7280')">
+                  {{opt}}
+                </button>
               </div>
             </div>
 
@@ -722,7 +749,7 @@
             </div>
 
             <div style="margin-bottom:16px">
-              <label class="inv-lbl">Company Name <span v-if="form.customer_type==='Company'" class="nim-req">*</span></label>
+              <label class="inv-lbl">{{ form.customer_type==='Individual' ? 'Company / Org Name' : 'Company Name' }} <span v-if="form.customer_type!=='Individual'" class="nim-req">*</span></label>
               <input v-model="form.company_name" class="inv-fi" placeholder="Company name"
                 :style="formErrors.company_name?'border-color:#dc2626;background:#fff5f5':''"
                 @input="delete formErrors.company_name"
@@ -966,6 +993,29 @@
               </div>
             </div>
 
+            <div class="inv-sec-lbl">TDS / Withholding Tax</div>
+            <div style="margin-bottom:18px">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;border:1px solid #e8ecf0;background:#fafbfd">
+                <input type="checkbox" id="cust_tds_applicable" :checked="!!form.tds_applicable"
+                  @change="form.tds_applicable = $event.target.checked ? 1 : 0"
+                  style="width:16px;height:16px;accent-color:#16a34a;cursor:pointer;flex-shrink:0"/>
+                <label for="cust_tds_applicable" style="font-size:13px;color:#374151;cursor:pointer;font-weight:500">
+                  TDS Applicable — tax deducted at source on payments from this customer
+                </label>
+              </div>
+              <div v-if="form.tds_applicable" class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+                <div>
+                  <label class="inv-lbl">Default TDS Section</label>
+                  <select v-model="form.tds_section" class="inv-fi" style="cursor:pointer">
+                    <option value="">Select Section</option>
+                    <option>194C</option><option>194J</option><option>194A</option>
+                    <option>194H</option><option>194I</option><option>192</option>
+                    <option>195</option><option>Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div class="inv-sec-lbl">Opening Balance</div>
             <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
               <div>
@@ -1064,6 +1114,89 @@
     </div>
   </Teleport>
 
+  <!-- CSV Import Preview / Summary Modal -->
+  <Teleport to="body">
+    <div v-if="importModal.open" class="nim-overlay" @click.self="!importModal.running && closeImport()">
+      <div class="nim-dialog cus-import-dialog" style="max-width:620px;width:96vw">
+        <div class="nim-header" style="background:linear-gradient(135deg,#16a34a,#15803d)">
+          <div class="nim-header-left">
+            <div class="nim-header-icon"><span v-html="icon('upload',16)"></span></div>
+            <div class="nim-header-title">{{ importModal.done ? 'Import Complete' : 'Review Import' }}</div>
+          </div>
+          <button class="nim-close" @click="closeImport" :disabled="importModal.running" v-html="icon('x',15)"></button>
+        </div>
+
+        <div class="nim-body" style="padding:18px 22px">
+
+          <!-- ── Preview phase ── -->
+          <template v-if="!importModal.done">
+            <div class="cus-import-stats">
+              <div class="cus-import-stat"><div class="cus-import-stat-val">{{ importCounts.total }}</div><div class="cus-import-stat-lbl">Rows</div></div>
+              <div class="cus-import-stat cus-import-stat-new"><div class="cus-import-stat-val">{{ importCounts.create }}</div><div class="cus-import-stat-lbl">New</div></div>
+              <div class="cus-import-stat cus-import-stat-upd"><div class="cus-import-stat-val">{{ importCounts.update }}</div><div class="cus-import-stat-lbl">Update</div></div>
+            </div>
+            <div class="cus-import-note">
+              Rows matching an existing customer name will be <strong>updated</strong> (blank cells keep current values); the rest are <strong>created</strong>.
+            </div>
+            <div class="cus-import-table-wrap">
+              <table class="cus-import-table">
+                <thead>
+                  <tr><th>Customer</th><th>Type</th><th>GSTIN</th><th style="text-align:right">Action</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row,i) in importPreviewRows" :key="i">
+                    <td>
+                      <div class="cus-import-name">{{ row.cname }}</div>
+                      <div class="cus-import-sub">{{ row.email || row.mobile || '—' }}</div>
+                    </td>
+                    <td>{{ row.ctype }}</td>
+                    <td class="cus-import-mono">{{ row.gstin || '—' }}</td>
+                    <td style="text-align:right">
+                      <span class="cus-import-badge" :class="row.action==='update' ? 'cus-import-badge-upd' : 'cus-import-badge-new'">
+                        {{ row.action==='update' ? 'Update' : 'New' }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="importModal.rows.length > importPreviewRows.length" class="cus-import-more">
+                + {{ importModal.rows.length - importPreviewRows.length }} more row(s) not shown
+              </div>
+            </div>
+          </template>
+
+          <!-- ── Summary phase ── -->
+          <template v-else>
+            <div class="cus-import-stats">
+              <div class="cus-import-stat cus-import-stat-new"><div class="cus-import-stat-val">{{ importModal.result.created }}</div><div class="cus-import-stat-lbl">Created</div></div>
+              <div class="cus-import-stat cus-import-stat-upd"><div class="cus-import-stat-val">{{ importModal.result.updated }}</div><div class="cus-import-stat-lbl">Updated</div></div>
+              <div class="cus-import-stat" :class="importModal.result.failed ? 'cus-import-stat-fail' : ''"><div class="cus-import-stat-val">{{ importModal.result.failed }}</div><div class="cus-import-stat-lbl">Failed</div></div>
+            </div>
+            <div class="cus-import-note" style="text-align:center">
+              {{ importModal.result.failed
+                  ? 'Some rows could not be saved — check that names/GSTINs are valid.'
+                  : 'All rows imported successfully.' }}
+            </div>
+          </template>
+        </div>
+
+        <div class="inv-dfooter">
+          <template v-if="!importModal.done">
+            <button class="form-btn form-btn-outline" @click="closeImport" :disabled="importModal.running">Cancel</button>
+            <button class="form-btn form-btn-primary" @click="runImport" :disabled="importModal.running || !importCounts.total"
+              style="background:#16a34a;border-color:#16a34a;min-width:150px">
+              <span v-if="importModal.running" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
+              {{ importModal.running ? 'Importing…' : `Import ${importCounts.total} Row(s)` }}
+            </button>
+          </template>
+          <template v-else>
+            <button class="form-btn form-btn-primary" @click="closeImport" style="background:#16a34a;border-color:#16a34a;min-width:110px">Done</button>
+          </template>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
 </div>
 </template>
 
@@ -1094,12 +1227,20 @@ const PLACE_OF_SUPPLY = [
   "37-Andhra Pradesh (New)","38-Ladakh",
 ];
 
+const CUSTOMER_TYPES = ["Company", "Individual", "Government", "Dealer", "Distributor"];
+
 // ── State ──
 const list = ref([]);
+const lastInvoiceByCust = ref({});   // {customer: {name, date, amount}}
 const loading = ref(true);
 const search = ref("");
 const selectedRows = ref(new Set());
 const bulkBusy = ref(false);
+const importInput = ref(null);
+const importModal = reactive({
+  open: false, running: false, done: false,
+  rows: [], result: { created: 0, updated: 0, failed: 0 },
+});
 
 function toggleRow(name) {
   const s = new Set(selectedRows.value);
@@ -1198,6 +1339,7 @@ const form = reactive({
   ship_city: "", ship_state: "", ship_pincode: "", ship_country: "India",
   payment_terms: "", place_of_supply: "", source: "",
   pan_no: "", opening_balance: 0,
+  tds_applicable: 0, tds_section: "",
   bank_name: "", bank_account_no: "", bank_ifsc: "",
   notes: "", disabled: 0,
 });
@@ -1229,8 +1371,8 @@ function validateField(field) {
     formErrors.first_name = "First name must contain letters only";
   if (field === "last_name" && s && !/^[\p{L}\s.'\-]+$/u.test(s))
     formErrors.last_name = "Last name must contain letters only";
-  if (field === "company_name" && form.customer_type === "Company" && !s)
-    formErrors.company_name = "Company name is required for Business customers";
+  if (field === "company_name" && form.customer_type !== "Individual" && !s)
+    formErrors.company_name = "Company name is required for " + form.customer_type + " customers";
   if (field === "email_id" && s && !EMAIL_REGEX.test(s))
     formErrors.email_id = "Invalid email address";
   if (field === "mobile_no" && s) {
@@ -1279,8 +1421,8 @@ function validateCustomerForm() {
   if (!cn) formErrors.customer_name = "Display name is required";
   else if (cn.length < 2) formErrors.customer_name = "Name must be at least 2 characters";
   else if (cn.length > 100) formErrors.customer_name = "Name must not exceed 100 characters";
-  if (form.customer_type === "Company" && !form.company_name.trim())
-    formErrors.company_name = "Company name is required for Business customers";
+  if (form.customer_type !== "Individual" && !form.company_name.trim())
+    formErrors.company_name = "Company name is required for " + form.customer_type + " customers";
   if (form.first_name && !/^[\p{L}\s.'\-]+$/u.test(form.first_name.trim()))
     formErrors.first_name = "First name must contain letters only";
   if (form.last_name && !/^[\p{L}\s.'\-]+$/u.test(form.last_name.trim()))
@@ -1375,7 +1517,7 @@ const filtered = computed(() => {
 async function load() {
   loading.value = true;
   try {
-    const [rows, balances, credits] = await Promise.all([
+    const [rows, balances, credits, lastInvs] = await Promise.all([
       apiList("Customer", {
         fields: ["name","customer_name","customer_type","email_id","mobile_no",
           "tax_id","city","state","disabled","default_currency","credit_limit","salutation","gst_treatment"],
@@ -1383,7 +1525,9 @@ async function load() {
       }),
       apiGET("zoho_books_clone.api.books_data.get_customer_outstanding").catch(() => ({})),
       apiGET("zoho_books_clone.api.books_data.get_customer_unused_credits").catch(() => ({})),
+      apiGET("zoho_books_clone.api.books_data.get_customer_last_invoice").catch(() => ({})),
     ]);
+    lastInvoiceByCust.value = lastInvs || {};
     list.value = (rows || []).map(c => ({ ...c, outstanding: balances[c.name] || 0, unused_credits: credits[c.name] || 0 }));
   } catch (e) {
     toast("Failed to load customers: " + (e.message || e), "error");
@@ -1404,6 +1548,7 @@ function resetForm() {
     address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India",
     ship_address_line1: "", ship_address_line2: "", ship_city: "", ship_state: "", ship_pincode: "", ship_country: "India",
     payment_terms: "", place_of_supply: "", source: "", pan_no: "", opening_balance: 0,
+    tds_applicable: 0, tds_section: "",
     bank_name: "", bank_account_no: "", bank_ifsc: "", notes: "", disabled: 0,
   });
 }
@@ -1456,6 +1601,8 @@ async function openEdit(name) {
       source: doc.source || "",
       pan_no: doc.pan_no || "",
       opening_balance: doc.opening_balance || 0,
+      tds_applicable: doc.tds_applicable || 0,
+      tds_section: doc.tds_section || "",
       bank_name: doc.bank_name || "",
       bank_account_no: doc.bank_account_no || "",
       bank_ifsc: doc.bank_ifsc || "",
@@ -1519,6 +1666,8 @@ async function saveCustomer() {
       source: form.source,
       pan_no: form.pan_no.trim(),
       opening_balance: parseFloat(form.opening_balance) || 0,
+      tds_applicable: form.tds_applicable ? 1 : 0,
+      tds_section: form.tds_applicable ? form.tds_section : "",
       bank_name: form.bank_name.trim(),
       bank_account_no: form.bank_account_no.trim(),
       bank_ifsc: form.bank_ifsc.trim(),
@@ -1582,10 +1731,16 @@ async function doDelete() {
   if (!deleteTarget.value) return;
   deleting.value = true;
   try {
-    await apiDelete("Customer", deleteTarget.value.name);
+    const delName = deleteTarget.value.name;
+    await apiPOST("zoho_books_clone.api.docs.safe_delete_party", {
+      doctype: "Customer", name: delName,
+    });
     toast("Customer deleted");
     showDelete.value = false;
     deleteTarget.value = null;
+    if (selectedCustomer.value && selectedCustomer.value.name === delName) {
+      selectedCustomer.value = null;
+    }
     await load();
   } catch (e) {
     toast(e.message || "Could not delete customer", "error");
@@ -1729,6 +1884,150 @@ function exportCSV() {
   toast(`${rows.length} row(s) exported`, "success");
 }
 
+// ── CSV Import ───────────────────────────────────────────────────────────────
+function triggerImport() { importInput.value && importInput.value.click(); }
+
+// Minimal RFC-4180-ish CSV row parser (handles quoted fields with commas)
+function parseCsvLine(line) {
+  const out = []; let cur = ""; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ",") { out.push(cur); cur = ""; }
+      else cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+// Map existing display names (lowercased) → Customer id, for upsert matching
+function buildExistingNameMap() {
+  const m = {};
+  for (const c of list.value) {
+    const key = (c.customer_name || "").trim().toLowerCase();
+    if (key && !(key in m)) m[key] = c.name;
+  }
+  return m;
+}
+
+// Phase 1: parse the CSV, classify each row as new/update, open the preview dialog
+async function importCSV(e) {
+  const file = e.target.files && e.target.files[0];
+  if (importInput.value) importInput.value.value = ""; // allow re-selecting same file
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter(l => l.trim().length);
+    if (lines.length < 2) { toast("CSV has no data rows", "error"); return; }
+    const header = parseCsvLine(lines[0]).map(h => h.toLowerCase());
+    const idx = (...names) => { for (const n of names) { const i = header.indexOf(n); if (i !== -1) return i; } return -1; };
+    const col = {
+      name:    idx("name", "customer", "customer name", "display name"),
+      type:    idx("type", "customer type"),
+      gstin:   idx("gstin", "gstin / tax id", "tax id", "tax_id"),
+      email:   idx("email", "email address", "email_id"),
+      mobile:  idx("mobile", "mobile no", "phone"),
+      city:    idx("city"),
+      state:   idx("state"),
+    };
+    if (col.name === -1) { toast('CSV must have a "Name" or "Customer Name" column', "error"); return; }
+
+    const existing = buildExistingNameMap();
+    const rows = [];
+    for (let r = 1; r < lines.length; r++) {
+      const cells = parseCsvLine(lines[r]);
+      const cname = (cells[col.name] || "").trim();
+      if (!cname) continue;
+      const rawType = col.type !== -1 ? (cells[col.type] || "").trim() : "";
+      const ctype = CUSTOMER_TYPES.includes(rawType) ? rawType : "Company";
+      const existingName = existing[cname.toLowerCase()] || "";
+      rows.push({
+        cname, ctype,
+        gstin:  col.gstin  !== -1 ? (cells[col.gstin]  || "").trim().toUpperCase() : "",
+        email:  col.email  !== -1 ? (cells[col.email]  || "").trim() : "",
+        mobile: col.mobile !== -1 ? (cells[col.mobile] || "").trim() : "",
+        city:   col.city   !== -1 ? (cells[col.city]   || "").trim() : "",
+        state:  col.state  !== -1 ? (cells[col.state]  || "").trim() : "",
+        action: existingName ? "update" : "new",
+        existingName,
+      });
+    }
+    if (!rows.length) { toast("No valid rows found in CSV", "error"); return; }
+    importModal.rows = rows;
+    importModal.done = false;
+    importModal.running = false;
+    importModal.result = { created: 0, updated: 0, failed: 0 };
+    importModal.open = true;
+  } catch (err) {
+    toast(err.message || "Could not read CSV file", "error");
+  }
+}
+
+const importCounts = computed(() => ({
+  total:  importModal.rows.length,
+  create: importModal.rows.filter(r => r.action === "new").length,
+  update: importModal.rows.filter(r => r.action === "update").length,
+}));
+const importPreviewRows = computed(() => importModal.rows.slice(0, 200));
+
+function closeImport() {
+  if (importModal.running) return;
+  importModal.open = false;
+  importModal.rows = [];
+}
+
+// Build the save payload. On update, blank cells are omitted so existing data is kept.
+function buildImportPayload(row, isUpdate) {
+  const p = { customer_name: row.cname, customer_type: row.ctype };
+  if (row.ctype !== "Individual") p.company_name = row.cname;
+  const setIf = (k, v) => { if (!isUpdate || (v !== "" && v != null)) p[k] = v; };
+  setIf("tax_id", row.gstin);
+  setIf("email_id", row.email);
+  setIf("mobile_no", row.mobile);
+  setIf("city", row.city);
+  setIf("state", row.state);
+  if (!isUpdate) {
+    p.default_currency = "INR";
+    p.gst_treatment = row.gstin ? "Registered Business" : "Unregistered Business";
+  } else if (row.gstin) {
+    p.gst_treatment = "Registered Business";
+  }
+  return p;
+}
+
+// Phase 2: execute the upsert, then show the summary
+async function runImport() {
+  if (!importModal.rows.length || importModal.running) return;
+  importModal.running = true;
+  let created = 0, updated = 0, failed = 0;
+  try {
+    const booksCompany = await resolveCompany();
+    for (const row of importModal.rows) {
+      try {
+        if (row.action === "update" && row.existingName) {
+          const fresh = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Customer", name: row.existingName });
+          await apiSave({ ...fresh, ...buildImportPayload(row, true), doctype: "Customer", name: row.existingName });
+          updated++;
+        } else {
+          await apiSave({ doctype: "Customer", naming_series: "CUST-.YYYY.-.#####", books_company: booksCompany, ...buildImportPayload(row, false) });
+          created++;
+        }
+      } catch { failed++; }
+    }
+  } finally {
+    importModal.result = { created, updated, failed };
+    importModal.running = false;
+    importModal.done = true;
+    await load();
+  }
+}
+
 function bulkEmail() {
   const rows = [...selectedRows.value]
     .map(n => list.value.find(c => c.name === n))
@@ -1844,6 +2143,50 @@ onMounted(load);
 .vt-badge-red   .vt-badge-dot { background: #ef4444; }
 .vt-badge-blue  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .vt-badge-gray  { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+.vt-badge-amber { background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; }
+
+/* ── Outstanding / Last Invoice columns ── */
+.vt-th-num { text-align: right; }
+.vt-td-num { text-align: right; white-space: nowrap; }
+.vt-amount-due { color: #dc2626; font-weight: 700; font-size: 13px; }
+.vt-amount-nil { color: #9ca3af; }
+.vt-lastinv-ref  { font-size: 12px; font-weight: 600; color: #2563eb; }
+.vt-lastinv-date { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+
+/* ── CSV Import dialog ── */
+.cus-import-stats { display: flex; gap: 10px; margin-bottom: 14px; }
+.cus-import-stat {
+  flex: 1; text-align: center; padding: 12px 8px; border-radius: 10px;
+  background: #f8fafc; border: 1px solid #e5e7eb;
+}
+.cus-import-stat-val { font-size: 22px; font-weight: 800; color: #111827; line-height: 1; }
+.cus-import-stat-lbl { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; margin-top: 5px; }
+.cus-import-stat-new  { background: #f0fdf4; border-color: #bbf7d0; }
+.cus-import-stat-new  .cus-import-stat-val { color: #15803d; }
+.cus-import-stat-upd  { background: #eff6ff; border-color: #bfdbfe; }
+.cus-import-stat-upd  .cus-import-stat-val { color: #1d4ed8; }
+.cus-import-stat-fail { background: #fef2f2; border-color: #fecaca; }
+.cus-import-stat-fail .cus-import-stat-val { color: #b91c1c; }
+.cus-import-note {
+  font-size: 12px; color: #6b7280; line-height: 1.5;
+  background: #fafbfd; border: 1px solid #eef1f5; border-radius: 8px;
+  padding: 9px 12px; margin-bottom: 12px;
+}
+.cus-import-table-wrap { max-height: 320px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+.cus-import-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cus-import-table th {
+  position: sticky; top: 0; background: #f9fafb; z-index: 1;
+  text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: #9ca3af; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;
+}
+.cus-import-table td { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.cus-import-name { font-weight: 600; color: #111827; }
+.cus-import-sub  { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+.cus-import-mono { font-family: var(--mono); font-size: 11.5px; color: #374151; }
+.cus-import-badge { font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 12px; }
+.cus-import-badge-new { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.cus-import-badge-upd { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.cus-import-more { padding: 8px 12px; font-size: 11.5px; color: #9ca3af; text-align: center; background: #fafbfd; }
 .vt-empty { padding: 52px 24px; text-align: center; }
 .vt-empty-icon {
   margin: 0 auto 14px; width: 56px; height: 56px; border-radius: 14px;

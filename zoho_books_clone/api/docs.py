@@ -410,6 +410,72 @@ def delete_doc(doctype, name):
     frappe.db.commit()
     return {"message": "deleted"}
 
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def safe_delete_party(doctype, name):
+    """Delete a Customer/Supplier only when it has no transactions.
+
+    Frappe blocks party deletion when linked Address/Contact records exist, so
+    those are cleaned up first (only when not shared with another party). If the
+    party has any bills/invoices/orders/payments, deletion is refused with a
+    clear message so the user disables it instead.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    if doctype not in ("Customer", "Supplier"):
+        frappe.throw("safe_delete_party only supports Customer or Supplier")
+
+    if doctype == "Customer":
+        checks = [("Sales Invoice", "customer"), ("Sales Order", "customer"),
+                  ("Quotation", "customer"), ("Delivery Note", "customer")]
+    else:
+        checks = [("Purchase Invoice", "supplier"), ("Purchase Order", "supplier"),
+                  ("Purchase Receipt", "supplier")]
+
+    blocking = []
+    for dt, fld in checks:
+        try:
+            cnt = frappe.db.count(dt, {fld: name})
+        except Exception:
+            cnt = 0
+        if cnt:
+            blocking.append(f"{cnt} {dt}{'s' if cnt > 1 else ''}")
+
+    pe_cnt = frappe.db.count("Payment Entry", {"party_type": doctype, "party": name})
+    if pe_cnt:
+        blocking.append(f"{pe_cnt} Payment Entr{'ies' if pe_cnt > 1 else 'y'}")
+
+    if blocking:
+        frappe.throw(
+            f"Cannot delete {name} — it has existing transactions "
+            f"({', '.join(blocking)}). Disable it instead."
+        )
+
+    # Clean up linked Address / Contact (only if not shared with another party)
+    for linked_dt in ("Address", "Contact"):
+        links = frappe.get_all(
+            "Dynamic Link",
+            filters={"link_doctype": doctype, "link_name": name, "parenttype": linked_dt},
+            fields=["parent"],
+        )
+        for l in links:
+            shared = frappe.get_all(
+                "Dynamic Link",
+                filters={"parent": l.parent, "parenttype": linked_dt,
+                         "link_name": ["!=", name]},
+                limit=1,
+            )
+            if not shared:
+                try:
+                    frappe.delete_doc(linked_dt, l.parent, ignore_permissions=True, force=True)
+                except Exception:
+                    pass
+
+    frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
+    frappe.db.commit()
+    return {"message": "deleted"}
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_invoice_apply_summary(invoice_name):
     """Return a breakdown of Amount, Paid, Previous Credits, and Outstanding for an invoice."""

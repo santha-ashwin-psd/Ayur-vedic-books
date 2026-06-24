@@ -411,6 +411,77 @@ def get_reorder_items(company=None):
     return get_reorder_alerts(company=company or None)
 
 
+@frappe.whitelist(allow_guest=False)
+def get_reorder_dashboard(company=None):
+    """
+    Return all stock items that have a reorder_level set, with their current
+    stock and saved reorder config (supplier, auto_po_enabled, etc.).
+    Used by the Reorder Management page.
+    """
+    items = frappe.get_all(
+        "Item",
+        filters={"reorder_level": [">", 0], "disabled": 0, "is_stock_item": 1},
+        fields=[
+            "name as item_code", "item_name", "stock_uom",
+            "reorder_level", "reorder_qty",
+            "default_warehouse",
+            "reorder_supplier", "reorder_warehouse_override",
+            "auto_po_enabled", "reorder_notes",
+        ],
+        order_by="item_name asc",
+    )
+
+    if not items:
+        return []
+
+    # Resolve actual_qty: sum across all warehouses (or scoped to company's warehouses)
+    item_codes = [i["item_code"] for i in items]
+    wh_filter  = {}
+    if company:
+        wh_filter["company"] = company
+
+    bins = frappe.get_all(
+        "Bin",
+        filters={"item_code": ["in", item_codes], **wh_filter},
+        fields=["item_code", "actual_qty"],
+    )
+    qty_map = {}
+    for b in bins:
+        qty_map[b.item_code] = qty_map.get(b.item_code, 0) + flt(b.actual_qty)
+
+    for item in items:
+        item["actual_qty"]     = flt(qty_map.get(item["item_code"], 0))
+        item["below_reorder"]  = item["actual_qty"] < flt(item["reorder_level"])
+        item["shortage_qty"]   = max(flt(item["reorder_level"]) - item["actual_qty"], 0)
+        item["auto_po_enabled"] = int(item.get("auto_po_enabled") or 0)
+
+    return items
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def save_item_reorder_config(item_code, supplier="", warehouse_override="",
+                              reorder_qty=None, reorder_level=None,
+                              auto_po_enabled=0, notes=""):
+    """Save reorder config fields directly on the Item document."""
+    if not frappe.db.exists("Item", item_code):
+        frappe.throw(f"Item {item_code} not found")
+
+    updates = {
+        "reorder_supplier":           supplier or None,
+        "reorder_warehouse_override": warehouse_override or None,
+        "auto_po_enabled":            int(auto_po_enabled),
+        "reorder_notes":              notes or "",
+    }
+    if reorder_qty is not None:
+        updates["reorder_qty"] = flt(reorder_qty)
+    if reorder_level is not None:
+        updates["reorder_level"] = flt(reorder_level)
+
+    frappe.db.set_value("Item", item_code, updates)
+    frappe.db.commit()
+    return {"success": True}
+
+
 # ── Valuation Report ─────────────────────────────────────────────────────────
 
 @frappe.whitelist(allow_guest=False)
@@ -688,3 +759,63 @@ def get_stock_entries(entry_type=None, from_date=None, to_date=None, warehouse=N
                     "s_warehouse", "t_warehouse"],
         )
     return entries
+
+
+# ── Reorder → Purchase Order ──────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def create_po_from_reorder(items=None, supplier=None, company=None):
+    """
+    Create a draft Purchase Order from a list of reorder items.
+    `items` is a JSON list of {item_code, qty, warehouse} dicts.
+    Returns the new PO name.
+    """
+    import json
+    from frappe.utils import flt, today
+
+    if isinstance(items, str):
+        items = json.loads(items)
+    if not items:
+        frappe.throw("No items provided")
+
+    if not company:
+        company = (
+            frappe.db.get_single_value("Books Settings", "default_company")
+            or frappe.db.get_default("company")
+            or ""
+        )
+
+    po_items = []
+    for row in items:
+        item_code = row.get("item_code")
+        if not item_code:
+            continue
+        item_doc = frappe.get_cached_doc("Item", item_code)
+        qty = flt(row.get("qty")) or flt(
+            frappe.db.get_value("Bin",
+                {"item_code": item_code, "warehouse": row.get("warehouse")},
+                "reorder_qty") or 0
+        )
+        if qty <= 0:
+            qty = 1
+        rate = flt(item_doc.get("standard_buying_rate") or item_doc.get("standard_rate") or 0)
+        po_items.append({
+            "item_code":  item_code,
+            "item_name":  item_doc.item_name,
+            "description": item_doc.description or item_doc.item_name,
+            "qty":        qty,
+            "uom":        item_doc.stock_uom or "Nos",
+            "rate":       rate,
+            "amount":     qty * rate,
+        })
+
+    po = frappe.get_doc({
+        "doctype":          "Purchase Order",
+        "supplier":         supplier or "",
+        "transaction_date": today(),
+        "company":          company,
+        "items":            po_items,
+    })
+    po.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"name": po.name}

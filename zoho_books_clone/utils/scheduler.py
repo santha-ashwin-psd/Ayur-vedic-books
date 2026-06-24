@@ -114,3 +114,79 @@ def _send_reminder(inv, kind, sent):
 def generate_monthly_reports():
     """Placeholder: generate and email monthly P&L to admin."""
     pass
+
+
+def send_reorder_alerts():
+    """
+    Daily digest: email all System Manager users a list of items that have
+    fallen below their reorder level. Skips silently if nothing is below threshold.
+    """
+    try:
+        from zoho_books_clone.inventory.utils import get_reorder_alerts
+        alerts = get_reorder_alerts()
+    except Exception as e:
+        frappe.log_error(str(e), "Reorder alert digest failed")
+        return
+
+    if not alerts:
+        return
+
+    # Build HTML rows for the email table
+    rows_html = ""
+    for a in alerts:
+        shortage = flt(a.get("shortage_qty", 0))
+        rows_html += (
+            f"<tr>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e5e7eb'>{a.get('item_name') or a.get('item_code')}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280'>{a.get('warehouse','—')}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;color:{'#dc2626' if flt(a.get('actual_qty',0))<=0 else '#ea580c'};font-weight:600'>{flt(a.get('actual_qty',0)):.2f}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right'>{flt(a.get('reorder_level',0)):.2f}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right'>{flt(a.get('reorder_qty',0)):.2f}</td>"
+            f"</tr>"
+        )
+
+    html = f"""
+<div style="font-family:sans-serif;max-width:680px;margin:0 auto">
+  <div style="background:#2563eb;padding:20px 24px;border-radius:8px 8px 0 0">
+    <h2 style="color:#fff;margin:0;font-size:16px">📦 Daily Reorder Alert — {len(alerts)} item(s) need restocking</h2>
+  </div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:0">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:#f9fafb">
+          <th style="padding:10px 12px;text-align:left;color:#374151;font-size:11px;text-transform:uppercase">Item</th>
+          <th style="padding:10px 12px;text-align:left;color:#374151;font-size:11px;text-transform:uppercase">Warehouse</th>
+          <th style="padding:10px 12px;text-align:right;color:#374151;font-size:11px;text-transform:uppercase">Current Qty</th>
+          <th style="padding:10px 12px;text-align:right;color:#374151;font-size:11px;text-transform:uppercase">Reorder Level</th>
+          <th style="padding:10px 12px;text-align:right;color:#374151;font-size:11px;text-transform:uppercase">Reorder Qty</th>
+        </tr>
+      </thead>
+      <tbody>{rows_html}</tbody>
+    </table>
+    <div style="padding:16px 24px;font-size:12px;color:#6b7280">
+      Log in to Books to create purchase orders for these items.
+    </div>
+  </div>
+</div>"""
+
+    subject = f"[Books] Reorder Alert — {len(alerts)} item(s) below threshold"
+
+    # Send to every System Manager who has an email address
+    managers = frappe.get_all(
+        "Has Role",
+        filters={"role": "System Manager", "parenttype": "User"},
+        fields=["parent"],
+        distinct=True,
+    )
+    for m in managers:
+        email = frappe.db.get_value("User", m.parent, "email") or ""
+        if not email or email == "Administrator":
+            continue
+        try:
+            frappe.sendmail(
+                recipients=[email],
+                subject=subject,
+                message=html,
+            )
+        except Exception as e:
+            frappe.log_error(str(e), f"Reorder digest email failed: {email}")

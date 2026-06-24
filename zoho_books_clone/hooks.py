@@ -52,7 +52,7 @@ scheduler_events = {
     "daily": [
         "zoho_books_clone.utils.scheduler.send_payment_reminders",
         "zoho_books_clone.banking.utils.auto_match_bank_transactions",
-        "zoho_books_clone.inventory.utils.get_reorder_alerts",   # logs reorder items daily
+        "zoho_books_clone.utils.scheduler.send_reorder_alerts",
     ],
     "monthly": [
         "zoho_books_clone.utils.scheduler.generate_monthly_reports",

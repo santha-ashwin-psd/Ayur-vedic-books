@@ -48,7 +48,8 @@ def get_fifo_cost(item_code: str, warehouse: str, qty: float) -> float:
 def check_reorder(item_code: str, warehouse: str) -> bool:
     """
     Return True if actual_qty < reorder_level for item+warehouse.
-    Optionally logs a Frappe notification so users see the alert.
+    - Always sends a Notification Log to System Managers (deduplicated).
+    - If auto_po_enabled on the Item, also creates a draft Purchase Order.
     """
     bin_data = frappe.db.get_value(
         "Bin",
@@ -59,15 +60,99 @@ def check_reorder(item_code: str, warehouse: str) -> bool:
     if not bin_data or not flt(bin_data.reorder_level):
         return False
 
-    if flt(bin_data.actual_qty) < flt(bin_data.reorder_level):
-        item_name = frappe.db.get_value("Item", item_code, "item_name") or item_code
-        frappe.log_error(
-            f"Reorder Alert: {item_name} ({item_code}) in {warehouse} — "
-            f"qty {flt(bin_data.actual_qty):.2f} below reorder level {flt(bin_data.reorder_level):.2f}",
-            "Reorder Alert"
+    if flt(bin_data.actual_qty) >= flt(bin_data.reorder_level):
+        return False
+
+    item_doc = frappe.db.get_value(
+        "Item", item_code,
+        ["item_name", "reorder_qty", "reorder_supplier",
+         "reorder_warehouse_override", "auto_po_enabled", "reorder_notes",
+         "default_warehouse"],
+        as_dict=True,
+    ) or {}
+    item_name = item_doc.get("item_name") or item_code
+    subject   = f"Reorder Alert: {item_name} ({item_code})"
+
+    # ── Notification (deduplicated per item) ────────────────────────────────
+    existing = frappe.db.exists(
+        "Notification Log",
+        {"subject": subject, "document_type": "Bin", "read": 0},
+    )
+    if not existing:
+        for user in frappe.get_all(
+            "Has Role",
+            filters={"role": "System Manager", "parenttype": "User"},
+            fields=["parent"],
+            distinct=True,
+        ):
+            try:
+                frappe.get_doc({
+                    "doctype":       "Notification Log",
+                    "subject":       subject,
+                    "email_content": (
+                        f"{item_name} ({item_code}) in <b>{warehouse}</b> — "
+                        f"qty {flt(bin_data.actual_qty):.2f} is below "
+                        f"reorder level {flt(bin_data.reorder_level):.2f}."
+                    ),
+                    "for_user":      user.parent,
+                    "document_type": "Bin",
+                    "type":          "Alert",
+                }).insert(ignore_permissions=True)
+            except Exception:
+                pass
+
+    # ── Auto PO ─────────────────────────────────────────────────────────────
+    if item_doc.get("auto_po_enabled"):
+        _auto_create_po(item_code, item_doc, warehouse)
+
+    return True
+
+
+def _auto_create_po(item_code: str, item_doc: dict, triggered_warehouse: str) -> None:
+    """Create a draft PO from the item's saved reorder config. Errors are logged, not raised."""
+    try:
+        from frappe.utils import today
+        supplier  = item_doc.get("reorder_supplier") or ""
+        recv_wh   = (item_doc.get("reorder_warehouse_override")
+                     or item_doc.get("default_warehouse")
+                     or triggered_warehouse)
+        order_qty = flt(item_doc.get("reorder_qty")) or 1
+        notes     = item_doc.get("reorder_notes") or ""
+        item_name = item_doc.get("item_name") or item_code
+
+        company = (
+            frappe.db.get_single_value("Books Settings", "default_company")
+            or frappe.db.get_default("company")
+            or ""
         )
-        return True
-    return False
+        item_master = frappe.db.get_value(
+            "Item", item_code,
+            ["stock_uom", "standard_buying_rate", "description"],
+            as_dict=True,
+        ) or {}
+
+        rate = flt(item_master.get("standard_buying_rate") or 0)
+        po = frappe.get_doc({
+            "doctype":          "Purchase Order",
+            "supplier":         supplier,
+            "transaction_date": today(),
+            "company":          company,
+            "set_warehouse":    recv_wh,
+            "terms":            notes,
+            "items": [{
+                "item_code":   item_code,
+                "item_name":   item_name,
+                "description": item_master.get("description") or item_name,
+                "qty":         order_qty,
+                "uom":         item_master.get("stock_uom") or "Nos",
+                "rate":        rate,
+                "amount":      order_qty * rate,
+            }],
+        })
+        po.insert(ignore_permissions=True)
+        frappe.db.commit()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), f"Auto PO failed for {item_code}")
 
 
 # ── Stock Balance ─────────────────────────────────────────────────────────────

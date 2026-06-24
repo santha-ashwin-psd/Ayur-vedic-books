@@ -470,7 +470,7 @@
             <button v-if="viewDoc.docstatus===1" class="inv-ab-btn" @click="emailBill(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
             </button>
-            <button v-if="viewDoc.docstatus===1" class="inv-ab-btn" @click="issueDebitNote(viewDoc)">
+            <button v-if="viewDoc.docstatus===1 && flt(viewDoc.outstanding_amount) > 0" class="inv-ab-btn" @click="issueDebitNote(viewDoc)">
               <span v-html="icon('arrow-left',13)"></span> <span class="ab-label">Debit Note</span>
             </button>
             <button v-if="viewDoc.docstatus===1" class="inv-ab-btn" @click="makeRecurringBill(viewDoc)">
@@ -488,7 +488,7 @@
           <div class="inv-view-tabs">
             <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
             <button class="inv-vtab" :class="{active:viewTab==='payments'}" @click="viewTab='payments'">
-              Payments<span v-if="viewPayments.length" class="inv-vtab-count">{{ viewPayments.length }}</span>
+              Payments<span v-if="viewPayments.length || viewDebitApps.length" class="inv-vtab-count">{{ viewPayments.length + viewDebitApps.length }}</span>
             </button>
           </div>
 
@@ -632,10 +632,12 @@
           <template v-if="viewTab==='payments'">
             <div class="inv-tab-body">
               <div v-if="viewLoading" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">Loading payments…</div>
-              <div v-else-if="viewPayments.length">
-                <!-- Desktop/tablet table -->
-                <div class="inv-items-wrap bil-pay-desktop-table">
-                  <table class="inv-items-table">
+              <template v-else>
+
+                <!-- Cash / bank payments -->
+                <div v-if="viewPayments.length" class="inv-items-wrap">
+                  <div class="inv-pay-section-lbl">Payments Made</div>
+                  <table class="inv-items-table inv-payments-tbl">
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -653,28 +655,55 @@
                       </tr>
                     </tbody>
                   </table>
-                </div>
-                <!-- Mobile card view -->
-                <div class="bil-pay-mobile-cards">
-                  <div v-for="p in viewPayments" :key="p.name" class="bil-pay-mc">
-                    <div class="bil-pay-mc-top">
-                      <span class="bil-pay-mc-date">{{ fmtDate(p.payment_date) }}</span>
-                      <span class="bil-pay-mc-amount">{{ fmtCur(p.paid_amount) }}</span>
-                    </div>
-                    <div class="bil-pay-mc-bottom">
-                      <span class="bil-pay-mc-mode">{{ p.mode_of_payment || '—' }}</span>
-                      <span class="bil-pay-mc-ref">{{ p.reference_no || '—' }}</span>
+                  <!-- Mobile cards -->
+                  <div class="bil-pay-mobile-cards">
+                    <div v-for="p in viewPayments" :key="p.name" class="bil-pay-mc">
+                      <div class="bil-pay-mc-top">
+                        <span class="bil-pay-mc-date">{{ fmtDate(p.payment_date) }}</span>
+                        <span class="bil-pay-mc-amount">{{ fmtCur(p.paid_amount) }}</span>
+                      </div>
+                      <div class="bil-pay-mc-bottom">
+                        <span class="bil-pay-mc-mode">{{ p.mode_of_payment || '—' }}</span>
+                        <span class="bil-pay-mc-ref">{{ p.reference_no || '—' }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div v-else style="text-align:center;padding:40px 24px;color:#9ca3af;font-size:13px">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3" style="margin-bottom:10px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                <div>No payments recorded yet.</div>
-                <div v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1" style="margin-top:12px">
-                  <button class="inv-view-cta" @click="payBill(viewDoc)" style="font-size:12px;padding:7px 14px">₹ Record Payment</button>
+
+                <!-- Debit note applications -->
+                <div v-if="viewDebitApps.length" class="inv-items-wrap" style="margin-top:12px">
+                  <div class="inv-pay-section-lbl inv-pay-section-lbl-dn">Debit Notes</div>
+                  <table class="inv-items-table inv-payments-tbl">
+                    <thead>
+                      <tr>
+                        <th>Debit Note</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th class="th-r">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(a, i) in viewDebitApps" :key="i">
+                        <td class="mono-sm" style="color:#7c3aed;font-weight:600">{{ a.debit_note }}</td>
+                        <td class="mono-sm">{{ fmtDate(a.date) }}</td>
+                        <td>
+                          <span v-if="a.type==='direct'" class="bil-dn-badge bil-dn-badge-direct">Issued</span>
+                          <span v-else class="bil-dn-badge bil-dn-badge-applied">Applied</span>
+                        </td>
+                        <td class="td-r" style="font-weight:600;color:#7c3aed">{{ fmtCur(a.amount) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+
+                <div v-if="!viewPayments.length && !viewDebitApps.length" style="text-align:center;padding:40px 24px;color:#9ca3af;font-size:13px">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3" style="margin-bottom:10px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                  <div>No payments recorded yet.</div>
+                  <div v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1" style="margin-top:12px">
+                    <button class="inv-view-cta" @click="payBill(viewDoc)" style="font-size:12px;padding:7px 14px">₹ Record Payment</button>
+                  </div>
+                </div>
+              </template>
             </div>
           </template>
 
@@ -808,7 +837,7 @@ const viewMode = ref("table"); // "table" | "grid"
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const billCollapsed = reactive({ details: false, billing: true, lines: false, remarks: true });
-const viewLoading = ref(false), viewItems = ref([]), viewPayments = ref([]), viewTaxes = ref([]);
+const viewLoading = ref(false), viewItems = ref([]), viewPayments = ref([]), viewTaxes = ref([]), viewDebitApps = ref([]);
 const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref(""), taxTemplates = ref([]);
 const sortCol = ref("posting_date"), sortDir = ref("desc");
 const copyingLast = ref(false);
@@ -1070,14 +1099,17 @@ async function openView(b) {
   viewItems.value = [];
   viewPayments.value = [];
   viewTaxes.value = [];
+  viewDebitApps.value = [];
   try {
-    const [doc, payments] = await Promise.all([
+    const [doc, payments, debitApps] = await Promise.all([
       apiGet("Purchase Invoice", b.name),
       b.docstatus === 1 ? apiGET("zoho_books_clone.api.docs.get_bill_payments", { bill_name: b.name }) : Promise.resolve([]),
+      b.docstatus === 1 ? apiGET("zoho_books_clone.api.docs.get_bill_debit_applications", { bill_name: b.name }).catch(() => []) : Promise.resolve([]),
     ]);
     viewItems.value = doc?.items || [];
     viewTaxes.value = doc?.taxes || [];
     viewPayments.value = (payments || []).filter(p => p.docstatus === 1);
+    viewDebitApps.value = debitApps || [];
     if (doc) viewDoc.value = { ...viewDoc.value,
       outstanding_amount: doc.outstanding_amount ?? viewDoc.value.outstanding_amount,
       grand_total: doc.grand_total ?? viewDoc.value.grand_total,
@@ -1301,6 +1333,7 @@ async function issueDebitNote(b) {
   }
   const result = await openReturnNote({
     kind: "debit", parentName: b.name, party: b.supplier,
+    maxInvoiceAmt: flt(b.outstanding_amount),
     items: billItems.map(i => ({ item_code: i.item_code, item_name: i.item_name, description: i.description, qty: i.qty, rate: i.rate })),
     existingEndpoint: "zoho_books_clone.api.docs.get_debit_notes",
     createEndpoint: "zoho_books_clone.api.docs.create_debit_note",
@@ -1765,6 +1798,21 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
   @keyframes bil-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   .bil-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
+
+/* ── Payments tab section labels ─────────────────────────────────── */
+.inv-pay-section-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; padding: 10px 12px 6px; }
+.inv-pay-section-lbl-dn { color: #7c3aed; }
+
+/* ── Debit note badges ────────────────────────────────────────────── */
+.bil-dn-badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; letter-spacing: .03em; }
+.bil-dn-badge-direct  { background: #f3e8ff; color: #7c3aed; }
+.bil-dn-badge-applied { background: #ede9fe; color: #6d28d9; }
+
+/* ── Payments table shared ────────────────────────────────────────── */
+.inv-payments-tbl th { padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9ca3af; text-align: left; }
+.inv-payments-tbl td { padding: 10px 12px; border-bottom: 1px solid #f0f2f5; font-size: 13px; }
+.th-r { text-align: right !important; }
+.td-r { text-align: right; }
 
 /* ── Payments tab: mobile card view ──────────────────────────────── */
 .bil-pay-mobile-cards { display: none; }

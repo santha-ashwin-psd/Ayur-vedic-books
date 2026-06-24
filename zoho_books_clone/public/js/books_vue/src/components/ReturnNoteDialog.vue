@@ -89,7 +89,7 @@
                 :class="exceedsInvoice ? 'rnd-cap-over' : 'rnd-cap-ok'"></div>
             </div>
             <div v-if="exceedsInvoice" class="rnd-cap-warn">
-              ⚠ Credit total {{ fmt(grandTotal) }} exceeds invoice outstanding {{ fmt(maxInvoiceAmt) }}
+              ⚠ {{ state.kind === 'debit' ? 'Debit' : 'Credit' }} total {{ fmt(grandTotal) }} exceeds {{ state.kind === 'debit' ? 'bill' : 'invoice' }} outstanding {{ fmt(maxInvoiceAmt) }}
             </div>
           </div>
 

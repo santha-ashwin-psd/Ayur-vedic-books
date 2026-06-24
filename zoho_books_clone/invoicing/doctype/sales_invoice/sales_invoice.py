@@ -102,11 +102,36 @@ class SalesInvoice(Document):
         self.db_set("outstanding_amount", new_outstanding, update_modified=False)
         self.db_set("status", "Submitted", update_modified=False)
         post_sales_invoice(self)
+        if getattr(self, "update_stock", 0) and getattr(self, "sales_order", None):
+            self._release_reserved_qty(direction=-1)
 
     def on_cancel(self):
         self.status = "Cancelled"
         self._check_no_payments_before_cancel()
         reverse_voucher(self.doctype, self.name)
+        if getattr(self, "update_stock", 0) and getattr(self, "sales_order", None):
+            self._release_reserved_qty(direction=+1)
+
+    def _release_reserved_qty(self, direction: int):
+        """Release (direction=-1) or restore (+1) reserved_qty when invoicing directly against an SO."""
+        from zoho_books_clone.inventory.utils import update_bin
+        warehouse = getattr(self, "set_warehouse", None) or ""
+        for row in (self.items or []):
+            wh = getattr(row, "warehouse", None) or warehouse
+            if not wh or not row.item_code:
+                continue
+            qty = flt(row.qty)
+            if qty <= 0:
+                continue
+            is_stock = frappe.db.get_value("Item", row.item_code, "is_stock_item")
+            if not is_stock:
+                continue
+            update_bin(
+                item_code=row.item_code,
+                warehouse=wh,
+                reserved_qty_delta=direction * qty,
+                company=self.company or "",
+            )
 
     def _check_no_payments_before_cancel(self):
         linked = frappe.db.sql("""

@@ -1486,6 +1486,71 @@ def get_invoice_credit_applications(invoice_name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_bill_debit_applications(bill_name):
+    """Return all debit notes applied against a Bill (direct return_against + JE-based)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+    seen_dn = set()
+    apps = []
+
+    # Case 1: Direct creation (return_against = bill_name)
+    direct_dns = frappe.db.sql("""
+        SELECT name, grand_total, posting_date
+        FROM `tabPurchase Invoice`
+        WHERE return_against = %s AND is_return = 1 AND docstatus = 1
+    """, (bill_name,), as_dict=True)
+
+    for dn in direct_dns:
+        seen_dn.add(dn.name)
+        apps.append({
+            "debit_note":    dn.name,
+            "amount":        abs(flt(dn.grand_total)),
+            "date":          dn.posting_date,
+            "journal_entry": None,
+            "type":          "direct",
+        })
+
+    # Case 2: JE-based applications (via apply_debit_note_to_bill)
+    je_rows = frappe.db.sql("""
+        SELECT jea.parent, je.posting_date
+        FROM `tabJournal Entry Account` jea
+        JOIN `tabJournal Entry` je ON je.name = jea.parent
+        WHERE jea.reference_type = 'Purchase Invoice' AND jea.reference_name = %s
+          AND je.docstatus = 1
+    """, (bill_name,), as_dict=True)
+
+    seen_je = set()
+    for row in je_rows:
+        if row.parent in seen_je:
+            continue
+        seen_je.add(row.parent)
+        siblings = frappe.db.sql("""
+            SELECT jea.reference_name, jea.debit AS dr, jea.credit AS cr
+            FROM `tabJournal Entry Account` jea
+            WHERE jea.parent = %s
+              AND jea.reference_type = 'Purchase Invoice'
+              AND jea.reference_name != %s
+        """, (row.parent, bill_name), as_dict=True)
+        for s in siblings:
+            if s.reference_name in seen_dn:
+                continue
+            is_dn = frappe.db.get_value("Purchase Invoice", s.reference_name, "is_return")
+            if is_dn:
+                seen_dn.add(s.reference_name)
+                apps.append({
+                    "debit_note":    s.reference_name,
+                    "amount":        abs(flt(s.dr or s.cr)),
+                    "date":          row.posting_date,
+                    "journal_entry": row.parent,
+                    "type":          "applied",
+                })
+
+    apps.sort(key=lambda x: x.get("date") or "", reverse=True)
+    return apps
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def refund_credit_note(credit_note_name, amount, refund_mode="Bank Transfer",
                       paid_to="", reference_no=""):
     """Refund the available CN balance back to the customer as a Payment Entry (pay-out)."""

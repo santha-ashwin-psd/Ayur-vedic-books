@@ -44,8 +44,9 @@
             <td class="ta-r fw-600">{{fmt(row.standard_rate)}}</td>
             <td class="ta-r c-muted" style="font-size:12.5px">{{row.gst_rate||0}}%</td>
             <td><span class="b-badge" :class="row.disabled?'b-badge-red':'b-badge-green'">{{row.disabled?'Inactive':'Active'}}</span></td>
-            <td style="text-align:center">
-              <button @click.stop="confirmDel(row)" style="background:none;border:none;cursor:pointer;color:#C92A2A;padding:4px" v-html="icon('trash',13)"></button>
+            <td style="text-align:center;white-space:nowrap">
+              <button @click.stop="openEdit(row)" class="ii-qa-btn ii-qa-edit" title="Quick Edit" v-html="icon('edit',13)"></button>
+              <button @click.stop="confirmDel(row)" class="ii-qa-btn ii-qa-del" title="Delete" v-html="icon('trash',13)"></button>
             </td>
           </tr>
         </tbody>
@@ -58,10 +59,13 @@
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
       <div v-if="loading" v-for="n in 6" :key="n" class="b-shimmer" style="height:120px;border-radius:10px"></div>
       <div v-else-if="!filtered.length" style="grid-column:1/-1;text-align:center;padding:40px;color:#868E96">No items found</div>
-      <div v-else v-for="row in filtered" :key="row.name" class="b-card b-card-body" style="cursor:pointer;transition:box-shadow .15s" @click="router.push('/inventory/items/' + encodeURIComponent(row.name))">
+      <div v-else v-for="row in filtered" :key="row.name" class="b-card b-card-body ii-grid-card" @click="router.push('/inventory/items/' + encodeURIComponent(row.name))">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
           <span class="b-badge" :class="row.disabled?'b-badge-red':'b-badge-green'" style="font-size:10.5px">{{row.disabled?'Inactive':'Active'}}</span>
-          <span class="b-badge b-badge-muted" style="font-size:10.5px">{{row.item_type||'—'}}</span>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="b-badge b-badge-muted" style="font-size:10.5px">{{row.item_type||'—'}}</span>
+            <button @click.stop="openEdit(row)" class="ii-qa-btn ii-qa-edit ii-card-edit" title="Quick Edit" v-html="icon('edit',12)"></button>
+          </div>
         </div>
         <div class="fw-700" style="font-size:14px;margin-bottom:3px;line-height:1.3">{{row.item_name}}</div>
         <div class="c-muted" style="font-size:11px;margin-bottom:8px">{{row.item_code}}</div>
@@ -566,6 +570,46 @@ onUnmounted(() => { window.removeEventListener("hashchange", onHashChange); });
   background: #ede9fe;
   color: #5b21b6;
   white-space: nowrap;
+}
+
+/* ── Quick action buttons ── */
+.ii-qa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  transition: background .12s, color .12s;
+  flex-shrink: 0;
+}
+.ii-qa-edit {
+  color: #6b7280;
+}
+.ii-qa-edit:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+.ii-qa-del {
+  color: #6b7280;
+}
+.ii-qa-del:hover {
+  background: #fff1f2;
+  color: #dc2626;
+}
+/* Card edit button — slightly smaller, more compact */
+.ii-card-edit {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  opacity: 0;
+  transition: opacity .15s, background .12s, color .12s;
+}
+.ii-grid-card:hover .ii-card-edit {
+  opacity: 1;
 }
 
 /* ── Responsive ── */

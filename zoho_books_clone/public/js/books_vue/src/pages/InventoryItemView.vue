@@ -124,6 +124,7 @@
                 <th>Warehouse</th>
                 <th class="ta-r">On Hand</th>
                 <th class="ta-r">Reserved</th>
+                <th class="ta-r">Ordered</th>
                 <th class="ta-r">Value</th>
               </tr>
             </thead>
@@ -135,6 +136,7 @@
                   {{ fmtQty(wh.actual_qty) }}
                 </td>
                 <td class="ta-r clr-muted">{{ fmtQty(wh.reserved_qty) }}</td>
+                <td class="ta-r" style="color:#7c3aed">{{ fmtQty(wh.ordered_qty) }}</td>
                 <td class="ta-r">{{ fmt(wh.stock_value) }}</td>
               </tr>
             </tbody>

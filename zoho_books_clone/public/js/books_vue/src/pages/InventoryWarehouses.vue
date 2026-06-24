@@ -192,6 +192,13 @@
               <div class="wh-stat-chip-val">{{ whStats.items }}</div>
             </div>
           </div>
+          <div class="wh-stat-chip wh-stat-chip--purple">
+            <span class="wh-stat-chip-icon">📋</span>
+              <div>
+              <div class="wh-stat-chip-lbl">Ordered Qty</div>
+              <div class="wh-stat-chip-val">{{ whStats.ordered.toFixed(2) }}</div>
+            </div>
+          </div>
           <div class="wh-stat-chip wh-stat-chip--orange">
             <span class="wh-stat-chip-icon">🔒</span>
             <div>
@@ -265,6 +272,10 @@
                 <div class="wh-smc-val wh-smc-reserved">{{ flt(r.reserved_qty).toFixed(2) }}</div>
               </div>
               <div class="wh-smc-cell">
+                <div class="wh-smc-lbl">Ordered</div>
+                <div class="wh-smc-val wh-smc-ordered">{{ flt(r.ordered_qty).toFixed(2) }}</div>
+              </div>
+              <div class="wh-smc-cell">
                 <div class="wh-smc-lbl">Val. Rate</div>
                 <div class="wh-smc-val">{{ fmt(r.valuation_rate) }}</div>
               </div>
@@ -293,6 +304,7 @@
                 <th class="wh-th wh-th-hide-sm">UOM</th>
                 <th class="wh-th wh-th-r">Actual Qty</th>
                 <th class="wh-th wh-th-r wh-th-hide-md">Reserved</th>
+                <th class="wh-th wh-th-r wh-th-hide-md">Ordered</th>
                 <th class="wh-th wh-th-r wh-th-hide-md">Val. Rate</th>
                 <th class="wh-th wh-th-r">Stock Value</th>
                 <th class="wh-th wh-th-c">Status</th>
@@ -309,6 +321,7 @@
                 <td class="wh-td wh-td-muted wh-th-hide-sm">{{ r.uom || 'Nos' }}</td>
                 <td class="wh-td wh-td-r wh-td-qty">{{ flt(r.actual_qty).toFixed(2) }}</td>
                 <td class="wh-td wh-td-r wh-td-reserved wh-th-hide-md">{{ flt(r.reserved_qty).toFixed(2) }}</td>
+                <td class="wh-td wh-td-r wh-td-ordered wh-th-hide-md">{{ flt(r.ordered_qty).toFixed(2) }}</td>
                 <td class="wh-td wh-td-r wh-th-hide-md">{{ fmt(r.valuation_rate) }}</td>
                 <td class="wh-td wh-td-r wh-td-value">{{ fmt(r.stock_value) }}</td>
                 <td class="wh-td wh-td-c">
@@ -616,11 +629,12 @@ const childWarehouses = computed(() => {
 });
 
 const whStats = computed(() => {
-  if (!stockItems.value.length) return { value: 0, items: 0, reserved: 0, projected: 0 };
+  if (!stockItems.value.length) return { value: 0, items: 0, reserved: 0, ordered: 0, projected: 0 };
   return {
     value:     stockItems.value.reduce((s, r) => s + flt(r.stock_value),   0),
     items:     stockItems.value.length,
     reserved:  stockItems.value.reduce((s, r) => s + flt(r.reserved_qty),  0),
+    ordered:   stockItems.value.reduce((s, r) => s + flt(r.ordered_qty),   0),
     projected: stockItems.value.reduce((s, r) => s + flt(r.projected_qty), 0),
   };
 });
@@ -1246,6 +1260,7 @@ onMounted(() => { load(); loadItems(); });
 .wh-stat-chip--green  .wh-stat-chip-val { color: #16a34a; }
 .wh-stat-chip--orange .wh-stat-chip-val { color: #ea580c; }
 .wh-stat-chip--indigo .wh-stat-chip-val { color: #4f46e5; }
+.wh-stat-chip--purple .wh-stat-chip-val { color: #7c3aed; }
 
 /* ── Stock section ── */
 .wh-stock-section {
@@ -1316,6 +1331,7 @@ onMounted(() => { load(); loadItems(); });
 .wh-td-c       { text-align: center; }
 .wh-td-qty     { font-weight: 700; color: #16a34a; }
 .wh-td-reserved { color: #ea580c; }
+.wh-td-ordered  { color: #7c3aed; }
 .wh-td-value   { font-weight: 700; color: #2563eb; }
 
 .wh-item-name { font-size: 13px; font-weight: 600; color: #0f172a; }
@@ -1435,6 +1451,7 @@ onMounted(() => { load(); loadItems(); });
 }
 .wh-smc-qty      { color: #16a34a; }
 .wh-smc-reserved { color: #ea580c; }
+.wh-smc-ordered  { color: #7c3aed; }
 .wh-smc-value    { color: #2563eb; font-weight: 700; }
 
 .wh-smc-footer {

@@ -35,7 +35,7 @@
         <tbody>
           <template v-if="loading"><tr v-for="n in 6" :key="n"><td colspan="9" style="padding:14px"><div class="b-shimmer" style="height:12px"></div></td></tr></template>
           <tr v-else-if="!filtered.length"><td colspan="9" class="b-empty">No items found</td></tr>
-          <tr v-else v-for="row in filtered" :key="row.name" class="clickable" @click="openEdit(row)">
+          <tr v-else v-for="row in filtered" :key="row.name" class="clickable" @click="router.push('/inventory/items/' + encodeURIComponent(row.name))">
             <td><span  style="font-size:12px;color:#3B5BDB">{{row.item_code||row.name}}</span></td>
             <td class="fw-600">{{row.item_name}}</td>
             <td><span v-if="row.item_group" class="it-group-badge">{{row.item_group}}</span><span v-else class="c-muted">—</span></td>
@@ -58,7 +58,7 @@
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
       <div v-if="loading" v-for="n in 6" :key="n" class="b-shimmer" style="height:120px;border-radius:10px"></div>
       <div v-else-if="!filtered.length" style="grid-column:1/-1;text-align:center;padding:40px;color:#868E96">No items found</div>
-      <div v-else v-for="row in filtered" :key="row.name" class="b-card b-card-body" style="cursor:pointer;transition:box-shadow .15s" @click="openEdit(row)">
+      <div v-else v-for="row in filtered" :key="row.name" class="b-card b-card-body" style="cursor:pointer;transition:box-shadow .15s" @click="router.push('/inventory/items/' + encodeURIComponent(row.name))">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
           <span class="b-badge" :class="row.disabled?'b-badge-red':'b-badge-green'" style="font-size:10.5px">{{row.disabled?'Inactive':'Active'}}</span>
           <span class="b-badge b-badge-muted" style="font-size:10.5px">{{row.item_type||'—'}}</span>
@@ -223,6 +223,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 import { apiList, apiGET, apiPOST, apiSave, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, fmtDate, flt } from "../utils/format.js";
@@ -230,6 +231,7 @@ import { icon } from "../utils/icons.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const router = useRouter();
 
 const list       = ref([]);
 const loading    = ref(true);

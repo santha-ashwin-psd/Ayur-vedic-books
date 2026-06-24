@@ -434,3 +434,110 @@ def get_or_create_bin(item_code: str, warehouse: str, company: str = "") -> str:
     bin_doc.insert(ignore_permissions=True)
     frappe.db.commit()
     return bin_doc.name
+
+
+# ── Bin Delta Update ──────────────────────────────────────────────────────────
+
+def update_bin(
+    item_code: str,
+    warehouse: str,
+    actual_qty_delta: float = 0.0,
+    reserved_qty_delta: float = 0.0,
+    ordered_qty_delta: float = 0.0,
+    company: str = "",
+    incoming_rate: float = 0.0,
+) -> None:
+    """
+    Apply signed deltas to a Bin row (creating it if needed) and keep
+    projected_qty, stock_value, and valuation_rate consistent.
+
+    Call this from every document that moves stock or changes commitments:
+      - Sales Order submit/cancel  → reserved_qty_delta ±qty
+      - Purchase Order submit/cancel → ordered_qty_delta ±qty
+      - Purchase Receipt submit/cancel → actual_qty_delta ±qty, ordered_qty_delta ∓qty
+      - Delivery Note submit/cancel → actual_qty_delta ∓qty, reserved_qty_delta ∓qty
+    """
+    bin_name = get_or_create_bin(item_code, warehouse, company)
+
+    row = frappe.db.get_value(
+        "Bin", bin_name,
+        ["actual_qty", "reserved_qty", "ordered_qty", "stock_value", "valuation_rate"],
+        as_dict=True,
+    )
+
+    new_actual   = max(0.0, flt(row.actual_qty)   + flt(actual_qty_delta))
+    new_reserved = max(0.0, flt(row.reserved_qty) + flt(reserved_qty_delta))
+    new_ordered  = max(0.0, flt(row.ordered_qty)  + flt(ordered_qty_delta))
+    new_projected = new_actual + new_ordered - new_reserved
+
+    # Recalculate stock value using moving-average when actual stock changes
+    if flt(actual_qty_delta) != 0 and flt(incoming_rate) > 0:
+        added_value = flt(actual_qty_delta) * flt(incoming_rate)
+        new_stock_value = max(0.0, flt(row.stock_value) + added_value)
+        new_valuation = new_stock_value / new_actual if new_actual > 0 else 0.0
+    elif flt(actual_qty_delta) < 0:
+        # Stock going out: reduce value proportionally
+        rate = flt(row.valuation_rate) or 0.0
+        new_stock_value = max(0.0, flt(row.stock_value) + flt(actual_qty_delta) * rate)
+        new_valuation = new_stock_value / new_actual if new_actual > 0 else 0.0
+    else:
+        new_stock_value = flt(row.stock_value)
+        new_valuation   = flt(row.valuation_rate)
+
+    frappe.db.set_value("Bin", bin_name, {
+        "actual_qty":     round(new_actual,    4),
+        "reserved_qty":   round(new_reserved,  4),
+        "ordered_qty":    round(new_ordered,   4),
+        "projected_qty":  round(new_projected, 4),
+        "stock_value":    round(new_stock_value, 2),
+        "valuation_rate": round(new_valuation,   4),
+    }, update_modified=True)
+
+
+# ── Stock Ledger Entry Creator ────────────────────────────────────────────────
+
+def make_sle(
+    item_code: str,
+    warehouse: str,
+    actual_qty: float,
+    voucher_type: str,
+    voucher_no: str,
+    company: str = "",
+    incoming_rate: float = 0.0,
+    posting_date: str = "",
+) -> None:
+    """Insert a Stock Ledger Entry row and update the Bin accordingly."""
+    from frappe.utils import today, nowtime
+
+    if not posting_date:
+        posting_date = today()
+
+    bin_name = get_or_create_bin(item_code, warehouse, company)
+    qty_after = flt(frappe.db.get_value("Bin", bin_name, "actual_qty")) + flt(actual_qty)
+    val_rate  = flt(frappe.db.get_value("Bin", bin_name, "valuation_rate")) or flt(incoming_rate)
+
+    # Outgoing: use current valuation rate; Incoming: use supplied rate or existing rate
+    if flt(actual_qty) > 0:
+        rate_to_use = flt(incoming_rate) or val_rate
+    else:
+        rate_to_use = val_rate
+
+    stock_val_diff = flt(actual_qty) * rate_to_use
+
+    frappe.get_doc({
+        "doctype":                "Stock Ledger Entry",
+        "item_code":              item_code,
+        "warehouse":              warehouse,
+        "posting_date":           posting_date,
+        "posting_time":           nowtime(),
+        "voucher_type":           voucher_type,
+        "voucher_no":             voucher_no,
+        "company":                company,
+        "actual_qty":             round(flt(actual_qty), 4),
+        "qty_after_transaction":  round(qty_after, 4),
+        "incoming_rate":          round(rate_to_use, 4) if flt(actual_qty) > 0 else 0,
+        "valuation_rate":         round(rate_to_use, 4),
+        "stock_value":            round(max(0, qty_after * rate_to_use), 2),
+        "stock_value_difference": round(stock_val_diff, 2),
+        "is_cancelled":           0,
+    }).insert(ignore_permissions=True)

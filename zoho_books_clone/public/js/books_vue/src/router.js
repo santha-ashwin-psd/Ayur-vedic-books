@@ -10,6 +10,7 @@ import Customers            from "./pages/Customers.vue";
 import CustomerProfile      from "./pages/CustomerProfile.vue";
 import Vendors              from "./pages/Vendors.vue";
 import InventoryItems       from "./pages/InventoryItems.vue";
+import InventoryItemView    from "./pages/InventoryItemView.vue";
 import InventoryItemGroups  from "./pages/InventoryItemGroups.vue";
 import InventoryWarehouses  from "./pages/InventoryWarehouses.vue";
 import SettingsProfile       from "./pages/SettingsProfile.vue";
@@ -104,6 +105,12 @@ const routes = [
     path: "/inventory/items",
     name: "inventory-items",
     component: InventoryItems,
+    meta: { module: "inventory" },
+  },
+  {
+    path: "/inventory/items/:itemCode",
+    name: "item-view",
+    component: InventoryItemView,
     meta: { module: "inventory" },
   },
   {

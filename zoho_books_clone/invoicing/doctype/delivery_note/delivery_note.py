@@ -17,25 +17,56 @@ class DeliveryNote(Document):
 
     def on_submit(self):
         self._adjust_so_delivered(direction=+1)
+        self._update_stock(direction=-1)   # stock leaves warehouse
         self.db_set("status", "Submitted", update_modified=False)
 
     def on_cancel(self):
         self._adjust_so_delivered(direction=-1)
+        self._update_stock(direction=+1)   # stock comes back on cancel
         self.db_set("status", "Cancelled", update_modified=False)
 
-    def _adjust_so_delivered(self, direction: int):
-        """Bump (direction=+1) or decrement (-1) delivered_qty on linked SO rows.
-
-        When `so_item` is explicitly set on a DN line, we use it directly.
-        Otherwise (manual DN creation against an SO), we fall back to matching
-        SO Item rows by `item_code` in order — first row first — so quantities
-        still flow back to the parent SO.
+    def _update_stock(self, direction: int):
         """
+        direction=-1 (submit): stock goes OUT, reserved_qty goes DOWN.
+        direction=+1 (cancel): reverse the above.
+        """
+        from zoho_books_clone.inventory.utils import update_bin, make_sle
+        warehouse = getattr(self, "set_warehouse", None) or ""
+
+        for row in self.items:
+            wh = getattr(row, "warehouse", None) or warehouse
+            if not wh or not row.item_code:
+                continue
+            is_stock = frappe.db.get_value("Item", row.item_code, "is_stock_item")
+            if not is_stock:
+                continue
+
+            qty     = flt(row.qty)
+            sle_qty = direction * qty       # -qty on submit (outgoing), +qty on cancel
+
+            make_sle(
+                item_code=row.item_code,
+                warehouse=wh,
+                actual_qty=sle_qty,
+                voucher_type="Delivery Note",
+                voucher_no=self.name,
+                company=self.company or "",
+                posting_date=self.posting_date or "",
+            )
+            # actual_qty changes; reserved_qty also down on submit, up on cancel
+            update_bin(
+                item_code=row.item_code,
+                warehouse=wh,
+                actual_qty_delta=sle_qty,
+                reserved_qty_delta=direction * -qty,  # submit: -qty, cancel: +qty
+                company=self.company or "",
+            )
+
+    def _adjust_so_delivered(self, direction: int):
+        """Bump (direction=+1) or decrement (-1) delivered_qty on linked SO rows."""
         if not self.sales_order:
             return
 
-        # Build a working pool of SO Item rows by item_code so we can match
-        # DN lines that have no explicit `so_item` linkage.
         so_items = frappe.db.sql("""
             SELECT name, item_code, qty, delivered_qty
             FROM `tabSales Order Item` WHERE parent=%s ORDER BY idx
@@ -54,7 +85,6 @@ class DeliveryNote(Document):
             if row.so_item:
                 _bump(row.so_item, row.qty)
                 continue
-            # Fallback: greedy match by item_code against remaining capacity.
             pool = by_code.get(row.item_code) or []
             remaining = flt(row.qty)
             for so_row in pool:
@@ -70,7 +100,6 @@ class DeliveryNote(Document):
                 so_row.delivered_qty = flt(so_row.delivered_qty) + direction * take
                 remaining -= take
 
-        # Refresh SO status from fulfillment
         try:
             from zoho_books_clone.api.docs import _so_status_from_fulfillment
             new_status = _so_status_from_fulfillment(self.sales_order)

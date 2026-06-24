@@ -1695,7 +1695,7 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
   /* KPI + stat grids: single column */
   .bk-kpi-grid  { grid-template-columns: 1fr; }
   .bk-stat-grid { grid-template-columns: 1fr; }
-
+  .inv-view-cta{display:none;}
   /* Details meta: single column */
   .inv-details-meta { grid-template-columns: 1fr !important; }
 

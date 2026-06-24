@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import re
 import frappe
 from frappe import _
 from frappe.model.document import Document
+
+_GSTIN_RE = re.compile(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$')
 
 
 class BooksCompany(Document):
@@ -10,6 +13,10 @@ class BooksCompany(Document):
         self.company_name = (self.company_name or "").strip()
         if not self.company_name:
             frappe.throw(_("Company Name is required."))
+        if self.gstin:
+            self.gstin = self.gstin.strip().upper()
+            if not _GSTIN_RE.match(self.gstin):
+                frappe.throw(_("Invalid Company GSTIN: {0}. Expected format: 22AAAAA0000A1Z5").format(self.gstin))
 
         if not self.company_abbr:
             self.company_abbr = self._derive_abbr(self.company_name)

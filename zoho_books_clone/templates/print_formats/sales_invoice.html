@@ -294,6 +294,31 @@
     .page { max-width: 100%; }
     body  { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
+
+  /* ═══════════════════════════════════════════════
+     E-INVOICE / IRN STRIP
+  ═══════════════════════════════════════════════ */
+  .einv-strip {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin: 0 44px 0; padding: 12px 16px;
+    background: #f0f4ff; border: 1px solid #c5d0fa; border-radius: 8px;
+    gap: 16px;
+  }
+  .einv-left { flex: 1; min-width: 0; }
+  .einv-title {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: #3451b2; margin-bottom: 5px;
+  }
+  .einv-irn {
+    font-family: 'Courier New', monospace; font-size: 9px; color: #1e3a8a;
+    word-break: break-all; line-height: 1.5; letter-spacing: .3px;
+    background: #e8eeff; padding: 5px 8px; border-radius: 4px; margin-bottom: 6px;
+  }
+  .einv-meta-row { font-size: 10px; color: var(--ink-700); display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+  .einv-meta-lbl { color: var(--ink-500); }
+  .einv-meta-val { font-weight: 600; color: var(--ink-900); }
+  .einv-qr { flex-shrink: 0; }
+  .einv-qr canvas, .einv-qr img { display: block; }
 </style>
 </head>
 <body>
@@ -472,6 +497,25 @@
 
   </div>
 
+  <!-- ── E-INVOICE / IRN STRIP ── -->
+  {% if inv.irn and inv.einvoice_status != 'Cancelled' %}
+  <div class="einv-strip">
+    <div class="einv-left">
+      <div class="einv-title">e-Invoice (IRN)</div>
+      <div class="einv-irn">{{ inv.irn }}</div>
+      <div class="einv-meta-row">
+        <span class="einv-meta-lbl">Ack No.</span>
+        <span class="einv-meta-val">{{ inv.ack_no or '—' }}</span>
+        <span class="einv-meta-lbl" style="margin-left:20px">Ack Date</span>
+        <span class="einv-meta-val">{{ frappe.format(inv.ack_date, "Date") if inv.ack_date else '—' }}</span>
+      </div>
+    </div>
+    <div class="einv-qr">
+      <div id="einv-qr-canvas"></div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ── FOOTER ── -->
   <div class="footer-wrap">
     <div>
@@ -511,6 +555,29 @@
   } catch(e) {
     var container = document.getElementById("qr-canvas");
     if (container) container.innerHTML = '<div style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#9AA0AB;border:1px dashed #ccc;border-radius:4px">QR unavailable</div>';
+  }
+})();
+</script>
+{% endif %}
+
+{% if inv.irn and inv.einvoice_status != 'Cancelled' %}
+<script>
+(function() {
+  try {
+    var irn = {{ inv.irn | tojson }};
+    var container = document.getElementById("einv-qr-canvas");
+    if (container && irn) {
+      new QRCode(container, {
+        text: irn,
+        width: 80, height: 80,
+        colorDark: "#1e3a8a",
+        colorLight: "#e8eeff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+  } catch(e) {
+    var c = document.getElementById("einv-qr-canvas");
+    if (c) c.innerHTML = '<div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#9AA0AB;border:1px dashed #c5d0fa;border-radius:4px">QR unavailable</div>';
   }
 })();
 </script>

@@ -98,7 +98,21 @@
     <div class="sc-card">
       <div class="sc-card-title">Tax Configuration</div>
       <div class="sc-fg sc-fg--single">
-        <div class="nim-field"><label class="nim-label">GSTIN</label><input class="nim-input" v-model="form.gstin" placeholder="22AAAAA0000A1Z5"/></div>
+        <div class="nim-field">
+          <label class="nim-label">GSTIN</label>
+          <input class="nim-input" v-model="form.gstin" placeholder="22AAAAA0000A1Z5"
+            @input="form.gstin = form.gstin.toUpperCase()"
+            :style="form.gstin && !GSTIN_REGEX.test(form.gstin) ? 'border-color:#dc2626;background:#fff5f5' :
+                    form.gstin && GSTIN_REGEX.test(form.gstin) ? 'border-color:#2f9e44' : ''"/>
+          <div v-if="form.gstin && !GSTIN_REGEX.test(form.gstin)" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+            Invalid GSTIN format (e.g. 22AAAAA0000A1Z5)
+          </div>
+          <div v-else-if="form.gstin && GSTIN_REGEX.test(form.gstin)" style="margin-top:4px;font-size:12px;color:#2f9e44;display:flex;align-items:center;gap:4px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Valid GSTIN
+          </div>
+        </div>
         <div class="nim-field"><label class="nim-label">GST State</label><input class="nim-input" v-model="form.gst_state" placeholder="Maharashtra"/></div>
       </div>
     </div>
@@ -134,6 +148,7 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
+import { GSTIN_REGEX } from "../composables/useValidation.js";
 
 const { toast } = useToast();
 

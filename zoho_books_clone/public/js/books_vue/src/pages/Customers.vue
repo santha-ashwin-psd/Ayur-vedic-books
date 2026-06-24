@@ -882,12 +882,6 @@
             <div class="inv-sec-lbl" style="margin-top:0">Billing Preferences</div>
             <div class="cus-form-grid3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px">
               <div>
-                <label class="inv-lbl">Currency</label>
-                <select v-model="form.default_currency" class="inv-fi" style="cursor:pointer">
-                  <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option><option>JPY</option><option>CAD</option><option>AUD</option>
-                </select>
-              </div>
-              <div>
                 <label class="inv-lbl">Payment Terms</label>
                 <select v-model="form.payment_terms" class="inv-fi" style="cursor:pointer">
                   <option value="">— Select —</option>
@@ -1210,9 +1204,7 @@ const form = reactive({
 
 const activeRule = computed(() => GST_RULES[form.gst_treatment] || GST_RULES["Registered Business"]);
 
-const currencySymbol = computed(() =>
-  ({ INR: "₹", USD: "$", EUR: "€", GBP: "£", AED: "د.إ", SGD: "S$" }[form.default_currency] || "₹")
-);
+const currencySymbol = "₹";
 
 // Clear GSTIN/POS errors when treatment changes
 watch(() => form.gst_treatment, () => {

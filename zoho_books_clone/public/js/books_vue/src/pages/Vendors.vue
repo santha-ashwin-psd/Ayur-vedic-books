@@ -671,12 +671,6 @@
               </div>
             </div>
             <div class="inv-field">
-              <label class="inv-lbl">Currency</label>
-              <select v-model="form.default_currency" class="inv-fi">
-                <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option>
-              </select>
-            </div>
-            <div class="inv-field">
               <label class="inv-lbl">Payment Terms</label>
               <select v-model="form.payment_terms" class="inv-fi">
                 <option value="">Select</option>

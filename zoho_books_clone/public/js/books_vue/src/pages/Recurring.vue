@@ -473,23 +473,41 @@
           <!-- Generated tab -->
           <div v-else-if="viewTab==='generated'">
             <div v-if="!viewDoc.runs.length" class="rec-tab-empty">No documents generated yet.</div>
-            <table v-else class="inv-table rec-table-inner">
-              <thead>
-                <tr><th>Document</th><th>Created</th><th style="text-align:right">Amount</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                <tr v-for="d in viewDoc.runs" :key="d.name" class="inv-row">
-                  <td><DocLink :doctype="viewDoc.reference_doctype" :name="d.name" /></td>
-                  <td class="text-muted mono-sm">{{ fmtDate(d.creation) }}</td>
-                  <td style="text-align:right" class="mono-sm">{{ fmtCurrency(d.grand_total) }}</td>
-                  <td>
+            <template v-else>
+              <!-- Desktop table -->
+              <table class="inv-table rec-table-inner rec-gen-table-desktop">
+                <thead>
+                  <tr><th>Document</th><th>Created</th><th style="text-align:right">Amount</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="d in viewDoc.runs" :key="d.name" class="inv-row">
+                    <td><DocLink :doctype="viewDoc.reference_doctype" :name="d.name" /></td>
+                    <td class="text-muted mono-sm">{{ fmtDate(d.creation) }}</td>
+                    <td style="text-align:right" class="mono-sm">{{ fmtCurrency(d.grand_total) }}</td>
+                    <td>
+                      <span class="inv-status-badge" :class="d.docstatus===1?'badge-green':d.docstatus===2?'badge-red':'badge-grey'">
+                        {{ d.docstatus===1?'Submitted':d.docstatus===2?'Cancelled':'Draft' }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <!-- Mobile cards -->
+              <div class="rec-gen-cards-mobile">
+                <div v-for="d in viewDoc.runs" :key="d.name" class="rec-gen-card">
+                  <div class="rec-gen-card-top">
+                    <DocLink :doctype="viewDoc.reference_doctype" :name="d.name" />
                     <span class="inv-status-badge" :class="d.docstatus===1?'badge-green':d.docstatus===2?'badge-red':'badge-grey'">
                       {{ d.docstatus===1?'Submitted':d.docstatus===2?'Cancelled':'Draft' }}
                     </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </div>
+                  <div class="rec-gen-card-bot">
+                    <span class="rec-gen-card-date">{{ fmtDate(d.creation) }}</span>
+                    <span class="rec-gen-card-amount">{{ fmtCurrency(d.grand_total) }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
 
           <!-- Upcoming tab -->
@@ -1222,5 +1240,52 @@ function exportCSV() {
   font-size: 13px;
   color: #111827;
   font-weight: 500;
+}
+
+/* ── Generated tab: desktop table / mobile cards ── */
+.rec-gen-table-desktop { display: table; }
+.rec-gen-cards-mobile  { display: none; }
+
+@media (max-width: 768px) {
+  .rec-gen-table-desktop { display: none !important; }
+  .rec-gen-cards-mobile  {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .rec-gen-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.05);
+  }
+  .rec-gen-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .rec-gen-card-bot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #f3f4f6;
+  }
+  .rec-gen-card-date {
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .rec-gen-card-amount {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+  }
 }
 </style>

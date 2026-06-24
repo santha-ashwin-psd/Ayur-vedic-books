@@ -302,12 +302,12 @@
 
         <!-- action bar -->
         <div class="rec-view-actbar">
-          <button class="rec-va-btn" @click="openEdit(viewDoc)" :disabled="(viewDoc.ui_status||viewDoc.status)==='Cancelled'"><span v-html="icon('edit',13)"></span> Edit</button>
-          <button class="rec-va-btn" @click="runNow(viewDoc)" :disabled="(viewDoc.ui_status||viewDoc.status||'Active')!=='Active' || actionLoading"><span v-html="icon('play',13)"></span> Run Now</button>
-          <button v-if="(viewDoc.ui_status||viewDoc.status||'Active')==='Active'" class="rec-va-btn" @click="actionOn(viewDoc,'pause')" :disabled="actionLoading"><span v-html="icon('pause',13)"></span> Pause</button>
-          <button v-else-if="(viewDoc.ui_status||viewDoc.status)==='Paused'" class="rec-va-btn" @click="actionOn(viewDoc,'resume')" :disabled="actionLoading"><span v-html="icon('play',13)"></span> Resume</button>
-          <button class="rec-va-btn rec-va-warn" @click="actionOn(viewDoc,'cancel')" :disabled="actionLoading || (viewDoc.ui_status||viewDoc.status)==='Cancelled'"><span v-html="icon('x',13)"></span> Cancel</button>
-          <button class="rec-va-btn rec-va-danger" @click="actionOn(viewDoc,'delete')" :disabled="actionLoading"><span v-html="icon('trash',13)"></span> Delete</button>
+          <button class="rec-va-btn" @click="openEdit(viewDoc)" :disabled="(viewDoc.ui_status||viewDoc.status)==='Cancelled'"><span v-html="icon('edit',13)"></span> <div class="rec-va-btn-text">Edit</div></button>
+          <button class="rec-va-btn" @click="runNow(viewDoc)" :disabled="(viewDoc.ui_status||viewDoc.status||'Active')!=='Active' || actionLoading"><span v-html="icon('play',13)"></span> <div class="rec-va-btn-text">Run Now</div></button>
+          <button v-if="(viewDoc.ui_status||viewDoc.status||'Active')==='Active'" class="rec-va-btn" @click="actionOn(viewDoc,'pause')" :disabled="actionLoading"><span v-html="icon('pause',13)"></span> <div class="rec-va-btn-text">Pause</div></button>
+          <button v-else-if="(viewDoc.ui_status||viewDoc.status)==='Paused'" class="rec-va-btn" @click="actionOn(viewDoc,'resume')" :disabled="actionLoading"><span v-html="icon('play',13)"></span> <div class="rec-va-btn-text">Resume</div></button>
+          <button class="rec-va-btn rec-va-warn" @click="actionOn(viewDoc,'cancel')" :disabled="actionLoading || (viewDoc.ui_status||viewDoc.status)==='Cancelled'"><span v-html="icon('x',13)"></span> <div class="rec-va-btn-text">Cancel</div></button>
+          <button class="rec-va-btn rec-va-danger" @click="actionOn(viewDoc,'delete')" :disabled="actionLoading"><span v-html="icon('trash',13)"></span> <div class="rec-va-btn-text">Delete</div></button>
         </div>
 
         <!-- timeline -->
@@ -383,16 +383,31 @@
           <!-- Generated tab -->
           <div v-else-if="viewTab==='generated'">
             <div v-if="!viewDoc.runs||!viewDoc.runs.length" class="rec-tab-empty">No documents generated yet.</div>
-            <table v-else class="rec-table rec-table-inner">
-              <thead><tr><th>Document</th><th>Created</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr v-for="d in viewDoc.runs" :key="d.name">
-                  <td class="rec-num">{{ d.name }}</td>
-                  <td class="text-muted mono-sm">{{ fmtDate(d.creation) }}</td>
-                  <td><span class="rec-badge" :class="d.docstatus===1?'badge-green':d.docstatus===2?'badge-red':'badge-grey'">{{ d.docstatus===1?'Submitted':d.docstatus===2?'Cancelled':'Draft' }}</span></td>
-                </tr>
-              </tbody>
-            </table>
+            <template v-else>
+              <!-- Desktop table -->
+              <table class="rec-table rec-table-inner rec-gen-table-desktop">
+                <thead><tr><th>Document</th><th>Created</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr v-for="d in viewDoc.runs" :key="d.name">
+                    <td class="rec-num">{{ d.name }}</td>
+                    <td class="text-muted mono-sm">{{ fmtDate(d.creation) }}</td>
+                    <td><span class="rec-badge" :class="d.docstatus===1?'badge-green':d.docstatus===2?'badge-red':'badge-grey'">{{ d.docstatus===1?'Submitted':d.docstatus===2?'Cancelled':'Draft' }}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+              <!-- Mobile cards -->
+              <div class="rec-gen-cards-mobile">
+                <div v-for="d in viewDoc.runs" :key="d.name" class="rec-gen-card">
+                  <div class="rec-gen-card-top">
+                    <span class="rec-num">{{ d.name }}</span>
+                    <span class="rec-badge" :class="d.docstatus===1?'badge-green':d.docstatus===2?'badge-red':'badge-grey'">{{ d.docstatus===1?'Submitted':d.docstatus===2?'Cancelled':'Draft' }}</span>
+                  </div>
+                  <div class="rec-gen-card-bot">
+                    <span class="rec-gen-card-date">{{ fmtDate(d.creation) }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
 
           <!-- Upcoming tab -->
@@ -744,7 +759,7 @@ onMounted(load);
 .rec-num{font-size:13px;color:#2563eb;font-weight:600;}
 .rec-ref{font-size:13px;color:#374151;}
 .mono-sm{font-size:13px;}.text-muted{color:#6b7280;}.text-accent{color:#2563eb;font-weight:600;}
-.rec-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
+.rec-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;width: fit-content;}
 .rec-badge-lg{padding:4px 10px;font-size:12.5px;}
 .badge-green{background:#dcfce7;color:#16a34a;}.badge-orange{background:#fef3c7;color:#ea580c;}.badge-grey{background:#e5e7eb;color:#6b7280;}
 .rec-act-btn{background:transparent;border:1px solid #e5e7eb;border-radius:6px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;}
@@ -899,7 +914,7 @@ textarea.rec-input{resize:vertical;min-height:72px;}
 
   /* View drawer header: allow wrap, single-row action group */
   .rec-view-head-row { flex-wrap: wrap; gap: 8px; }
-  .rec-view-stats    { grid-template-columns: 1fr 1fr; }
+  .rec-view-stats    { display:flex; }
 }
 
 /* ── Mobile (≤ 480px) ── */
@@ -930,11 +945,11 @@ textarea.rec-input{resize:vertical;min-height:72px;}
 
 /* ── Timeline: dots-only at ≤ 540px ── */
 @media (max-width: 540px) {
-  
+  .rec-va-btn-text{display:none;}
   .rec-list-actions{display:block; width :stretch;}
   .rec-pills{justify-content: space-evenly;}
   .rec-search-wrap{ margin-bottom:5px;}
-  .rec-timeline { padding: 10px 12px; gap: 0; }
+  .rec-timeline { display:none;padding: 10px 12px; gap: 0; }
   .rec-tl-lbl   { display: none !important; }
   .rec-tl-step  { min-width: 0; }
   .rec-tl-dot   { width: 14px; height: 14px; }
@@ -993,6 +1008,43 @@ textarea.rec-input{resize:vertical;min-height:72px;}
     gap: 8px;
     text-align: right;
     justify-content: flex-start;
+  }
+}
+/* ── Generated tab: desktop table / mobile cards ── */
+.rec-gen-table-desktop { display: table; }
+.rec-gen-cards-mobile  { display: none; }
+
+@media (max-width: 768px) {
+  .rec-gen-table-desktop { display: none !important; }
+  .rec-gen-cards-mobile  {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .rec-gen-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.05);
+  }
+  .rec-gen-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .rec-gen-card-bot {
+    padding-top: 6px;
+    border-top: 1px solid #f3f4f6;
+  }
+  .rec-gen-card-date {
+    font-size: 12px;
+    color: #6b7280;
   }
 }
 </style>

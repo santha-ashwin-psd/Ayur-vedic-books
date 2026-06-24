@@ -84,7 +84,7 @@ export const NAV = [
   // { path: "/settings/currency-exchange", label: "Currency", icon: "currency", module: "admin" }, // INR-only: hidden
   { path: "/settings/roles",                label: "Roles",            icon: "shield",     module: "admin"      },
   // { path: "/settings/organization",         label: "Organization",     icon: "org",        module: "admin"      },
-  { path: "/settings/security",             label: "Security",         icon: "lock",       module: null         },
+  // { path: "/settings/security",             label: "Security",         icon: "lock",       module: null         },
   { path: "/settings/sso",                  label: "Single Sign-On",   icon: "shield",     module: "admin"      },
   // { path: "/settings/audit-log",            label: "Audit Log",        icon: "audit",      module: "admin"      },
   { path: "/settings/integrations",         label: "Integrations",     icon: "webhook",    module: "admin"      },

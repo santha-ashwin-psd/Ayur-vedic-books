@@ -1855,6 +1855,7 @@ def duplicate_price_list(source_name, new_name):
 
     src = frappe.get_doc("Price List", source_name)
     new_pl = frappe.new_doc("Price List")
+    new_pl.name            = new_name   # explicit name bypasses naming_series lookup
     new_pl.price_list_name = new_name
     new_pl.currency = src.currency
     new_pl.selling  = src.selling

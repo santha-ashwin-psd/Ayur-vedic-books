@@ -62,7 +62,7 @@
 
           <!-- Edit icon (shows on card hover) -->
           <button class="pl-dots-btn" @click.stop="openCardMenu(pl, $event)"
-            v-html="icon('edit', 13)"></button>
+           ><span class="ba-kebab-dots"></span></button>
         </div>
       </template>
     </div>
@@ -171,6 +171,22 @@
           <span class="b-badge" :class="selectedList.enabled ? 'b-badge-green' : 'b-badge-muted'" style="font-size:11px">
             {{ selectedList.enabled ? 'Active' : 'Inactive' }}
           </span>
+          <!-- Mobile-only: Edit + Enable/Disable actions -->
+          <div class="pl-mob-head-actions">
+            <button class="pl-mob-action-btn"
+              @click="openEditListDialog(selectedList)"
+              title="Edit price list">
+              <span v-html="icon('edit', 13)"></span>
+              <span class="pl-mob-action-label">Edit</span>
+            </button>
+            <button class="pl-mob-action-btn"
+              :class="selectedList.enabled ? 'pl-mob-action-disable' : 'pl-mob-action-enable'"
+              @click="toggleEnabled(selectedList)"
+              :title="selectedList.enabled ? 'Disable' : 'Enable'">
+              <span class="pl-mob-toggle-dot"></span>
+              <span class="pl-mob-action-label">{{ selectedList.enabled ? 'Disable' : 'Enable' }}</span>
+            </button>
+          </div>
         </div>
 
         <!-- B2b. Stats chips -->
@@ -492,8 +508,16 @@
     <div v-if="showDuplicateDialog" class="nim-overlay" @click.self="showDuplicateDialog=false">
       <div class="nim-dialog" style="max-width:420px;width:100%">
         <div class="nim-header">
-          <span style="font-size:15px;font-weight:700">Duplicate Price List</span>
-          <button class="nim-btn nim-btn-ghost" @click="showDuplicateDialog=false">
+          <span style="font-size:15px;color:#fff;font-weight:700">Duplicate Price List</span>
+          <button style="background: rgba(255, 255, 255, .15);
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    height: 30px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    transition: .15s;" class="nim-btn nim-btn-ghost" @click="showDuplicateDialog=false">
             <span v-html="icon('x', 14)"/>
           </button>
         </div>
@@ -1475,13 +1499,11 @@ onUnmounted(() => {
   color: #868E96;
   padding: 3px 5px;
   border-radius: 4px;
-  display: none;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   transition: color .12s, background .12s;
 }
-.pl-card:hover .pl-dots-btn { display: flex; }
 .pl-dots-btn:hover { color: #3B5BDB; background: #EDF2FF; }
 
 /* Sidebar footer */
@@ -1870,7 +1892,12 @@ onUnmounted(() => {
 /* ══ RESPONSIVE BREAKPOINTS ══════════════════════════════════════════════════ */
 
 /* Mobile toolbar: hidden on desktop */
+.pl-mob-head-actions { display: none; }
 .pl-mob-toolbar { display: none; }
+.ba-kebab-dots,.ba-kebab-dots::before,.ba-kebab-dots::after{width:3px;height:3px;border-radius:50%;background:#64748b;display:block;}
+.ba-kebab-dots{position:relative;}
+.ba-kebab-dots::before,.ba-kebab-dots::after{content:"";position:absolute;left:0;}
+.ba-kebab-dots::before{top:-5px;}.ba-kebab-dots::after{top:5px;}
 
 /* Empty state sub-text variants: desktop shows desk-only, hides mob-only */
 .pl-es-sub--mob-only  { display: none; }
@@ -2055,6 +2082,61 @@ onUnmounted(() => {
 
   /* Empty state: tighter padding */
   .pl-empty-state { padding: 16px 16px 24px; }
+
+  /* Mobile panel header action buttons (Edit + Enable/Disable) */
+  .pl-mob-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .pl-mob-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    border: 1px solid #E2E8F0;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .12s, border-color .12s;
+    white-space: nowrap;
+  }
+  .pl-mob-action-btn:active { background: #F1F3F5; }
+  .pl-mob-action-label { font-size: 11.5px; }
+
+  /* Disable button — red tint */
+  .pl-mob-action-disable {
+    border-color: #FFC9C9;
+    color: #C92A2A;
+    background: #FFF5F5;
+  }
+  .pl-mob-action-disable:active { background: #FFE3E3; }
+
+  /* Enable button — green tint */
+  .pl-mob-action-enable {
+    border-color: #B2F2BB;
+    color: #2B8A3E;
+    background: #EBFBEE;
+  }
+  .pl-mob-action-enable:active { background: #D3F9D8; }
+
+  /* Toggle dot inside the enable/disable button */
+  .pl-mob-toggle-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  /* Mobile panel header action buttons: visible on mobile */
+  .pl-mob-head-actions { display: flex; }
 
   /* On mobile: show mobile guidance, hide desktop guidance */
   .pl-es-sub--mob-only  { display: block; }

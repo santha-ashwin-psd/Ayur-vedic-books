@@ -324,7 +324,7 @@
             Overview
           </button>
           <button @click="activeCustomerTab='transactions'"
-            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
+            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',display:'flex',
               color:activeCustomerTab==='transactions'?'#16a34a':'#6B7280',
               borderBottom:activeCustomerTab==='transactions'?'2px solid #16a34a':'2px solid transparent',marginBottom:'-2px'}">
             Transactions
@@ -639,7 +639,16 @@
               <div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:1px">{{drawerMode==='edit'?form.name:'Fill in customer details'}}</div>
             </div>
           </div>
-          <button class="inv-dclose" @click="showDrawer=false" v-html="icon('x',14)"></button>
+          <button style="background: rgba(255, 255, 255, .15);
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    transition: .15s;" class="inv-dclose" @click="showDrawer=false" v-html="icon('x',14)"></button>
         </div>
 
         <div class="inv-view-tabs">

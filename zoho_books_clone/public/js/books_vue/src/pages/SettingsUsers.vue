@@ -90,7 +90,7 @@
       <div class="nim-dialog" style="width:560px">
         <div class="nim-header">
           <div>
-            <span style="font-weight:700;font-size:15px">Add Team Member</span>
+            <span style="font-weight:700;color:#fff;font-size:15px">Add Team Member</span>
             <div style="font-size:11.5px;color:#868e96;margin-top:2px">
               Step {{stepIndex}} of {{totalSteps}} —
               {{step===1?'Assign a Role':(step===2?'Module Access':'Set Credentials')}}

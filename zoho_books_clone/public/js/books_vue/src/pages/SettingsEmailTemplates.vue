@@ -49,8 +49,16 @@
     <div v-if="showDrawer" class="nim-overlay" @click.self="showDrawer=false">
       <div class="nim-dialog" style="width:640px;max-width:95vw">
         <div class="nim-header">
-          <span style="font-size:15px;font-weight:700">{{drawerMode==='add'?'New Email Template':'Edit Template'}}</span>
-          <button class="nim-btn nim-btn-ghost" @click="showDrawer=false"><span v-html="icon('x',14)"/></button>
+          <span style="font-size:15px;color:#fff;font-weight:700">{{drawerMode==='add'?'New Email Template':'Edit Template'}}</span>
+          <button style="background: rgba(255, 255, 255, .15);
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    height: 30px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    transition: .15s;" class="nim-btn nim-btn-ghost" @click="showDrawer=false"><span v-html="icon('x',14)"/></button>
         </div>
         <div class="nim-body" style="display:grid;gap:14px">
           <div class="nim-field">

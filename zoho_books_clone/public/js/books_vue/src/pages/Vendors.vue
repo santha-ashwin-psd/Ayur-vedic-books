@@ -332,7 +332,7 @@
             Overview
           </button>
           <button @click="activeVendorTab='transactions'"
-            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
+            :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',display:'flex',
               color:activeVendorTab==='transactions'?'#E67700':'#6B7280',
               borderBottom:activeVendorTab==='transactions'?'2px solid #E67700':'2px solid transparent',marginBottom:'-2px'}">
             Transactions
@@ -608,7 +608,7 @@
 
         <div class="inv-dh" style="background:linear-gradient(135deg,#E67700,#C96200);padding:18px 24px">
           <div class="cust-drawer-header-left">
-            <div class="cust-drawer-icon">
+            <div class="cust-drawer-icon" style="color:#fff">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
             <div>
@@ -616,7 +616,16 @@
               <div class="cust-drawer-sub">{{drawerMode==='edit'?form.name:'Fill in vendor details'}}</div>
             </div>
           </div>
-          <button class="inv-dclose" @click="showDrawer=false" v-html="icon('x',15)"></button>
+          <button style="background: rgba(255, 255, 255, .15);
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    transition: .15s;" class="inv-dclose" @click="showDrawer=false" v-html="icon('x',15)"></button>
         </div>
 
         <div v-if="drawerLoading" style="flex:1;display:grid;place-items:center;color:#9ca3af;font-size:13px">

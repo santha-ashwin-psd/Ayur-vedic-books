@@ -1089,7 +1089,7 @@
       <div class="nim-dialog" style="max-width:420px">
         <div class="nim-header" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">
           <div class="nim-header-left">
-            <div class="nim-header-icon">
+            <div class="nim-header-icon" style="color:#fff;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             </div>
             <div class="nim-header-title">Delete Customer?</div>
@@ -1120,7 +1120,7 @@
       <div class="nim-dialog cus-import-dialog" style="max-width:620px;width:96vw">
         <div class="nim-header" style="background:linear-gradient(135deg,#16a34a,#15803d)">
           <div class="nim-header-left">
-            <div class="nim-header-icon"><span v-html="icon('upload',16)"></span></div>
+            <div class="nim-header-icon" style="color:#fff;"><span v-html="icon('upload',16)"></span></div>
             <div class="nim-header-title">{{ importModal.done ? 'Import Complete' : 'Review Import' }}</div>
           </div>
           <button class="nim-close" @click="closeImport" :disabled="importModal.running" v-html="icon('x',15)"></button>

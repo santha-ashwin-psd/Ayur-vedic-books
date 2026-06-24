@@ -62,6 +62,25 @@ class PurchaseInvoice(Document):
     def on_submit(self):
         if getattr(self, "is_return", 0):
             from zoho_books_clone.accounts.accounting_engine import post_debit_note
+            dn_amount = abs(flt(self.grand_total))
+
+            # Guard: check that the source bill still has enough outstanding
+            if getattr(self, "return_against", None):
+                src_outstanding = flt(frappe.db.get_value(
+                    "Purchase Invoice", self.return_against, "outstanding_amount"
+                ) or 0)
+                if src_outstanding < dn_amount - 0.01:
+                    frappe.throw(_(
+                        "Cannot submit Debit Note {0}: the Purchase Invoice {1} "
+                        "already has its balance fully claimed "
+                        "(remaining: ₹{2:,.2f}, this note: ₹{3:,.2f})."
+                    ).format(
+                        self.name,
+                        self.return_against,
+                        src_outstanding,
+                        dn_amount,
+                    ))
+
             # A return doesn't create new debt; it offsets the source bill.
             self.db_set("outstanding_amount", 0, update_modified=False)
             self.db_set("status", "Paid", update_modified=False)
@@ -84,7 +103,12 @@ class PurchaseInvoice(Document):
             self._adjust_source_bill_outstanding(direction=+1)
 
     def _adjust_source_bill_outstanding(self, direction: int):
-        """Reduce (direction=-1) or restore (+1) outstanding on the source PINV."""
+        """Reduce (direction=-1) or restore (+1) outstanding on the source PINV.
+
+        Always uses abs(grand_total) because debit note items carry negative qty,
+        making grand_total negative. Without abs(), direction=-1 would ADD to
+        outstanding instead of reducing it.
+        """
         if not getattr(self, "return_against", None):
             return
         src = frappe.db.get_value(
@@ -94,7 +118,8 @@ class PurchaseInvoice(Document):
         )
         if not src:
             return
-        new_outstanding = flt(src.outstanding_amount) + direction * flt(self.grand_total)
+        dn_amount = abs(flt(self.grand_total))
+        new_outstanding = max(0.0, round(flt(src.outstanding_amount) + direction * dn_amount, 2))
         if src.docstatus == 1:
             if flt(new_outstanding) <= 0:                            new_status = "Paid"
             elif flt(new_outstanding) < flt(src.grand_total):        new_status = "Partly Paid"

@@ -17,11 +17,38 @@ class PurchaseReceipt(Document):
 
     def on_submit(self):
         self._adjust_po_received(direction=+1)
+        self._release_ordered_qty(direction=-1)    # goods arrived → release "on order"
         self.db_set("status", "Submitted", update_modified=False)
 
     def on_cancel(self):
         self._adjust_po_received(direction=-1)
+        self._release_ordered_qty(direction=+1)    # receipt reversed → restore "on order"
         self.db_set("status", "Cancelled", update_modified=False)
+
+    def _release_ordered_qty(self, direction: int):
+        """
+        Release (direction=-1) or restore (direction=+1) ordered_qty in Bin
+        when goods are received via this Purchase Receipt.
+
+        actual_qty is managed separately by stock_link.py → Stock Entry.
+        This method only touches ordered_qty and recalculates projected_qty.
+        """
+        from zoho_books_clone.inventory.utils import update_bin
+        warehouse = getattr(self, "set_warehouse", None) or ""
+
+        for row in self.items:
+            wh = getattr(row, "warehouse", None) or warehouse
+            if not wh or not row.item_code:
+                continue
+            is_stock = frappe.db.get_value("Item", row.item_code, "is_stock_item")
+            if not is_stock:
+                continue
+            update_bin(
+                item_code=row.item_code,
+                warehouse=wh,
+                ordered_qty_delta=direction * flt(row.qty),
+                company=self.company or "",
+            )
 
     def _adjust_po_received(self, direction: int):
         if not self.purchase_order:

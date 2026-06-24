@@ -17,11 +17,38 @@ class DeliveryNote(Document):
 
     def on_submit(self):
         self._adjust_so_delivered(direction=+1)
+        self._release_reserved_qty(direction=-1)   # goods shipped → release reservation
         self.db_set("status", "Submitted", update_modified=False)
 
     def on_cancel(self):
         self._adjust_so_delivered(direction=-1)
+        self._release_reserved_qty(direction=+1)   # shipment reversed → restore reservation
         self.db_set("status", "Cancelled", update_modified=False)
+
+    def _release_reserved_qty(self, direction: int):
+        """
+        Release (direction=-1) or restore (direction=+1) reserved_qty in Bin
+        when goods are shipped via this Delivery Note.
+
+        actual_qty is managed separately by stock_link.py → Stock Entry.
+        This method only touches reserved_qty and recalculates projected_qty.
+        """
+        from zoho_books_clone.inventory.utils import update_bin
+        warehouse = getattr(self, "set_warehouse", None) or ""
+
+        for row in self.items:
+            wh = getattr(row, "warehouse", None) or warehouse
+            if not wh or not row.item_code:
+                continue
+            is_stock = frappe.db.get_value("Item", row.item_code, "is_stock_item")
+            if not is_stock:
+                continue
+            update_bin(
+                item_code=row.item_code,
+                warehouse=wh,
+                reserved_qty_delta=direction * flt(row.qty),
+                company=self.company or "",
+            )
 
     def _adjust_so_delivered(self, direction: int):
         """Bump (direction=+1) or decrement (-1) delivered_qty on linked SO rows."""

@@ -1,19 +1,24 @@
 <template>
   <div class="tds-page">
     <div class="tds-topbar">
-      <div>
-        <div class="tds-title">TDS</div>
-        <div class="tds-subtitle">Tax Deducted at Source — Purchase Invoice Deductions &amp; Manual Entries</div>
+      <div class="tds-topbar-row">
+        <div>
+          <div class="tds-title">TDS</div>
+          <div class="tds-subtitle">Tax Deducted at Source — Purchase Invoice Deductions &amp; Manual Entries</div>
+        </div>
+        <div class="tds-controls">
+          <select v-model="periodFilter" class="tds-select" @change="load">
+            <option value="">All Periods</option>
+            <option v-for="p in periods" :key="p.v" :value="p.v">{{ p.l }}</option>
+          </select>
+          <button class="tds-btn-ghost" @click="load" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
+          <button v-if="list.length" class="tds-btn-ghost" @click="exportCSV"><span v-html="icon('download',13)"></span> CSV</button>
+          <button class="tds-btn-primary" @click="openNewEntry"><span v-html="icon('plus',13)"></span> New TDS Entry</button>
+        </div>
       </div>
-      <div class="tds-controls">
-        <div class="tds-search-wrap"><span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span><input v-model="search" placeholder="Search by party or section…" class="tds-search-input" /></div>
-        <select v-model="periodFilter" class="tds-select" @change="load">
-          <option value="">All Periods</option>
-          <option v-for="p in periods" :key="p.v" :value="p.v">{{ p.l }}</option>
-        </select>
-        <button class="tds-btn-ghost" @click="load" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
-        <button v-if="list.length" class="tds-btn-ghost" @click="exportCSV"><span v-html="icon('download',13)"></span> CSV</button>
-        <button class="tds-btn-primary" @click="openNewEntry"><span v-html="icon('plus',13)"></span> New TDS Entry</button>
+      <div class="tds-search-wrap">
+        <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+        <input v-model="search" placeholder="Search by party or section…" class="tds-search-input" />
       </div>
     </div>
 
@@ -484,10 +489,11 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 
 <style scoped>
 .tds-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
-.tds-topbar{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.tds-topbar{display:flex;flex-direction:column;gap:10px;}
+.tds-topbar-row{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
 .tds-title{font-size:20px;font-weight:800;color:#111827;}.tds-subtitle{font-size:12px;color:#6b7280;}
 .tds-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.tds-search-wrap{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;min-width:200px;}
+.tds-search-wrap{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;}
 .tds-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
 .tds-select{border:1px solid #e5e7eb;border-radius:8px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;}
 .tds-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;font-family:inherit;}
@@ -559,7 +565,13 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 @media (max-width: 768px) {
   .tds-summary     { grid-template-columns: repeat(2, 1fr); }
   .tds-drawer-panel { width: 100% !important; }
-  .tds-search-wrap  { min-width: 0; flex: 1 1 auto; }
+
+  /* Controls row: period select stretches, New Entry fills remaining */
+  .tds-topbar-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .tds-controls { width: 100%; }
+  .tds-select { flex: 1 1 auto; min-width: 0; }
+  .tds-controls .tds-btn-primary { flex: 1 1 auto; justify-content: center; }
+
   .tds-desktop-table { display: none !important; }
   .tds-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
   .tds-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; transition: background .12s; }
@@ -575,6 +587,7 @@ onMounted(() => { load(); loadExpenseAccounts(); });
   .tds-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
 }
 @media (max-width: 480px) {
+  .tds-sections-grid{justify-content:space-evenly;}
   .tds-page    { padding: 12px; gap: 12px; }
   .tds-summary { grid-template-columns: 1fr 1fr; }
   .tds-form-grid { grid-template-columns: 1fr !important; }

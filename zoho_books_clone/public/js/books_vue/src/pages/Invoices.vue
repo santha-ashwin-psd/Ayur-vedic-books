@@ -862,7 +862,7 @@
             Payments
             <span v-if="viewPayments.length + viewCreditApps.length > 0" class="inv-vtab-count">{{ viewPayments.length + viewCreditApps.length }}</span>
           </button>
-          <button v-if="viewInv.docstatus===1 && !viewInv.is_return" class="inv-vtab" :class="{ active: viewTab==='einvoice' }" @click="viewTab='einvoice'">
+          <button v-if="viewInv.docstatus===1 && !viewInv.is_return" class="inv-vtab" :class="{ active: viewTab==='einvoice' }" @click="viewTab='einvoice'; fetchCompanyGstin()">
             e-Invoice
             <span v-if="viewInv.irn && viewInv.einvoice_status!=='Cancelled'" class="inv-vtab-count" style="background:#dcfce7;color:#16a34a">✓</span>
             <span v-else-if="viewInv.customer_gstin && !viewInv.irn" class="inv-vtab-count" style="background:#fff7ed;color:#ea580c">!</span>
@@ -1198,9 +1198,18 @@
               </span>
             </div>
 
-            <!-- No GSTIN warning -->
+            <!-- Company GSTIN not configured warning -->
+            <div v-if="!companyGstinLoading && !companyGstin" style="display:flex;align-items:flex-start;gap:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#991b1b;line-height:1.5;margin-bottom:12px">
+              <span style="flex-shrink:0;margin-top:1px;font-size:15px">⚠️</span>
+              <div>
+                <div style="font-weight:700;margin-bottom:2px">Company GSTIN not configured</div>
+                <div>Set your company's GSTIN under <strong>Books Company → GSTIN</strong> to enable IRN generation.</div>
+              </div>
+            </div>
+
+            <!-- No customer GSTIN warning -->
             <div v-if="!viewInv.customer_gstin" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#92400e;line-height:1.5;margin-bottom:12px">
-              Customer has no GSTIN. Add Tax ID on the Customer record to enable e-Invoice generation.
+              <span style="font-weight:700">Customer GSTIN missing.</span> Add Tax ID on the Customer record to enable e-Invoice generation.
             </div>
 
             <!-- IRN details when generated -->
@@ -1243,11 +1252,11 @@
                 <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
                 <div style="font-size:13px;color:#6b7280;text-align:center">No IRN generated yet for this invoice</div>
                 <div style="display:flex;gap:8px">
-                  <button class="ei-action-btn primary" :disabled="eiGenerating" @click="generateInvIRN">
+                  <button class="ei-action-btn primary" :disabled="eiGenerating || !companyGstin" :title="!companyGstin ? 'Company GSTIN not configured. Set it under Books Company → GSTIN.' : ''" @click="generateInvIRN">
                     <span v-if="eiGenerating" style="display:inline-block;animation:spin 1s linear infinite">↻</span>
                     {{ eiGenerating ? 'Generating…' : 'Generate IRN' }}
                   </button>
-                  <button class="ei-action-btn outline" @click="eiManualMode=true">Enter Manually</button>
+                  <button class="ei-action-btn outline" :disabled="!companyGstin" :title="!companyGstin ? 'Company GSTIN not configured. Set it under Books Company → GSTIN.' : ''" @click="eiManualMode=true">Enter Manually</button>
                 </div>
               </div>
               <!-- Manual entry form -->
@@ -1411,6 +1420,19 @@ const eiManualSaving = ref(false);
 const eiManualIrn    = ref("");
 const eiManualAckNo  = ref("");
 const eiManualAckDate = ref(new Date().toISOString().slice(0, 10));
+const companyGstin   = ref("");
+const companyGstinLoading = ref(false);
+
+async function fetchCompanyGstin() {
+  if (companyGstin.value || companyGstinLoading.value) return;
+  companyGstinLoading.value = true;
+  try {
+    const co = await resolveCompany();
+    const cd = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Books Company", name: co });
+    companyGstin.value = cd?.gstin || "";
+  } catch { companyGstin.value = ""; }
+  finally { companyGstinLoading.value = false; }
+}
 
 async function generateInvIRN() {
   eiGenerating.value = true;

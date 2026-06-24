@@ -104,8 +104,7 @@ async function load(){
       limit:5000,
     });
     let rows=bins
-      .map(b=>({item_code:b.item_code,item_name:b.item_code,warehouse:b.warehouse,actual_qty:flt(b.actual_qty),re_order_level:flt(b.reorder_level),re_order_qty:flt(b.reorder_qty)}))
-      .filter(i=>i.actual_qty<=i.re_order_level);
+      .map(b=>({item_code:b.item_code,item_name:b.item_code,warehouse:b.warehouse,actual_qty:flt(b.actual_qty),re_order_level:flt(b.reorder_level),re_order_qty:flt(b.reorder_qty)}));
     // Resolve readable item names.
     const codes=[...new Set(rows.map(r=>r.item_code).filter(Boolean))];
     if(codes.length){

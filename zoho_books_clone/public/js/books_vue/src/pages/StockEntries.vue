@@ -834,7 +834,16 @@ onMounted(async () => {
 .se-dh-title { font-size:15px; font-weight:700; } .se-dh-sub { font-size:12px; margin-top:1px; }
 .se-dclose { background:transparent; border:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; color:rgba(255,255,255,.8); }
 .se-dclose:hover { background:rgba(255,255,255,.2); color:#fff; }
-.se-dclose-abs { position:absolute; top:12px; right:12px; }
+.se-dclose-abs { position:absolute; top:12px; right:12px; background: rgba(255, 255, 255, .15);
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    transition: .15s;}
 .se-dbody { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px; }
 .se-dfooter { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:14px 20px; border-top:1px solid #e5e7eb; flex-shrink:0; background:#f9fafb; }
 

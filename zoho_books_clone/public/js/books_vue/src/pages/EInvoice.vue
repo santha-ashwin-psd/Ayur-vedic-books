@@ -158,6 +158,13 @@
 
           <!-- GSTIN block -->
           <div class="ei-gstin-blk">
+            <div v-if="!companyGstin" class="ei-company-gstin-warn">
+              <span style="flex-shrink:0;font-size:15px">⚠️</span>
+              <div>
+                <div style="font-weight:700;margin-bottom:1px">Company GSTIN not configured</div>
+                <div>Set your company's GSTIN under <strong>Books Company → GSTIN</strong> to enable IRN generation.</div>
+              </div>
+            </div>
             <div class="ei-gstin-row">
               <span class="ei-gstin-lbl">Customer GSTIN</span>
               <span v-if="viewing.customer_gstin" class="ei-gstin-val">{{ viewing.customer_gstin }}</span>
@@ -240,9 +247,15 @@
             <button class="ei-btn-ghost" @click="closeView">Close</button>
             <template v-if="viewing.einvoice_status !== 'Cancelled'">
               <button v-if="!viewing.irn && viewing.customer_gstin && !showManualForm"
-                class="ei-btn-outline" @click="showManualForm=true">Enter Manually</button>
+                class="ei-btn-outline"
+                :disabled="!companyGstin"
+                :title="!companyGstin ? 'Company GSTIN not configured. Set it under Books Company → GSTIN.' : ''"
+                @click="showManualForm=true">Enter Manually</button>
               <button v-if="!viewing.irn && viewing.customer_gstin"
-                class="ei-btn-primary" :disabled="generating" @click="doGenerateIRN(viewing)">
+                class="ei-btn-primary"
+                :disabled="generating || !companyGstin"
+                :title="!companyGstin ? 'Company GSTIN not configured. Set it under Books Company → GSTIN.' : ''"
+                @click="doGenerateIRN(viewing)">
                 <span v-if="generating" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite;display:inline-flex"></span>
                 {{ generating ? 'Generating…' : 'Generate IRN' }}
               </button>
@@ -481,7 +494,7 @@ onMounted(load);
 .ei-btn-ghost:disabled { opacity:.5; cursor:not-allowed; }
 .ei-btn-outline { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1.5px solid #4f46e5; border-radius:8px; padding:7px 13px; font-size:13px; color:#4f46e5; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; }
 .ei-btn-outline:hover:not(:disabled) { background:#eef2ff; }
-.ei-btn-outline:disabled { opacity:.6; cursor:not-allowed; }
+.ei-btn-outline:disabled { opacity:.5; cursor:not-allowed; }
 .ei-btn-danger { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1.5px solid #dc2626; border-radius:8px; padding:7px 13px; font-size:13px; color:#dc2626; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; }
 .ei-btn-danger:hover:not(:disabled) { background:#fef2f2; }
 .ei-btn-danger:disabled { opacity:.6; cursor:not-allowed; }
@@ -541,6 +554,7 @@ onMounted(load);
 .ei-gstin-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6; }
 .ei-gstin-lbl { font-size:12px; color:#6b7280; }
 .ei-gstin-val { font-size:12px; color:#374151; font-weight:600; font-variant-numeric:tabular-nums; }
+.ei-company-gstin-warn { display:flex; align-items:flex-start; gap:10px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 12px; font-size:12px; color:#991b1b; line-height:1.5; margin-bottom:8px; }
 
 /* Panel body */
 .ei-panel-body { flex:1; overflow-y:auto; padding:10px 20px; display:flex; flex-direction:column; gap:0; background:#f8fafc; }

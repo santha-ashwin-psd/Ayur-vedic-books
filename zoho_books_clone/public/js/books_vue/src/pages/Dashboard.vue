@@ -215,8 +215,8 @@
                   <div class="tc-name">{{ c.customer_name || c.customer }}</div>
                   <div class="tc-sub">{{ c.customer }}</div>
                 </td>
-                <td class="ta-r mono">{{ c.invoice_count }}</td>
-                <td class="ta-r mono tc-green">{{ fmt(c.total_revenue) }}</td>
+                <td class="ta-l mono">{{ c.invoice_count }}</td>
+                <td class="ta-l mono tc-green">{{ fmt(c.total_revenue) }}</td>
               </tr>
             </tbody>
           </table>
@@ -257,8 +257,8 @@
               <tr v-for="inv in dash.overdue_invoices.slice(0,5)" :key="inv.name">
                 <td><span class="db-link">{{ inv.name }}</span></td>
                 <td class="tc-sub">{{ inv.customer_name || inv.customer }}</td>
-                <td class="ta-r mono tc-red">{{ fmtDate(inv.due_date) }}</td>
-                <td class="ta-r mono tc-red">{{ fmt(inv.outstanding_amount) }}</td>
+                <td class="ta-l mono tc-red">{{ fmtDate(inv.due_date) }}</td>
+                <td class="ta-l mono tc-red">{{ fmt(inv.outstanding_amount) }}</td>
               </tr>
             </tbody>
           </table>
@@ -509,10 +509,11 @@ function actDotClass(dt) {
   display: block; margin-bottom: 14px;
 }
 .qa-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  justify-content: space-evenly;
   gap: 12px;
 }
+.ta-l{ text-align: left; }
 .qa-btn {
   display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
   background: #fff; border: 1.5px solid #e5e7eb;
@@ -553,6 +554,7 @@ function actDotClass(dt) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
   .kpi-card { padding: 12px 14px 10px; }
   .kpi-value { font-size: 18px; }
+  .qa-actions { display:grid;grid-template-columns: 1fr 1fr !important; gap: 10px; }
 }
 
 /* ── Responsive: 425px ── */
@@ -560,7 +562,7 @@ function actDotClass(dt) {
   .db-wrap { padding: 12px 10px; gap: 10px; }
   .qa-card { padding: 14px 14px 12px; border-radius: 10px; }
   .qa-title { font-size: 14px; margin-bottom: 10px; }
-  .qa-actions { grid-template-columns: 1fr 1fr !important; gap: 10px; }
+  .qa-actions { display:grid;grid-template-columns: 1fr 1fr !important; gap: 10px; }
   .qa-btn { padding: 12px 10px; gap: 10px; border-radius: 8px; }
   .qa-icon-wrap { width: 40px; height: 40px; border-radius: 8px; }
   .qa-btn-label { font-size: 12.5px; }
@@ -573,7 +575,7 @@ function actDotClass(dt) {
   .db-wrap { padding: 10px 8px; gap: 8px; }
   .qa-card { padding: 12px 12px 10px; border-radius: 8px; }
   .qa-title { font-size: 13.5px; margin-bottom: 8px; }
-  .qa-actions { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+  .qa-actions { display:grid;grid-template-columns: 1fr 1fr !important; gap: 8px; }
   .qa-btn { padding: 10px 8px; gap: 8px; border-radius: 8px; }
   .qa-icon-wrap { width: 36px; height: 36px; border-radius: 7px; }
   .qa-btn-label { font-size: 11.5px; }
@@ -621,8 +623,8 @@ function actDotClass(dt) {
 
 /* ── Middle grid ───────────────────────────────────────────────────── */
 .mid-grid {
-  display: grid;
-  grid-template-columns: 1fr 460px;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
 }
 @media (max-width: 1300px) { .mid-grid { grid-template-columns: 1fr 380px; } }
@@ -675,8 +677,7 @@ function actDotClass(dt) {
 
 /* ── Bottom grid ───────────────────────────────────────────────────── */
 .bot-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex; flex-direction: column;
   gap: 14px;
 }
 @media (max-width: 1000px) { .bot-grid { grid-template-columns: 1fr; } }

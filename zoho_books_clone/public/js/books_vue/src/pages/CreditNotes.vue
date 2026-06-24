@@ -358,7 +358,7 @@
                   <div v-else class="po-total-row cn-tax-row">
                     <span>Tax</span><span>{{ fmtCur(0) }}</span>
                   </div>
-                  <div class="po-total-row cn-grand-total-row">
+                  <div class="po-total-row">
                     <span>Total Credit</span>
                     <span>{{ fmtCur(cnGrandTotal) }}</span>
                   </div>
@@ -487,7 +487,7 @@
                     <span class="cn-vt-val">{{ fmtCur(Math.abs(tx.tax_amount || 0)) }}</span>
                   </div>
                 </template>
-                <div class="cn-vt-row cn-vt-grand">
+                <div class="cn-vt-row ">
                   <span class="cn-vt-lbl">Total Credit</span>
                   <span class="cn-vt-val" style="color:#7f1d1d">{{ fmtCur(Math.abs(viewDoc.grand_total||0)) }}</span>
                 </div>
@@ -1596,6 +1596,13 @@ onMounted(async () => {
 
 /* Mobile overrides for the view drawer */
 @media (max-width: 768px) {
+  /* ── Both add/edit drawer and view drawer go full-width ── */
+  .cn-drawer {
+    width: 100vw !important;
+    right: -100vw !important;
+    max-width: 100vw;
+  }
+  .cn-drawer.open { right: 0 !important; }
   .cn-view-drawer {
     width: 100vw !important;
     right: -100vw !important;
@@ -1608,6 +1615,36 @@ onMounted(async () => {
   /* KPI grid on mobile */
   :deep(.bk-kpi-grid),
   :deep(.bk-kpi-grid-4) { display: none !important; }
+
+  /* ── Invoice summary: 2×2 grid on mobile instead of 4-col ── */
+  .cn-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  /* restore missing right border after col-2 wrap */
+  .cn-summary-cell:nth-child(2) { border-right: none; }
+  .cn-summary-cell:nth-child(3) {
+    border-right: 1px solid #e5e7eb;
+    border-top: 1px solid #e5e7eb;
+  }
+  .cn-summary-cell:nth-child(4) {
+    border-right: none;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  /* ── Footer buttons: stack to full-width on very narrow ── */
+  .inv-dfooter {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .inv-dfooter > div {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+  }
+  .add-btn-draft,
+  .add-btn-more {
+    flex: 1;
+  }
 }
 
 /* ── Meta/detail 2-col grid ── */
@@ -1895,6 +1932,18 @@ onMounted(async () => {
   .cn-item-subtotal-label { font-size: 9px; }
   .cn-item-amount { font-size: 12px; }
   .cn-item-desc-ta { min-height: 56px; }
+
+  /* ── Add/edit drawer body: tighter padding ── */
+  .cn-dbody { padding: 10px; }
+  .cn-dbody .add-card-body { padding: 12px; }
+
+  /* ── Customer & Date field grid: single column ── */
+  .cn-dbody .inv-fg2 {
+    grid-template-columns: 1fr !important;
+  }
+  .cn-dbody .inv-fg2 .cn-field[style*="grid-column"] {
+    grid-column: 1 !important;
+  }
 }
 @media (max-width: 480px) {
   .cn-view-action-btn{display:none;}

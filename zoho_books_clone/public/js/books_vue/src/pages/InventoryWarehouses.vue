@@ -243,8 +243,48 @@
           <div class="wh-stock-empty-sub">No stock found in this warehouse group yet</div>
         </div>
 
-        <!-- Table -->
-        <div v-else class="wh-tbl-wrap">
+        <!-- Stock data: mobile cards + desktop table (toggled via CSS) -->
+        <template v-else>
+        <div class="wh-tbl-mobile">
+          <div v-for="r in stockItems" :key="'mc-' + r.item_code" class="wh-stock-mc">
+            <div class="wh-smc-top">
+              <div class="wh-smc-name-wrap">
+                <div class="wh-smc-name">{{ r.item_name }}</div>
+                <div class="wh-smc-code">{{ r.item_code }}</div>
+              </div>
+              <span v-if="r.below_reorder" class="wh-status-low">⚠ Low</span>
+              <span v-else class="wh-status-ok">✓ OK</span>
+            </div>
+            <div class="wh-smc-grid">
+              <div class="wh-smc-cell">
+                <div class="wh-smc-lbl">Actual Qty</div>
+                <div class="wh-smc-val wh-smc-qty">{{ flt(r.actual_qty).toFixed(2) }}</div>
+              </div>
+              <div class="wh-smc-cell">
+                <div class="wh-smc-lbl">Reserved</div>
+                <div class="wh-smc-val wh-smc-reserved">{{ flt(r.reserved_qty).toFixed(2) }}</div>
+              </div>
+              <div class="wh-smc-cell">
+                <div class="wh-smc-lbl">Val. Rate</div>
+                <div class="wh-smc-val">{{ fmt(r.valuation_rate) }}</div>
+              </div>
+              <div class="wh-smc-cell wh-smc-cell--value">
+                <div class="wh-smc-lbl">Stock Value</div>
+                <div class="wh-smc-val wh-smc-value">{{ fmt(r.stock_value) }}</div>
+              </div>
+            </div>
+            <div class="wh-smc-footer">
+              <span v-if="r.item_group" class="wh-smc-tag">{{ r.item_group }}</span>
+              <span v-if="r.uom" class="wh-smc-tag">{{ r.uom }}</span>
+              <button v-if="selectedChild && !selectedChild.is_group" class="wh-adj-btn wh-smc-adj" @click="openAdjustment(r)">
+                <span v-html="icon('edit', 12)"></span> Adjust
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Desktop Table -->
+        <div class="wh-tbl-wrap wh-tbl-desktop">
           <table class="wh-tbl">
             <thead>
               <tr>
@@ -284,6 +324,7 @@
             </tbody>
           </table>
         </div>
+        </template>
       </div>
 
     </template>
@@ -929,7 +970,6 @@ onMounted(() => { load(); loadItems(); });
 
 .wh-filter-dd-wrap {
   position: relative;
-  z-index: 200;
   flex-shrink: 0;
 }
 
@@ -1329,6 +1369,95 @@ onMounted(() => { load(); loadItems(); });
 .wh-th-hide-sm { display: table-cell; }
 .wh-th-hide-md { display: table-cell; }
 
+/* ── Mobile card view for stock items (hidden on desktop, shown at ≤480px) ── */
+.wh-tbl-mobile { display: none; flex-direction: column; gap: 0; }
+.wh-tbl-desktop { display: block; }
+
+.wh-stock-mc {
+  border-bottom: 1px solid #f1f4f8;
+  padding: 12px 16px;
+  background: #fff;
+}
+.wh-stock-mc:last-child { border-bottom: none; }
+
+.wh-smc-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.wh-smc-name-wrap { flex: 1; min-width: 0; }
+.wh-smc-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wh-smc-code {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.wh-smc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid #e8edf5;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.wh-smc-cell {
+  padding: 9px 12px;
+  border-right: 1px solid #e8edf5;
+  border-bottom: 1px solid #e8edf5;
+}
+.wh-smc-cell:nth-child(2n) { border-right: none; }
+.wh-smc-cell:nth-last-child(-n+2) { border-bottom: none; }
+.wh-smc-cell--value { background: #f8faff; }
+
+.wh-smc-lbl {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 3px;
+}
+.wh-smc-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.wh-smc-qty      { color: #16a34a; }
+.wh-smc-reserved { color: #ea580c; }
+.wh-smc-value    { color: #2563eb; font-weight: 700; }
+
+.wh-smc-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.wh-smc-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 2px 8px;
+}
+.wh-smc-adj {
+  margin-left: auto;
+  font-size: 11.5px;
+  padding: 4px 10px;
+}
+
 /* ════════════════════════════════════════════
    TABLET  (≤ 768 px)
    ════════════════════════════════════════════ */
@@ -1366,5 +1495,9 @@ onMounted(() => { load(); loadItems(); });
   .wh-tbl { min-width: 360px; }
 
   .wh-section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+
+  /* ── Stock table → card swap ── */
+  .wh-tbl-desktop { display: none !important; }
+  .wh-tbl-mobile  { display: flex; flex-direction: column; }
 }
 </style>

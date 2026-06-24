@@ -114,12 +114,49 @@
 
     <!-- B1. No list selected -->
     <div v-if="!selectedList" class="pl-empty-state">
-      <div class="pl-es-icon">🏷️</div>
-      <div class="pl-es-title">Select a Price List</div>
-      <div class="pl-es-sub">Choose a price list on the left to view and manage item prices</div>
-      <button class="b-btn b-btn-primary" style="margin-top:6px" @click="openNewListDialog">
-        Create First Price List
-      </button>
+
+      <!-- Mobile: lists exist but none selected → guide to dropdown -->
+      <template v-if="priceLists.length">
+        <div class="pl-es-title">Pick a Price List</div>
+        <div class="pl-es-sub pl-es-sub--mob-only">
+          Tap the <strong>List</strong> dropdown above to select a price list
+        </div>
+        <div class="pl-es-sub pl-es-sub--desk-only">
+          Choose a price list on the left to view and manage item prices
+        </div>
+        <!-- Mobile shortcut: show the lists inline as tap targets -->
+        <div class="pl-es-list-picker" v-if="filteredLists.length">
+          <div v-for="pl in filteredLists" :key="pl.name"
+            class="pl-es-pick-row" @click="selectList(pl)">
+            <span class="pl-es-pick-icon">
+              {{ pl.selling && pl.buying ? '🔄' : pl.selling ? '🏷️' : '🛒' }}
+            </span>
+            <div class="pl-es-pick-info">
+              <div class="pl-es-pick-name">{{ pl.name }}</div>
+              <div class="pl-es-pick-sub">
+                {{ pl.selling && pl.buying ? 'Both' : pl.selling ? 'Selling' : 'Buying' }}
+                · {{ pl.currency || 'INR' }}
+              </div>
+            </div>
+            <span class="pl-es-pick-arrow">›</span>
+          </div>
+        </div>
+        <div v-else class="pl-es-no-match">No price lists match this filter</div>
+        <button class="b-btn b-btn-ghost pl-es-new-ghost" @click="openNewListDialog">
+          <span v-html="icon('plus', 11)"></span> New Price List
+        </button>
+      </template>
+
+      <!-- No lists at all → create first -->
+      <template v-else>
+        <div class="pl-es-icon">🏷️</div>
+        <div class="pl-es-title">No Price Lists Yet</div>
+        <div class="pl-es-sub">Create your first price list to start managing item prices</div>
+        <button class="b-btn b-btn-primary" style="margin-top:16px" @click="openNewListDialog">
+          <span v-html="icon('plus', 13)"></span> Create First Price List
+        </button>
+      </template>
+
     </div>
 
     <!-- B2. List selected -->
@@ -380,10 +417,19 @@
     <div v-if="showListDialog" class="nim-overlay" @click.self="showListDialog=false">
       <div class="nim-dialog" style="max-width:480px;width:100%">
         <div class="nim-header">
-          <span style="font-size:15px;font-weight:700">
+          <span style="font-size:15px;font-weight:700; color:#fff">
             {{ listDialogMode === 'new' ? 'New Price List' : 'Edit Price List' }}
           </span>
-          <button class="nim-btn nim-btn-ghost" @click="showListDialog=false">
+          <button  style="background: rgba(255, 255, 255, .15);
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    height: 30px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    transition: .15s;"
+     class="nim-btn nim-btn-ghost" @click="showListDialog=false">
             <span v-html="icon('x', 14)"/>
           </button>
         </div>
@@ -1487,7 +1533,7 @@ onUnmounted(() => {
 /* Stats chips */
 .pl-stats-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .pl-stat-chip {
-  background: #F8F9FC;
+  background: #ffffff;
   border: 1px solid #E2E8F0;
   border-radius: 8px;
   padding: 7px 14px;
@@ -1826,6 +1872,13 @@ onUnmounted(() => {
 /* Mobile toolbar: hidden on desktop */
 .pl-mob-toolbar { display: none; }
 
+/* Empty state sub-text variants: desktop shows desk-only, hides mob-only */
+.pl-es-sub--mob-only  { display: none; }
+.pl-es-sub--desk-only { display: block; }
+/* List picker only visible on mobile (hidden by default) */
+.pl-es-list-picker    { display: none; }
+.pl-es-new-ghost      { display: none; }
+
 /* Tablet: 768px – 1024px */
 @media (max-width: 1024px) {
   .pl-root { grid-template-columns: 260px 1fr; gap: 12px; }
@@ -1992,15 +2045,72 @@ onUnmounted(() => {
     gap: 8px;
   }
 
-  /* Drawer footer: stack */
-  .pl-drawer-foot { flex-direction: column-reverse; }
   .pl-drawer-foot .nim-btn {
     width: 100%;
     justify-content: center;
   }
 
+  .pl-es-list-picker { display: flex; }
+  .pl-es-new-ghost   { display: inline-flex; }
+
   /* Empty state: tighter padding */
-  .pl-empty-state { padding: 48px 24px; }
+  .pl-empty-state { padding: 16px 16px 24px; }
+
+  /* On mobile: show mobile guidance, hide desktop guidance */
+  .pl-es-sub--mob-only  { display: block; }
+  .pl-es-sub--desk-only { display: none; }
+
+  /* Mobile list picker inside empty state */
+  .pl-es-list-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 20px;
+  }
+  .pl-es-pick-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    background: #fff;
+    border-bottom: 1px solid #F1F3F5;
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .pl-es-pick-row:last-child { border-bottom: none; }
+  .pl-es-pick-row:active { background: #F8F9FC; }
+  .pl-es-pick-icon { font-size: 20px; flex-shrink: 0; }
+  .pl-es-pick-info { flex: 1; min-width: 0; }
+  .pl-es-pick-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1A1D23;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pl-es-pick-sub { font-size: 11.5px; color: #868E96; margin-top: 1px; }
+  .pl-es-pick-arrow {
+    font-size: 20px;
+    color: #ADB5BD;
+    font-weight: 300;
+    flex-shrink: 0;
+  }
+  .pl-es-no-match {
+    margin-top: 20px;
+    font-size: 13px;
+    color: #ADB5BD;
+  }
+  .pl-es-new-ghost {
+    margin-top: 16px;
+    font-size: 12px;
+    color: #495057;
+  }
 }
 
 /* Extra small: < 480px */

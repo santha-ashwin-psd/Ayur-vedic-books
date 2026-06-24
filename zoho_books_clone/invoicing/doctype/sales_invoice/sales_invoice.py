@@ -99,16 +99,60 @@ class SalesInvoice(Document):
         new_outstanding = flt(self.grand_total)
         self.outstanding_amount = new_outstanding
         self.status = "Submitted"
-        # Explicitly persist so the values are committed even if Frappe's submit()
-        # doesn't call db_update() after on_submit in this version
         self.db_set("outstanding_amount", new_outstanding, update_modified=False)
         self.db_set("status", "Submitted", update_modified=False)
         post_sales_invoice(self)
+        if self.update_stock:
+            self._move_stock(direction=+1)
 
     def on_cancel(self):
         self.status = "Cancelled"
         self._check_no_payments_before_cancel()
         reverse_voucher(self.doctype, self.name)
+        if self.update_stock:
+            self._move_stock(direction=-1)
+
+    def _move_stock(self, direction: int):
+        """
+        Move stock when the invoice is used as the stock document (update_stock=1).
+
+        Sales removes stock (stock_sign=-1); credit notes carry negative qty so
+        direction * stock_sign * qty still resolves correctly:
+          - Normal SI submit:        +1 * -1 * +qty = -qty  (stock out)
+          - Normal SI cancel:        -1 * -1 * +qty = +qty  (stock back)
+          - Credit note submit:      +1 * -1 * -qty = +qty  (customer returns → stock in)
+          - Credit note cancel:      -1 * -1 * -qty = -qty  (reverse return)
+        """
+        from zoho_books_clone.inventory.utils import update_bin, make_sle
+        warehouse = getattr(self, "set_warehouse", None) or ""
+        if not warehouse:
+            return
+
+        stock_sign = -1  # selling removes stock
+
+        for row in (self.items or []):
+            if not row.item_code:
+                continue
+            is_stock = frappe.db.get_value("Item", row.item_code, "is_stock_item")
+            if not is_stock:
+                continue
+
+            actual_delta = direction * stock_sign * flt(row.qty)
+            make_sle(
+                item_code=row.item_code,
+                warehouse=warehouse,
+                actual_qty=actual_delta,
+                voucher_type="Sales Invoice",
+                voucher_no=self.name,
+                company=self.company or "",
+                posting_date=self.posting_date or "",
+            )
+            update_bin(
+                item_code=row.item_code,
+                warehouse=warehouse,
+                actual_qty_delta=actual_delta,
+                company=self.company or "",
+            )
 
     def _check_no_payments_before_cancel(self):
         linked = frappe.db.sql("""

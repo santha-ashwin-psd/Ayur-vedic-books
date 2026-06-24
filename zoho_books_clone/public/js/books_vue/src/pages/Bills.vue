@@ -228,20 +228,6 @@
                 <input v-model="form.bill_date" type="date" class="inv-fi" />
               </div>
               <div>
-                <label class="inv-lbl">Currency</label>
-                <select v-model="form.currency" class="inv-fi" @change="onBillCurrencyChange">
-                  <option v-for="(sym,code) in BILL_CURRENCIES" :key="code" :value="code">{{ code }} {{ sym }}</option>
-                </select>
-              </div>
-              <div v-if="form.currency !== 'INR'">
-                <label class="inv-lbl">
-                  Exchange Rate
-                  <span v-if="rateLoading" class="inv-rate-badge inv-rate-loading">Fetching…</span>
-                  <span v-else-if="rateSource" :class="`inv-rate-badge inv-rate-${rateSource}`">{{ sourceLabel(rateSource) }}</span>
-                </label>
-                <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi"/>
-              </div>
-              <div>
                 <label class="inv-lbl">Cost Center</label>
                 <select v-model="form.cost_center" class="inv-fi">
                   <option value="">— Select —</option>
@@ -781,7 +767,6 @@ import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
-import { useExchangeRate } from "../composables/useExchangeRate.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
@@ -792,7 +777,6 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "192": 0, "195": 20, "Other": 10 };
 
 const { toast } = useToast();
-const { fetchRate, rateLoading, rateSource, sourceLabel } = useExchangeRate();
 const { confirm } = useConfirm();
 const { printDoc } = useLivePreview();
 function printBILL(d) { printDoc(d, { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
@@ -831,7 +815,6 @@ const copyingLast = ref(false);
 
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0, tax_code: "", collapsed: false });
-const BILL_CURRENCIES = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
 const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", tds_applicable: false, tds_section: "", tds_rate: 0 });
 const vendorAddresses = ref([]);
 const addrModal = reactive({
@@ -1019,11 +1002,6 @@ const timelineSteps = computed(() => {
   ];
 });
 
-async function onBillCurrencyChange() {
-  if (form.currency === "INR") { form.exchange_rate = 1; return; }
-  const rate = await fetchRate(form.currency, "INR");
-  if (rate) form.exchange_rate = rate;
-}
 
 function openNew() {
   editingName.value = "";

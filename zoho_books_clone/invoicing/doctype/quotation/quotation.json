@@ -121,8 +121,10 @@
   },
   {
    "fieldname": "currency",
-   "fieldtype": "Data",
-   "label": "Currency"
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "default": "INR"
   },
   {
    "fieldname": "amended_from",
@@ -141,8 +143,10 @@
   },
   {
    "fieldname": "exchange_rate",
-   "fieldtype": "Data",
-   "label": "Exchange Rate"
+   "fieldtype": "Float",
+   "label": "Exchange Rate",
+   "default": "1",
+   "precision": "6"
   },
   {
    "fieldname": "billing_address",

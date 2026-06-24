@@ -29,7 +29,6 @@ from frappe.utils import flt, getdate, today
 
 # ─── Whitelisted endpoints ────────────────────────────────────────────────────
 
-@frappe.whitelist(allow_guest=False)
 def get_exchange_rate(from_currency: str, to_currency: str, date: str = None) -> dict:
     """
     Return the effective exchange rate between two currencies on a given date.
@@ -58,7 +57,6 @@ def get_exchange_rate(from_currency: str, to_currency: str, date: str = None) ->
     }
 
 
-@frappe.whitelist(allow_guest=False)
 def save_exchange_rate(from_currency: str, to_currency: str,
                        exchange_rate: float, date: str = None):
     """
@@ -83,7 +81,6 @@ def save_exchange_rate(from_currency: str, to_currency: str,
     return {"name": doc.name, "exchange_rate": rate}
 
 
-@frappe.whitelist(allow_guest=False)
 def get_currency_list():
     """Return all enabled currencies for dropdowns."""
     return frappe.get_all(
@@ -94,7 +91,6 @@ def get_currency_list():
     )
 
 
-@frappe.whitelist(allow_guest=False)
 def convert_amount(amount: float, from_currency: str,
                    to_currency: str, date: str = None) -> dict:
     """
@@ -114,7 +110,6 @@ def convert_amount(amount: float, from_currency: str,
     }
 
 
-@frappe.whitelist(allow_guest=False)
 def get_rate_history(from_currency: str, to_currency: str,
                      from_date: str = None, to_date: str = None) -> list:
     """Return historical exchange rates for a currency pair."""

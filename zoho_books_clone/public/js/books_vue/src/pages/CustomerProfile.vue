@@ -95,7 +95,6 @@
       <div class="cp-contact-section">
         <div class="cp-section-title">Accounts</div>
         <div class="cp-contact-row">
-          <div class="cp-kv"><span class="cp-k">Currency</span><span>{{ customer.default_currency || 'INR' }}</span></div>
           <div class="cp-kv"><span class="cp-k">Payment Terms</span><span>{{ customer.payment_terms || '—' }}</span></div>
           <div class="cp-kv"><span class="cp-k">Credit Limit</span><span class="mono">{{ customer.credit_limit ? fmtCur(customer.credit_limit) : '—' }}</span></div>
           <div class="cp-kv"><span class="cp-k">Receivable A/c</span><span class="mono-sm">{{ customer.default_receivable_account || '—' }}</span></div>

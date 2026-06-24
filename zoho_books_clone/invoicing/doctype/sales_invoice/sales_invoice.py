@@ -121,16 +121,23 @@ class SalesInvoice(Document):
                 "Cannot cancel {0} — linked payment(s) exist: {1}"
             ).format(self.name, ", ".join(r.parent for r in linked)))
 
+    def _get_currency_symbol(self):
+        cur = self.currency or "INR"
+        sym = frappe.db.get_value("Currency", cur, "symbol")
+        return sym or (cur + " ")
+
     @frappe.whitelist()
     def send_invoice_email(self):
         customer_email = frappe.db.get_value("Customer", self.customer, "email_id")
         if not customer_email:
             frappe.throw(_("Customer {0} has no email").format(self.customer))
+        sym = self._get_currency_symbol()
+        cur = self.currency or "INR"
         frappe.sendmail(
             recipients=[customer_email],
-            subject=f"Invoice {self.name}",
+            subject=f"Invoice {self.name} ({cur})",
             message=(f"Dear {self.customer_name},<br><br>"
-                     f"Your invoice <b>{self.name}</b> for <b>₹{self.grand_total:,.2f}</b> is attached.<br>"
+                     f"Your invoice <b>{self.name}</b> for <b>{sym}{self.grand_total:,.2f} {cur}</b> is attached.<br>"
                      f"Due: {self.due_date}"),
             attachments=[frappe.attach_print(self.doctype, self.name, print_format="Sales Invoice")],
         )

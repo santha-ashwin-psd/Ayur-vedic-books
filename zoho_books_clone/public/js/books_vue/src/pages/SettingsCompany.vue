@@ -64,7 +64,6 @@
           <input v-else class="nim-input" v-model="form.company_state" placeholder="Enter state / province"/>
         </div>
         <div class="nim-field"><label class="nim-label">Pincode / ZIP</label><input class="nim-input" v-model="form.company_pincode"/></div>
-        <div class="nim-field"><label class="nim-label">Currency</label><input class="nim-input" v-model="form.default_currency"/></div>
         <div class="nim-field">
           <label class="nim-label">Fiscal Year Start</label>
           <select class="nim-input" v-model="form.fiscal_year_start_month">

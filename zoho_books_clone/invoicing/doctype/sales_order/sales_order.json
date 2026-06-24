@@ -470,6 +470,36 @@
             "reqd": 0
         },
         {
+            "fieldname": "currency",
+            "fieldtype": "Link",
+            "label": "Currency",
+            "options": "Currency",
+            "default": "INR",
+            "idx": 0,
+            "creation": "2026-06-24 00:00:00.000000",
+            "modified": "2026-06-24 00:00:00.000000",
+            "modified_by": "Administrator",
+            "owner": "Administrator",
+            "docstatus": 0,
+            "permlevel": 0,
+            "reqd": 0
+        },
+        {
+            "fieldname": "exchange_rate",
+            "fieldtype": "Float",
+            "label": "Exchange Rate",
+            "default": "1",
+            "precision": "6",
+            "idx": 0,
+            "creation": "2026-06-24 00:00:00.000000",
+            "modified": "2026-06-24 00:00:00.000000",
+            "modified_by": "Administrator",
+            "owner": "Administrator",
+            "docstatus": 0,
+            "permlevel": 0,
+            "reqd": 0
+        },
+        {
             "fieldname": "items",
             "fieldtype": "Table",
             "label": "Items",

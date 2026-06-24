@@ -234,7 +234,7 @@
               <div v-if="form.purchase_type === 'Goods'" style="grid-column:1/-1">
                 <label class="inv-lbl">Receiving Warehouse <span class="inv-req">*</span></label>
                 <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…"
-                  :createable="true" createDoctype="Warehouse" @search="fetchWarehouses" @create="fetchWarehouses('')" />
+                  :createable="true" :staticCreate="true" createLabel="+ Create Warehouse" createDoctype="Warehouse" @search="fetchWarehouses" @create="fetchWarehouses('')" />
               </div>
             </div>
           </div>

@@ -174,10 +174,6 @@
             <div class="ba-hint">Leave blank — a ledger account will be created automatically.</div>
           </div>
           <div class="ba-field">
-            <label class="ba-label">Currency</label>
-            <input v-model="form.currency" class="ba-input" placeholder="INR" />
-          </div>
-          <div class="ba-field">
             <label class="ba-label">Opening Balance</label>
             <input v-model.number="form.opening_balance" type="number" step="0.01" class="ba-input" placeholder="0.00" :disabled="!!editingName" />
             <div v-if="editingName" class="ba-hint">Opening balance is locked after creation.</div>
@@ -231,7 +227,6 @@
             <div><div class="ba-meta-lbl">MICR</div><div class="mono-sm">{{ viewDoc.micr_code||'—' }}</div></div>
             <div><div class="ba-meta-lbl">Branch</div><div>{{ viewDoc.branch||'—' }}</div></div>
             <div><div class="ba-meta-lbl">Holder</div><div>{{ viewDoc.account_holder_name||'—' }}</div></div>
-            <div><div class="ba-meta-lbl">Currency</div><div>{{ viewDoc.currency||'INR' }}</div></div>
             <div><div class="ba-meta-lbl">Opening Balance</div><div class="mono-sm">{{ fmtCur(viewDoc.opening_balance, viewDoc.currency) }}</div></div>
             <div style="grid-column:1/-1"><div class="ba-meta-lbl">GL Account</div><div>{{ viewDoc.gl_account||'—' }}</div></div>
           </div>

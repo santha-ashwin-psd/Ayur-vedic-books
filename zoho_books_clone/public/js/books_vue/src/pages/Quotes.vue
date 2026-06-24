@@ -426,24 +426,8 @@
               </div>
               <div class="add-details-row2">
                 <div>
-                  <label class="inv-lbl">Currency</label>
-                  <select v-model="form.currency" class="inv-fi" @change="onCurrencyChange">
-                    <option v-for="(sym,code) in CURRENCY_SYMBOLS" :key="code" :value="code">{{ code }} {{ sym }}</option>
-                  </select>
-                </div>
-                <div>
                   <label class="inv-lbl">Title / Project</label>
                   <input v-model="form.title" type="text" class="inv-fi" placeholder="Project name or short description"/>
-                </div>
-              </div>
-              <div v-if="form.currency !== 'INR'" class="add-details-row2" style="margin-top:14px">
-                <div>
-                  <label class="inv-lbl">
-                    Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span>
-                    <span v-if="rateLoading" class="inv-rate-badge inv-rate-loading">Fetching…</span>
-                    <span v-else-if="rateSource" :class="`inv-rate-badge inv-rate-${rateSource}`">{{ sourceLabel(rateSource) }}</span>
-                  </label>
-                  <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi" placeholder="e.g. 83.5"/>
                 </div>
               </div>
             </div>
@@ -1121,11 +1105,9 @@ import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
-import { useExchangeRate } from "../composables/useExchangeRate.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
-const { fetchRate, rateLoading, rateSource, sourceLabel } = useExchangeRate();
 const route = useRoute();
 const { confirm } = useConfirm();
 const { printDoc } = useLivePreview();
@@ -1149,9 +1131,7 @@ const TEMPLATES = [
   { key: "modern",  label: "Modern"  },
   { key: "minimal", label: "Minimal" },
 ];
-const CURRENCY_SYMBOLS = {
-  INR: "₹", USD: "$", EUR: "€", GBP: "£", AED: "د.إ", SGD: "S$", AUD: "A$", CAD: "C$",
-};
+const CURRENCY_SYMBOLS = { INR: "₹" };
 
 // ── Tax presets ──────────────────────────────────────────────────────
 const TAX_PRESETS = [
@@ -1607,10 +1587,8 @@ async function onCustomerChange() {
   addressLoading.value = true;
   try {
     const custDoc = await apiGet("Customer", form.customer);
-    if (custDoc?.default_currency) {
-      form.currency = custDoc.default_currency;
-      form.exchange_rate = form.currency === "INR" ? 1 : (await fetchExchangeRate(form.currency) || 1);
-    }
+    form.currency = "INR";
+    form.exchange_rate = 1;
     await fetchCustomerAddresses(form.customer);
     // Auto-select first billing address if available
     const firstBilling = customerAddresses.value.find(a => a.address_type === "Billing") || customerAddresses.value[0];
@@ -1686,16 +1664,6 @@ async function saveNewAddress() {
     addrModal.open = false;
   } catch (e) { toast.error(e.message || "Failed to save address"); }
   addrModal.saving = false;
-}
-
-// ── Currency change ───────────────────────────────────────────────────
-async function onCurrencyChange() {
-  if (form.currency === "INR") { form.exchange_rate = 1; return; }
-  form.exchange_rate = await fetchExchangeRate(form.currency) || form.exchange_rate || 1;
-}
-async function fetchExchangeRate(currency) {
-  if (!currency || currency === "INR") return 1;
-  return await fetchRate(currency, "INR");
 }
 
 // ── Logo helpers ──────────────────────────────────────────────────────
@@ -2187,11 +2155,10 @@ const previewHtml = computed(() =>
 );
 
 function renderQuote(d, tmpl, color, logo) {
-  const sym = CURRENCY_SYMBOLS[d.currency] || "₹";
-  const locale = d.currency === "INR" ? "en-IN" : "en-US";
+  const sym = "₹";
   const fmt = v => {
     try {
-      return new Intl.NumberFormat(locale, { style: "currency", currency: d.currency || "INR", minimumFractionDigits: 2 }).format(Number(v || 0));
+      return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(Number(v || 0));
     } catch { return sym + Number(v || 0).toFixed(2); }
   };
   const fmtD = v => v ? new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";

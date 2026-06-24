@@ -4,10 +4,9 @@ from frappe.utils import get_url, nowdate, flt
 from zoho_books_clone.api.session import _get_company
 
 # Currencies to auto-refresh on the Settings page
-_KNOWN_CURRENCIES = ["USD", "EUR", "GBP", "AED", "SGD", "JPY", "CNY", "CAD", "AUD", "CHF", "SAR", "MYR", "QAR"]
+_KNOWN_CURRENCIES = []  # INR-only: no external currencies to refresh
 
 
-@frappe.whitelist(allow_guest=False, methods=["GET"])
 def get_live_exchange_rate(from_currency, to_currency="INR"):
     """
     Real-time exchange rate (from_currency → to_currency, default INR).
@@ -77,7 +76,6 @@ def get_live_exchange_rate(from_currency, to_currency="INR"):
     return {"rate": None, "source": "unavailable", "date": today}
 
 
-@frappe.whitelist(allow_guest=False, methods=["POST"])
 def refresh_all_exchange_rates():
     """Fetch and cache live rates for all known currencies against INR. Called from Settings page."""
     results = {}

@@ -81,7 +81,7 @@ export const NAV = [
   { path: "/settings/email-templates",      label: "Email Templates",  icon: "mail",       module: "admin"      },
   // { path: "/settings/number-series",        label: "Number Series",    icon: "hash",       module: "admin"      },
   // { path: "/settings/payment-terms",        label: "Payment Terms",    icon: "calendar",   module: "admin"      },
-  { path: "/settings/currency-exchange",    label: "Currency",         icon: "currency",   module: "admin"      },
+  // { path: "/settings/currency-exchange", label: "Currency", icon: "currency", module: "admin" }, // INR-only: hidden
   { path: "/settings/roles",                label: "Roles",            icon: "shield",     module: "admin"      },
   // { path: "/settings/organization",         label: "Organization",     icon: "org",        module: "admin"      },
   { path: "/settings/security",             label: "Security",         icon: "lock",       module: null         },

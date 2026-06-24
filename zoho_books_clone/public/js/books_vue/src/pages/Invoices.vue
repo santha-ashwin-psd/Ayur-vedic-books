@@ -394,29 +394,11 @@
                   <input v-model="form.due_date" type="date" class="inv-fi"/>
                 </div>
               </div>
-              <!-- Row 2: Currency | Title / Project (PO number) -->
+              <!-- Row 2: Title / Project (PO number) -->
               <div class="add-details-row2">
-                <div>
-                  <label class="inv-lbl">Currency</label>
-                  <select v-model="form.currency" class="inv-fi" @change="onCurrencyChange">
-                    <option v-for="(sym,code) in CURRENCY_SYMBOLS" :key="code" :value="code">{{ code }} {{ sym }}</option>
-                  </select>
-                </div>
                 <div>
                   <label class="inv-lbl">Title / Project</label>
                   <input v-model="form.po_no" class="inv-fi" placeholder="Project name or short description"/>
-                </div>
-              </div>
-              <!-- Exchange rate (only for non-INR) -->
-              <div v-if="form.currency !== 'INR'" class="add-details-row2" style="margin-top:14px">
-                <div>
-                  <label class="inv-lbl" style="display:flex;align-items:center;gap:8px">
-                    Exchange Rate <span style="color:#6b7280;font-weight:400">(1 {{ form.currency }} = ? INR)</span>
-                    <span v-if="rateLoading" style="font-size:11px;color:#6b7280;font-weight:500">⏳ Fetching…</span>
-                    <span v-else-if="rateSource" class="inv-rate-badge" :class="`inv-rate-${rateSource}`">{{ sourceLabel() }}</span>
-                  </label>
-                  <input v-model.number="form.exchange_rate" type="number" min="0.0001" step="0.0001" class="inv-fi"
-                    :placeholder="rateLoading ? 'Fetching live rate…' : 'e.g. 83.5'"/>
                 </div>
                 <div>
                   <label class="inv-lbl">Payment Terms</label>
@@ -1405,11 +1387,9 @@ import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import IrnQrCode from "../components/IrnQrCode.vue";
-import { useExchangeRate } from "../composables/useExchangeRate.js";
 
 const { toast } = useToast();
 const route = useRoute();
-const { fetchRate, rateLoading, rateSource, sourceLabel } = useExchangeRate();
 
 // ── e-Invoice state ────────────────────────────────────────────────────
 const eiGenerating   = ref(false);
@@ -1528,7 +1508,7 @@ const INDIAN_STATES = [
   "31-Lakshadweep","32-Kerala","33-Tamil Nadu","34-Puducherry","35-Andaman and Nicobar Islands",
   "36-Telangana","37-Andhra Pradesh","38-Ladakh","97-Other Territory",
 ];
-const CURRENCY_SYMBOLS = { INR:"₹", USD:"$", EUR:"€", GBP:"£", AED:"د.إ", SGD:"S$", JPY:"¥", AUD:"A$", CAD:"C$", CHF:"₣" };
+const CURRENCY_SYMBOLS = { INR: "₹" };
 const TEMPLATES = [
   { key:"classic", label:"Classic" },
   { key:"modern",  label:"Modern"  },
@@ -1941,19 +1921,6 @@ function applyPaymentTerms() {
   form.due_date=d.toISOString().slice(0,10);
 }
 
-// ── Currency change & exchange rate fetch ──────────────────────────────
-async function onCurrencyChange() {
-  if (form.currency === "INR") {
-    form.exchange_rate = 1;
-    return;
-  }
-  form.exchange_rate = await fetchExchangeRate(form.currency) || form.exchange_rate || 1;
-}
-async function fetchExchangeRate(currency) {
-  if (!currency || currency === "INR") return 1;
-  return await fetchRate(currency, "INR");
-}
-
 // ── Customer change: auto-fill address, currency, GST treatment ───────
 async function onCustomerChange() {
   form.billing_address=""; form.billing_address_name="";
@@ -1963,11 +1930,8 @@ async function onCustomerChange() {
   addressLoading.value=true;
   try {
     const custDoc = await apiGet("Customer", form.customer);
-    // Apply currency
-    if (custDoc?.default_currency) {
-      form.currency = custDoc.default_currency;
-      form.exchange_rate = form.currency !== "INR" ? (await fetchExchangeRate(form.currency) || 1) : 1;
-    }
+    form.currency = "INR";
+    form.exchange_rate = 1;
     // Apply payment terms
     if (custDoc?.payment_terms && !form.payment_terms) { form.payment_terms = custDoc.payment_terms; applyPaymentTerms(); }
     // Apply GST treatment

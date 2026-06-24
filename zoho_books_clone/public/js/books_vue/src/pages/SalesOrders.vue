@@ -396,7 +396,8 @@
                   </div>
                   <div style="grid-column:1/-1">
                     <label class="inv-lbl">Dispatch Warehouse <span class="inv-req">*</span></label>
-                    <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse stock will be dispatched from…" @search="fetchWarehouses" />
+                    <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse stock will be dispatched from…"
+                      :createable="true" :staticCreate="true" createLabel="+ Create Warehouse" createDoctype="Warehouse" @search="fetchWarehouses" @create="fetchWarehouses('')" />
                     <div v-if="form.set_warehouse" style="font-size:11px;color:#6b7280;margin-top:4px">Stock will be deducted from this warehouse when invoiced</div>
                   </div>
                 </div>
@@ -479,7 +480,7 @@
                             <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" @input="calcLine(line)"/>
                           </div>
                           <div class="po-item-field">
-                            <label>Rate (₹)</label>
+                            <label>Rate ({{ currencySymbol }})</label>
                             <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)"/>
                           </div>
                         </div>
@@ -509,12 +510,12 @@
                 <div class="po-totals" style="margin-top:16px">
                   <div style="font-size:12px;color:#6b7280">Tax is applied per item via Tax Template.</div>
                   <div class="po-totals-right">
-                    <div class="po-total-row"><span>Subtotal</span><span>{{ fmtCur(subtotal) }}</span></div>
+                    <div class="po-total-row"><span>Subtotal</span><span>{{ fmtAmt(subtotal) }}</span></div>
                     <template v-for="tl in taxLines" :key="tl.template">
-                      <div class="po-total-row"><span>{{ tl.template }} ({{ tl.rate }}%)</span><span>{{ fmtCur(tl.amount) }}</span></div>
+                      <div class="po-total-row"><span>{{ tl.template }} ({{ tl.rate }}%)</span><span>{{ fmtAmt(tl.amount) }}</span></div>
                     </template>
-                    <div v-if="!taxLines.length" class="po-total-row"><span>Tax</span><span>{{ fmtCur(0) }}</span></div>
-                    <div class="po-total-row grand"><span>Grand Total</span><span>{{ fmtCur(grandTotal) }}</span></div>
+                    <div v-if="!taxLines.length" class="po-total-row"><span>Tax</span><span>{{ fmtAmt(0) }}</span></div>
+                    <div class="po-total-row grand"><span>Grand Total</span><span>{{ fmtAmt(grandTotal) }}</span></div>
                   </div>
                 </div>
               </div>
@@ -681,9 +682,10 @@
                     <div class="inv-dmeta-icon-row">
                       <span class="inv-dmeta-icon" v-html="icon('indianrupee',13)"></span>
                       <span class="inv-dmeta-lbl">Grand Total</span>
+                      <span v-if="viewDoc.currency && viewDoc.currency !== 'INR'" style="font-size:10px;font-weight:700;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:4px;padding:1px 5px;margin-left:4px">{{ viewDoc.currency }}</span>
                     </div>
                     <div class="inv-balance-val">
-                      {{ fmtCur(viewDoc.grand_total) }}
+                      {{ fmtAmt(viewDoc.grand_total, viewDoc.currency) }}
                     </div>
                   </div>
                 </div>
@@ -711,8 +713,8 @@
                             <div v-if="it.description" class="inv-item-desc">{{ it.description }}</div>
                           </td>
                           <td class="td-r">{{ flt(it.qty) }}</td>
-                          <td class="td-r">{{ fmtCur(it.rate) }}</td>
-                          <td class="td-r" style="font-weight:600">{{ fmtCur(it.amount) }}</td>
+                          <td class="td-r">{{ fmtAmt(it.rate, viewDoc.currency) }}</td>
+                          <td class="td-r" style="font-weight:600">{{ fmtAmt(it.amount, viewDoc.currency) }}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -722,7 +724,7 @@
                       <div class="inv-totals-inner">
                         <div class="inv-grand-total-line">
                           <span class="inv-grand-lbl">Grand Total</span>
-                          <span class="inv-grand-amt">{{ fmtCur(viewDoc.grand_total) }}</span>
+                          <span class="inv-grand-amt">{{ fmtAmt(viewDoc.grand_total, viewDoc.currency) }}</span>
                         </div>
                       </div>
                     </div>
@@ -1051,6 +1053,7 @@ const form = reactive({
   billing_address: "", billing_address_name: "",
   shipping_address: "", shipping_address_name: "",
   set_warehouse: "", terms: "",
+  currency: "INR", exchange_rate: 1,
 });
 
 // ── Address state ─────────────────────────────────────────────────────
@@ -1077,7 +1080,11 @@ const invModal = reactive({ open: false, saving: false, soName: "", lines: [], a
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function deliveryDefault() { const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().slice(0, 10); }
-function fmtCur(v) { return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(flt(v)); }
+const currencySymbol = "₹";
+function fmtAmt(v) {
+  return "₹" + Math.abs(flt(v)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtCur(v) { return fmtAmt(v); }
 
 function isPastDelivery(o) {
   if (!o?.delivery_date) return false;
@@ -1272,7 +1279,7 @@ const invModalTotal = computed(() =>
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { customer: "", transaction_date: todayStr(), delivery_date: deliveryDefault(), po_number: "", billing_address: "", billing_address_name: "", shipping_address: "", shipping_address_name: "", set_warehouse: "", terms: "" });
+  Object.assign(form, { customer: "", transaction_date: todayStr(), delivery_date: deliveryDefault(), po_number: "", billing_address: "", billing_address_name: "", shipping_address: "", shipping_address_name: "", set_warehouse: "", terms: "", currency: "INR", exchange_rate: 1 });
   customerAddresses.value = [];
   lines.value = [blankLine()];
   Object.assign(collapsed, { details: false, lines: false, notes: true });
@@ -1287,6 +1294,7 @@ async function openEdit(o) {
     billing_address: "", billing_address_name: "",
     shipping_address: "", shipping_address_name: "",
     set_warehouse: "", terms: o.terms || "",
+    currency: o.currency || "INR", exchange_rate: o.exchange_rate || 1,
   });
   lines.value = [blankLine()];
   Object.assign(collapsed, { details: false, lines: false, notes: true });
@@ -1308,6 +1316,7 @@ async function openEdit(o) {
       }
     }
     if (doc?.terms) form.terms = doc.terms;
+    if (doc?.currency) { form.currency = doc.currency; form.exchange_rate = doc.exchange_rate || 1; }
     if (doc?.billing_address)  form.billing_address  = doc.billing_address;
     if (doc?.shipping_address) form.shipping_address = doc.shipping_address;
     if (doc?.billing_address_name || doc?.shipping_address_name) {
@@ -1365,11 +1374,18 @@ async function onCustomerChange() {
   if (!form.customer) { customerAddresses.value = []; return; }
   addressLoading.value = true;
   try {
-    await fetchCustomerAddresses(form.customer);
+    const [, custDoc] = await Promise.all([
+      fetchCustomerAddresses(form.customer),
+      apiGet("Customer", form.customer).catch(() => null),
+    ]);
     const firstBilling = customerAddresses.value.find(a => a.address_type === "Billing") || customerAddresses.value[0];
     if (firstBilling) { form.billing_address_name = firstBilling.name; form.billing_address = formatAddress(firstBilling); }
     const firstShipping = customerAddresses.value.find(a => a.address_type === "Shipping");
     if (firstShipping) { form.shipping_address_name = firstShipping.name; form.shipping_address = formatAddress(firstShipping); }
+    if (custDoc?.default_currency) {
+      form.currency = custDoc.default_currency;
+      form.exchange_rate = form.currency !== "INR" ? (await fetchRate(form.currency, "INR") || 1) : 1;
+    }
   } catch {}
   addressLoading.value = false;
 }
@@ -1530,6 +1546,8 @@ async function saveSO(newStatus) {
       status: newStatus || "Draft",
       docstatus: newStatus === "Draft" ? 0 : 1,
       terms: form.terms || "",
+      currency: form.currency || "INR",
+      exchange_rate: form.currency === "INR" ? 1 : (form.exchange_rate || 1),
       items: lines.value.filter(l => l.item_code).map(l => ({
         doctype: "Sales Order Item", item_code: l.item_code,
         description: l.description || l.item_code,

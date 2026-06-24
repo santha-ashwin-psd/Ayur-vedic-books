@@ -1,6 +1,9 @@
 {% set inv = doc %}
 {% set company = frappe.db.get_single_value("Global Defaults","default_company") or "Your Company" %}
 {% set company_doc = frappe.get_doc("Company", company) if frappe.db.exists("Company", company) else None %}
+{% set cur = inv.currency or "INR" %}
+{% set cur_sym = frappe.db.get_value("Currency", cur, "symbol") or cur %}
+{% macro fc(amount) %}{{ cur_sym }}{{ "{:,.2f}".format(amount|float) }}{% endmacro %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -395,8 +398,8 @@
             {% if item.gst_hsn_code %}<div class="item-hsn">HSN: {{ item.gst_hsn_code }}</div>{% endif %}
           </td>
           <td class="mono">{{ item.qty }}&nbsp;<span style="font-size:10.5px;color:var(--ink-500)">{{ item.uom or "pcs" }}</span></td>
-          <td class="mono">{{ frappe.format(item.rate, "Currency") }}</td>
-          <td class="mono" style="font-weight:600">{{ frappe.format(item.amount, "Currency") }}</td>
+          <td class="mono">{{ fc(item.rate) }}</td>
+          <td class="mono" style="font-weight:600">{{ fc(item.amount) }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -416,6 +419,7 @@
       </div>
       {% endif %}
 
+      {% if cur == "INR" %}
       <div class="qr-card">
         <div class="card-title">Pay via UPI</div>
         <div id="qr-canvas"></div>
@@ -423,9 +427,10 @@
           {{ company_doc.custom_upi_id if company_doc and company_doc.get("custom_upi_id") else "yourupi@bank" }}
         </div>
         <div class="qr-amount">
-          Balance: {{ frappe.format(inv.outstanding_amount or inv.grand_total, "Currency") }}
+          Balance: {{ fc(inv.outstanding_amount or inv.grand_total) }}
         </div>
       </div>
+      {% endif %}
     </div>
 
     <!-- Totals (right column) -->
@@ -434,28 +439,28 @@
         <table class="totals-table">
           <tr>
             <td class="t-lbl">Sub Total</td>
-            <td class="t-val">{{ frappe.format(inv.net_total, "Currency") }}</td>
+            <td class="t-val">{{ fc(inv.net_total) }}</td>
           </tr>
           {% for tax in inv.taxes %}
           <tr>
             <td class="t-lbl">{{ tax.description }} ({{ tax.rate }}%)</td>
-            <td class="t-val">{{ frappe.format(tax.tax_amount, "Currency") }}</td>
+            <td class="t-val">{{ fc(tax.tax_amount) }}</td>
           </tr>
           {% endfor %}
           <tr class="grand-row">
             <td class="t-lbl">Total</td>
-            <td class="t-val">{{ frappe.format(inv.grand_total, "Currency") }}</td>
+            <td class="t-val">{{ fc(inv.grand_total) }}</td>
           </tr>
           {% if inv.total_advance > 0 %}
           <tr class="payment-row">
             <td class="t-lbl">Payment Made</td>
-            <td class="t-val">(–) {{ frappe.format(inv.total_advance, "Currency") }}</td>
+            <td class="t-val">(–) {{ fc(inv.total_advance) }}</td>
           </tr>
           {% endif %}
           {% if inv.outstanding_amount > 0 %}
           <tr class="balance-row">
             <td class="t-lbl" style="font-weight:600">Balance Due</td>
-            <td class="t-val">{{ frappe.format(inv.outstanding_amount, "Currency") }}</td>
+            <td class="t-val">{{ fc(inv.outstanding_amount) }}</td>
           </tr>
           {% endif %}
         </table>
@@ -481,6 +486,7 @@
 
 </div>
 
+{% if cur == "INR" %}
 <script>
 (function() {
   try {
@@ -508,6 +514,7 @@
   }
 })();
 </script>
+{% endif %}
 
 </body>
 </html>

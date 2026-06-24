@@ -161,7 +161,7 @@
               <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Cost Center Name <span style="color:#C92A2A">*</span></label>
               <input v-model="fForm.name" class="b-input" placeholder="e.g. Engineering, Sales, Project Alpha" :disabled="!!editing"/>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="cc-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <div>
                 <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Cost Center Code</label>
                 <input v-model="fForm.code" class="b-input" placeholder="e.g. ENG, SLS"/>
@@ -174,7 +174,7 @@
                 </select>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="cc-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <div>
                 <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Type</label>
                 <select v-model="fForm.type" class="b-input">
@@ -199,7 +199,7 @@
             </div>
           </div>
           <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#868E96;margin-bottom:10px;margin-top:20px;padding-top:20px;border-top:1px solid #E2E8F0">Budget</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div class="cc-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
             <div>
               <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Annual Budget (₹)</label>
               <input v-model="fForm.budget" class="b-input" type="number" min="0" step="1000" placeholder="0" />
@@ -213,7 +213,7 @@
               </select>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div class="cc-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
             <div>
               <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Budget Alert At (%)</label>
               <input v-model="fForm.alert_pct" class="b-input" type="number" min="0" max="100" />
@@ -228,7 +228,7 @@
             </div>
           </div>
           <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#868E96;margin-bottom:10px;margin-top:20px;padding-top:20px;border-top:1px solid #E2E8F0">Settings</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="cc-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div>
               <label style="display:block;font-size:11.5px;font-weight:600;color:#495057;margin-bottom:4px">Is Group?</label>
               <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
@@ -501,11 +501,14 @@ onMounted(load);
 /* Mobile back button — hidden by default */
 .cc-mobile-back { display:none; }
 
+/* Drawer form 2-col grid — collapses to 1 col on mobile */
+.cc-form-grid { display:grid; gap:12px; }
+
 /* ═══════════════════════════════════════════════════════════
    RESPONSIVE  –  375 px … 425.98 px
    ═══════════════════════════════════════════════════════════ */
 @media (min-width: 375px) and (max-width: 425.98px) {
-
+  .b-input{width:-webkit-fill-available}
   /* Root container: full height column */
   .cc-root {
     height: auto;
@@ -640,6 +643,29 @@ onMounted(load);
   .cc-drawer-open > div {
     width: 100% !important;
     max-width: 100vw !important;
+  }
+
+  /* ── Drawer form: collapse all 2-col grids to 1 col ── */
+  /* Targets: Code+Parent / Type+Colour / Budget+Period /
+     Alert+Action / IsGroup+Status                        */
+  .cc-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Drawer scroll-body padding */
+  .cc-drawer-open [style*="flex:1;overflow-y:auto;padding:24px"] {
+    padding: 16px 14px !important;
+  }
+
+  /* Colour swatch row — slightly bigger tap targets */
+  .cc-drawer-open [style*="display:flex;gap:8px;flex-wrap:wrap"] > div {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Drawer footer */
+  .cc-drawer-open [style*="padding:16px 24px"] {
+    padding: 12px 14px !important;
   }
 
 } /* end @media 375px–425.98px */

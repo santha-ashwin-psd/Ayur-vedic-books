@@ -679,7 +679,7 @@ def _create_bank_transaction(pe):
         withdrawal = flt(pe.paid_amount)
 
     bank_acc = frappe.db.get_value(
-        "Bank Account", {"account_name": bank_account_name, "company": pe.company}, "name"
+        "Bank Account", {"gl_account": bank_account_name, "company": pe.company}, "name"
     )
     if not bank_acc:
         return None
@@ -688,9 +688,9 @@ def _create_bank_transaction(pe):
         "doctype":          "Bank Transaction",
         "date":             pe.payment_date or pe.posting_date,
         "bank_account":     bank_acc,
-        "deposit":          deposit,
-        "withdrawal":       withdrawal,
-        "currency":         pe.paid_to_account_currency or "INR",
+        "credit":           deposit,    # Bank statement convention: credit = money IN (matches _set_balance/_post_gl)
+        "debit":            withdrawal, # Bank statement convention: debit  = money OUT
+        "currency":         pe.currency or "INR",
         "description":      pe.remarks or f"Payment Entry {pe.name}",
         "reference_number": pe.reference_no or pe.name,
         "payment_entry":    pe.name,
@@ -698,8 +698,53 @@ def _create_bank_transaction(pe):
         "company":          pe.company,
     })
     bt.insert(ignore_permissions=True)
+    bt.flags.ignore_permissions = True
+    bt.submit()
     frappe.db.commit()
     return bt.name
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_bill_payment_defaults(bill_name):
+    """Vendor-side equivalent of books_data.get_payment_defaults — supplies
+    the bank/cash accounts and payment modes the Pay Vendor dialog needs.
+    """
+    bill = frappe.get_doc("Purchase Invoice", bill_name)
+    outstanding = flt(getattr(bill, "outstanding_amount", None))
+    if not outstanding:
+        outstanding = flt(bill.grand_total) - flt(getattr(bill, "advance_paid", 0))
+    company = bill.company or frappe.db.get_default("company")
+    bank_accounts = frappe.db.sql(
+        """SELECT name, account_type FROM `tabAccount`
+           WHERE account_type IN ('Bank','Cash') AND is_group = 0
+             AND LOWER(company) = LOWER(%s)
+           ORDER BY account_type DESC""",
+        (company,), as_dict=True
+    )
+    try:
+        payment_mode_docs = frappe.get_all(
+            "Books Payment Mode", filters={"enabled": 1}, fields=["mode_of_payment"], order_by="mode_of_payment"
+        )
+        payment_modes = [m.mode_of_payment for m in payment_mode_docs]
+    except Exception:
+        try:
+            payment_mode_docs = frappe.get_all("Mode of Payment", fields=["name"], order_by="name")
+            payment_modes = [m.name for m in payment_mode_docs]
+        except Exception:
+            payment_modes = ["Cash", "Bank Transfer", "UPI", "NEFT", "RTGS", "Cheque"]
+
+    return {
+        "bill_name": bill.name,
+        "supplier_name": bill.supplier_name or bill.supplier,
+        "supplier": bill.supplier,
+        "grand_total": flt(bill.grand_total),
+        "balance_due": outstanding,
+        "currency": bill.currency or "INR",
+        "payment_date": today(),
+        "bank_accounts": bank_accounts,
+        "payment_modes": payment_modes,
+        "company": company,
+    }
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
                           payment_mode="Cash", paid_from="", bank_charges=0,
@@ -736,6 +781,7 @@ def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
         "paid_from": bank,
         "paid_to": ap,
         "paid_amount": amount,
+        "currency": bill.currency or "INR",
         "received_amount": amount,
         "source_exchange_rate": 1,
         "target_exchange_rate": 1,
@@ -3707,6 +3753,7 @@ def import_bank_statement_csv(bank_account, csv_data):
             bt.flags.ignore_permissions = True
             bt.flags.ignore_mandatory = True
             bt.insert()
+            bt.submit()
             created.append(bt.name)
         except Exception:
             skipped += 1

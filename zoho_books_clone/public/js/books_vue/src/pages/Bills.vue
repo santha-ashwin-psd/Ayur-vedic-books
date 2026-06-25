@@ -1319,6 +1319,7 @@ async function payBill(b) {
     direction: "pay", doctype: "Purchase Invoice", name: b.name,
     party: b.supplier, partyLabel: b.supplier_name || b.supplier,
     balance: flt(b.outstanding_amount),
+    getDefaultsEndpoint: "zoho_books_clone.api.docs.get_bill_payment_defaults",
     sendEndpoint: "zoho_books_clone.api.docs.record_vendor_payment",
     paramKey: "bill_name",
   });

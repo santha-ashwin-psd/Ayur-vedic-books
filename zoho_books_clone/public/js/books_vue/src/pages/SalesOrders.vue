@@ -188,7 +188,7 @@
                   <button class="inv-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
                   <button v-if="isDraft(o)" class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                   <button v-if="canInvoice(o)" class="inv-act-btn inv-act-pay" @click="openInvoiceModal(o)" title="Invoice"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-                  <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteSO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                  <button v-if="canDelete(o)" class="inv-act-btn" style="color:#dc2626" @click.stop="deleteSO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
                 </div>
               </td>
             </tr>
@@ -242,7 +242,7 @@
             <div class="so-mc-footer">
               <button class="so-mc-btn" @click.stop="openView(o)">View</button>
               <button v-if="isDraft(o)" class="so-mc-btn" @click.stop="openEdit(o)">Edit</button>
-              <button class="so-mc-btn so-mc-danger" @click.stop="deleteSO(o)">Delete</button>
+              <button v-if="canDelete(o)" class="so-mc-btn so-mc-danger" @click.stop="deleteSO(o)">Delete</button>
             </div>
           </div>
         </template>
@@ -630,10 +630,10 @@
               <button v-if="canInvoice(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="openInvoiceModal(viewDoc)">
                 <span v-html="icon('repeat',13)"></span> <span class="ab-label">Invoice</span>
               </button>
-              <button class="inv-ab-btn inv-ab-danger" @click="cancelSO(viewDoc)">
+              <button v-if="canCancel(viewDoc)" class="inv-ab-btn inv-ab-danger" @click="cancelSO(viewDoc)">
                 <span v-html="icon('x',13)"></span> <span class="ab-label">Cancel</span>
               </button>
-              <button class="inv-ab-btn inv-ab-danger" @click="deleteSO(viewDoc)">
+              <button v-if="canDelete(viewDoc)" class="inv-ab-btn inv-ab-danger" @click="deleteSO(viewDoc)">
                 <span v-html="icon('trash',13)"></span> <span class="ab-label">Delete</span>
               </button>
             </div>
@@ -1117,6 +1117,16 @@ function headerBg(o) {
 function canInvoice(o) {
   const s = (o?.status||"").toLowerCase();
   return s !== "cancelled" && s !== "closed" && s !== "invoiced";
+}
+function canCancel(o) {
+  const s = (o?.status||"").toLowerCase();
+  // Allow cancel from any status except already-cancelled
+  return s !== "cancelled";
+}
+function canDelete(o) {
+  const s = (o?.status||"").toLowerCase();
+  // Only allow delete on draft or cancelled (never on live/closed orders)
+  return s === "draft" || s === "" || s === "cancelled";
 }
 function isDraft(o) {
   const s = (o?.status||"").toLowerCase();

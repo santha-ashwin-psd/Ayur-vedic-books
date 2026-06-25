@@ -66,7 +66,7 @@
             <tr v-for="n in 8" :key="n"><td colspan="11"><div class="tds-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="e in sorted" :key="(e.entry_name || e.name) + (e.tds_section||'')" class="tds-row">
+            <tr v-for="e in paginatedSorted" :key="(e.entry_name || e.name) + (e.tds_section||'')" class="tds-row">
               <td><span class="tds-code">{{ e.name }}</span></td>
               <td class="mono-sm text-muted">{{ fmtDate(e.posting_date) }}</td>
               <td>{{ e.party || '—' }}</td>
@@ -103,7 +103,7 @@
           <div>No TDS transactions found</div>
         </div>
         <template v-else>
-          <div v-for="e in sorted" :key="(e.entry_name||e.name)+(e.tds_section||'')" class="tds-mobile-card">
+          <div v-for="e in paginatedSorted" :key="(e.entry_name||e.name)+(e.tds_section||'')" class="tds-mobile-card">
             <div class="tds-mc-top">
               <span class="tds-mc-docno">{{ e.name }}</span>
               <span class="tds-source-badge" :class="e.source==='entry'?'tds-source-manual':'tds-source-bill'">{{ e.source==='entry'?'Manual':'Bill' }}</span>
@@ -118,10 +118,15 @@
             </div>
           </div>
         </template>
+      </div><!-- end tds-mobile-cards -->
+
+      <!-- Load More -->
+      <div v-if="!loading && tdsHasMore" class="tds-load-more-wrap">
+        <button class="tds-btn-ghost tds-load-more-btn" @click="loadMore">
+          Load More ({{ sorted.length - tdsVisibleCount }} remaining)
+        </button>
       </div>
     </div>
-
-    <!-- ── New TDS Entry Drawer ── -->
     <Teleport to="body">
       <div v-if="showEntryDrawer" class="tds-drawer-bg" @click.self="showEntryDrawer=false"></div>
       <div class="tds-drawer-panel" :class="{open:showEntryDrawer}">
@@ -149,7 +154,10 @@
             </div>
             <div class="tds-form-field">
               <label class="tds-lbl">Party (Vendor) <span class="tds-req">*</span></label>
-              <input v-model="entryForm.party" class="tds-fi" placeholder="Vendor name" />
+              <select v-model="entryForm.party" class="tds-fi" @change="onSupplierChange">
+                <option value="">Select Supplier</option>
+                <option v-for="s in suppliers" :key="s.name" :value="s.name">{{ s.supplier_name || s.name }}</option>
+              </select>
             </div>
             <div class="tds-form-field">
               <label class="tds-lbl">PAN Number</label>
@@ -234,7 +242,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiGET, apiPOST, apiList, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
@@ -251,13 +259,14 @@ const sortCol = ref("posting_date");
 const sortDir = ref("desc");
 const noTdsNote = ref(false);
 const expenseAccounts = ref([]);
+const suppliers = ref([]);
 
 // Entry drawer
 const showEntryDrawer = ref(false);
 const entrySaving = ref(false);
 const entryForm = reactive({
   date: new Date().toISOString().slice(0, 10),
-  section: "", party: "", pan: "", nature_of_payment: "",
+  section: "", party: "", party_name: "", pan: "", nature_of_payment: "",
   amount: 0, rate: 0, surcharge: 0, cess: 0, tds_total: 0,
   expense_account: "", remarks: "",
 });
@@ -315,7 +324,7 @@ async function load() {
     const entryNormalized = (Array.isArray(entryRows) ? entryRows : []).map(e => ({
       name: e.voucher_no || e.name,
       posting_date: e.date,
-      party: e.party || "",
+      party: e.party_name || e.party || "",
       tds_section: e.section || "",
       gross_amount: flt(e.amount),
       rate: e.amount > 0 ? Math.round(flt(e.tds_total) / flt(e.amount) * 100 * 100) / 100 : 0,
@@ -343,11 +352,22 @@ async function loadExpenseAccounts() {
   try {
     const rows = await apiList("Account", {
       fields: ["name"],
-      filters: [["account_type", "=", "Expense Account"], ["is_group", "=", 0]],
+      filters: [["is_group", "=", 0], ["account_type", "=", "Expense"]],
       limit: 100,
     });
     expenseAccounts.value = rows || [];
   } catch { expenseAccounts.value = []; }
+}
+
+async function loadSuppliers() {
+  try {
+    const rows = await apiList("Supplier", {
+      fields: ["name", "supplier_name"],
+      filters: [["disabled", "=", 0]],
+      limit: 500,
+    });
+    suppliers.value = rows || [];
+  } catch { suppliers.value = []; }
 }
 
 const totalTds   = computed(() => list.value.reduce((s, e) => s + flt(e.tds_amount), 0));
@@ -392,14 +412,28 @@ function sortArrow(col) {
   return sortDir.value === "asc" ? "↑" : "↓";
 }
 
+const TDS_PAGE_SIZE = 10;
+const tdsVisibleCount = ref(TDS_PAGE_SIZE);
+const paginatedSorted = computed(() => sorted.value.slice(0, tdsVisibleCount.value));
+const tdsHasMore = computed(() => tdsVisibleCount.value < sorted.value.length);
+function loadMore() { tdsVisibleCount.value += TDS_PAGE_SIZE; }
+
+watch([search, periodFilter], () => { tdsVisibleCount.value = TDS_PAGE_SIZE; });
+
 function openNewEntry() {
   Object.assign(entryForm, {
     date: new Date().toISOString().slice(0, 10),
-    section: "", party: "", pan: "", nature_of_payment: "",
+    section: "", party: "", party_name: "", pan: "", nature_of_payment: "",
     amount: 0, rate: 0, surcharge: 0, cess: 0, tds_total: 0,
     expense_account: "", remarks: "",
   });
+  if (!suppliers.value.length) loadSuppliers();
   showEntryDrawer.value = true;
+}
+
+function onSupplierChange() {
+  const s = suppliers.value.find(s => s.name === entryForm.party);
+  entryForm.party_name = s ? (s.supplier_name || s.name) : entryForm.party;
 }
 
 function onSectionChange() {
@@ -484,7 +518,7 @@ function fmtCur(v) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(flt(v));
 }
 
-onMounted(() => { load(); loadExpenseAccounts(); });
+onMounted(() => { load(); loadExpenseAccounts(); loadSuppliers(); });
 </script>
 
 <style scoped>
@@ -514,7 +548,7 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 .tds-sec-badge{background:#eff6ff;color:#2563eb;border-radius:10px;padding:2px 10px;font-size:11.5px;font-weight:700;}
 .tds-sec-count{font-size:11.5px;color:#6b7280;margin-top:4px;}
 .tds-sec-amount{font-size:14px;font-weight:700;color:#dc2626;margin-top:2px;}
-.tds-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
+.tds-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:scroll;}
 .tds-table{width:100%;border-collapse:collapse;font-size:13px;}
 .tds-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .tds-table th.sortable{cursor:pointer;user-select:none;}.tds-table th.sortable:hover{color:#2563eb;}
@@ -522,7 +556,7 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 .tds-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;}
 .tds-row:last-child td{border-bottom:none;}.tds-row:hover td{background:#f9fafb;}
 .tds-code{font-size:12.5px;color:#2563eb;font-weight:600;}
-.tds-section-badge{background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
+.tds-section-badge{background:#eff6ff;color:#2563eb;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;text-wrap-mode: nowrap;}
 .tds-source-badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;}
 .tds-source-manual{background:#fef3c7;color:#92400e;}
 .tds-source-bill{background:#f0fdf4;color:#166534;}
@@ -557,6 +591,11 @@ onMounted(() => { load(); loadExpenseAccounts(); });
 /* Modal */
 .tds-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.18);z-index:1001;width:min(420px,90vw);overflow:hidden;}
 .tds-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f3f4f6;}
+
+/* ── Load More ── */
+.tds-load-more-wrap { display:flex; justify-content:center; padding:14px 16px; border-top:1px solid #f3f4f6; }
+.tds-load-more-btn  { width:100%; max-width:320px; justify-content:center; font-weight:600; color:#2563eb; border-color:#bfdbfe; }
+.tds-load-more-btn:hover { background:#eff6ff; border-color:#93c5fd; }
 
 /* ── Mobile card defaults ── */
 .tds-mobile-cards { display: none; }

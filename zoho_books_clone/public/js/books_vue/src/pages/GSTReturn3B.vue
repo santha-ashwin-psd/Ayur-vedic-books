@@ -66,7 +66,9 @@
             <span class="g3-card-title">3.1 — Outward Supplies</span>
             <span class="g3-meta-ct">{{ data.invoice_count }} invoices</span>
           </div>
-          <table class="g3-table">
+
+          <!-- Desktop table -->
+          <table class="g3-table desktop-table">
             <thead><tr>
               <th>Nature of Supply</th>
               <th class="ta-r">Taxable</th>
@@ -106,6 +108,46 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- Mobile cards -->
+          <div class="mobile-cards">
+            <div class="mob-supply-card">
+              <div class="mob-supply-label"><span class="g3-sec">(a)</span> Taxable supplies</div>
+              <div class="mob-kv-grid">
+                <span class="mob-kv-key">Taxable</span><span class="mob-kv-val mono">{{ fmtCur(data.taxable_value) }}</span>
+                <span class="mob-kv-key">IGST</span><span class="mob-kv-val mono">{{ fmtCur(data.out_igst) }}</span>
+                <span class="mob-kv-key">CGST</span><span class="mob-kv-val mono">{{ fmtCur(data.out_cgst) }}</span>
+                <span class="mob-kv-key">SGST</span><span class="mob-kv-val mono">{{ fmtCur(data.out_sgst) }}</span>
+              </div>
+            </div>
+            <div class="mob-supply-card muted">
+              <div class="mob-supply-label"><span class="g3-sec">(b)</span> Zero rated — exports / SEZ</div>
+              <div class="mob-kv-grid">
+                <span class="mob-kv-key">Taxable</span><span class="mob-kv-val mono">₹0.00</span>
+              </div>
+            </div>
+            <div class="mob-supply-card muted">
+              <div class="mob-supply-label"><span class="g3-sec">(c)</span> Nil rated / exempted</div>
+              <div class="mob-kv-grid">
+                <span class="mob-kv-key">Taxable</span><span class="mob-kv-val mono">₹0.00</span>
+              </div>
+            </div>
+            <div class="mob-supply-card muted">
+              <div class="mob-supply-label"><span class="g3-sec">(d)</span> Inward — reverse charge</div>
+              <div class="mob-kv-grid">
+                <span class="mob-kv-key">Taxable</span><span class="mob-kv-val mono">₹0.00</span>
+              </div>
+            </div>
+            <div class="mob-total-card">
+              <div class="mob-supply-label"><strong>Total Output Liability</strong></div>
+              <div class="mob-kv-grid">
+                <span class="mob-kv-key">Taxable</span><span class="mob-kv-val mono fw6">{{ fmtCur(data.taxable_value) }}</span>
+                <span class="mob-kv-key">IGST</span><span class="mob-kv-val mono fw6 red">{{ fmtCur(data.out_igst) }}</span>
+                <span class="mob-kv-key">CGST</span><span class="mob-kv-val mono fw6 red">{{ fmtCur(data.out_cgst) }}</span>
+                <span class="mob-kv-key">SGST</span><span class="mob-kv-val mono fw6 red">{{ fmtCur(data.out_sgst) }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 4 ITC -->
@@ -114,7 +156,9 @@
             <span class="g3-card-title">4 — Eligible ITC</span>
             <span class="g3-meta-ct">{{ data.itc_invoice_count }} purchases</span>
           </div>
-          <table class="g3-table">
+
+          <!-- Desktop table -->
+          <table class="g3-table desktop-table">
             <thead><tr>
               <th>Details</th>
               <th class="ta-r">IGST</th>
@@ -142,6 +186,34 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- Mobile cards -->
+          <div class="mobile-cards">
+            <div class="mob-supply-card">
+              <div class="mob-supply-label"><span class="g3-sec">(A)</span> All other ITC — B2B purchases</div>
+              <div class="mob-kv-grid">
+                <span class="mob-kv-key">IGST</span><span class="mob-kv-val mono">{{ fmtCur(data.itc_igst) }}</span>
+                <span class="mob-kv-key">CGST</span><span class="mob-kv-val mono">{{ fmtCur(data.itc_cgst) }}</span>
+                <span class="mob-kv-key">SGST</span><span class="mob-kv-val mono">{{ fmtCur(data.itc_sgst) }}</span>
+              </div>
+            </div>
+            <div class="mob-supply-card muted">
+              <div class="mob-supply-label"><span class="g3-sec">(B)</span> ITC Reversed — rule 42/43</div>
+              <div class="mob-kv-grid">
+                <span class="mob-kv-key">IGST</span><span class="mob-kv-val mono">₹0.00</span>
+                <span class="mob-kv-key">CGST</span><span class="mob-kv-val mono">₹0.00</span>
+                <span class="mob-kv-key">SGST</span><span class="mob-kv-val mono">₹0.00</span>
+              </div>
+            </div>
+            <div class="mob-total-card">
+              <div class="mob-supply-label"><strong>Net ITC Available</strong></div>
+              <div class="mob-kv-grid">
+                <span class="mob-kv-key">IGST</span><span class="mob-kv-val mono fw6 green">{{ fmtCur(data.itc_igst) }}</span>
+                <span class="mob-kv-key">CGST</span><span class="mob-kv-val mono fw6 green">{{ fmtCur(data.itc_cgst) }}</span>
+                <span class="mob-kv-key">SGST</span><span class="mob-kv-val mono fw6 green">{{ fmtCur(data.itc_sgst) }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -182,7 +254,15 @@
           <div class="g3-card-hdr">
             <span class="g3-card-title">Tax Type Breakdown</span>
           </div>
-          <table class="g3-table">
+
+          <!-- Desktop table -->
+          <table class="g3-table desktop-table g3-type-table">
+            <colgroup>
+              <col style="width:22%">
+              <col style="width:26%">
+              <col style="width:26%">
+              <col style="width:26%">
+            </colgroup>
             <thead><tr>
               <th>Type</th>
               <th class="ta-r">Output</th>
@@ -200,6 +280,23 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- Mobile cards -->
+          <div class="mobile-cards">
+            <div v-for="row in data.net_by_type" :key="row.tax_type" class="mob-supply-card">
+              <div class="mob-supply-label">
+                <span class="g3-type-badge">{{ row.tax_type || '—' }}</span>
+              </div>
+              <div class="mob-kv-grid">
+                <span class="mob-kv-key">Output</span><span class="mob-kv-val mono red">{{ fmtCur(row.output) }}</span>
+                <span class="mob-kv-key">ITC</span><span class="mob-kv-val mono green">{{ fmtCur(row.itc) }}</span>
+                <span class="mob-kv-key">Net</span>
+                <span class="mob-kv-val mono fw6" :class="row.net < 0 ? 'green' : row.net === 0 ? '' : 'amber'">
+                  {{ row.net < 0 ? '− ' + fmtCur(-row.net) : fmtCur(row.net) }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -335,26 +432,26 @@ onMounted(load);
 .g3-sum-val   { font-size:18px; font-weight:700; color:#111827; }
 
 /* Two-column body */
-.g3-body-layout { display:grid; grid-template-columns:1fr 340px; gap:14px; align-items:start; }
-.g3-left  { display:flex; flex-direction:column; }
-.g3-right { display:flex; flex-direction:column; }
+.g3-body-layout { display:grid; grid-template-columns:1fr minmax(0,360px); gap:14px; align-items:start; }
+.g3-left  { display:flex; flex-direction:column; min-width:0; }
+.g3-right { display:flex; flex-direction:column; min-width:0; }
 @media(max-width:900px) { .g3-body-layout { grid-template-columns:1fr; gap:10px; } }
 
 /* Cards */
-.g3-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
+.g3-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; min-width:0; }
 .g3-card-hdr { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #f1f5f9; }
 .g3-card-title { font-size:13px; font-weight:700; color:#111827; }
 .g3-meta-ct { font-size:11.5px; color:#9ca3af; }
 
-/* Table */
-.g3-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+/* Table — shown on desktop, hidden on mobile */
+.g3-table { width:100%; border-collapse:collapse; font-size:12.5px; table-layout:fixed; }
 .g3-table thead tr { background:#f8fafc; }
-.g3-table th { border-bottom:1px solid #e5e7eb; padding:8px 14px; font-size:10.5px; font-weight:700; color:#9ca3af; text-align:left; text-transform:uppercase; letter-spacing:.05em; }
+.g3-table th { border-bottom:1px solid #e5e7eb; padding:8px 10px; font-size:10.5px; font-weight:700; color:#9ca3af; text-align:left; text-transform:uppercase; letter-spacing:.05em; overflow:hidden; }
 .ta-r { text-align:right !important; }
-.g3-row td { padding:9px 14px; border-bottom:1px solid #f8fafc; color:#374151; vertical-align:middle; font-size:12.5px; }
+.g3-row td { padding:9px 10px; border-bottom:1px solid #f8fafc; color:#374151; vertical-align:middle; font-size:12px; overflow:hidden; word-break:break-word; }
 .g3-row:last-child td { border-bottom:none; }
 .muted-row td { color:#9ca3af; }
-.g3-total-row td { padding:9px 14px; background:#f8fafc; border-top:1.5px solid #e5e7eb; font-size:12.5px; }
+.g3-total-row td { padding:9px 10px; background:#f8fafc; border-top:1.5px solid #e5e7eb; font-size:12px; }
 .g3-sec { font-size:11px; font-weight:700; color:#9ca3af; margin-right:6px; }
 .mono  { font-variant-numeric:tabular-nums; }
 .fw6   { font-weight:600; }
@@ -376,6 +473,11 @@ onMounted(load);
 /* Type badge */
 .g3-type-badge { background:#f1f5f9; color:#374151; border:1px solid #e2e8f0; border-radius:4px; padding:2px 8px; font-size:11.5px; font-weight:700; }
 
+/* Tax type breakdown table — compact numerics */
+.g3-type-table td { font-size:11.5px !important; padding:8px 8px !important; }
+.g3-type-table th { padding:7px 8px !important; font-size:10px !important; }
+.g3-type-table .mono { font-size:11.5px; letter-spacing:-0.01em; }
+
 /* Placeholder */
 .g3-placeholder { display:flex; flex-direction:column; align-items:center; gap:8px; padding:64px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; }
 .g3-ph-title { font-size:14px; font-weight:600; color:#374151; }
@@ -384,20 +486,62 @@ onMounted(load);
 /* Shimmer */
 .g3-shimmer { height:13px; background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%); border-radius:4px; animation:shimmer 1.4s infinite; background-size:200% 100%; }
 
+/* Mobile card rows — hidden on desktop */
+.mobile-cards { display:none; }
+
+/* ── Mobile: ≤768px ── */
 @media (max-width: 768px) {
   .g3-page      { padding: 14px; gap: 10px; }
   .g3-toolbar   { padding: 12px 14px; }
-  /* Summary strip: 2-col at tablet */
   .g3-sum-strip { grid-template-columns: repeat(2, 1fr) !important; }
-  /* Tables scroll within cards */
-  .g3-card      { overflow-x: auto; }
-  .g3-table     { min-width: 380px; font-size: 11.5px; }
-  .g3-table th  { padding: 7px 10px; }
-  .g3-row td    { padding: 7px 10px !important; }
-  .g3-total-row td { padding: 7px 10px !important; }
-  /* Net tax payable panel */
   .g3-summary   { padding: 12px; }
+
+  /* Hide desktop tables, show mobile cards */
+  .desktop-table { display: none; }
+  .mobile-cards  { display: block; }
+
+  .mob-supply-card {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .mob-supply-card.muted .mob-supply-label { color: #9ca3af; }
+  .mob-supply-card:last-child { border-bottom: none; }
+
+  .mob-total-card {
+    padding: 12px 14px;
+    background: #f8fafc;
+    border-top: 1.5px solid #e5e7eb;
+  }
+
+  .mob-supply-label {
+    font-size: 12.5px;
+    color: #374151;
+    margin-bottom: 8px;
+  }
+
+  .mob-kv-grid {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 4px 8px;
+    align-items: center;
+  }
+
+  .mob-kv-key {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .mob-kv-val {
+    font-size: 12.5px;
+    color: #374151;
+    text-align: right;
+  }
 }
+
+/* ── Small mobile: ≤480px ── */
 @media (max-width: 480px) {
   .g3-page      { padding: 10px; gap: 8px; }
   .g3-toolbar   { padding: 10px 12px; }

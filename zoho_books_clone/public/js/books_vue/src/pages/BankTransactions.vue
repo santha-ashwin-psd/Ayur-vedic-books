@@ -21,6 +21,14 @@
       </div>
     </div>
 
+    <div v-if="selected.size" class="bt-bulkbar">
+      <span>{{ selected.size }} selected</span>
+      <button class="bt-btn-primary" :disabled="reconciling" @click="reconcileSelected">
+        {{ reconciling ? 'Reconciling…' : 'Mark as Reconciled' }}
+      </button>
+      <button class="bt-btn-ghost" @click="selected.clear()">Clear</button>
+    </div>
+
     <div v-if="importResult" class="bt-import-result" :class="importResult.ok?'ok':'err'">
       <span v-if="importResult.ok">✓ Imported {{ importResult.count }} transaction(s). Skipped {{ importResult.skipped }}.</span>
       <span v-else>✗ {{ importResult.error }}</span>
@@ -38,6 +46,7 @@
       <table class="bt-table bt-desktop-table">
         <thead>
           <tr>
+            <th class="bt-checkcol"><input type="checkbox" :checked="allSelected" @click.stop @change="toggleSelectAll" /></th>
             <th @click="sort('date')" class="sortable">Date <span v-html="sortArrow('date')"></span></th>
             <th @click="sort('bank_account')" class="sortable">Account <span v-html="sortArrow('bank_account')"></span></th>
             <th @click="sort('description')" class="sortable">Description <span v-html="sortArrow('description')"></span></th>
@@ -49,10 +58,13 @@
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 8" :key="n"><td colspan="7"><div class="bt-shimmer"></div></td></tr>
+            <tr v-for="n in 8" :key="n"><td colspan="8"><div class="bt-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="t in sorted" :key="t.name" class="bt-row" @click="openView(t)">
+            <tr v-for="t in sorted" :key="t.name" class="bt-row" :class="{'bt-row--reconciled':t.status==='Reconciled'}" @click="openView(t)">
+              <td class="bt-checkcol" @click.stop>
+                <input type="checkbox" :checked="selected.has(t.name)" :disabled="t.status==='Reconciled'" @change="toggleSelect(t.name)" />
+              </td>
               <td class="mono-sm">{{ fmtDate(t.date) }}</td>
               <td class="text-muted">{{ t.bank_account||'—' }}</td>
               <td>{{ t.description||'—' }}</td>
@@ -61,7 +73,7 @@
               <td class="ta-r mono-sm green">{{ flt(t.deposit)>0 ? fmtCur(t.deposit) : '—' }}</td>
               <td class="ta-r mono-sm red">{{ flt(t.withdrawal)>0 ? fmtCur(t.withdrawal) : '—' }}</td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="7" class="bt-empty">No transactions found</td></tr>
+            <tr v-if="!sorted.length"><td colspan="8" class="bt-empty">No transactions found</td></tr>
           </template>
         </tbody>
       </table>
@@ -82,7 +94,10 @@
         <template v-else>
           <div v-for="t in sorted" :key="t.name" class="bt-mobile-card" @click="openView(t)">
             <div class="bt-mc-top">
-              <span class="bt-mc-date">{{ fmtDate(t.date) }}</span>
+              <span style="display:flex;align-items:center;gap:8px">
+                <input type="checkbox" :checked="selected.has(t.name)" :disabled="t.status==='Reconciled'" @click.stop @change="toggleSelect(t.name)" />
+                <span class="bt-mc-date">{{ fmtDate(t.date) }}</span>
+              </span>
               <span class="bt-badge" :class="t.status==='Reconciled'?'badge-green':t.status==='Unreconciled'?'badge-orange':'badge-grey'">{{ t.status||'Unreconciled' }}</span>
             </div>
             <div class="bt-mc-mid">{{ t.description || '—' }}</div>
@@ -133,7 +148,12 @@
           <div class="bt-section-hdr"><span v-html="icon('file',13)"></span> Description</div>
           <div class="bt-desc">{{ viewDoc.description||'—' }}</div>
         </div>
-        <div class="bt-dfooter"><button class="bt-btn-ghost" @click="viewOpen=false">Close</button></div>
+        <div class="bt-dfooter">
+          <button v-if="viewDoc.status!=='Reconciled'" class="bt-btn-primary" :disabled="reconciling" @click="reconcileOne(viewDoc)">
+            {{ reconciling ? 'Reconciling…' : 'Mark as Reconciled' }}
+          </button>
+          <button class="bt-btn-ghost" @click="viewOpen=false">Close</button>
+        </div>
       </template>
     </div>
   </div>
@@ -186,6 +206,8 @@ const tabs=[{key:"all",label:"All"},{key:"Unreconciled",label:"Unreconciled"},{k
 const list=ref([]),loading=ref(false),search=ref(""),selectedAccount=ref("");
 const bankAccounts=ref([]),viewOpen=ref(false),viewDoc=ref(null);
 const sortCol=ref("date"),sortDir=ref("desc");
+const selected=ref(new Set());
+const reconciling=ref(false);
 
 async function load(){
   loading.value=true;
@@ -204,8 +226,8 @@ async function load(){
     });
     list.value = raw.map(t => ({
       ...t,
-      deposit:    flt(t.debit  || 0),   // money INTO bank → debit on bank ledger
-      withdrawal: flt(t.credit || 0),
+      deposit:    flt(t.credit || 0),   // bank-statement convention: credit = money IN
+      withdrawal: flt(t.debit  || 0),   // debit = money OUT
     }));
   }catch(e){toast.error(e.message||"Failed to load transactions");}
   finally{loading.value=false;}
@@ -220,6 +242,45 @@ const summaryWithdrawal=computed(()=>filtered.value.reduce((s,t)=>s+flt(t.withdr
 const counts=computed(()=>({unreconciled:list.value.filter(t=>t.status!=="Reconciled").length}));
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
 function openView(t){viewDoc.value=t;viewOpen.value=true;}
+
+const reconcilableNames=computed(()=>sorted.value.filter(t=>t.status!=="Reconciled").map(t=>t.name));
+const allSelected=computed(()=>reconcilableNames.value.length>0 && reconcilableNames.value.every(n=>selected.value.has(n)));
+function toggleSelect(name){
+  const s=new Set(selected.value);
+  if(s.has(name))s.delete(name);else s.add(name);
+  selected.value=s;
+}
+function toggleSelectAll(){
+  if(allSelected.value){selected.value=new Set();}
+  else{selected.value=new Set(reconcilableNames.value);}
+}
+async function reconcileOne(t){
+  if(!t||t.status==="Reconciled")return;
+  reconciling.value=true;
+  try{
+    await apiPOST("zoho_books_clone.api.banking.mark_transaction_reconciled",{bank_transaction:t.name});
+    t.status="Reconciled";
+    selected.value.delete(t.name);
+    toast.success(`${t.name} marked as Reconciled`);
+  }catch(e){toast.error(e.message||"Failed to reconcile transaction");}
+  finally{reconciling.value=false;}
+}
+async function reconcileSelected(){
+  const names=[...selected.value];
+  if(!names.length)return;
+  const acc=selectedAccount.value || list.value.find(t=>names.includes(t.name))?.bank_account;
+  reconciling.value=true;
+  try{
+    await apiPOST("zoho_books_clone.api.banking.reconcile_transactions",{
+      bank_account: acc,
+      transaction_names: JSON.stringify(names),
+    });
+    list.value.forEach(t=>{if(names.includes(t.name))t.status="Reconciled";});
+    selected.value=new Set();
+    toast.success(`${names.length} transaction(s) marked as Reconciled`);
+  }catch(e){toast.error(e.message||"Failed to reconcile transactions");}
+  finally{reconciling.value=false;}
+}
 onMounted(()=>{if(route.query.account)selectedAccount.value=String(route.query.account);load();});
 </script>
 
@@ -234,6 +295,12 @@ onMounted(()=>{if(route.query.account)selectedAccount.value=String(route.query.a
 .bt-select{border:1px solid #e5e7eb;border-radius:8px;padding:7px 10px;font:inherit;font-size:13px;outline:none;background:#fff;color:#111827;cursor:pointer;}
 .bt-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;color:#374151;cursor:pointer;}
 .bt-btn-ghost:hover{background:#f9fafb;}
+.bt-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;border:1px solid #2563eb;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+.bt-btn-primary:hover:not(:disabled){background:#1d4ed8;}
+.bt-btn-primary:disabled{opacity:.6;cursor:not-allowed;}
+.bt-bulkbar{display:flex;align-items:center;gap:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 14px;font-size:13px;color:#1d4ed8;font-weight:600;}
+.bt-checkcol{width:34px;text-align:center;}
+.bt-row--reconciled{opacity:.7;}
 .bt-import-btn{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;}
 .bt-import-btn:hover:not(.disabled){background:#dbeafe;}
 .bt-import-btn.disabled{opacity:.5;cursor:not-allowed;}

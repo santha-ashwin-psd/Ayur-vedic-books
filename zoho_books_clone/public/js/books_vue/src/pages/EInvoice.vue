@@ -70,7 +70,7 @@
             <tr v-for="n in 8" :key="n"><td colspan="7"><div class="ei-shimmer"></div></td></tr>
           </template>
           <template v-else>
-            <tr v-for="inv in sorted" :key="inv.name" class="ei-row" @click="openView(inv)">
+            <tr v-for="inv in paginatedSorted" :key="inv.name" class="ei-row" @click="openView(inv)">
               <td><span class="ei-code">{{ inv.name }}</span></td>
               <td class="mono text-muted">{{ fmtDate(inv.posting_date) }}</td>
               <td class="fw500">{{ inv.customer_name || inv.customer }}</td>
@@ -109,7 +109,7 @@
           <div>No e-invoices match this filter</div>
         </div>
         <template v-else>
-          <div v-for="inv in sorted" :key="inv.name" class="ei-mobile-card" @click="openView(inv)">
+          <div v-for="inv in paginatedSorted" :key="inv.name" class="ei-mobile-card" @click="openView(inv)">
             <div class="ei-mc-top">
               <span class="ei-mc-docno">{{ inv.name }}</span>
               <span class="ei-badge" :class="statusClass(inv)">{{ statusLabel(inv) }}</span>
@@ -121,6 +121,13 @@
             </div>
           </div>
         </template>
+      </div>
+
+      <!-- Load More -->
+      <div v-if="!loading && hasMore" class="ei-load-more-wrap">
+        <button class="ei-btn-ghost ei-load-more-btn" @click="loadMore">
+          Load More ({{ sorted.length - visibleCount }} remaining)
+        </button>
       </div>
     </div>
 
@@ -272,7 +279,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { apiList, apiPOST, resolveCompany, apiGET } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
@@ -304,6 +311,15 @@ const manualSaving   = ref(false);
 const manualForm     = ref({ irn: "", ack_no: "", ack_date: "" });
 
 const qrSize = computed(() => window.innerWidth <= 480 ? Math.min(window.innerWidth - 80, 220) : 200);
+
+const PAGE_SIZE = 10;
+const visibleCount = ref(PAGE_SIZE);
+const paginatedSorted = computed(() => sorted.value.slice(0, visibleCount.value));
+const hasMore = computed(() => visibleCount.value < sorted.value.length);
+function loadMore() { visibleCount.value += PAGE_SIZE; }
+
+// Reset pagination when filters change
+watch([search, tab, fromDate, toDate], () => { visibleCount.value = PAGE_SIZE; });
 
 const tabs = [
   { v:"all",       l:"All" },
@@ -586,6 +602,11 @@ onMounted(load);
 .ei-lbl { font-size:11.5px; font-weight:600; color:#374151; display:block; margin-bottom:4px; }
 .ei-fi { width:100%; border:1px solid #e5e7eb; border-radius:7px; padding:8px 10px; font:inherit; font-size:13px; outline:none; color:#111827; background:#fff; box-sizing:border-box; transition:border-color .15s; }
 .ei-fi:focus { border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.1); }
+
+/* ── Load More ── */
+.ei-load-more-wrap { display:flex; justify-content:center; padding:14px 16px; border-top:1px solid #f3f4f6; }
+.ei-load-more-btn  { width:100%; max-width:320px; justify-content:center; font-weight:600; color:#4f46e5; border-color:#c7d2fe; }
+.ei-load-more-btn:hover { background:#eef2ff; border-color:#a5b4fc; }
 
 /* ── Mobile card defaults ── */
 .ei-mobile-cards { display: none; }

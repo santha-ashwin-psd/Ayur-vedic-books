@@ -1011,10 +1011,12 @@ function canEdit(o) {
 }
 function canCancel(o) {
   const s = (o?.status||"").toLowerCase();
-  return s !== "cancelled" && s !== "closed" && s !== "billed";
+  // Allow cancel from any status except already-cancelled
+  return s !== "cancelled";
 }
 function canDelete(o) {
   const s = (o?.status||"").toLowerCase();
+  // Only allow delete on draft or cancelled (never on live/closed orders)
   return s === "draft" || s === "" || s === "cancelled";
 }
 

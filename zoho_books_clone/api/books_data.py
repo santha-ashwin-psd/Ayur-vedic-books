@@ -382,8 +382,8 @@ def _create_bank_transaction(pe):
         "doctype":        "Bank Transaction",
         "date":           pe.payment_date or pe.posting_date,
         "bank_account":   bank_acc,
-        "deposit":        deposit,
-        "withdrawal":     withdrawal,
+        "credit":         deposit,    # Bank statement convention: credit = money IN (matches _set_balance/_post_gl)
+        "debit":          withdrawal, # Bank statement convention: debit  = money OUT
         "currency":       pe.paid_to_account_currency or "INR",
         "description":    pe.remarks or f"Payment Entry {pe.name}",
         "reference_number": pe.reference_no or pe.name,
@@ -392,6 +392,8 @@ def _create_bank_transaction(pe):
         "company":        pe.company,
     })
     bt.insert(ignore_permissions=True)
+    bt.flags.ignore_permissions = True
+    bt.submit()
     frappe.db.commit()
     return bt.name
 

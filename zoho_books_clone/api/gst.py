@@ -195,7 +195,7 @@ def get_tds_entries(
     return frappe.get_list(
         "TDS Entry",
         filters=filters,
-        fields=["name", "date", "section", "party", "pan", "amount",
+        fields=["name", "date", "section", "party", "party_name", "pan", "amount",
                 "tds_total", "status", "voucher_no", "challan_no", "challan_date"],
         order_by="date desc",
         limit=500,
@@ -217,12 +217,22 @@ def save_tds_entry(data: str) -> dict:
     cess      = flt(d.get("cess", 0))
     tds_total = flt(d.get("tds_total")) or round(amount * (rate + surcharge + cess) / 100, 2)
 
+    # Resolve supplier display name
+    party_id = d.get("party", "")
+    party_name = d.get("party_name", "")
+    if not party_name and party_id:
+        try:
+            party_name = frappe.db.get_value("Supplier", party_id, "supplier_name") or party_id
+        except Exception:
+            party_name = party_id
+
     entry = frappe.get_doc({
         "doctype":           "TDS Entry",
         "company":           d.get("company"),
         "date":              d.get("date") or today(),
         "section":           d.get("section", ""),
-        "party":             d.get("party", ""),
+        "party":             party_id,
+        "party_name":        party_name,
         "pan":               d.get("pan", ""),
         "nature_of_payment": d.get("nature_of_payment", ""),
         "amount":            amount,

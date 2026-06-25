@@ -17,9 +17,11 @@
           <input v-model="search" placeholder="Search vendors…" class="sales-search-input" autocomplete="off"/>
         </div>
         <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
+        <button class="sales-btn-ghost" @click="triggerImport" title="Import vendors from CSV"><span v-html="icon('upload',13)"></span> Import</button>
+        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> Export</button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
-        <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
         <button class="sales-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
+        <input ref="importInput" type="file" accept=".csv,text/csv" style="display:none" @change="importCSV" />
       </div>
     </div>
 
@@ -47,6 +49,9 @@
       <button class="inv-bulk-btn inv-bulk-danger" @click="bulkSetDisabled(true)" :disabled="bulkBusy">Disable</button>
       <button class="inv-bulk-btn" @click="exportCSV" :disabled="bulkBusy">
         <span v-html="icon('download',13)"></span> Export CSV
+      </button>
+      <button class="inv-bulk-btn" @click="triggerImport" :disabled="bulkBusy">
+        <span v-html="icon('upload',13)"></span> Import CSV
       </button>
       <button class="inv-bulk-clear" @click="clearSelection">✕ Clear</button>
     </div>
@@ -873,6 +878,88 @@
     </div>
   </Teleport>
 
+  <!-- CSV Import Preview / Summary Modal -->
+  <Teleport to="body">
+    <div v-if="importModal.open" class="nim-overlay" @click.self="!importModal.running && closeImport()">
+      <div class="nim-dialog cus-import-dialog" style="max-width:620px;width:96vw">
+        <div class="nim-header" style="background:linear-gradient(135deg,#2563eb,#1d4ed8)">
+          <div class="nim-header-left">
+            <div class="nim-header-icon" style="color:#fff;"><span v-html="icon('upload',16)"></span></div>
+            <div class="nim-header-title">{{ importModal.done ? 'Import Complete' : 'Review Import' }}</div>
+          </div>
+          <button class="nim-close" @click="closeImport" :disabled="importModal.running" v-html="icon('x',15)"></button>
+        </div>
+
+        <div class="nim-body" style="padding:18px 22px">
+          <!-- Preview phase -->
+          <template v-if="!importModal.done">
+            <div class="cus-import-stats">
+              <div class="cus-import-stat"><div class="cus-import-stat-val">{{ importCounts.total }}</div><div class="cus-import-stat-lbl">Rows</div></div>
+              <div class="cus-import-stat cus-import-stat-new"><div class="cus-import-stat-val">{{ importCounts.create }}</div><div class="cus-import-stat-lbl">New</div></div>
+              <div class="cus-import-stat cus-import-stat-upd"><div class="cus-import-stat-val">{{ importCounts.update }}</div><div class="cus-import-stat-lbl">Update</div></div>
+            </div>
+            <div class="cus-import-note">
+              Rows matching an existing vendor name will be <strong>updated</strong> (blank cells keep current values); the rest are <strong>created</strong>.
+            </div>
+            <div class="cus-import-table-wrap">
+              <table class="cus-import-table">
+                <thead>
+                  <tr><th>Vendor</th><th>Type</th><th>GSTIN</th><th style="text-align:right">Action</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row,i) in importPreviewRows" :key="i">
+                    <td>
+                      <div class="cus-import-name">{{ row.vname }}</div>
+                      <div class="cus-import-sub">{{ row.email || row.mobile || '\u2014' }}</div>
+                    </td>
+                    <td>{{ row.vtype }}</td>
+                    <td class="cus-import-mono">{{ row.gstin || '\u2014' }}</td>
+                    <td style="text-align:right">
+                      <span class="cus-import-badge" :class="row.action==='update' ? 'cus-import-badge-upd' : 'cus-import-badge-new'">
+                        {{ row.action==='update' ? 'Update' : 'New' }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="importModal.rows.length > importPreviewRows.length" class="cus-import-more">
+                + {{ importModal.rows.length - importPreviewRows.length }} more row(s) not shown
+              </div>
+            </div>
+          </template>
+
+          <!-- Summary phase -->
+          <template v-else>
+            <div class="cus-import-stats">
+              <div class="cus-import-stat cus-import-stat-new"><div class="cus-import-stat-val">{{ importModal.result.created }}</div><div class="cus-import-stat-lbl">Created</div></div>
+              <div class="cus-import-stat cus-import-stat-upd"><div class="cus-import-stat-val">{{ importModal.result.updated }}</div><div class="cus-import-stat-lbl">Updated</div></div>
+              <div class="cus-import-stat" :class="importModal.result.failed ? 'cus-import-stat-fail' : ''"><div class="cus-import-stat-val">{{ importModal.result.failed }}</div><div class="cus-import-stat-lbl">Failed</div></div>
+            </div>
+            <div class="cus-import-note" style="text-align:center">
+              {{ importModal.result.failed
+                  ? 'Some rows could not be saved \u2014 check that names/GSTINs are valid.'
+                  : 'All rows imported successfully.' }}
+            </div>
+          </template>
+        </div>
+
+        <div class="inv-dfooter">
+          <template v-if="!importModal.done">
+            <button class="form-btn form-btn-outline" @click="closeImport" :disabled="importModal.running">Cancel</button>
+            <button class="form-btn form-btn-primary" @click="runImport" :disabled="importModal.running || !importCounts.total"
+              style="background:#2563eb;border-color:#2563eb;min-width:150px">
+              <span v-if="importModal.running" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
+              {{ importModal.running ? 'Importing\u2026' : `Import ${importCounts.total} Row(s)` }}
+            </button>
+          </template>
+          <template v-else>
+            <button class="form-btn form-btn-primary" @click="closeImport" style="background:#2563eb;border-color:#2563eb;min-width:110px">Done</button>
+          </template>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
 </div>
 </template>
 
@@ -908,6 +995,8 @@ const accounts      = ref([]);
 const pendingAddresses = ref([]);
 
 const collapsed = reactive({ address: false, otherDetails: false });
+
+const SUPPLIER_TYPES = ["Company", "Individual"];
 
 const form = reactive({
   name: "",
@@ -1270,6 +1359,12 @@ const stmtRowsHasMore    = computed(() => (vendorStatement.value.rows || []).len
 // Bulk selection (for the flat table)
 const selectedRows = ref(new Set());
 const bulkBusy = ref(false);
+const importInput = ref(null);
+const importModal = reactive({
+  open: false, running: false, done: false,
+  rows: [], result: { created: 0, updated: 0, failed: 0 },
+});
+
 function toggleRow(name) {
   const s = new Set(selectedRows.value);
   s.has(name) ? s.delete(name) : s.add(name);
@@ -1420,6 +1515,151 @@ async function loadAllBalances() {
     balancesByVendor.value = {};
   }
 }
+
+
+// ── CSV Import ───────────────────────────────────────────────────────────────
+function triggerImport() { importInput.value && importInput.value.click(); }
+
+// Minimal RFC-4180-ish CSV row parser (handles quoted fields with commas)
+function parseCsvLine(line) {
+  const out = []; let cur = ""; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ",") { out.push(cur); cur = ""; }
+      else cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+// Map existing display names (lowercased) -> Supplier id, for upsert matching
+function buildExistingNameMap() {
+  const m = {};
+  for (const v of list.value) {
+    const key = (v.supplier_name || "").trim().toLowerCase();
+    if (key && !(key in m)) m[key] = v.name;
+  }
+  return m;
+}
+
+// Phase 1: parse CSV, classify rows as new/update, open preview dialog
+async function importCSV(e) {
+  const file = e.target.files && e.target.files[0];
+  if (importInput.value) importInput.value.value = "";
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(l => l.trim().length);
+    if (lines.length < 2) { toast("CSV has no data rows", "error"); return; }
+    const header = parseCsvLine(lines[0]).map(h => h.toLowerCase());
+    const idx = (...names) => { for (const n of names) { const i = header.indexOf(n); if (i !== -1) return i; } return -1; };
+    const col = {
+      name:   idx("name", "vendor", "supplier", "vendor name", "supplier name", "display name"),
+      type:   idx("type", "vendor type", "supplier type"),
+      gstin:  idx("gstin", "gstin / tax id", "tax id", "tax_id"),
+      email:  idx("email", "email address", "email_id"),
+      mobile: idx("mobile", "mobile no", "phone"),
+      city:   idx("city"),
+      state:  idx("state"),
+    };
+    if (col.name === -1) { toast('CSV must have a "Name" or "Vendor Name" column', "error"); return; }
+    const existing = buildExistingNameMap();
+    const rows = [];
+    for (let r = 1; r < lines.length; r++) {
+      const cells = parseCsvLine(lines[r]);
+      const vname = (cells[col.name] || "").trim();
+      if (!vname) continue;
+      const rawType = col.type !== -1 ? (cells[col.type] || "").trim() : "";
+      const vtype = SUPPLIER_TYPES.includes(rawType) ? rawType : "Company";
+      const existingName = existing[vname.toLowerCase()] || "";
+      rows.push({
+        vname, vtype,
+        gstin:  col.gstin  !== -1 ? (cells[col.gstin]  || "").trim().toUpperCase() : "",
+        email:  col.email  !== -1 ? (cells[col.email]  || "").trim() : "",
+        mobile: col.mobile !== -1 ? (cells[col.mobile] || "").trim() : "",
+        city:   col.city   !== -1 ? (cells[col.city]   || "").trim() : "",
+        state:  col.state  !== -1 ? (cells[col.state]  || "").trim() : "",
+        action: existingName ? "update" : "new",
+        existingName,
+      });
+    }
+    if (!rows.length) { toast("No valid rows found in CSV", "error"); return; }
+    importModal.rows = rows;
+    importModal.done = false;
+    importModal.running = false;
+    importModal.result = { created: 0, updated: 0, failed: 0 };
+    importModal.open = true;
+  } catch (err) {
+    toast(err.message || "Could not read CSV file", "error");
+  }
+}
+
+const importCounts = computed(() => ({
+  total:  importModal.rows.length,
+  create: importModal.rows.filter(r => r.action === "new").length,
+  update: importModal.rows.filter(r => r.action === "update").length,
+}));
+const importPreviewRows = computed(() => importModal.rows.slice(0, 200));
+
+function closeImport() {
+  if (importModal.running) return;
+  importModal.open = false;
+  importModal.rows = [];
+}
+
+// Build save payload. On update, blank cells are omitted so existing data is kept.
+function buildImportPayload(row, isUpdate) {
+  const p = { supplier_name: row.vname, supplier_type: row.vtype };
+  if (row.vtype !== "Individual") p.company_name = row.vname;
+  const setIf = (k, v) => { if (!isUpdate || (v !== "" && v != null)) p[k] = v; };
+  setIf("tax_id", row.gstin);
+  setIf("email_id", row.email);
+  setIf("mobile_no", row.mobile);
+  setIf("city", row.city);
+  setIf("state", row.state);
+  if (!isUpdate) {
+    p.default_currency = "INR";
+    p.gst_treatment = row.gstin ? "Registered Business" : "Unregistered Business";
+  } else if (row.gstin) {
+    p.gst_treatment = "Registered Business";
+  }
+  return p;
+}
+
+// Phase 2: execute upsert, then show summary
+async function runImport() {
+  if (!importModal.rows.length || importModal.running) return;
+  importModal.running = true;
+  let created = 0, updated = 0, failed = 0;
+  try {
+    const booksCompany = await resolveCompany();
+    for (const row of importModal.rows) {
+      try {
+        if (row.action === "update" && row.existingName) {
+          const fresh = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Supplier", name: row.existingName });
+          await apiSave({ ...fresh, ...buildImportPayload(row, true), doctype: "Supplier", name: row.existingName });
+          updated++;
+        } else {
+          await apiSave({ doctype: "Supplier", naming_series: "SUPP-.YYYY.-.#####", books_company: booksCompany, ...buildImportPayload(row, false) });
+          created++;
+        }
+      } catch { failed++; }
+    }
+  } finally {
+    importModal.result = { created, updated, failed };
+    importModal.running = false;
+    importModal.done = true;
+    await load();
+  }
+}
+
 
 onMounted(async () => {
   await load();
@@ -1713,4 +1953,40 @@ onMounted(async () => {
 @media (max-width: 480px) {
   .view-toggle-btn { display: none !important; }
 }
+
+/* ── CSV Import Modal styles ────────────────────────────────────────────── */
+.cus-import-stats { display: flex; gap: 10px; margin-bottom: 14px; }
+.cus-import-stat {
+  flex: 1; text-align: center; padding: 12px 8px; border-radius: 10px;
+  background: #f8fafc; border: 1px solid #e5e7eb;
+}
+.cus-import-stat-val { font-size: 22px; font-weight: 800; color: #111827; line-height: 1; }
+.cus-import-stat-lbl { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; margin-top: 5px; }
+.cus-import-stat-new  { background: #f0fdf4; border-color: #bbf7d0; }
+.cus-import-stat-new  .cus-import-stat-val { color: #15803d; }
+.cus-import-stat-upd  { background: #eff6ff; border-color: #bfdbfe; }
+.cus-import-stat-upd  .cus-import-stat-val { color: #1d4ed8; }
+.cus-import-stat-fail { background: #fef2f2; border-color: #fecaca; }
+.cus-import-stat-fail .cus-import-stat-val { color: #b91c1c; }
+.cus-import-note {
+  font-size: 12px; color: #6b7280; line-height: 1.5;
+  background: #fafbfd; border: 1px solid #eef1f5; border-radius: 8px;
+  padding: 9px 12px; margin-bottom: 12px;
+}
+.cus-import-table-wrap { max-height: 320px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+.cus-import-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cus-import-table th {
+  position: sticky; top: 0; background: #f9fafb; z-index: 1;
+  text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: #9ca3af; padding: 8px 12px; border-bottom: 1px solid #e5e7eb;
+}
+.cus-import-table td { padding: 8px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.cus-import-name { font-weight: 600; color: #111827; }
+.cus-import-sub  { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+.cus-import-mono { font-family: monospace; font-size: 11.5px; color: #374151; }
+.cus-import-badge { font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 12px; }
+.cus-import-badge-new { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.cus-import-badge-upd { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.cus-import-more { padding: 8px 12px; font-size: 11.5px; color: #9ca3af; text-align: center; background: #fafbfd; }
+
 </style>

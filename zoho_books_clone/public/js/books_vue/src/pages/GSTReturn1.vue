@@ -97,7 +97,7 @@
               <tr v-for="n in 6" :key="n"><td colspan="10"><div class="g1-shimmer"></div></td></tr>
             </template>
             <template v-else>
-              <tr v-for="inv in filteredRows" :key="inv.name" class="g1-row">
+              <tr v-for="inv in paginatedRows" :key="inv.name" class="g1-row">
                 <td data-label="Invoice #"><span class="g1-code">{{ inv.name }}</span></td>
                 <td data-label="Date" class="mono muted">{{ fmtDate(inv.posting_date) }}</td>
                 <td data-label="Customer" class="fw5">{{ inv.customer_name || inv.customer }}</td>
@@ -132,7 +132,7 @@
               <tr v-for="n in 6" :key="n"><td colspan="7"><div class="g1-shimmer"></div></td></tr>
             </template>
             <template v-else>
-              <tr v-for="inv in filteredRows" :key="inv.name" class="g1-row">
+              <tr v-for="inv in paginatedRows" :key="inv.name" class="g1-row">
                 <td data-label="Invoice #"><span class="g1-code">{{ inv.name }}</span></td>
                 <td data-label="Date" class="mono muted">{{ fmtDate(inv.posting_date) }}</td>
                 <td data-label="Customer" class="fw5">{{ inv.customer_name || inv.customer }}</td>
@@ -165,8 +165,7 @@
               <tr v-for="n in 4" :key="n"><td colspan="8"><div class="g1-shimmer"></div></td></tr>
             </template>
             <template v-else>
-              <tr v-for="inv in filteredRows" :key="inv.name" class="g1-row">
-                <td data-label="Note #"><span class="g1-code cdnr-code">{{ inv.name }}</span></td>
+              <tr v-for="inv in paginatedRows" :key="inv.name" class="g1-row">
                 <td data-label="Date" class="mono muted">{{ fmtDate(inv.posting_date) }}</td>
                 <td data-label="Customer" class="fw5">{{ inv.customer_name || inv.customer }}</td>
                 <td data-label="GSTIN" class="mono muted sm">{{ inv.customer_gstin || '—' }}</td>
@@ -194,7 +193,7 @@
               <tr v-for="n in 4" :key="n"><td colspan="3"><div class="g1-shimmer"></div></td></tr>
             </template>
             <template v-else>
-              <tr v-for="h in filteredRows" :key="h.hsn_code" class="g1-row">
+              <tr v-for="h in paginatedRows" :key="h.hsn_code" class="g1-row">
                 <td data-label="HSN / SAC Code">
                   <span class="g1-code" :class="h.hsn_code==='Not Set'?'warn-code':''">{{ h.hsn_code }}</span>
                   <span v-if="h.hsn_code==='Not Set'" class="g1-warn-tag">Add HSN to items</span>
@@ -208,9 +207,14 @@
         </table>
       </div>
 
-    </div>
+      <!-- Load More -->
+      <div v-if="!loading && hasMore" class="g1-load-more-wrap">
+        <button class="g1-btn-ghost g1-load-more-btn" @click="loadMore">
+          Load More ({{ filteredRows.length - visibleCount }} remaining)
+        </button>
+      </div>
 
-    <!-- Placeholder (before first compute) -->
+    </div>
     <div v-else class="g1-placeholder">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <div class="g1-ph-title">Select a period and click Compute</div>
@@ -221,7 +225,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { apiGET, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
@@ -300,6 +304,14 @@ const filteredRows = computed(() => {
   }
   return rows;
 });
+
+const PAGE_SIZE = 10;
+const visibleCount = ref(PAGE_SIZE);
+const paginatedRows = computed(() => filteredRows.value.slice(0, visibleCount.value));
+const hasMore = computed(() => visibleCount.value < filteredRows.value.length);
+function loadMore() { visibleCount.value += PAGE_SIZE; }
+
+watch([section, search, period], () => { visibleCount.value = PAGE_SIZE; });
 
 function sortBy(k) {
   if (sortKey.value === k) sortDir.value *= -1;
@@ -422,6 +434,11 @@ onMounted(load);
 .g1-warn-tag { font-size:10.5px; background:#fff7ed; color:#ea580c; border:1px solid #fed7aa; border-radius:4px; padding:1px 7px; margin-left:6px; font-weight:600; }
 .g1-empty { text-align:center; color:#b0bac7; padding:40px !important; font-size:13px; font-style:italic; }
 .g1-shimmer { height:13px; background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%); border-radius:4px; animation:shimmer 1.4s infinite; background-size:200% 100%; margin:10px 0; }
+
+/* Load More */
+.g1-load-more-wrap { display:flex; justify-content:center; padding:14px 16px; border-top:1px solid #f1f5f9; }
+.g1-load-more-btn  { width:100%; max-width:320px; justify-content:center; font-weight:600; color:#2563eb; border-color:#bfdbfe; }
+.g1-load-more-btn:hover { background:#eff6ff; border-color:#93c5fd; }
 
 /* Placeholder */
 .g1-placeholder { display:flex; flex-direction:column; align-items:center; gap:8px; padding:64px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; }

@@ -464,6 +464,9 @@
             <button v-if="viewDoc.docstatus===0" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
               <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
             </button>
+            <button v-if="viewDoc.docstatus===0" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="submitBill(viewDoc)">
+              <span v-html="icon('check',13)"></span> <span class="ab-label">Submit</span>
+            </button>
             <button class="inv-ab-btn" @click="printBILL(viewDoc)">
               <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
             </button>
@@ -1356,6 +1359,15 @@ async function makeRecurringBill(b) {
   if (subName) toast(`Recurring subscription ${subName} created`);
 }
 
+async function submitBill(b) {
+  if (!await confirm({ title: "Submit Bill", body: `Submit ${b.name}? This will post it to the ledger and it can no longer be edited.`, okLabel: "Submit Bill" })) return;
+  try {
+    const submitted = await apiSubmit("Purchase Invoice", b.name);
+    toast.success("Bill submitted");
+    await load();
+    await openView({ name: b.name });
+  } catch (e) { if (e.message !== "Submission cancelled by user") toast.error(e.message || "Submit failed"); }
+}
 async function cancelBill(b) {
   let payments = [];
   try { payments = await apiGET("zoho_books_clone.api.docs.get_bill_payments", { bill_name: b.name }) || []; } catch {}

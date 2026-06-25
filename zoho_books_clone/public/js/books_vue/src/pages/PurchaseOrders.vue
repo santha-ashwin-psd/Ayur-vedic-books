@@ -467,13 +467,16 @@
             <button v-if="canEdit(viewDoc)" class="inv-ab-btn" @click="openEdit(viewDoc);viewOpen=false">
               <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
             </button>
+            <button v-if="canEdit(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="submitPO(viewDoc)">
+              <span v-html="icon('check',13)"></span> <span class="ab-label">Submit</span>
+            </button>
             <button class="inv-ab-btn" @click="emailPO(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
             </button>
             <button class="inv-ab-btn" @click="printPO(viewDoc)">
               <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
             </button>
-            <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods'" class="inv-ab-btn" @click="markAllReceived" :disabled="actionRunning">
+            <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods' && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled'" class="inv-ab-btn" @click="markAllReceived" :disabled="actionRunning">
               <span v-html="icon('truck',13)"></span> <span class="ab-label">Mark Received</span>
             </button>
             <span class="inv-ab-spacer"></span>
@@ -689,7 +692,7 @@
                   </div>
                 </div>
 
-                <div v-if="hasUnreceived" style="display:flex;justify-content:flex-end;margin-top:12px">
+                <div v-if="hasUnreceived && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled'" style="display:flex;justify-content:flex-end;margin-top:12px">
                   <button class="inv-view-cta" @click="markAllReceived" :disabled="actionRunning">
                     <span v-html="icon('truck',14)"></span> Mark All Received
                   </button>
@@ -890,7 +893,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
-import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
+import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, resolveCompany } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
@@ -1003,7 +1006,7 @@ function headerBg(o) {
 }
 function canBill(o) {
   const s = (o?.status||"").toLowerCase();
-  return s !== "cancelled" && s !== "closed" && s !== "billed";
+  return s !== "draft" && s !== "" && s !== "cancelled" && s !== "closed" && s !== "billed";
 }
 function canEdit(o) {
   const s = (o?.status||"").toLowerCase();
@@ -1519,6 +1522,16 @@ async function markAllReceived() {
   actionRunning.value = false;
 }
 
+async function submitPO(o) {
+  const label = (o?.purchase_type === "Services") ? "Confirm Order" : "Issue PO";
+  if (!await confirm({ title: label, body: `Submit ${o.name}? This will confirm the order and it can no longer be edited.`, okLabel: label })) return;
+  try {
+    const submitted = await apiPOST("zoho_books_clone.api.docs.submit_purchase_order", { purchase_order: o.name });
+    toast.success(`Purchase Order ${o.name} confirmed`);
+    await load();
+    await openView({ name: o.name });
+  } catch (e) { toast.error(e.message || "Submit failed"); }
+}
 async function cancelPO(o) {
   if (!await confirm({ title: "Cancel Purchase Order", body: `Cancel ${o.name}? Linked bills must be cancelled separately.`, okLabel: "Cancel PO" })) return;
   try {

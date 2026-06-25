@@ -794,6 +794,9 @@
           <!-- <button class="inv-ab-btn" @click="printViewInvoice">
             <span v-html="icon('printer',13)"></span> <span class="ab-label">Print PDF</span>
           </button> -->
+          <button v-if="viewInv.docstatus===0" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="submitInv(viewInv)">
+            <span v-html="icon('check',13)"></span> <span class="ab-label">Submit</span>
+          </button>
           <button class="inv-ab-btn" @click="duplicateInvoice(viewInv)">
             <span v-html="icon('copy',13)"></span> <span class="ab-label">Duplicate</span>
           </button>
@@ -2171,7 +2174,10 @@ async function openPayment(inv) {
     sendEndpoint:        "zoho_books_clone.api.books_data.record_payment",
     paramKey: "invoice_name",
   });
-  if (paymentName) await load();
+  if (paymentName) {
+    await load();
+    if (viewOpen.value && viewInv.value?.name === inv.name) await openView(inv);
+  }
 }
 // submitPayment() removed — PaymentDialog handles submission.
 
@@ -2223,6 +2229,27 @@ async function duplicateInvoice(inv) {
 }
 
 // ── Cancel / Delete ────────────────────────────────────────────────────
+async function submitInv(inv) {
+  Object.assign(confirmModal, {
+    open: true, loading: false, payments: [],
+    title: "Submit Invoice",
+    message: `Submit ${inv.name}? This will post it to the ledger and it can no longer be edited.`,
+    actionLabel: "Submit Invoice",
+    action: async () => {
+      confirmModal.loading = true;
+      try {
+        const submitted = await apiSubmit("Sales Invoice", inv.name);
+        toast("Invoice submitted");
+        confirmModal.open = false;
+        await load();
+        await openView({ name: inv.name });
+      } catch(e) {
+        confirmModal.open = false;
+        if (e.message !== "Submission cancelled by user") toast(e.message || "Submit failed", "error");
+      }
+    },
+  });
+}
 async function confirmAction(action, inv) {
   if (action==="cancel") {
     const isPaid = inv.outstanding_amount <= 0 && inv.docstatus === 1;

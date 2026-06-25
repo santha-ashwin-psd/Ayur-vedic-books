@@ -1000,7 +1000,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
-import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, resolveCompany } from "../api/client.js";
+import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, resolveCompany } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
@@ -1642,9 +1642,12 @@ async function markAllDelivered() {
 
 async function submitSO(o) {
   if (!await confirm({ title: "Submit Sales Order", body: `Submit ${o.name}? This will confirm the order and it can no longer be edited.`, okLabel: "Submit" })) return;
-  viewOpen.value = false;
-  await openEdit(o);
-  await saveSO("To Deliver");
+  try {
+    const submitted = await apiPOST("zoho_books_clone.api.docs.submit_sales_order", { sales_order: o.name });
+    toast.success(`Sales Order ${o.name} confirmed`);
+    await load();
+    await openView({ name: o.name });
+  } catch (e) { toast.error(e.message || "Submit failed"); }
 }
 async function cancelSO(o) {
   if (!await confirm({ title: "Cancel Sales Order", body: `Cancel ${o.name}? Linked invoices must be cancelled separately.`, okLabel: "Cancel SO" })) return;

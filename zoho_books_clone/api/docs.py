@@ -2510,6 +2510,25 @@ def get_sales_order_links(sales_order):
     return {"sales_invoices": sis or [], "delivery_challans": []}
 
 
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def submit_sales_order(sales_order):
+    """Submit a draft Sales Order — mirrors save_doc(docstatus=1) used by the add drawer."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    # Sales Order is not a submittable doctype (is_submittable=0).
+    # "Submitting" means transitioning status from Draft → To Deliver.
+    so = frappe.get_doc("Sales Order", sales_order)
+    if (so.status or "Draft") != "Draft":
+        return so.as_dict()  # already confirmed — return current state
+    frappe.db.set_value("Sales Order", sales_order, {
+        "status": "To Deliver",
+    }, update_modified=True)
+    frappe.db.commit()
+    so.reload()
+    return so.as_dict()
+
+
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def cancel_sales_order_safe(sales_order):
     """Cancel an SO only if it has no submitted downstream invoices."""
@@ -2788,6 +2807,27 @@ def get_purchase_order_links(purchase_order):
         fields=["name", "posting_date", "grand_total", "outstanding_amount", "status", "docstatus"],
         order_by="posting_date desc")
     return {"bills": bills or [], "purchase_receipts": []}
+
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def submit_purchase_order(purchase_order):
+    """Submit a draft Purchase Order — mirrors save_doc(docstatus=1) used by the add drawer."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    # Purchase Order is a submittable doctype (is_submittable=1).
+    po = frappe.get_doc("Purchase Order", purchase_order)
+    if po.docstatus == 1:
+        return po.as_dict()  # already submitted — return current state
+    if po.docstatus != 0:
+        frappe.throw("Cannot submit — Purchase Order is not in draft state")
+    po.flags.ignore_permissions = True
+    po.status = "To Receive"
+    po.submit()
+    frappe.db.set_value("Purchase Order", purchase_order, "status", "To Receive", update_modified=False)
+    frappe.db.commit()
+    po.reload()
+    return po.as_dict()
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])

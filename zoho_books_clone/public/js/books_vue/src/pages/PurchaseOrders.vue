@@ -1438,6 +1438,7 @@ async function savePO(newStatus) {
       delivery_address_name: form.delivery_address_name || "",
       set_warehouse: form.set_warehouse || "",
       status: newStatus || "Draft",
+      docstatus: newStatus === "Draft" ? 0 : 1,
       terms: form.terms || "",
       items: lines.value.filter(l => l.item_code).map(l => ({
         doctype: "Purchase Order Item", item_code: l.item_code,
@@ -1449,7 +1450,8 @@ async function savePO(newStatus) {
     };
     if (editingName.value) doc.name = editingName.value;
     const saved = await apiSave(doc);
-    toast.success(`Purchase Order ${saved?.name || ""} saved`);
+    const msg = newStatus === "Draft" ? "saved as Draft" : "confirmed";
+    toast.success(`Purchase Order ${saved?.name || ""} ${msg}`);
     drawerOpen.value = false;
     await load();
   } catch (e) { toast.error(e.message || "Failed to save PO"); }

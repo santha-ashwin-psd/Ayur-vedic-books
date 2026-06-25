@@ -2363,9 +2363,13 @@ def mark_so_delivered(sales_order, line_qtys=None):
         except json.JSONDecodeError:
             line_qtys = None
 
+    so = frappe.get_doc("Sales Order", sales_order)
+    warehouse = getattr(so, "set_warehouse", "") or ""
+    company   = getattr(so, "company", "") or ""
+
     rows = frappe.get_all("Sales Order Item",
         filters={"parent": sales_order},
-        fields=["name", "qty", "delivered_qty"])
+        fields=["name", "item_code", "qty", "delivered_qty"])
     if line_qtys:
         line_qtys = {str(k): v for k, v in line_qtys.items()}
     updated = 0
@@ -2383,6 +2387,11 @@ def mark_so_delivered(sales_order, line_qtys=None):
         new_delivered = flt(r.delivered_qty) + add
         frappe.db.set_value("Sales Order Item", r.name, "delivered_qty",
                             new_delivered, update_modified=False)
+        # NOTE: do NOT touch reserved_qty here.
+        # reserved_qty is released only when the Sales Invoice is submitted
+        # (via SI._release_reserved_qty).  Releasing it here as well would
+        # free the reservation before the invoice is raised, causing
+        # projected_qty to show more available stock than actually exists.
         updated += 1
     # Update parent status
     new_status = _so_status_from_fulfillment(sales_order)
@@ -2642,9 +2651,13 @@ def mark_po_received(purchase_order, line_qtys=None):
     if line_qtys:
         line_qtys = {str(k): v for k, v in line_qtys.items()}
 
+    po = frappe.get_doc("Purchase Order", purchase_order)
+    warehouse = getattr(po, "set_warehouse", "") or ""
+    company   = getattr(po, "company", "") or ""
+
     rows = frappe.get_all("Purchase Order Item",
         filters={"parent": purchase_order},
-        fields=["name", "qty", "received_qty"])
+        fields=["name", "item_code", "qty", "received_qty"])
     updated = 0
     for r in rows:
         remaining = max(0.0, flt(r.qty) - flt(r.received_qty))
@@ -2660,6 +2673,11 @@ def mark_po_received(purchase_order, line_qtys=None):
         new_received = flt(r.received_qty) + add
         frappe.db.set_value("Purchase Order Item", r.name, "received_qty",
                             new_received, update_modified=False)
+        # NOTE: do NOT touch ordered_qty here.
+        # ordered_qty is released only when the Purchase Invoice is submitted
+        # (via PI._release_ordered_qty).  Releasing it here would free the
+        # on-order commitment before the bill is raised, making projected_qty
+        # show more incoming stock than actually expected.
         updated += 1
     new_status = _po_status_from_fulfillment(purchase_order)
     frappe.db.set_value("Purchase Order", purchase_order, "status", new_status,

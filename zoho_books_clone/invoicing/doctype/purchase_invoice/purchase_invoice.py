@@ -94,6 +94,9 @@ class PurchaseInvoice(Document):
             self.outstanding_amount = self.grand_total
             self.status = "Submitted"
             post_purchase_invoice(self)
+            # Release ordered_qty now that the bill is raised against the PO
+            if getattr(self, "update_stock", 0) and getattr(self, "purchase_order", None):
+                self._release_ordered_qty(direction=-1)
 
     def on_cancel(self):
         self.status = "Cancelled"
@@ -101,6 +104,63 @@ class PurchaseInvoice(Document):
         reverse_voucher(self.doctype, self.name)
         if getattr(self, "is_return", 0):
             self._adjust_source_bill_outstanding(direction=+1)
+        # Restore ordered_qty and reverse billed_qty when a normal bill is cancelled
+        if not getattr(self, "is_return", 0) and getattr(self, "purchase_order", None):
+            if getattr(self, "update_stock", 0):
+                self._release_ordered_qty(direction=+1)
+            self._reverse_billed_qty()
+
+    def _release_ordered_qty(self, direction: int):
+        """Release (direction=-1) or restore (+1) ordered_qty when billing against a PO."""
+        from zoho_books_clone.inventory.utils import update_bin
+        warehouse = getattr(self, "set_warehouse", None) or ""
+        for row in (self.items or []):
+            wh = getattr(row, "warehouse", None) or warehouse
+            if not wh or not row.item_code:
+                continue
+            if flt(row.qty) <= 0:
+                continue
+            is_stock = frappe.db.get_value("Item", row.item_code, "is_stock_item")
+            if not is_stock:
+                continue
+            update_bin(
+                item_code=row.item_code,
+                warehouse=wh,
+                ordered_qty_delta=direction * flt(row.qty),
+                company=self.company or "",
+            )
+
+    def _reverse_billed_qty(self):
+        """Decrement billed_qty on linked PO lines and refresh PO status."""
+        po_name = self.purchase_order
+        for row in (self.items or []):
+            if not row.item_code or flt(row.qty) <= 0:
+                continue
+            po_rows = frappe.db.sql("""
+                SELECT name, billed_qty FROM `tabPurchase Order Item`
+                WHERE parent = %s AND item_code = %s
+                ORDER BY idx
+            """, (po_name, row.item_code), as_dict=True)
+            remaining_to_reverse = flt(row.qty)
+            for pr in po_rows:
+                if remaining_to_reverse <= 0:
+                    break
+                take = min(flt(pr.billed_qty), remaining_to_reverse)
+                if take <= 0:
+                    continue
+                frappe.db.set_value(
+                    "Purchase Order Item", pr.name, "billed_qty",
+                    max(0.0, flt(pr.billed_qty) - take),
+                    update_modified=False,
+                )
+                remaining_to_reverse -= take
+        try:
+            from zoho_books_clone.api.docs import _po_status_from_fulfillment
+            new_status = _po_status_from_fulfillment(po_name)
+            frappe.db.set_value("Purchase Order", po_name, "status",
+                                new_status, update_modified=True)
+        except Exception:
+            pass
 
     def _adjust_source_bill_outstanding(self, direction: int):
         """Reduce (direction=-1) or restore (+1) outstanding on the source PINV.

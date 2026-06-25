@@ -111,6 +111,42 @@ class SalesInvoice(Document):
         reverse_voucher(self.doctype, self.name)
         if getattr(self, "update_stock", 0) and getattr(self, "sales_order", None):
             self._release_reserved_qty(direction=+1)
+        # Reverse billed_qty on linked SO lines so the SO becomes re-invoiceable
+        if getattr(self, "sales_order", None):
+            self._reverse_billed_qty()
+
+    def _reverse_billed_qty(self):
+        """Decrement billed_qty on the linked Sales Order lines and refresh SO status."""
+        so_name = self.sales_order
+        for row in (self.items or []):
+            if not row.item_code or flt(row.qty) <= 0:
+                continue
+            so_rows = frappe.db.sql("""
+                SELECT name, billed_qty FROM `tabSales Order Item`
+                WHERE parent = %s AND item_code = %s
+                ORDER BY idx
+            """, (so_name, row.item_code), as_dict=True)
+            remaining_to_reverse = flt(row.qty)
+            for sr in so_rows:
+                if remaining_to_reverse <= 0:
+                    break
+                take = min(flt(sr.billed_qty), remaining_to_reverse)
+                if take <= 0:
+                    continue
+                frappe.db.set_value(
+                    "Sales Order Item", sr.name, "billed_qty",
+                    max(0.0, flt(sr.billed_qty) - take),
+                    update_modified=False,
+                )
+                remaining_to_reverse -= take
+        # Recalculate SO status so the Invoice button reappears
+        try:
+            from zoho_books_clone.api.docs import _so_status_from_fulfillment
+            new_status = _so_status_from_fulfillment(so_name)
+            frappe.db.set_value("Sales Order", so_name, "status",
+                                new_status, update_modified=True)
+        except Exception:
+            pass
 
     def _release_reserved_qty(self, direction: int):
         """Release (direction=-1) or restore (+1) reserved_qty when invoicing directly against an SO."""

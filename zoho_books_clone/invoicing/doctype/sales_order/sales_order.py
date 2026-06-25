@@ -28,7 +28,6 @@ class SalesOrder(Document):
         self._update_reserved_qty(direction=-1)
 
     def _update_reserved_qty(self, direction: int):
-        """Increase (submit) or decrease (cancel) reserved_qty in Bin for each SO line."""
         from zoho_books_clone.inventory.utils import update_bin
         warehouse = getattr(self, "set_warehouse", None) or ""
         for row in (self.items or []):
@@ -38,9 +37,17 @@ class SalesOrder(Document):
             is_stock = frappe.db.get_value("Item", row.item_code, "is_stock_item")
             if not is_stock:
                 continue
+            if direction == -1:
+                billed = flt(getattr(row, "billed_qty", 0))
+                still_reserved = max(0.0, flt(row.qty) - billed)
+                if still_reserved <= 0:
+                    continue
+                delta = -still_reserved
+            else:
+                delta = flt(row.qty)
             update_bin(
                 item_code=row.item_code,
                 warehouse=wh,
-                reserved_qty_delta=direction * flt(row.qty),
+                reserved_qty_delta=delta,
                 company=self.company or "",
             )

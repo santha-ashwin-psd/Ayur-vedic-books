@@ -179,7 +179,9 @@ class StockEntry(Document):
         sle.flags.ignore_links = True
         sle.flags.ignore_mandatory = True
         sle.insert(ignore_permissions=True)
-        self._sync_bin(item_code, warehouse, qty_after, valuation_rate)
+        # NOTE: do NOT call _sync_bin here — SLE.after_insert._update_bin() is the
+        # single authoritative writer for actual_qty.  Calling _sync_bin as well
+        # would decrement/increment actual_qty a second time on every SLE insert.
 
     def _sync_bin(self, item_code, warehouse, new_qty, valuation_rate, _=None):
         """Create or update the Bin record for item+warehouse after an SLE."""
@@ -385,6 +387,6 @@ class StockEntry(Document):
             rev.flags.ignore_links = True
             rev.flags.ignore_mandatory = True
             rev.insert(ignore_permissions=True)
-            self._sync_bin(sle.item_code, sle.warehouse, qty_after, flt(sle.valuation_rate))
+            # NOTE: do NOT call _sync_bin here — SLE.after_insert._update_bin() handles it.
 
         frappe.db.commit()

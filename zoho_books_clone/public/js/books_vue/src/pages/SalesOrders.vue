@@ -630,6 +630,9 @@
               <button v-if="canInvoice(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="openInvoiceModal(viewDoc)">
                 <span v-html="icon('repeat',13)"></span> <span class="ab-label">Invoice</span>
               </button>
+              <button v-if="isDraft(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="submitSO(viewDoc)">
+                <span v-html="icon('check',13)"></span> <span class="ab-label">Submit</span>
+              </button>
               <button v-if="canCancel(viewDoc)" class="inv-ab-btn inv-ab-danger" @click="cancelSO(viewDoc)">
                 <span v-html="icon('x',13)"></span> <span class="ab-label">Cancel</span>
               </button>
@@ -820,7 +823,7 @@
                       </tbody>
                     </table>
                   </div>
-                  <div v-if="hasUndelivered" style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+                  <div v-if="hasUndelivered && !isDraft(viewDoc) && (viewDoc?.status||'').toLowerCase() !== 'cancelled'" style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
                     <button class="inv-ab-btn" @click="markAllDelivered" :disabled="actionRunning">
                       <span v-html="icon('truck',13)"></span> <span class="ab-label">Mark All Delivered</span>
                     </button>
@@ -1116,7 +1119,7 @@ function headerBg(o) {
 }
 function canInvoice(o) {
   const s = (o?.status||"").toLowerCase();
-  return s !== "cancelled" && s !== "closed" && s !== "invoiced";
+  return s !== "draft" && s !== "cancelled" && s !== "closed" && s !== "invoiced";
 }
 function canCancel(o) {
   const s = (o?.status||"").toLowerCase();
@@ -1637,6 +1640,12 @@ async function markAllDelivered() {
   actionRunning.value = false;
 }
 
+async function submitSO(o) {
+  if (!await confirm({ title: "Submit Sales Order", body: `Submit ${o.name}? This will confirm the order and it can no longer be edited.`, okLabel: "Submit" })) return;
+  viewOpen.value = false;
+  await openEdit(o);
+  await saveSO("To Deliver");
+}
 async function cancelSO(o) {
   if (!await confirm({ title: "Cancel Sales Order", body: `Cancel ${o.name}? Linked invoices must be cancelled separately.`, okLabel: "Cancel SO" })) return;
   try {

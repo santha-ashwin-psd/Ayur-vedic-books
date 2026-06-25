@@ -992,7 +992,7 @@
                 </select>
               </div>
             </div>
-
+<!-- 
             <div class="inv-sec-lbl">TDS / Withholding Tax</div>
             <div style="margin-bottom:18px">
               <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;border:1px solid #e8ecf0;background:#fafbfd">
@@ -1014,7 +1014,7 @@
                   </select>
                 </div>
               </div>
-            </div>
+            </div> -->
 
             <div class="inv-sec-lbl">Opening Balance</div>
             <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">

@@ -117,8 +117,19 @@
           <div class="cash-field"><label class="cash-label">Date <span class="req">*</span></label><input v-model="form.payment_date" type="date" class="cash-input" /></div>
           <div class="cash-field"><label class="cash-label">Amount <span class="req">*</span></label><input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="cash-input" /></div>
           <div class="cash-field" style="grid-column:1/-1">
-            <label class="cash-label">{{ form.payment_type==='Receive'?'Customer':'Vendor' }} <span class="req">*</span></label>
-            <SearchableSelect v-model="form.party" :options="partyOptions" :placeholder="form.payment_type==='Receive'?'Select customer…':'Select vendor…'" @search="fetchParties" />
+            <label class="cash-label">{{ form.payment_type==='Receive'?'Customer':'Vendor/Employee' }} <span class="req">*</span></label>
+            <SearchableSelect v-model="form.party" :options="partyOptions" :placeholder="form.payment_type==='Receive'?'Select customer…':'Select vendor/employee…'" @search="fetchParties" />
+          </div>
+          <div class="cash-field" style="grid-column:1/-1" v-if="form.payment_type==='Receive'">
+            <label class="cash-label">Purpose <span class="req">*</span></label>
+            <select v-model="form.custom_purpose" class="cash-input">
+              <option value="">— Select purpose —</option>
+              <option v-for="p in CASH_IN_PURPOSES" :key="p" :value="p">{{ p }}</option>
+            </select>
+          </div>
+          <div class="cash-field" style="grid-column:1/-1" v-else>
+            <label class="cash-label">Expense Category <span class="req">*</span></label>
+            <SearchableSelect v-model="form.custom_expense_category" :options="expenseCategoryOptions" placeholder="Select expense category…" @search="fetchExpenseCategories" @open="fetchExpenseCategories('')" />
           </div>
           <div class="cash-field" style="grid-column:1/-1"><label class="cash-label">Remarks</label><textarea v-model="form.remarks" rows="2" class="cash-input" placeholder="Optional…"></textarea></div>
         </div>
@@ -152,9 +163,11 @@
           <div class="cash-section-hdr"><span v-html="icon('info',13)"></span> Details</div>
           <div class="cash-meta-grid">
             <div><div class="cash-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.payment_date) }}</div></div>
-            <div><div class="cash-meta-lbl">Party</div><div>{{ viewDoc.party_name||viewDoc.party||'—' }}</div></div>
+            <div><div class="cash-meta-lbl">{{ viewDoc.payment_type==='Receive'?'Customer':'Vendor/Employee' }}</div><div>{{ viewDoc.party_name||viewDoc.party||'—' }}</div></div>
             <div><div class="cash-meta-lbl">Type</div><div>{{ viewDoc.payment_type==='Receive'?'Cash In':'Cash Out' }}</div></div>
             <div><div class="cash-meta-lbl">Mode</div><div>Cash</div></div>
+            <div v-if="viewDoc.payment_type==='Receive'"><div class="cash-meta-lbl">Purpose</div><div>{{ viewDoc.custom_purpose||'—' }}</div></div>
+            <div v-else><div class="cash-meta-lbl">Expense Category</div><div>{{ viewDoc.custom_expense_category||'—' }}</div></div>
           </div>
           <template v-if="viewDoc.remarks">
             <div class="cash-section-hdr"><span v-html="icon('file',13)"></span> Remarks</div>
@@ -189,9 +202,20 @@ const drawerOpen=ref(false),drawerSaving=ref(false),actionBusy=ref(false),bulkBu
 const viewOpen=ref(false),viewDoc=ref(null);
 const selected=ref(new Set());
 const partyOptions=ref([]);
+const expenseCategoryOptions=ref([]);
+const CASH_IN_PURPOSES=["Sales Receipt","Customer Advance","Loan Received","Capital Introduced","Other Income","Refund Received","Other"];
+async function fetchExpenseCategories(q=""){
+  try{
+    const company=await resolveCompany();
+    const filters=[["is_group","=",0],["disabled","=",0],["company","=",company],["account_type","=","Expense"]];
+    if(q)filters.push(["name","like",`%${q}%`]);
+    const rows=await apiList("Account",{fields:["name"],filters,limit:30,order:"name asc"});
+    expenseCategoryOptions.value=rows.map(r=>({label:r.name,value:r.name}));
+  }catch{expenseCategoryOptions.value=[];}
+}
 const sortCol=ref("payment_date"),sortDir=ref("desc");
-const form=reactive({payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",remarks:""});
-async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Payment Entry",{fields:["name","party","party_name","payment_type","payment_date","paid_amount","remarks","docstatus"],filters:[["company","=",co],["mode_of_payment","=","Cash"],["docstatus","=",1]],limit:200,order: "payment_date desc, creation desc"});selected.value=new Set();}catch(e){toast.error(e.message||"Failed to load cash entries");}finally{loading.value=false;}}
+const form=reactive({payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",custom_purpose:"",custom_expense_category:"",remarks:""});
+async function load(){loading.value=true;try{const co=await resolveCompany();list.value=await apiList("Payment Entry",{fields:["name","party","party_name","payment_type","payment_date","paid_amount","remarks","custom_purpose","custom_expense_category","docstatus"],filters:[["company","=",co],["mode_of_payment","=","Cash"],["docstatus","=",1]],limit:200,order: "payment_date desc, creation desc"});selected.value=new Set();}catch(e){toast.error(e.message||"Failed to load cash entries");}finally{loading.value=false;}}
 const filtered=computed(()=>{let r=list.value;if(activeTab.value!=="all")r=r.filter(p=>p.payment_type===activeTab.value);if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(p=>(p.party_name||p.party||"").toLowerCase().includes(q)||(p.name||"").toLowerCase().includes(q)||(p.remarks||"").toLowerCase().includes(q));}return r;});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
@@ -210,9 +234,9 @@ function exportCSV(){
   const rows=selected.value.size?sorted.value.filter(p=>selected.value.has(p.name)):sorted.value;
   if(!rows.length)return;
   const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
-  const lines=[["Entry #","Party","Date","Type","Amount","Remarks"].join(",")];
+  const lines=[["Entry #","Party","Date","Type","Amount","Purpose/Expense Category","Remarks"].join(",")];
   for(const p of rows){
-    lines.push([p.name,p.party||"",fmtDate(p.payment_date),p.payment_type==="Receive"?"Cash In":"Cash Out",flt(p.paid_amount)||0,p.remarks||""].map(esc).join(","));
+    lines.push([p.name,p.party||"",fmtDate(p.payment_date),p.payment_type==="Receive"?"Cash In":"Cash Out",flt(p.paid_amount)||0,p.payment_type==="Receive"?(p.custom_purpose||""):(p.custom_expense_category||""),p.remarks||""].map(esc).join(","));
   }
   const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
@@ -239,23 +263,34 @@ async function fetchParties(q=""){
     const filters=[["disabled","=",0]];
     if(q)filters.push([nameField,"like","%"+q+"%"]);
     const rows=await apiList(dt,{fields:["name",nameField],filters,limit:30,order:nameField+" asc"});
-    partyOptions.value=rows.map(r=>({label:r[nameField]||r.name,value:r.name}));
+    partyOptions.value = rows.map(r => ({
+      label: r[nameField] || r.name,
+      value: r.name,
+      party_name: r[nameField] || r.name
+    }));
   }catch{partyOptions.value=[];}
 }
 // Switching Cash In/Out changes the party master — reset selection + reload list.
-watch(()=>form.payment_type,()=>{form.party="";if(drawerOpen.value)fetchParties("");});
+watch(()=>form.payment_type,()=>{form.party="";form.custom_purpose="";form.custom_expense_category="";if(drawerOpen.value){fetchParties("");if(form.payment_type==="Pay")fetchExpenseCategories("");}});
 
-function openNew(){Object.assign(form,{payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",remarks:""});partyOptions.value=[];fetchParties("");drawerOpen.value=true;}
+function openNew(){Object.assign(form,{payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",custom_purpose:"",custom_expense_category:"",remarks:""});partyOptions.value=[];expenseCategoryOptions.value=[];fetchParties("");drawerOpen.value=true;}
 function openView(p){viewDoc.value=p;viewOpen.value=true;}
 
 async function saveCash(){
   if(!flt(form.paid_amount))return toast.error("Amount is required");
-  if(!form.party.trim())return toast.error("Party name is required");
+  if(!form.party.trim())return toast.error(form.payment_type==="Receive"?"Customer is required":"Vendor/Employee is required");
+  if(form.payment_type==="Receive"&&!form.custom_purpose)return toast.error("Purpose is required");
+  if(form.payment_type==="Pay"&&!form.custom_expense_category)return toast.error("Expense Category is required");
   if(!cashAccount.value)return toast.error("Cash account not configured — check chart of accounts");
   drawerSaving.value=true;
   try{
     const company=await resolveCompany();const isCashIn=form.payment_type==="Receive";
-    const doc={doctype:"Payment Entry",company,payment_type:form.payment_type,party_type:isCashIn?"Customer":"Supplier",party:form.party,mode_of_payment:"Cash",paid_from:isCashIn?(receivableAccount.value||cashAccount.value):cashAccount.value,paid_to:isCashIn?cashAccount.value:(payableAccount.value||cashAccount.value),paid_from_account_currency:companyCurrency.value,paid_to_account_currency:companyCurrency.value,source_exchange_rate:1,target_exchange_rate:1,paid_amount:flt(form.paid_amount),received_amount:flt(form.paid_amount),payment_date:form.payment_date,remarks:form.remarks||""};
+    const selectedParty = partyOptions.value.find(
+      o => o.value === form.party
+    );
+
+    const partyName = selectedParty?.party_name || form.party;
+    const doc={doctype:"Payment Entry",company,payment_type:form.payment_type,party_type:isCashIn?"Customer":"Supplier",party:form.party,party_name: partyName,mode_of_payment:"Cash",paid_from:isCashIn?(receivableAccount.value||cashAccount.value):cashAccount.value,paid_to:isCashIn?cashAccount.value:(payableAccount.value||cashAccount.value),paid_from_account_currency:companyCurrency.value,paid_to_account_currency:companyCurrency.value,source_exchange_rate:1,target_exchange_rate:1,paid_amount:flt(form.paid_amount),received_amount:flt(form.paid_amount),payment_date:form.payment_date,custom_purpose:isCashIn?form.custom_purpose:"",custom_expense_category:isCashIn?"":form.custom_expense_category,remarks:form.remarks||""};
     const saved=await apiSave(doc);await apiSubmit("Payment Entry",saved.name);
     toast.success(`Cash entry ${saved?.name||""} created`);drawerOpen.value=false;await load();
   }catch(e){toast.error(e.message||"Failed to save");}finally{drawerSaving.value=false;}
@@ -332,7 +367,7 @@ onMounted(()=>{load();loadAccounts();});
 .cash-dh-ico{width:42px;height:42px;background:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;color:#2563eb;flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,.08);}
 .cash-dh-title{font-size:15px;font-weight:700;color:#0f172a;}
 .cash-dh-sub{font-size:12px;color:#475569;margin-top:1px;}
-.cash-dh-top .cash-badge{margin-left:auto;}
+.cash-dh-top .cash-badge{margin-left:auto;text-wrap-mode: nowrap;}
 .cash-dh-amount{margin-top:16px;}
 .cash-dh-amt-lbl{font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
 .cash-dh-amt-val{font-size:26px;font-weight:800;letter-spacing:-.01em;margin-top:2px;}

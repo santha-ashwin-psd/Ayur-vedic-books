@@ -744,10 +744,10 @@
             <button class="inv-ab-btn" @click="emailQT(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
             </button>
-            <button v-if="viewDoc.status!=='Accepted' && viewDoc.status!=='Converted'" class="inv-ab-btn" @click="markStatus(viewDoc,'Accepted')">
+            <button v-if="viewDoc.docstatus===1 && viewDoc.status!=='Accepted' && viewDoc.status!=='Converted'" class="inv-ab-btn" @click="markStatus(viewDoc,'Accepted')">
               <span v-html="icon('check',13)"></span> <span class="ab-label">Accept</span>
             </button>
-            <button v-if="viewDoc.status!=='Declined' && viewDoc.status!=='Converted'" class="inv-ab-btn" @click="markStatus(viewDoc,'Declined')">
+            <button v-if="viewDoc.docstatus===1 && viewDoc.status!=='Declined' && viewDoc.status!=='Converted'" class="inv-ab-btn" @click="markStatus(viewDoc,'Declined')">
               <span v-html="icon('x',13)"></span> <span class="ab-label">Decline</span>
             </button>
             <button v-if="canConvert(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="openConvertModal(viewDoc)">
@@ -1301,6 +1301,7 @@ function sortArrowTxt(col) {
   return sortDir.value === "asc" ? "↑" : "↓";
 }
 function canConvert(q) {
+  if (q?.docstatus !== 1) return false;
   const s = effectiveStatus(q);
   return s !== "Converted" && s !== "Declined" && s !== "Lost";
 }

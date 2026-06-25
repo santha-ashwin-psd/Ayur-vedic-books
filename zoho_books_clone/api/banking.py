@@ -330,6 +330,7 @@ def post_bank_transfer(
     to_account: str,
     amount: str,
     date: str = None,
+    purpose: str = "",
     description: str = "",
 ) -> dict:
     """
@@ -371,6 +372,7 @@ def post_bank_transfer(
         "transaction_type": "Transfer",
         "status": "Reconciled",
         "reference_number": xref,
+        "custom_transfer_purpose": purpose,
     })
     bt_from.flags.ignore_permissions = True
     bt_from.flags.skip_gl_posting = True
@@ -388,6 +390,7 @@ def post_bank_transfer(
         "transaction_type": "Transfer",
         "status": "Reconciled",
         "reference_number": xref,
+        "custom_transfer_purpose": purpose,
     })
     bt_to.flags.ignore_permissions = True
     bt_to.flags.skip_gl_posting = True
@@ -457,7 +460,7 @@ def get_bank_transfers(company: str = None) -> list:
     rows = frappe.get_all(
         "Bank Transaction",
         filters={"transaction_type": "Transfer", "docstatus": 1, "bank_account": ["in", acct_names]},
-        fields=["name", "bank_account", "date", "description", "debit", "credit", "status", "reference_number"],
+        fields=["name", "bank_account", "date", "description", "debit", "credit", "status", "reference_number","custom_transfer_purpose"],
         order_by="date desc, creation desc",
         limit=500,
     )
@@ -468,7 +471,7 @@ def get_bank_transfers(company: str = None) -> list:
         g = groups.setdefault(key, {
             "reference": r.reference_number or "", "date": r.date, "status": "Reconciled",
             "from_account": None, "to_account": None, "amount": 0.0,
-            "from_transaction": None, "to_transaction": None, "_from_desc": "",
+            "from_transaction": None, "to_transaction": None, "_from_desc": "", "description": "","purpose": "",
         })
         if r.date and (not g["date"] or str(r.date) < str(g["date"])):
             g["date"] = r.date
@@ -484,16 +487,23 @@ def get_bank_transfers(company: str = None) -> list:
                 g["amount"] = flt(r.credit)
         if (r.status or "") != "Reconciled":
             g["status"] = "Unreconciled"
+        if r.custom_transfer_purpose and not g["purpose"]:
+            g["purpose"] = r.custom_transfer_purpose
 
     out = []
     for g in groups.values():
         # Skip credit-only legacy legs (inbound mirror already shown via its outbound leg).
         if not g["from_account"] and not g["from_transaction"]:
             continue
+        # Extract user notes from the description field (format: "Transfer to X — <note>")
+        raw_desc = g.get("_from_desc", "") or ""
+        m = re.search(r" — (.+)$", raw_desc)
+        if m:
+            g["description"] = m.group(1).strip()
         if not g["to_account"]:
-            m = re.search(r"Transfer to (.+?)(?: —|$)", g.pop("_from_desc", "") or "")
-            if m:
-                g["to_account"] = m.group(1).strip()
+            m2 = re.search(r"Transfer to (.+?)(?: —|$)", raw_desc)
+            if m2:
+                g["to_account"] = m2.group(1).strip()
         g.pop("_from_desc", None)
         out.append(g)
     out.sort(key=lambda x: str(x.get("date") or ""), reverse=True)

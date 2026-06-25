@@ -13,10 +13,10 @@
           <option value="">All Accounts</option>
           <option v-for="a in bankAccounts" :key="a.name" :value="a.name">{{ a.account_name||a.name }}</option>
         </select>
-        <label class="bt-import-btn" :class="{disabled:!selectedAccount||importing}">
+        <!-- <label class="bt-import-btn" :class="{disabled:!selectedAccount||importing}">
           📥 Import CSV
           <input type="file" accept=".csv,text/csv" style="display:none" :disabled="!selectedAccount||importing" @change="onCsvSelected"/>
-        </label>
+        </label> -->
         <button class="bt-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
       </div>
     </div>
@@ -67,7 +67,7 @@
               </td>
               <td class="mono-sm">{{ fmtDate(t.date) }}</td>
               <td class="text-muted">{{ t.bank_account||'—' }}</td>
-              <td>{{ t.description||'—' }}</td>
+              <td class="bt-description">{{ t.description || '—' }}</td>
               <td class="mono-sm text-muted">{{ t.reference_number||'—' }}</td>
               <td><span class="bt-badge" :class="t.status==='Reconciled'?'badge-green':t.status==='Unreconciled'?'badge-orange':'badge-grey'">{{ t.status||'Unreconciled' }}</span></td>
               <td class="ta-r mono-sm green">{{ flt(t.deposit)>0 ? fmtCur(t.deposit) : '—' }}</td>
@@ -343,13 +343,18 @@ onMounted(()=>{if(route.query.account)selectedAccount.value=String(route.query.a
 .bt-section-hdr span{color:#2563eb;display:inline-flex;}
 .bt-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .bt-meta-lbl{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}
-.bt-desc{font-size:13px;color:#334155;line-height:1.5;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:12px 14px;}
+.bt-desc{font-size:13px;color:#334155;line-height:1.5;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:12px 14px;word-break: break-word;}
 .bt-dfooter{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
 
 /* ── Mobile card defaults ── */
 .bt-mobile-cards { display: none; }
 .bt-desktop-table { display: table; }
-
+.bt-description {
+  max-width: 350px; /* adjust as needed */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .bt-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }

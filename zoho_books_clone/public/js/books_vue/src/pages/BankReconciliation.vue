@@ -15,9 +15,9 @@
     </div>
 
     <SummaryStrip v-if="!loading && ran" :cards="[
-      { label: 'Statement Balance', tone: 'accent', value: fmtCur(summary.statementBalance) },
-      { label: 'System Balance', tone: 'default', value: fmtCur(summary.systemBalance) },
-      { label: 'Difference', tone: Math.abs(summary.diff)<0.01?'success':'danger', value: fmtCur(summary.diff), valueClass: Math.abs(summary.diff)<0.01?'green':'red' },
+      { label: 'Bank Statement Amount', tone: 'accent', value: fmtCur(summary.statementBalance) },
+      { label: 'ERP Book Balance', tone: 'default', value: fmtCur(summary.systemBalance) },
+      { label: 'Variance', tone: Math.abs(summary.diff)<0.01?'success':'danger', value: fmtCur(summary.diff), valueClass: Math.abs(summary.diff)<0.01?'green':'red' },
       { label: 'Unmatched', tone: summary.unmatched>0?'warn':'default', value: summary.unmatched, valueClass: summary.unmatched>0?'orange':'' },
     ]" />
 
@@ -73,7 +73,7 @@
               <tr class="br-row">
                 <td @click.stop><input type="checkbox" :checked="selected.has(t.name)" @change="toggleSelect(t.name)" /></td>
                 <td class="mono-sm">{{ fmtDate(t.date) }}</td>
-                <td>{{ t.description||'—' }}</td>
+                <td class="br-description">{{ t.description || '—' }}</td>
                 <td class="mono-sm text-muted">{{ t.reference_number||'—' }}</td>
                 <td class="ta-r mono-sm green">{{ flt(t.deposit)>0?fmtCur(t.deposit):'—' }}</td>
                 <td class="ta-r mono-sm red">{{ flt(t.withdrawal)>0?fmtCur(t.withdrawal):'—' }}</td>
@@ -129,7 +129,9 @@
               <span class="br-card-date mono-sm">{{ fmtDate(t.date) }}</span>
               <span class="br-badge" :class="t.status==='Reconciled'?'badge-green':'badge-orange'">{{ t.status||'Unreconciled' }}</span>
             </div>
-            <div class="br-card-desc">{{ t.description||'—' }}</div>
+            <td
+  class="br-description"
+  :title="t.description" >{{ t.description || '—' }}</td>
             <div v-if="t.reference_number" class="br-card-ref mono-sm">Ref: {{ t.reference_number }}</div>
             <div class="br-card-amounts">
               <div v-if="flt(t.deposit)>0" class="br-card-amt-item">
@@ -398,7 +400,7 @@ onMounted(async()=>{
 .br-card-header { display: flex; align-items: center; gap: 8px; }
 .br-card-chk { flex-shrink: 0; }
 .br-card-date { flex: 1; font-size: 12px; color: #374151; font-weight: 600; }
-.br-card-desc { font-size: 13px; color: #111827; font-weight: 500; }
+.br-card-desc { font-size: 13px; color: #111827; font-weight: 500;word-break: break-word; }
 .br-card-ref { font-size: 11.5px; color: #9ca3af; }
 .br-card-amounts { display: flex; gap: 16px; margin-top: 2px; }
 .br-card-amt-item { display: flex; flex-direction: column; gap: 2px; }
@@ -406,7 +408,17 @@ onMounted(async()=>{
 .br-card-amt-val { font-size: 13.5px; font-weight: 700; }
 .br-card-actions { margin-top: 4px; }
 .br-card-actions .br-match-btn { width: 100%; justify-content: center; }
+.br-table {
+  width: 100%;
+  table-layout: fixed;
+}
 
+.br-description {
+  max-width: 400px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 @media (max-width: 768px) {
   .br-table--desktop { display: none !important; }
   .br-cards--mobile { display: flex; }

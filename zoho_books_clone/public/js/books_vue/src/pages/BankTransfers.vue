@@ -139,6 +139,13 @@
             <SearchableSelect v-model="form.to_account" :options="accounts" placeholder="Destination bank account…" @search="fetchAccounts" />
           </div>
           <div class="btr-field" style="grid-column:1/-1">
+            <label class="btr-label">Purpose / Transfer Type</label>
+            <select v-model="form.purpose" class="btr-input">
+              <option value="">— Select purpose —</option>
+              <option v-for="p in TRANSFER_PURPOSES" :key="p" :value="p">{{ p }}</option>
+            </select>
+          </div>
+          <div class="btr-field" style="grid-column:1/-1">
             <label class="btr-label">Remarks</label>
             <textarea v-model="form.remark" rows="2" class="btr-input" placeholder="Optional…"></textarea>
           </div>
@@ -188,6 +195,8 @@
             <div><div class="btr-meta-lbl">Status</div><div><span class="btr-badge" :class="viewDoc.status==='Reconciled'?'badge-green':'badge-orange'">{{ viewDoc.status||'Unreconciled' }}</span></div></div>
             <div><div class="btr-meta-lbl">Out Txn</div><div class="mono-sm">{{ viewDoc.from_transaction||'—' }}</div></div>
             <div><div class="btr-meta-lbl">In Txn</div><div class="mono-sm">{{ viewDoc.to_transaction||'—' }}</div></div>
+            <div v-if="viewDoc.purpose" style="grid-column:1/-1"><div class="btr-meta-lbl">Purpose / Transfer Type</div><div>{{ viewDoc.purpose }}</div></div>
+            <div v-if="viewDoc.description" style="grid-column:1/-1"><div class="btr-meta-lbl">Notes / Remarks</div><div style="word-break: break-word;">{{ viewDoc.description }}</div></div>
           </div>
         </div>
         <div class="btr-dfooter">
@@ -219,7 +228,8 @@ const viewOpen=ref(false),viewDoc=ref(null);
 const accounts=ref([]);
 const selected=ref(new Set());
 const sortCol=ref("date"),sortDir=ref("desc");
-const form=reactive({posting_date:new Date().toISOString().slice(0,10),amount:0,from_account:"",to_account:"",remark:""});
+const TRANSFER_PURPOSES = ["Fund Transfer","Salary Account Funding","Branch Transfer","Cash Withdrawal"];
+const form=reactive({posting_date:new Date().toISOString().slice(0,10),amount:0,from_account:"",to_account:"",purpose:"",remark:""});
 const now=new Date();
 const monthStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
 
@@ -288,7 +298,7 @@ async function bulkDelete(){
   }finally{bulkBusy.value=false;}
 }
 
-function openNew(){Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),amount:0,from_account:"",to_account:"",remark:""});accounts.value=[];fetchAccounts("");drawerOpen.value=true;}
+function openNew(){Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),amount:0,from_account:"",to_account:"",purpose:"",remark:""});accounts.value=[];fetchAccounts("");drawerOpen.value=true;}
 function openView(t){viewDoc.value=t;viewOpen.value=true;}
 async function fetchAccounts(q=""){try{const co=await resolveCompany();const r=await apiList("Bank Account",{fields:["name","account_name"],filters:[["company","=",co],...(q?[["account_name","like",`%${q}%`]]:[])],limit:50});accounts.value=r.map(x=>({label:x.account_name||x.name,value:x.name}));}catch{accounts.value=[];}}
 
@@ -298,7 +308,7 @@ async function saveTransfer(){
   if(!flt(form.amount))return toast.error("Amount is required");
   drawerSaving.value=true;
   try{
-    const res=await apiPOST("zoho_books_clone.api.banking.post_bank_transfer",{from_account:form.from_account,to_account:form.to_account,amount:flt(form.amount),date:form.posting_date,description:form.remark||""});
+    const res=await apiPOST("zoho_books_clone.api.banking.post_bank_transfer",{from_account:form.from_account,to_account:form.to_account,amount:flt(form.amount),date:form.posting_date,purpose:form.purpose||"",description:form.remark||""});
     const amt=res?.message?.amount??res?.amount??form.amount;
     toast.success(`Transfer of ${fmtCur(amt)} posted`);
     drawerOpen.value=false;await load();

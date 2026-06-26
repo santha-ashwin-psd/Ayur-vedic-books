@@ -3,7 +3,7 @@ from frappe import _
 from frappe.utils import flt, nowdate
 from frappe.model.document import Document
 from zoho_books_clone.accounts.accounting_engine import post_payment_entry, reverse_voucher
-from zoho_books_clone.db.validators import validate_account_company, validate_account_type
+from zoho_books_clone.db.validators import validate_account_company, validate_account_type, validate_fiscal_year
 
 
 class PaymentEntry(Document):
@@ -13,8 +13,16 @@ class PaymentEntry(Document):
             frappe.throw(_("Paid Amount must be greater than 0"))
         if not self.payment_date:
             self.payment_date = nowdate()
+        self._check_fiscal_lock()
         self.validate_accounts()
         self.validate_references()
+
+    def _check_fiscal_lock(self):
+        if self.payment_date and self.company:
+            try:
+                self.fiscal_year = validate_fiscal_year(self.payment_date, self.company)
+            except Exception:
+                raise
 
     def validate_accounts(self):
         if self.paid_from and not frappe.db.exists("Account", self.paid_from):

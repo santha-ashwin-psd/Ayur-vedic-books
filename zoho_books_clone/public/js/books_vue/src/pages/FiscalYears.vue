@@ -484,7 +484,7 @@ async function load() {
     // Fetch fiscal years for this company (also include rows with empty/null company
     // which are global/legacy fiscal years created without a company stamp)
     const allFY = await apiList("Fiscal Year", {
-      fields: ["name", "year_start_date", "year_end_date", "is_closed", "company"],
+      fields: ["name", "year_start_date", "year_end_date", "is_closed", "company", "lock_date"],
       limit: 50,
       order: "year_start_date desc",
     }).catch(() => null);
@@ -492,19 +492,37 @@ async function load() {
     if (allFY && allFY.length) {
       loadedFromFrappe = true;
       fromFrappe.value = true;
+      // Restore any previously saved period lock state from localStorage so
+      // lock choices survive a page refresh (Frappe doesn't store period locks).
+      const savedLocal = loadLocal() || [];
+      const savedMap = {};
+      savedLocal.forEach((y) => { savedMap[y.name] = y.periods || []; });
+
       // Show years belonging to this company OR years with no company (global)
       const relevant = allFY.filter(y =>
         !y.company || y.company === co ||
         (co && y.company.toLowerCase() === co.toLowerCase())
       );
-      allYears.value = relevant.map((y) => ({
-        name: y.name, start: y.year_start_date, end: y.year_end_date,
-        period_type: "Monthly", closing_acct: "Retained Earnings",
-        auto_close: 0, is_default: 0, is_closed: y.is_closed ? 1 : 0,
-        company: y.company || "",
-        periods: generatePeriods(y.year_start_date, y.year_end_date, "Monthly"),
-        source: "frappe",
-      }));
+      allYears.value = relevant.map((y) => {
+        // Merge: server lock_date is the authority; mark all periods whose end <=
+        // lock_date as locked so the UI matches what the server enforces.
+        const serverLockDate = y.lock_date || "";
+        const basePeriods = savedMap[y.name] || [];
+        const mergedPeriods = basePeriods.map((p) =>
+          serverLockDate && p.end <= serverLockDate ? { ...p, locked: true } : p
+        );
+        return {
+          name: y.name, start: y.year_start_date, end: y.year_end_date,
+          period_type: "Monthly", closing_acct: "Retained Earnings",
+          auto_close: 0, is_default: 0, is_closed: y.is_closed ? 1 : 0,
+          company: y.company || "",
+          // Pass merged periods so generatePeriods restores locked state via lockMap
+          periods: generatePeriods(y.year_start_date, y.year_end_date, "Monthly", mergedPeriods),
+          source: "frappe",
+        };
+      });
+      // Persist merged state so next refresh also picks up locks
+      saveLocal();
     }
   } catch { fromFrappe.value = false; }
   if (!loadedFromFrappe || !allYears.value.length) {
@@ -537,18 +555,48 @@ const periodPreview = computed(() => {
 
 function selectYear(name) { selectedYear.value = name; }
 
+// Compute the effective Fiscal Year lock_date from its periods:
+// the latest end date among all locked non-current periods, or "" if none locked.
+function computeFYLockDate(y) {
+  const locked = (y.periods || []).filter((p) => p.locked && !p.is_current);
+  if (!locked.length) return "";
+  return locked.map((p) => p.end).sort().reverse()[0];
+}
+
+// Persist the lock_date on the Fiscal Year record in Frappe so the server
+// can enforce it in central_validator._check_fiscal_year_period_lock.
+async function persistFYLockDate(y) {
+  if (!fromFrappe.value) return;
+  const lockDateVal = computeFYLockDate(y);
+  try {
+    await apiPOST("frappe.client.set_value", {
+      doctype: "Fiscal Year",
+      name: y.name,
+      fieldname: "lock_date",
+      value: lockDateVal,
+    });
+  } catch (e) {
+    toast("Warning: could not persist lock to server — " + (e.message || "unknown error"), "error");
+  }
+}
+
 function togglePeriodLock(yearName, idx) {
   const y = allYears.value.find((x) => x.name === yearName);
   if (!y) return;
-  y.periods[idx].locked = !y.periods[idx].locked;
+  const nowLocked = !y.periods[idx].locked;
+  y.periods[idx] = { ...y.periods[idx], locked: nowLocked };
   saveLocal();
-  toast(y.periods[idx].locked ? "Period locked" : "Period unlocked");
+  persistFYLockDate(y);
+  toast(nowLocked ? "Period locked" : "Period unlocked");
 }
 function lockAllPeriods(yearName, lock) {
   const y = allYears.value.find((x) => x.name === yearName);
   if (!y) return;
-  y.periods.forEach((p) => { if (!p.is_current) { p.locked = (lock && p.is_past) || (!lock ? false : p.locked); } });
+  y.periods = y.periods.map((p) =>
+    p.is_current ? p : { ...p, locked: lock ? !!p.is_past : false }
+  );
   saveLocal();
+  persistFYLockDate(y);
   toast(lock ? "All past periods locked" : "All periods unlocked");
 }
 
@@ -681,9 +729,10 @@ function fmtLock(d) { if (!d) return ""; try { return new Date(d).toLocaleDateSt
 async function loadLockDate() {
   try {
     const r = await apiGET("frappe.client.get_value", { doctype: "Books Settings", fieldname: "lock_date" });
-    const v = r?.lock_date || r?.message?.lock_date || "";
-    lockDate.value = v || "";
-    lockDateInput.value = v || "";
+    // apiGET unwraps json.message, so r is already { lock_date: "..." }
+    const v = r?.lock_date || "";
+    lockDate.value = v;
+    lockDateInput.value = v;
   } catch { lockDate.value = ""; }
 }
 

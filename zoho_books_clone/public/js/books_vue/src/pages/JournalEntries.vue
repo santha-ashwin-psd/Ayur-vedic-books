@@ -894,6 +894,11 @@ onMounted(load);
 .jen-view-lines-mobile {
   display: none;
 }
+
+/* ── Default: edit drawer mobile line cards hidden (desktop shows table) ── */
+.jen-lines-mobile-cards {
+  display: none;
+}
 .card-row-jen {
   display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px
 }

@@ -538,6 +538,9 @@ def get_company_settings():
         "gstin": "",
         "gst_state": "",
         "logo_url": "",
+        "pdf_template": "classic",
+        "brand_color": "#1a6ef7",
+        "company_logo": "",
         "company_address": "",
         "company_city": "",
         "company_state": "",
@@ -561,6 +564,9 @@ def get_company_settings():
             result["gstin"] = co.gstin or ""
             result["gst_state"] = co.gst_state or ""
             result["logo_url"] = co.logo_url or ""
+            result["pdf_template"] = co.pdf_template or "classic"
+            result["brand_color"] = co.brand_color or "#1a6ef7"
+            result["company_logo"] = co.company_logo or ""
             result["company_address"] = co.address_line or ""
             result["company_city"] = co.city or ""
             result["company_state"] = co.state or ""
@@ -606,6 +612,12 @@ def save_company_settings(**kwargs):
                 co.gst_state = kwargs["gst_state"]
             if "logo_url" in kwargs:
                 co.logo_url = kwargs["logo_url"]
+            if "pdf_template" in kwargs:
+                co.pdf_template = kwargs["pdf_template"]
+            if "brand_color" in kwargs:
+                co.brand_color = kwargs["brand_color"]
+            if "company_logo" in kwargs:
+                co.company_logo = kwargs["company_logo"]
             if "company_address" in kwargs:
                 co.address_line = kwargs["company_address"]
             if "company_city" in kwargs:

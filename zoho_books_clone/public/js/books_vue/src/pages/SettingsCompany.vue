@@ -119,6 +119,56 @@
   </div>
 
   <!-- ── Reminders ───────────────────────────────────────────────── -->
+  <!-- Branding tab -->
+  <div v-else-if="activeTab === 'branding'" class="sc-body sc-body--narrow">
+    <div class="sc-card">
+      <div class="sc-card-title">Invoice Template</div>
+      <div class="sc-branding-templates">
+        <button v-for="t in TEMPLATES" :key="t.key"
+          class="sc-tmpl-btn" :class="{ 'sc-tmpl-btn--active': form.pdf_template === t.key }"
+          @click="form.pdf_template = t.key">
+          <div class="sc-tmpl-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          </div>
+          <div class="sc-tmpl-label">{{ t.label }}</div>
+          <div v-if="form.pdf_template === t.key" class="sc-tmpl-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <div class="sc-card">
+      <div class="sc-card-title">Brand Color</div>
+      <div class="sc-color-row">
+        <label class="sc-color-pick" style="cursor:pointer">
+          <span class="sc-color-swatch" :style="{ background: form.brand_color }"></span>
+          <span class="sc-color-hex">{{ form.brand_color }}</span>
+          <input type="color" v-model="form.brand_color" class="sc-color-input"/>
+        </label>
+        <div class="sc-hint">Used as the accent color on your PDF invoices.</div>
+      </div>
+    </div>
+
+    <div class="sc-card">
+      <div class="sc-card-title">Company Logo</div>
+      <div class="sc-logo-row">
+        <div class="sc-logo-box">
+          <img v-if="form.company_logo" :src="resolveSrc(form.company_logo)" style="width:100%;height:100%;object-fit:contain"/>
+          <span v-else style="font-size:28px">🏷️</span>
+        </div>
+        <div class="sc-logo-actions">
+          <label class="nim-btn nim-btn-ghost" style="cursor:pointer">
+            Upload Logo
+            <input type="file" accept="image/*" style="display:none" @change="handleBrandingLogoUpload"/>
+          </label>
+          <div class="sc-hint">PNG, JPG or SVG (max. 2MB). Default logo on PDF invoices.</div>
+          <button v-if="form.company_logo" class="nim-btn" style="font-size:11px;padding:2px 8px;margin-top:4px" @click="form.company_logo=''">Remove</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div v-else class="sc-body sc-body--narrow">
     <div class="sc-card">
       <div class="sc-card-title">Payment Reminders</div>
@@ -160,6 +210,7 @@ const form = reactive({
   company_phone: "", company_email: "", company_website: "",
   auto_send_invoice: 0, send_payment_reminders: 0,
   reminder_days_before: 3, reminder_days_after: 7, auto_reconcile: 0,
+  pdf_template: "classic", brand_color: "#1a6ef7", company_logo: "",
 });
 const saving    = ref(false);
 const activeTab = ref("profile");
@@ -169,8 +220,36 @@ const TABS = [
   { k: "profile",   l: "Company Profile" },
   { k: "invoices",  l: "Invoices" },
   { k: "tax",       l: "Tax" },
+  { k: "branding",  l: "Branding & Template" },
   { k: "reminders", l: "Reminders" },
 ];
+
+const TEMPLATES = [
+  { key: "classic", label: "Classic" },
+  { key: "modern",  label: "Modern"  },
+  { key: "minimal", label: "Minimal" },
+];
+
+function resolveSrc(path) {
+  if (!path) return "";
+  if (path.startsWith("data:") || path.startsWith("http")) return path;
+  return (window.location.origin || "") + path;
+}
+
+function handleBrandingLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("doctype", "Books Company");
+  fd.append("docname", form.default_company || "");
+  fd.append("fieldname", "company_logo");
+  fd.append("csrf_token", window.frappe?.csrf_token || "");
+  fetch("/api/method/upload_file", { method: "POST", credentials: "same-origin", body: fd })
+    .then((r) => r.json())
+    .then((d) => { if (d.message?.file_url) { form.company_logo = d.message.file_url; toast("Logo uploaded"); } })
+    .catch(() => toast("Upload failed", "error"));
+}
 
 // COUNTRIES and statesFor() come from the shared useCountryState composable.
 const stateOptions = computed(() => statesFor(form.company_country));
@@ -349,4 +428,49 @@ onMounted(load);
 }
 .sc-toggle--on .sc-toggle-knob { left: 18px; }
 .sc-toggle-label { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+
+/* Branding tab */
+.sc-branding-templates {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sc-tmpl-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border: 2px solid #e4e8f0;
+  border-radius: 10px;
+  background: #f8f9fc;
+  cursor: pointer;
+  min-width: 90px;
+  transition: border-color .15s, background .15s;
+}
+.sc-tmpl-btn:hover { border-color: #93c5fd; background: #eff6ff; }
+.sc-tmpl-btn--active { border-color: #2563eb; background: #eff6ff; }
+.sc-tmpl-icon { color: #2563eb; }
+.sc-tmpl-label { font-size: 12px; font-weight: 600; color: #374151; }
+.sc-tmpl-check {
+  position: absolute;
+  top: -8px; right: -8px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #2563eb; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.sc-color-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.sc-color-pick {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px;
+  border: 1px solid #e4e8f0; border-radius: 8px;
+  background: #fff;
+}
+.sc-color-swatch {
+  width: 24px; height: 24px; border-radius: 4px;
+  border: 1px solid rgba(0,0,0,.1); flex-shrink: 0;
+}
+.sc-color-hex { font-size: 13px; font-weight: 600; color: #374151; }
+.sc-color-input { display: none; }
 </style>

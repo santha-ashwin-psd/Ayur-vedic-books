@@ -10,31 +10,26 @@ const _state = reactive({
   company: "",
 });
 
-function _loadBranding(company) {
-  if (!company) return;
+async function _loadBranding(company) {
+  _state.company = company || "";
   try {
-    const raw = localStorage.getItem("books_branding_" + company);
-    if (raw) {
-      const b = JSON.parse(raw);
-      _state.template   = b.template   || "classic";
-      _state.brandColor = b.brandColor || "#1a6ef7";
-      _state.logo       = b.logo       || "";
-    } else {
-      _state.template   = "classic";
-      _state.brandColor = "#1a6ef7";
-      _state.logo       = "";
-    }
+    const csrf = window.frappe?.csrf_token || "";
+    const res = await fetch("/api/method/zoho_books_clone.api.admin.get_company_settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Frappe-CSRF-Token": csrf },
+      credentials: "same-origin",
+      body: new URLSearchParams({}),
+    });
+    const data = await res.json();
+    const d = data.message || {};
+    if (d.pdf_template) _state.template   = d.pdf_template;
+    if (d.brand_color)  _state.brandColor = d.brand_color;
+    if (d.company_logo) _state.logo       = d.company_logo;
   } catch {}
-  _state.company = company;
 }
 
 function _saveBranding() {
-  if (!_state.company) return;
-  localStorage.setItem("books_branding_" + _state.company, JSON.stringify({
-    template:   _state.template,
-    brandColor: _state.brandColor,
-    logo:       _state.logo,
-  }));
+  // no-op: branding is managed centrally in Settings > Branding & Template
 }
 
 function _esc(s) {
@@ -48,11 +43,16 @@ function _fmt(v, currency) {
 function _today() {
   return new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
+function _logoSrc(url) {
+  if (!url) return "";
+  if (url.startsWith("data:") || url.startsWith("http")) return url;
+  return (window.frappe?.boot?.site_url || window.location.origin).replace(/\/$/, "") + url;
+}
 
 // ── CLASSIC ──────────────────────────────────────────────────────────────────
 function _renderClassic(doc, cfg) {
   const brand    = _state.brandColor;
-  const logo     = _state.logo;
+  const logo     = _logoSrc(_state.logo);
   const currency = doc.currency || "INR";
   const netTotal = doc.net_total != null ? doc.net_total
     : (doc.grand_total || 0) - (doc.total_taxes_and_charges || 0);
@@ -251,7 +251,7 @@ ${(doc.remarks || doc.terms || doc.customer_note) ? `
 // ── MODERN ───────────────────────────────────────────────────────────────────
 function _renderModern(doc, cfg) {
   const brand    = _state.brandColor;
-  const logo     = _state.logo;
+  const logo     = _logoSrc(_state.logo);
   const currency = doc.currency || "INR";
   const netTotal = doc.net_total != null ? doc.net_total
     : (doc.grand_total || 0) - (doc.total_taxes_and_charges || 0);
@@ -458,7 +458,7 @@ ${(doc.remarks || doc.terms || doc.customer_note) ? `
 // ── MINIMAL ──────────────────────────────────────────────────────────────────
 function _renderMinimal(doc, cfg) {
   const brand    = _state.brandColor;
-  const logo     = _state.logo;
+  const logo     = _logoSrc(_state.logo);
   const currency = doc.currency || "INR";
   const netTotal = doc.net_total != null ? doc.net_total
     : (doc.grand_total || 0) - (doc.total_taxes_and_charges || 0);

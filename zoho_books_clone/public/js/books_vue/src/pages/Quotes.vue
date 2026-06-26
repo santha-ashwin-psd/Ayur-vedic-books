@@ -350,48 +350,44 @@
               </span>
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.branding}">
-              <div class="add-tmpl-bar">
-                <div class="add-tmpl-group">
-                  <span class="add-tmpl-lbl">Template</span>
-                  <div class="add-tmpl-btns">
-                    <button v-for="t in TEMPLATES" :key="t.key"
-                      class="add-tmpl-btn" :class="{active:selectedTemplate===t.key}"
-                      @click="selectedTemplate=t.key;saveBranding()">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              <div class="inv-brand-readonly">
+
+                <!-- Template chips (readonly) -->
+                <div class="inv-brand-row">
+                  <span class="inv-brand-lbl">Template</span>
+                  <div class="inv-brand-tmpl-btns">
+                    <span v-for="t in TEMPLATES" :key="t.key"
+                      class="inv-brand-tmpl-chip" :class="{active: selectedTemplate===t.key}">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                       {{ t.label }}
-                    </button>
-                  </div>
-                </div>
-                <div class="add-tmpl-group">
-                  <span class="add-tmpl-lbl">Brand Color</span>
-                  <label class="add-color-wrap" style="cursor:pointer">
-                    <span class="add-color-swatch" :style="{background:brandColor}"></span>
-                    <span class="add-color-hex">{{ brandColor }}</span>
-                    <input type="color" v-model="brandColor" @change="saveBranding()" class="add-color-input"/>
-                  </label>
-                </div>
-                <div class="add-tmpl-group">
-                  <span class="add-tmpl-lbl">Logo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af;font-size:9px">(saved per quote)</span></span>
-                  <!-- Show thumbnail + remove when logo is set -->
-                  <div v-if="form.logo" class="inv-logo-preview">
-                    <img :src="logoSrc(form.logo)" class="inv-logo-thumb" alt="logo"/>
-                    <button type="button" class="inv-logo-remove" @click="removeLogo" title="Remove logo">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                  </div>
-                  <!-- Upload area when no logo -->
-                  <label v-else class="add-logo-upload" :class="{uploading: logoUploading}">
-                    <span class="add-logo-upload-icon">
-                      <svg v-if="!logoUploading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-                      <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:inv-spin .8s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                     </span>
-                    <div>
-                      <div>{{ logoUploading ? 'Uploading…' : 'Upload logo' }}</div>
-                      <div class="add-logo-sub">PNG, JPG or SVG (max. 2MB)</div>
-                    </div>
-                    <input id="qt-logo-file-input" type="file" accept="image/*" style="display:none" :disabled="logoUploading" @change="onLogoUpload"/>
-                  </label>
+                  </div>
                 </div>
+
+                <!-- Brand color (readonly) -->
+                <div class="inv-brand-row">
+                  <span class="inv-brand-lbl">Brand Color</span>
+                  <div class="inv-brand-color-preview">
+                    <span class="inv-brand-color-swatch" :style="{background:brandColor}"></span>
+                    <span class="inv-brand-color-hex">{{ brandColor }}</span>
+                  </div>
+                </div>
+
+                <!-- Company logo (readonly) -->
+                <div class="inv-brand-row">
+                  <span class="inv-brand-lbl">Logo</span>
+                  <div class="inv-brand-logo-preview">
+                    <img v-if="logoUrl" :src="logoSrc(logoUrl)" class="inv-brand-logo-thumb" alt="Company logo"/>
+                    <span v-else class="inv-brand-logo-none">No logo set</span>
+                  </div>
+                </div>
+
+                <!-- Link to settings -->
+                <div class="inv-brand-settings-hint">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  Manage in <a href="#" @click.prevent="$emit('navigate','SettingsCompany')" class="inv-brand-settings-link">Settings &rsaquo; Branding &amp; Template</a>
+                </div>
+
               </div>
             </div>
           </div>
@@ -738,12 +734,32 @@
             <button v-if="viewDoc.docstatus!==1" class="inv-ab-btn inv-ab-submit" :disabled="viewSubmitting" @click="submitFromView(viewDoc)">
               <span v-html="icon('check',13)"></span> <span class="ab-label">{{ viewSubmitting ? 'Submitting…' : 'Submit' }}</span>
             </button>
-            <button class="inv-ab-btn" @click="printQuote(viewDoc)">
-              <span v-html="icon('printer',13)"></span> <span class="ab-label">Print PDF</span>
-            </button>
             <button class="inv-ab-btn" @click="emailQT(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
             </button>
+            <div style="position:relative;display:inline-flex">
+              <button class="inv-ab-btn inv-ab-dropdown" @click="showDownloadMenu=!showDownloadMenu">
+                <span v-html="icon('download',13)"></span> <span class="ab-label">Download</span>
+                <span class="inv-ab-caret">▾</span>
+              </button>
+              <div v-if="showDownloadMenu" class="inv-dl-menu">
+                <div class="inv-dl-menu-header">Export Quote</div>
+                <button @click="downloadQuotePdf('pdf')" class="inv-dl-menu-item">
+                  <span class="inv-dl-menu-icon" v-html="icon('download',14)"></span>
+                  <span class="inv-dl-menu-text">
+                    <span class="inv-dl-menu-label">Download PDF</span>
+                    <span class="inv-dl-menu-sub">Save to your device</span>
+                  </span>
+                </button>
+                <button @click="downloadQuotePdf('print')" class="inv-dl-menu-item">
+                  <span class="inv-dl-menu-icon" v-html="icon('printer',14)"></span>
+                  <span class="inv-dl-menu-text">
+                    <span class="inv-dl-menu-label">Open &amp; Print</span>
+                    <span class="inv-dl-menu-sub">Preview in new tab</span>
+                  </span>
+                </button>
+              </div>
+            </div>
             <button v-if="viewDoc.docstatus===1 && viewDoc.status!=='Accepted' && viewDoc.status!=='Converted'" class="inv-ab-btn" @click="markStatus(viewDoc,'Accepted')">
               <span v-html="icon('check',13)"></span> <span class="ab-label">Accept</span>
             </button>
@@ -1090,8 +1106,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from "vue";
-import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, resolveCompany } from "../api/client.js";
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue";
+import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
@@ -2115,20 +2131,22 @@ function exportCSV() {
 
 // ── Branding persistence ───────────────────────────────────────────────
 function saveBranding() {
-  try {
-    const co = window.__booksCompany || "_default";
-    localStorage.setItem("books_qt_branding_" + co, JSON.stringify({
-      template: selectedTemplate.value, color: brandColor.value, logo: logoUrl.value,
-    }));
-  } catch {}
+  // no-op: branding is managed centrally in Settings > Branding & Template
 }
-function loadBranding() {
+async function loadBranding() {
   try {
-    const co = window.__booksCompany || "_default";
-    const s = JSON.parse(localStorage.getItem("books_qt_branding_" + co) || "{}");
-    if (s.template) selectedTemplate.value = s.template;
-    if (s.color)    brandColor.value = s.color;
-    if (s.logo)     logoUrl.value = s.logo;
+    const csrf = window.frappe?.csrf_token || "";
+    const res = await fetch("/api/method/zoho_books_clone.api.admin.get_company_settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Frappe-CSRF-Token": csrf },
+      credentials: "same-origin",
+      body: new URLSearchParams({}),
+    });
+    const data = await res.json();
+    const d = data.message || {};
+    if (d.pdf_template) selectedTemplate.value = d.pdf_template;
+    if (d.brand_color)  brandColor.value = d.brand_color;
+    if (d.company_logo) logoUrl.value = d.company_logo;
   } catch {}
 }
 
@@ -2152,7 +2170,7 @@ const previewData = computed(() => ({
 }));
 
 const previewHtml = computed(() =>
-  renderQuote(previewData.value, selectedTemplate.value, brandColor.value, logoUrl.value)
+  renderQuote(previewData.value, selectedTemplate.value, brandColor.value, logoSrc(logoUrl.value))
 );
 
 function renderQuote(d, tmpl, color, logo) {
@@ -2248,6 +2266,45 @@ table.it tbody td{padding:8px 10px;border-bottom:1px solid #eee;font-size:12px}t
 ${d.terms ? `<div class="fn"><div class="lbl">Notes</div><p>${d.terms}</p></div>` : ""}</div></body></html>`;
 }
 
+const showDownloadMenu = ref(false);
+
+async function downloadQuotePdf(mode = 'pdf') {
+  showDownloadMenu.value = false;
+  if (!viewDoc.value?.name) return;
+  // Build the HTML the same way printQuote does, then download/print
+  const doc = viewDoc.value;
+  const data = {
+    name: doc.name, customer: doc.customer,
+    customer_name: doc.customer_name || doc.customer,
+    transaction_date: doc.transaction_date, valid_till: doc.valid_till,
+    title: doc.title || "", billing_address: doc.billing_address || doc.address_display || "",
+    currency: doc.currency || "INR", items: doc.items || [], taxes: doc.taxes || [],
+    subtotal: flt(doc.grand_total) - flt(doc.total_taxes_and_charges),
+    totalTax: flt(doc.total_taxes_and_charges), grandTotal: flt(doc.grand_total),
+    terms: doc.terms || "", company: doc.company || window.__booksCompany || "",
+  };
+  const html = renderQuote(data, selectedTemplate.value, brandColor.value, logoSrc(logoUrl.value));
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const objectUrl = URL.createObjectURL(blob);
+  if (mode === 'print') {
+    const win = window.open(objectUrl, "_blank", "width=820,height=1060,scrollbars=yes");
+    if (!win) { URL.revokeObjectURL(objectUrl); toast.error("Pop-up blocked — allow pop-ups to print"); return; }
+    win.addEventListener("load", () => { try { win.focus(); win.print(); } catch {} });
+  } else {
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = `${doc.name}.pdf`;
+    a.click();
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function onDocClickForDownloadMenu(e) {
+  if (!e.target.closest('.inv-ab-dropdown') && !e.target.closest('.inv-dl-menu')) {
+    showDownloadMenu.value = false;
+  }
+}
+
 function printQuote(data) {
   if (data?.doctype === "Quotation" || data?.transaction_date) {
     const doc = data;
@@ -2262,7 +2319,7 @@ function printQuote(data) {
       terms: doc.terms || "", company: doc.company || window.__booksCompany || "",
     };
   }
-  const html = renderQuote(data, selectedTemplate.value, brandColor.value, logoUrl.value);
+  const html = renderQuote(data, selectedTemplate.value, brandColor.value, logoSrc(logoUrl.value));
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const win = window.open(url, "_blank", "width=820,height=1060,scrollbars=yes");
@@ -2275,6 +2332,7 @@ function printQuote(data) {
 
 // ── Mount ─────────────────────────────────────────────────────────────
 onMounted(async () => {
+  document.addEventListener('click', onDocClickForDownloadMenu);
   await load();
   loadTaxAccount();
   loadBranding();
@@ -2286,6 +2344,7 @@ onMounted(async () => {
     openByName: (n) => openView(list.value.find(r => r.name === n) || { name: n }),
   });
 });
+onUnmounted(() => document.removeEventListener('click', onDocClickForDownloadMenu));
 </script>
 
 <style>
@@ -2294,11 +2353,22 @@ onMounted(async () => {
 @import '../styles/edit.css';
 @import '../styles/add.css';
 
-/* ── Logo preview (matches Invoices) ── */
-.inv-logo-preview { display:flex; align-items:center; gap:8px; }
-.inv-logo-thumb { height:36px; max-width:120px; object-fit:contain; border:1px solid #e2e8f0; border-radius:6px; background:#f9fafb; padding:2px 6px; }
-.inv-logo-remove { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border:1px solid rgba(220,38,38,.3); background:#fee2e2; color:#dc2626; border-radius:5px; cursor:pointer; flex-shrink:0; }
-.inv-logo-remove:hover { background:#fca5a5; }
+/* ── Readonly branding card (matches Invoices) ── */
+.inv-brand-readonly { display: flex; flex-direction: column; gap: 12px; }
+.inv-brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.inv-brand-lbl { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; min-width: 90px; flex-shrink: 0; }
+.inv-brand-tmpl-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.inv-brand-tmpl-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; }
+.inv-brand-tmpl-chip.active { background:#eff6ff; color:#2563eb; border-color:#bfdbfe; font-weight:600; }
+.inv-brand-color-preview { display: flex; align-items: center; gap: 8px; }
+.inv-brand-color-swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgba(0,0,0,.1); flex-shrink: 0; }
+.inv-brand-color-hex { font-size: 12px; font-weight: 600; color: #374151; }
+.inv-brand-logo-preview { display: flex; align-items: center; }
+.inv-brand-logo-thumb { height: 36px; max-width: 120px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 4px; padding: 2px; background: #fff; }
+.inv-brand-logo-none { font-size: 12px; color: #9ca3af; font-style: italic; }
+.inv-brand-settings-hint { font-size: 11.5px; color: #9ca3af; display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+.inv-brand-settings-link { color: #2563eb; text-decoration: none; font-weight: 500; }
+.inv-brand-settings-link:hover { text-decoration: underline; }
 
 /* ── Spin animation for logo upload ── */
 @keyframes inv-spin { to { transform: rotate(360deg); } }
@@ -2311,9 +2381,76 @@ onMounted(async () => {
 .quote-delete-lbl{    color: #dc2626;
     border-color: #dc262638;
     background: #fff;}
-/* ── dl menu item (for any download dropdown) ── */
-.inv-dl-menu-item { display:flex; align-items:center; gap:8px; width:100%; padding:8px 14px; font-size:13px; font-family:inherit; background:none; border:none; cursor:pointer; color:#111827; white-space:nowrap; text-align:left; }
-.inv-dl-menu-item:hover { background:#f3f4f6; }
+/* ── Download dropdown menu ── */
+.inv-dl-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 999;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.13), 0 2px 6px rgba(0,0,0,.06);
+  min-width: 210px;
+  padding: 6px;
+  animation: dl-menu-in .12s ease;
+}
+@keyframes dl-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.inv-dl-menu-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding: 4px 10px 6px;
+}
+.inv-dl-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s;
+}
+.inv-dl-menu-item:hover { background: #f1f5f9; }
+.inv-dl-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: #eef3fd;
+  border-radius: 7px;
+  color: #1a6ef7;
+  flex-shrink: 0;
+}
+.inv-dl-menu-item:hover .inv-dl-menu-icon { background: #dce8fd; }
+.inv-dl-menu-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.inv-dl-menu-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+}
+.inv-dl-menu-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+.inv-ab-caret { font-size: 10px; opacity: .6; margin-left: 1px; }
 @media (max-width: 480px)   {
   .quote-delete-lbl{display: none !important;}
 }

@@ -467,9 +467,29 @@
             <button v-if="viewDoc.docstatus===0" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="submitBill(viewDoc)">
               <span v-html="icon('check',13)"></span> <span class="ab-label">Submit</span>
             </button>
-            <button class="inv-ab-btn" @click="printBILL(viewDoc)">
-              <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
-            </button>
+            <div style="position:relative;display:inline-flex">
+              <button class="inv-ab-btn inv-ab-dropdown" @click="showDownloadMenu=!showDownloadMenu">
+                <span v-html="icon('download',13)"></span> <span class="ab-label">Download</span>
+                <span class="inv-ab-caret">▾</span>
+              </button>
+              <div v-if="showDownloadMenu" class="inv-dl-menu">
+                <div class="inv-dl-menu-header">Export Bill</div>
+                <button @click="downloadBillPdf('pdf')" class="inv-dl-menu-item">
+                  <span class="inv-dl-menu-icon" v-html="icon('download',14)"></span>
+                  <span class="inv-dl-menu-text">
+                    <span class="inv-dl-menu-label">Download PDF</span>
+                    <span class="inv-dl-menu-sub">Save to your device</span>
+                  </span>
+                </button>
+                <button @click="downloadBillPdf('print')" class="inv-dl-menu-item">
+                  <span class="inv-dl-menu-icon" v-html="icon('printer',14)"></span>
+                  <span class="inv-dl-menu-text">
+                    <span class="inv-dl-menu-label">Open &amp; Print</span>
+                    <span class="inv-dl-menu-sub">Preview in new tab</span>
+                  </span>
+                </button>
+              </div>
+            </div>
             <button v-if="viewDoc.docstatus===1" class="inv-ab-btn" @click="emailBill(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
             </button>
@@ -785,8 +805,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from "vue";
-import { apiList, apiSave, apiGet, apiGET, apiSubmit, apiDelete, apiPOST, resolveCompany } from "../api/client.js";
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
+import { apiList, apiSave, apiGet, apiGET, apiSubmit, apiDelete, apiPOST, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
@@ -810,8 +830,42 @@ const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "1
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
-const { printDoc } = useLivePreview();
-function printBILL(d) { printDoc(d, { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
+const { printDoc, renderDocument, setCompany } = useLivePreview();
+function printBILL(d) { printDoc({ ...d, items: viewItems.value, taxes: viewTaxes.value }, { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
+
+const showDownloadMenu = ref(false);
+
+function downloadBillPdf(mode = 'pdf') {
+  showDownloadMenu.value = false;
+  const doc = { ...viewDoc.value, items: viewItems.value, taxes: viewTaxes.value };
+  if (!doc?.name) return;
+  const html = renderDocument(doc, {
+    title: "BILL",
+    partyLabel: "Vendor",
+    partyField: "supplier_name",
+    companyName: doc.company || window.__booksCompany || "",
+  });
+  if (mode === 'print') {
+    const win = window.open('', '_blank', 'width=820,height=1060,scrollbars=yes');
+    if (!win) { toast('Pop-up blocked \u2014 allow pop-ups to print', 'error'); return; }
+    win.document.write(html); win.document.close();
+    setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
+  } else {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const objectUrl = URL.createObjectURL(blob);
+    const win = window.open(objectUrl, '_blank', 'width=820,height=1060,scrollbars=yes');
+    if (!win) { URL.revokeObjectURL(objectUrl); toast('Pop-up blocked \u2014 allow pop-ups to download', 'error'); return; }
+    win.addEventListener('load', () => {
+      try { win.document.title = `${doc.name}.pdf`; win.focus(); win.print(); } catch {}
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+    });
+  }
+}
+function onDocClickForDownloadMenu(e) {
+  if (!e.target.closest('.inv-ab-dropdown') && !e.target.closest('.inv-dl-menu')) {
+    showDownloadMenu.value = false;
+  }
+}
 
 const { openEmail } = useEmailDialog();
 const { openPayment } = usePaymentDialog();
@@ -1462,7 +1516,8 @@ function exportCSV() {
   toast.success(`CSV exported — ${rows.length} bill(s)`);
 }
 
-onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
+onMounted(() => { setCompany(window.__booksCompany || ""); document.addEventListener('click', onDocClickForDownloadMenu); load(); loadTaxAccount(); fetchCostCenters(); });
+onUnmounted(() => document.removeEventListener('click', onDocClickForDownloadMenu));
 </script>
 
 <style scoped>
@@ -1470,6 +1525,64 @@ onMounted(() => { load(); loadTaxAccount(); fetchCostCenters(); });
 @import '../styles/view.css';
 @import '../styles/edit.css';
 @import '../styles/add.css';
+
+/* ── Download dropdown menu ── */
+.inv-dl-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left:0;
+  z-index: 999;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.13), 0 2px 6px rgba(0,0,0,.06);
+  min-width: 210px;
+  padding: 6px;
+  animation: dl-menu-in .12s ease;
+}
+@keyframes dl-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.inv-dl-menu-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding: 4px 10px 6px;
+}
+.inv-dl-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s;
+}
+.inv-dl-menu-item:hover { background: #f1f5f9; }
+.inv-dl-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: #eef3fd;
+  border-radius: 7px;
+  color: #1a6ef7;
+  flex-shrink: 0;
+}
+.inv-dl-menu-item:hover .inv-dl-menu-icon { background: #dce8fd; }
+.inv-dl-menu-text { display: flex; flex-direction: column; gap: 1px; }
+.inv-dl-menu-label { font-size: 13px; font-weight: 600; color: #111827; white-space: nowrap; }
+.inv-dl-menu-sub { font-size: 11px; color: #9ca3af; white-space: nowrap; }
+.inv-ab-caret { font-size: 10px; opacity: .6; margin-left: 1px; }
 
 /* ── Edit drawer ── */
 .bill-edit-drawer { width: 720px;right: -720px;max-width: 96vw; transition: right .22s ease; position: fixed; top: 0; bottom: 0; max-width: 96vw; z-index: 8100; background: #fff; display: flex; flex-direction: column; }

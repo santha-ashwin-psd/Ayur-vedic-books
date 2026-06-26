@@ -29,14 +29,15 @@
 
   <!-- Table view -->
   <template v-if="viewMode==='table'">
-    <div class="b-card items-tbl-wrap" style="padding:0;overflow:hidden">
+    <!-- Desktop table -->
+    <div class="b-card items-tbl-wrap items-desktop-tbl" style="padding:0;overflow-x:auto;overflow-y:visible">
       <table class="b-table">
         <thead><tr><th>Item Code</th><th>Name</th><th>Group</th><th>Type</th><th>UOM</th><th class="ta-r">Rate (₹)</th><th class="ta-r">GST %</th><th>Status</th><th></th></tr></thead>
         <tbody>
           <template v-if="loading"><tr v-for="n in 6" :key="n"><td colspan="9" style="padding:14px"><div class="b-shimmer" style="height:12px"></div></td></tr></template>
           <tr v-else-if="!filtered.length"><td colspan="9" class="b-empty">No items found</td></tr>
-          <tr v-else v-for="row in filtered" :key="row.name" class="clickable" @click="router.push('/inventory/items/' + encodeURIComponent(row.name))">
-            <td><span  style="font-size:12px;color:#3B5BDB">{{row.item_code||row.name}}</span></td>
+          <tr v-else v-for="row in filtered" :key="row.name" class="clickable" @click="openView(row)">
+            <td><span style="font-size:12px;color:#3B5BDB">{{row.item_code||row.name}}</span></td>
             <td class="fw-600">{{row.item_name}}</td>
             <td><span v-if="row.item_group" class="it-group-badge">{{row.item_group}}</span><span v-else class="c-muted">—</span></td>
             <td><span class="b-badge b-badge-muted" style="font-size:11px">{{row.item_type||'—'}}</span></td>
@@ -52,6 +53,36 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Mobile cards (hidden on desktop via CSS) -->
+    <div class="items-mobile-cards">
+      <template v-if="loading">
+        <div v-for="n in 5" :key="n" class="b-shimmer" style="height:80px;border-radius:10px"></div>
+      </template>
+      <div v-else-if="!filtered.length" style="text-align:center;padding:40px;color:#868E96">No items found</div>
+      <div v-else v-for="row in filtered" :key="row.name" class="ii-mob-card" @click="openView(row)">
+        <div class="ii-mob-card-main">
+          <div class="ii-mob-card-top">
+            <span class="fw-700" style="font-size:14px;color:#111827;line-height:1.3">{{row.item_name}}</span>
+            <span class="b-badge" :class="row.disabled?'b-badge-red':'b-badge-green'" style="font-size:11px;flex-shrink:0">{{row.disabled?'Inactive':'Active'}}</span>
+          </div>
+          <div class="ii-mob-card-meta">
+            <span style="color:#3B5BDB;font-size:11.5px;font-weight:600">{{row.item_code||row.name}}</span>
+            <span class="c-muted" style="font-size:11px">·</span>
+            <span v-if="row.item_group" class="it-group-badge" style="font-size:10.5px">{{row.item_group}}</span>
+            <span class="b-badge b-badge-muted" style="font-size:10.5px">{{row.item_type||'—'}}</span>
+          </div>
+        </div>
+        <div class="ii-mob-card-right">
+          <div class="fw-700" style="font-size:14px;color:#2F9E44">₹{{fmt(row.standard_rate)}}</div>
+          <div class="c-muted" style="font-size:11px">GST {{row.gst_rate||0}}%</div>
+        </div>
+        <div class="ii-mob-card-actions">
+          <button @click.stop="openEdit(row)" class="ii-qa-btn ii-qa-edit" title="Edit" v-html="icon('edit',13)"></button>
+          <button @click.stop="confirmDel(row)" class="ii-qa-btn ii-qa-del" title="Delete" v-html="icon('trash',13)"></button>
+        </div>
+      </div>
+    </div>
   </template>
 
   <!-- Grid view -->
@@ -59,7 +90,7 @@
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
       <div v-if="loading" v-for="n in 6" :key="n" class="b-shimmer" style="height:120px;border-radius:10px"></div>
       <div v-else-if="!filtered.length" style="grid-column:1/-1;text-align:center;padding:40px;color:#868E96">No items found</div>
-      <div v-else v-for="row in filtered" :key="row.name" class="b-card b-card-body ii-grid-card" @click="router.push('/inventory/items/' + encodeURIComponent(row.name))">
+      <div v-else v-for="row in filtered" :key="row.name" class="b-card b-card-body ii-grid-card" @click="openView(row)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
           <span class="b-badge" :class="row.disabled?'b-badge-red':'b-badge-green'" style="font-size:10.5px">{{row.disabled?'Inactive':'Active'}}</span>
           <div style="display:flex;align-items:center;gap:4px">
@@ -77,6 +108,83 @@
       </div>
     </div>
   </template>
+
+  <!-- View Drawer -->
+  <Teleport to="body">
+    <div v-if="viewOpen" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000" @click.self="viewOpen=false"></div>
+    <div style="position:fixed;top:0;right:0;bottom:0;width:460px;max-width:100vw;background:#fff;z-index:1001;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.15);transition:transform .24s cubic-bezier(.4,0,.2,1)"
+         :style="viewOpen ? 'transform:translateX(0)' : 'transform:translateX(100%)'">
+      <template v-if="viewDoc">
+
+        <!-- View Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:linear-gradient(135deg,#1a1d23,#2d3748);flex-shrink:0;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0"><span v-html="icon('box',18)"></span></div>
+            <div style="min-width:0">
+              <div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{viewDoc.item_name}}</div>
+              <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{viewDoc.item_code||viewDoc.name}} · {{viewDoc.item_group||'—'}}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span class="b-badge" :class="viewDoc.disabled?'b-badge-red':'b-badge-green'">{{viewDoc.disabled?'Inactive':'Active'}}</span>
+            <button @click="viewOpen=false" style="background:rgba(255,255,255,.12);border:none;cursor:pointer;color:#fff;width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center"><span v-html="icon('x',15)"></span></button>
+          </div>
+        </div>
+
+        <!-- Rate hero strip -->
+        <div style="display:flex;flex-direction:column;align-items:center;padding:14px 20px;background:#f0fdf4;border-bottom:1px solid #bbf7d0;flex-shrink:0">
+          <div style="font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-.02em">₹{{fmt(viewDoc.standard_rate)}}</div>
+          <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Selling Rate</div>
+        </div>
+
+        <!-- View Body -->
+        <div style="flex:1;overflow-y:auto;background:#f8fafc;display:flex;flex-direction:column;gap:12px;padding:14px">
+
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>Item Details</span>
+            </div>
+            <div style="display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f2f5;gap:12px"><span style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0">Item Code</span><span style="font-size:13px;color:#3B5BDB;text-align:right" class="mono-sm">{{viewDoc.item_code||viewDoc.name}}</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f2f5;gap:12px"><span style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0">Item Type</span><span style="font-size:13px;color:#374151;text-align:right"><span class="b-badge b-badge-muted" style="font-size:11px">{{viewDoc.item_type||'—'}}</span></span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f2f5;gap:12px"><span style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0">Item Group</span><span style="font-size:13px;color:#374151;text-align:right"><span v-if="viewDoc.item_group" class="it-group-badge">{{viewDoc.item_group}}</span><span v-else class="c-muted">—</span></span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;gap:12px"><span style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0">Default UOM</span><span style="font-size:13px;color:#374151;text-align:right">{{viewDoc.stock_uom||'Nos'}}</span></div>
+            </div>
+          </div>
+
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <span>Pricing & Tax</span>
+            </div>
+            <div style="display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f2f5;gap:12px"><span style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0">Selling Rate</span><span style="font-size:13px;font-weight:600;color:#2F9E44;text-align:right">₹{{fmt(viewDoc.standard_rate)}}</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;gap:12px"><span style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0">GST Rate</span><span style="font-size:13px;color:#374151;text-align:right">{{viewDoc.gst_rate||0}}%</span></div>
+            </div>
+          </div>
+
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 2px rgba(15,23,42,.03)">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+              <span>Inventory</span>
+            </div>
+            <div style="display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;gap:12px"><span style="font-size:12px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;flex-shrink:0">Stock Item</span><span style="font-size:13px;color:#374151;text-align:right"><span class="b-badge" :class="viewDoc.is_stock_item?'b-badge-green':'b-badge-muted'">{{viewDoc.is_stock_item?'Yes':'No'}}</span></span></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- View Footer -->
+        <div style="padding:14px 20px;border-top:1px solid #E2E8F0;display:flex;justify-content:flex-end;gap:8px;background:#FAFAFA;flex-shrink:0">
+          <button class="b-btn b-btn-ghost" @click="viewOpen=false">Close</button>
+          <button class="b-btn b-btn-primary" @click="openEdit(viewDoc);viewOpen=false"><span v-html="icon('edit',13)"></span> Edit</button>
+        </div>
+
+      </template>
+    </div>
+  </Teleport>
 
   <!-- Delete confirm -->
   <Teleport to="body">
@@ -227,7 +335,6 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from "vue";
-import { useRouter } from "vue-router";
 import { apiList, apiGET, apiPOST, apiSave, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, fmtDate, flt } from "../utils/format.js";
@@ -235,7 +342,6 @@ import { icon } from "../utils/icons.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
-const router = useRouter();
 
 const list       = ref([]);
 const loading    = ref(true);
@@ -249,6 +355,8 @@ const deleting   = ref(false);
 const showDel    = ref(false);
 const delTarget  = ref(null);
 const drawerTab  = ref("basic");
+const viewOpen   = ref(false);
+const viewDoc    = ref(null);
 const itemGroups    = ref([]);
 const itemGroupsFull = ref([]);
 const filterGroup   = ref("");
@@ -388,6 +496,16 @@ function exportCSV() {
   a.href = url; a.download = `items_${new Date().toISOString().slice(0,10)}.csv`;
   a.click(); URL.revokeObjectURL(url);
   toast(`Exported ${rows.length} item(s)`);
+}
+
+async function openView(row) {
+  viewDoc.value = row;
+  viewOpen.value = true;
+  // Fetch full doc to fill in any extra fields
+  try {
+    const full = await apiGET("zoho_books_clone.api.docs.get_doc", { doctype: "Item", name: row.name });
+    if (full) viewDoc.value = { ...row, ...full };
+  } catch {}
 }
 
 function openAdd() {
@@ -612,29 +730,59 @@ onUnmounted(() => { window.removeEventListener("hashchange", onHashChange); });
   opacity: 1;
 }
 
+
+/* ── Mobile cards (hidden by default, shown on mobile) ── */
+.items-mobile-cards { display: none; flex-direction: column; gap: 8px; }
+.ii-mob-card {
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background .12s, box-shadow .12s;
+}
+.ii-mob-card:hover { background: #F8FAFC; box-shadow: 0 1px 6px rgba(0,0,0,.07); }
+.ii-mob-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.ii-mob-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ii-mob-card-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.ii-mob-card-right { text-align: right; flex-shrink: 0; }
+.ii-mob-card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
 /* ── Responsive ── */
+
+/* Base: table always scrollable */
+.items-tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.items-tbl-wrap .b-table { min-width: 700px; width: 100%; }
+
+@media (max-width: 1024px) {
+  /* Tablet: hide GST% col (7) */
+  .items-tbl-wrap .b-table th:nth-child(7),
+  .items-tbl-wrap .b-table td:nth-child(7) { display: none; }
+  .items-tbl-wrap .b-table { min-width: 620px; }
+}
+
 @media (max-width: 768px) {
-  .items-tbl-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .items-tbl-wrap .b-table { min-width: 500px; }
-  /* hide Group (3), UOM (5), GST% (7) */
-  .items-tbl-wrap .b-table th:nth-child(3), .items-tbl-wrap .b-table td:nth-child(3),
-  .items-tbl-wrap .b-table th:nth-child(5), .items-tbl-wrap .b-table td:nth-child(5),
-  .items-tbl-wrap .b-table th:nth-child(7), .items-tbl-wrap .b-table td:nth-child(7) { display: none; }
-  /* Toolbar: stack action row below filters */
+  /* Toolbar: stack vertically */
   .b-action-bar { flex-direction: column !important; align-items: stretch !important; }
-  .b-action-bar > div[style*="margin-left:auto"] { margin-left: 0 !important; display: flex; flex-wrap: wrap; gap: 6px; }
-  .b-action-bar > div[style*="margin-left:auto"] .b-btn-primary { flex: 1; justify-content: center; }
   .b-filter-row { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; padding-bottom: 2px; }
+  /* Hide Group (3), UOM (5), GST% (7) */
+  .items-tbl-wrap .b-table th:nth-child(3),
+  .items-tbl-wrap .b-table td:nth-child(3),
+  .items-tbl-wrap .b-table th:nth-child(5),
+  .items-tbl-wrap .b-table td:nth-child(5),
+  .items-tbl-wrap .b-table th:nth-child(7),
+  .items-tbl-wrap .b-table td:nth-child(7) { display: none; }
+  .items-tbl-wrap .b-table { min-width: 460px; }
 }
 
 @media (max-width: 480px) {
   .it-group-filter-wrap { display: none; }
-  /* also hide Type (4) */
-  .items-tbl-wrap .b-table th:nth-child(4), .items-tbl-wrap .b-table td:nth-child(4) { display: none; }
-  .items-tbl-wrap .b-table { min-width: 360px; }
-  /* Compact action buttons */
-  .b-action-bar > div[style*="margin-left:auto"] .b-btn-ghost { flex: 0 0 auto; padding: 7px 10px !important; }
-  /* Hide grid/list toggle — mobile always shows card view */
   .view-toggle-btn { display: none !important; }
+  /* Switch table → cards on mobile */
+  .items-desktop-tbl { display: none !important; }
+  .items-mobile-cards { display: flex !important; }
 }
 </style>

@@ -303,7 +303,7 @@
         <div class="inv-content-row">
         <div class="inv-dbody">
 
-          <!-- ══ CARD 1: Branding & Template ══ -->
+          <!-- ══ CARD 1: Branding & Template (readonly — manage in Settings) ══ -->
           <div class="add-card">
             <div class="add-card-header" @click="collapsed.branding=!collapsed.branding">
               <div class="add-card-title">
@@ -315,55 +315,47 @@
               </span>
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.branding}">
-              <div class="add-tmpl-bar">
-                <!-- Template selector -->
-                <div class="add-tmpl-group">
-                  <span class="add-tmpl-lbl">Template</span>
-                  <div class="add-tmpl-btns">
-                    <button v-for="t in TEMPLATES" :key="t.key"
-                      class="add-tmpl-btn" :class="{active:selectedTemplate===t.key}"
-                      @click="selectedTemplate=t.key;saveBranding()">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              <div class="inv-brand-readonly">
+
+                <!-- Template chips (readonly) -->
+                <div class="inv-brand-row">
+                  <span class="inv-brand-lbl">Template</span>
+                  <div class="inv-brand-tmpl-btns">
+                    <span v-for="t in TEMPLATES" :key="t.key"
+                      class="inv-brand-tmpl-chip" :class="{active: selectedTemplate===t.key}">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
                       {{ t.label }}
-                    </button>
-                  </div>
-                </div>
-                <!-- Brand color -->
-                <div class="add-tmpl-group">
-                  <span class="add-tmpl-lbl">Brand Color</span>
-                  <label class="add-color-wrap" style="cursor:pointer">
-                    <span class="add-color-swatch" :style="{background:brandColor}"></span>
-                    <span class="add-color-hex">{{ brandColor }}</span>
-                    <input type="color" v-model="brandColor" @change="saveBranding()" class="add-color-input"/>
-                  </label>
-                </div>
-                <!-- Logo attach (per-invoice) -->
-                <div class="add-tmpl-group">
-                  <span class="add-tmpl-lbl">Logo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#9ca3af;font-size:9px">(saved per invoice)</span></span>
-                  <!-- Show thumbnail + remove when logo is set -->
-                  <div v-if="form.logo" class="inv-logo-preview">
-                    <img :src="logoSrc(form.logo)" class="inv-logo-thumb" alt="logo"/>
-                    <button type="button" class="inv-logo-remove" @click="removeLogo" title="Remove logo">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                  </div>
-                  <!-- Upload area when no logo -->
-                  <label v-else class="add-logo-upload" :class="{uploading: logoUploading}">
-                    <span class="add-logo-upload-icon">
-                      <svg v-if="!logoUploading" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-                      <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:inv-spin .8s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                     </span>
-                    <div>
-                      <div>{{ logoUploading ? 'Uploading…' : 'Upload logo' }}</div>
-                      <div class="add-logo-sub">PNG, JPG or SVG (max. 2MB)</div>
-                    </div>
-                    <input id="inv-logo-file-input" type="file" accept="image/*" style="display:none" :disabled="logoUploading" @change="onLogoUpload"/>
-                  </label>
+                  </div>
                 </div>
+
+                <!-- Brand color (readonly) -->
+                <div class="inv-brand-row">
+                  <span class="inv-brand-lbl">Brand Color</span>
+                  <div class="inv-brand-color-preview">
+                    <span class="inv-brand-color-swatch" :style="{background:brandColor}"></span>
+                    <span class="inv-brand-color-hex">{{ brandColor }}</span>
+                  </div>
+                </div>
+
+                <!-- Company logo (readonly) -->
+                <div class="inv-brand-row">
+                  <span class="inv-brand-lbl">Logo</span>
+                  <div class="inv-brand-logo-preview">
+                    <img v-if="companyLogo" :src="logoSrc(companyLogo)" class="inv-brand-logo-thumb" alt="Company logo"/>
+                    <span v-else class="inv-brand-logo-none">No logo set</span>
+                  </div>
+                </div>
+
+                <!-- Link to settings -->
+                <div class="inv-brand-settings-hint">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  Manage in <a href="#" @click.prevent="$emit('navigate','SettingsCompany')" class="inv-brand-settings-link">Settings &rsaquo; Branding &amp; Template</a>
+                </div>
+
               </div>
             </div>
           </div>
-
           <!-- ══ CARD 2: Invoice Details ══ -->
           <div class="add-card">
             <div class="add-card-header" @click="collapsed.details=!collapsed.details">
@@ -791,9 +783,6 @@
           <button v-if="viewInv.docstatus===0" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewInv)">
             <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
           </button>
-          <!-- <button class="inv-ab-btn" @click="printViewInvoice">
-            <span v-html="icon('printer',13)"></span> <span class="ab-label">Print PDF</span>
-          </button> -->
           <button v-if="viewInv.docstatus===0" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="submitInv(viewInv)">
             <span v-html="icon('check',13)"></span> <span class="ab-label">Submit</span>
           </button>
@@ -811,14 +800,14 @@
                 <span class="inv-dl-menu-icon" v-html="icon('download',14)"></span>
                 <span class="inv-dl-menu-text">
                   <span class="inv-dl-menu-label">Download PDF</span>
-                  <span class="inv-dl-menu-sub">Save to your device</span>
+                  <span class="inv-dl-menu-sub">Custom template · Save to device</span>
                 </span>
               </button>
               <button @click="downloadInvoicePdf('print')" class="inv-dl-menu-item">
                 <span class="inv-dl-menu-icon" v-html="icon('printer',14)"></span>
                 <span class="inv-dl-menu-text">
                   <span class="inv-dl-menu-label">Open &amp; Print</span>
-                  <span class="inv-dl-menu-sub">Preview in new tab</span>
+                  <span class="inv-dl-menu-sub">Custom template · New tab</span>
                 </span>
               </button>
             </div>
@@ -1536,6 +1525,7 @@ const filterCustomer = ref("");
 const taxAccountHead    = ref("");
 const selectedTemplate  = ref("classic");
 const brandColor        = ref("#1a6ef7");
+const companyLogo       = ref("");
 // logoUrl removed — logo is now per-invoice via form.logo (from doc.logo_attach)
 const showPreview       = ref(false);
 
@@ -1723,7 +1713,7 @@ const previewData = computed(()=>({
   logo: logoSrc(form.logo),
 }));
 
-const previewHtml = computed(()=>renderInvoice(previewData.value, selectedTemplate.value, brandColor.value, previewData.value.logo));
+const previewHtml = computed(()=>renderInvoice(previewData.value, selectedTemplate.value, brandColor.value, previewData.value.logo || companyLogo.value));
 
 const timelineSteps = computed(()=>{
   if (!viewInv.value) return [];
@@ -1757,45 +1747,56 @@ const tlProgressWidth = computed(()=>{
 
 const showDownloadMenu = ref(false);
 
-async function downloadInvoicePdf(mode = 'pdf') {
+function downloadInvoicePdf(mode = 'pdf') {
   showDownloadMenu.value = false;
-  if (!viewInv.value?.name) return;
-  try {
-    const csrfToken = await refreshCsrfToken();
-    const body = new URLSearchParams({
-      doctype: 'Sales Invoice',
-      name: viewInv.value.name,
-      format: 'Tax Invoice',
-      no_letterhead: '1',
-      settings: '{}',
-      _lang: 'en',
-    });
-    if (csrfToken) body.append('csrf_token', csrfToken);
-    const res = await fetch('/api/method/frappe.utils.print_format.download_pdf', {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-Frappe-CSRF-Token': csrfToken || '',
-      },
-      body: body.toString(),
-    });
-    if (!res.ok) throw new Error(`Server returned ${res.status}`);
-    const blob = await res.blob();
+  const inv = viewInv.value;
+  if (!inv) return;
+
+  // Build the same data shape used by the create/edit preview
+  const data = {
+    name: inv.name,
+    customer: inv.customer,
+    customer_name: inv.customer_name,
+    posting_date: inv.posting_date,
+    due_date: inv.due_date,
+    po_no: inv.po_no,
+    place_of_supply: inv.place_of_supply,
+    billing_address: inv.billing_address_display || '',
+    items: inv.items || [],
+    taxes: inv.taxes || [],
+    subtotal: flt(inv.grand_total) - flt(inv.total_taxes_and_charges),
+    totalTax: flt(inv.total_taxes_and_charges),
+    grandTotal: flt(inv.grand_total),
+    terms: inv.terms || '',
+    company: inv.company || window.__booksCompany || '',
+    logo: logoSrc(inv.logo || ''),
+  };
+
+  // Render using the same template + branding as the live preview
+  const html = renderInvoice(data, selectedTemplate.value, brandColor.value, data.logo || companyLogo.value || '');
+
+  if (mode === 'print') {
+    // Open rendered HTML in a new window and trigger print dialog
+    const win = window.open('', '_blank', 'width=820,height=1060,scrollbars=yes');
+    if (!win) { toast('Pop-up blocked — allow pop-ups to print', 'error'); return; }
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
+  } else {
+    // Download as PDF via browser's print-to-PDF using a hidden iframe
+    const blob = new Blob([html], { type: 'text/html' });
     const objectUrl = URL.createObjectURL(blob);
-    if (mode === 'print') {
-      const win = window.open(objectUrl, '_blank');
-      win?.addEventListener('load', () => win.print());
-    } else {
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = `${viewInv.value.name}.pdf`;
-      a.click();
-      URL.revokeObjectURL(objectUrl);
-    }
-  } catch (err) {
-    console.error('PDF download failed:', err);
-    alert('Could not download PDF: ' + err.message);
+    const win = window.open(objectUrl, '_blank', 'width=820,height=1060,scrollbars=yes');
+    if (!win) { toast('Pop-up blocked — allow pop-ups to download', 'error'); URL.revokeObjectURL(objectUrl); return; }
+    win.addEventListener('load', () => {
+      try {
+        // Inject a filename hint and trigger print-to-PDF
+        win.document.title = `${inv.name}.pdf`;
+        win.focus();
+        win.print();
+      } catch {}
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+    });
   }
 }
 
@@ -2378,19 +2379,24 @@ function exportCSV() {
   toast(`CSV exported — ${label}`);
 }
 
-// ── Branding persistence (template + color only — logo is per-invoice) ──
+// ── Branding persistence — loaded from Books Company settings ──
 function saveBranding() {
-  try {
-    const co=window.__booksCompany||"_default";
-    localStorage.setItem("books_inv_branding_"+co, JSON.stringify({template:selectedTemplate.value,color:brandColor.value}));
-  } catch {}
+  // no-op: branding is managed centrally in Settings > Branding & Template
 }
-function loadBranding() {
+async function loadBranding() {
   try {
-    const co=window.__booksCompany||"_default";
-    const s=JSON.parse(localStorage.getItem("books_inv_branding_"+co)||"{}");
-    if (s.template) selectedTemplate.value=s.template;
-    if (s.color)    brandColor.value=s.color;
+    const csrf = window.frappe?.csrf_token || "";
+    const res = await fetch("/api/method/zoho_books_clone.api.admin.get_company_settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Frappe-CSRF-Token": csrf },
+      credentials: "same-origin",
+      body: new URLSearchParams({}),
+    });
+    const data = await res.json();
+    const d = data.message || {};
+    if (d.pdf_template) selectedTemplate.value = d.pdf_template;
+    if (d.brand_color)  brandColor.value = d.brand_color;
+    if (d.company_logo) companyLogo.value = d.company_logo;
   } catch {}
 }
 
@@ -2549,7 +2555,7 @@ ${d.terms?`<div style="background:#f0f9ff;border-radius:8px;padding:11px 14px;fo
 table.it{width:100%;border-collapse:collapse;margin-bottom:20px}table.it thead th{padding:7px 0;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#bbb;border-bottom:1px solid #eee;text-align:left}
 table.it tbody td{padding:9px 0;border-bottom:1px solid #f5f5f5;font-size:12px;vertical-align:top}
 .tot{margin-left:auto;width:230px}.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#666}.tr2.gr{border-top:3px solid ${c};margin-top:7px;padding-top:9px;color:${c};font-size:14px;font-weight:700}
-.notes{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11.5px;color:#888}
+.notes{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11.5px;color:#888;word-break: break-word;}
 @media print{body{padding:24px}@page{size:A4;margin:15mm}}</style></head><body>
 <div class="page"><div class="header"><div>${logoTag}<div class="co-name">${co}</div></div><div style="text-align:right"><div class="inv-label">INVOICE</div><div class="inv-num">${d.name||"DRAFT"}</div></div></div>
 <div class="brow"><div><div class="lbl">Bill To</div><div class="val">${d.customer_name||d.customer||"—"}</div>${d.billing_address?`<div class="sval">${d.billing_address}</div>`:""}</div>
@@ -2578,11 +2584,11 @@ table.it tbody td{padding:8px 10px;border-bottom:1px solid #f0f2f5;font-size:13p
 <div class="brow"><div><div class="lbl">Bill To</div><div class="val">${d.customer_name||d.customer||"—"}</div>${d.billing_address?`<div class="sval">${d.billing_address}</div>`:""}</div>${d.place_of_supply?`<div><div class="lbl">Place of Supply</div><div style="font-size:12px">${d.place_of_supply}</div></div>`:""}</div>
 <table class="it"><thead><tr><th style="width:35%">Item</th><th style="width:10%">HSN/SAC</th><th style="width:8%;text-align:center">Qty</th><th style="width:14%;text-align:right">Rate</th><th style="width:10%;text-align:right">Discount</th><th style="width:14%;text-align:right">Amount</th></tr></thead><tbody>${itemRows||noItems}</tbody></table>
 <div class="tw"><div class="tot"><div class="tr2"><span>Subtotal</span><span>${fmt(d.subtotal||0)}</span></div>${taxRows2}<div class="tr2 gr"><span>Grand Total</span><span>${fmt(d.grandTotal||0)}</span></div></div></div>
-${d.terms?`<div class="fn"><div class="lbl">Notes</div><p>${d.terms}</p></div>`:""}</div></body></html>`;
+${d.terms?`<div class="fn"><div class="lbl">Notes</div><p style="word-break: break-word;">${d.terms}</p></div>`:""}</div></body></html>`;
 }
 
 function printInvoice(data) {
-  const html=renderInvoice(data, selectedTemplate.value, brandColor.value, data.logo||"");
+  const html=renderInvoice(data, selectedTemplate.value, brandColor.value, data.logo || companyLogo.value || "");
   const win=window.open("","_blank","width=820,height=1060,scrollbars=yes");
   if (!win) { toast("Pop-up blocked — allow pop-ups to print","error"); return; }
   win.document.write(html);
@@ -3017,4 +3023,28 @@ watch(() => route.query, (q) => {
 .ei-input { width:100%; border:1px solid #e5e7eb; border-radius:7px; padding:8px 10px; font:inherit; font-size:13px; outline:none; color:#111827; background:#fff; box-sizing:border-box; }
 .ei-input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.08); }
 @keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Readonly branding card in invoice drawer ── */
+.inv-brand-readonly { display: flex; flex-direction: column; gap: 12px; }
+.inv-brand-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.inv-brand-lbl { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; min-width: 90px; flex-shrink: 0; }
+.inv-brand-tmpl-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.inv-brand-tmpl-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+  background: #f3f4f6; color: #6b7280; border: 1.5px solid #e5e7eb;
+  user-select: none;
+}
+.inv-brand-tmpl-chip.active {
+  background: #eff6ff; color: #2563eb; border-color: #93c5fd;
+}
+.inv-brand-color-preview { display: flex; align-items: center; gap: 8px; }
+.inv-brand-color-swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgba(0,0,0,.1); flex-shrink: 0; }
+.inv-brand-color-hex { font-size: 12px; font-weight: 600; color: #374151; }
+.inv-brand-logo-preview { display: flex; align-items: center; }
+.inv-brand-logo-thumb { height: 36px; max-width: 120px; object-fit: contain; border: 1px solid #e5e7eb; border-radius: 4px; padding: 2px; background: #fff; }
+.inv-brand-logo-none { font-size: 12px; color: #9ca3af; font-style: italic; }
+.inv-brand-settings-hint { font-size: 11.5px; color: #9ca3af; display: flex; align-items: center; gap: 5px; margin-top: 4px; }
+.inv-brand-settings-link { color: #2563eb; text-decoration: none; font-weight: 500; }
+.inv-brand-settings-link:hover { text-decoration: underline; }
 </style>

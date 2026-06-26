@@ -621,12 +621,32 @@
               <button v-if="isDraft(viewDoc)" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
                 <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
               </button>
-              <button class="inv-ab-btn" @click="printSO(viewDoc)">
-                <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
-              </button>
               <button class="inv-ab-btn" @click="emailSO(viewDoc)">
                 <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
               </button>
+              <div style="position:relative;display:inline-flex">
+                <button class="inv-ab-btn inv-ab-dropdown" @click="showDownloadMenu=!showDownloadMenu">
+                  <span v-html="icon('download',13)"></span> <span class="ab-label">Download</span>
+                  <span class="inv-ab-caret">▾</span>
+                </button>
+                <div v-if="showDownloadMenu" class="inv-dl-menu">
+                  <div class="inv-dl-menu-header">Export Sales Order</div>
+                  <button @click="downloadSOPdf('pdf')" class="inv-dl-menu-item">
+                    <span class="inv-dl-menu-icon" v-html="icon('download',14)"></span>
+                    <span class="inv-dl-menu-text">
+                      <span class="inv-dl-menu-label">Download PDF</span>
+                      <span class="inv-dl-menu-sub">Save to your device</span>
+                    </span>
+                  </button>
+                  <button @click="downloadSOPdf('print')" class="inv-dl-menu-item">
+                    <span class="inv-dl-menu-icon" v-html="icon('printer',14)"></span>
+                    <span class="inv-dl-menu-text">
+                      <span class="inv-dl-menu-label">Open &amp; Print</span>
+                      <span class="inv-dl-menu-sub">Preview in new tab</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
               <button v-if="canInvoice(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="openInvoiceModal(viewDoc)">
                 <span v-html="icon('repeat',13)"></span> <span class="ab-label">Invoice</span>
               </button>
@@ -999,8 +1019,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from "vue";
-import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, resolveCompany } from "../api/client.js";
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
+import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
@@ -1018,8 +1038,42 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 const { toast } = useToast();
 const route = useRoute();
 const { confirm } = useConfirm();
-const { printDoc } = useLivePreview();
-function printSO(d) { printDoc(d, { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
+const { printDoc, renderDocument, setCompany } = useLivePreview();
+function printSO(d) { printDoc({ ...d, items: viewItems.value }, { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
+
+const showDownloadMenu = ref(false);
+
+function downloadSOPdf(mode = 'pdf') {
+  showDownloadMenu.value = false;
+  const doc = { ...viewDoc.value, items: viewItems.value };
+  if (!doc?.name) return;
+  const html = renderDocument(doc, {
+    title: "SALES ORDER",
+    partyLabel: "Customer",
+    partyField: "customer_name",
+    companyName: doc.company || window.__booksCompany || "",
+  });
+  if (mode === 'print') {
+    const win = window.open('', '_blank', 'width=820,height=1060,scrollbars=yes');
+    if (!win) { toast('Pop-up blocked — allow pop-ups to print', 'error'); return; }
+    win.document.write(html); win.document.close();
+    setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
+  } else {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const objectUrl = URL.createObjectURL(blob);
+    const win = window.open(objectUrl, '_blank', 'width=820,height=1060,scrollbars=yes');
+    if (!win) { URL.revokeObjectURL(objectUrl); toast('Pop-up blocked — allow pop-ups to download', 'error'); return; }
+    win.addEventListener('load', () => {
+      try { win.document.title = `${doc.name}.pdf`; win.focus(); win.print(); } catch {}
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+    });
+  }
+}
+function onDocClickForDownloadMenu(e) {
+  if (!e.target.closest('.inv-ab-dropdown') && !e.target.closest('.inv-dl-menu')) {
+    showDownloadMenu.value = false;
+  }
+}
 
 const { openEmail } = useEmailDialog();
 
@@ -1716,7 +1770,8 @@ watch(() => form.set_warehouse, () => {
   for (const l of lines.value) fetchStockForLine(l);
 });
 
-onMounted(async () => {
+onMounted(async () => { setCompany(window.__booksCompany || "");
+  document.addEventListener('click', onDocClickForDownloadMenu);
   await load();
   loadTaxAccount();
   useOpenFromQuery({
@@ -1724,6 +1779,7 @@ onMounted(async () => {
     openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }),
   });
 });
+onUnmounted(() => document.removeEventListener('click', onDocClickForDownloadMenu));
 </script>
 
 <style>
@@ -1731,6 +1787,77 @@ onMounted(async () => {
 @import '../styles/view.css';
 @import '../styles/edit.css';
 @import '../styles/add.css';
+
+/* ── Download dropdown menu ── */
+.inv-dl-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 999;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.13), 0 2px 6px rgba(0,0,0,.06);
+  min-width: 210px;
+  padding: 6px;
+  animation: dl-menu-in .12s ease;
+}
+@keyframes dl-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.inv-dl-menu-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: #9ca3af;
+  padding: 4px 10px 6px;
+}
+.inv-dl-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background .12s;
+}
+.inv-dl-menu-item:hover { background: #f1f5f9; }
+.inv-dl-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: #eef3fd;
+  border-radius: 7px;
+  color: #1a6ef7;
+  flex-shrink: 0;
+}
+.inv-dl-menu-item:hover .inv-dl-menu-icon { background: #dce8fd; }
+.inv-dl-menu-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.inv-dl-menu-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+}
+.inv-dl-menu-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+.inv-ab-caret { font-size: 10px; opacity: .6; margin-left: 1px; }
 
 @media (max-width: 480px) {
   .view-toggle-btn { display: none !important; }

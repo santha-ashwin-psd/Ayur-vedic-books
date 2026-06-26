@@ -195,12 +195,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import { apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { GSTIN_REGEX } from "../composables/useValidation.js";
 
 const { toast } = useToast();
+const route = useRoute();
 
 const form = reactive({
   default_company: "", default_currency: "INR", fiscal_year_start_month: "April",
@@ -213,7 +215,6 @@ const form = reactive({
   pdf_template: "classic", brand_color: "#1a6ef7", company_logo: "",
 });
 const saving    = ref(false);
-const activeTab = ref("profile");
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const TABS = [
@@ -223,6 +224,10 @@ const TABS = [
   { k: "branding",  l: "Branding & Template" },
   { k: "reminders", l: "Reminders" },
 ];
+
+// Allow deep-linking to a specific tab, e.g. /settings/company?tab=branding
+const validTabKeys = TABS.map(t => t.k);
+const activeTab = ref(validTabKeys.includes(route.query.tab) ? route.query.tab : "profile");
 
 const TEMPLATES = [
   { key: "classic", label: "Classic" },

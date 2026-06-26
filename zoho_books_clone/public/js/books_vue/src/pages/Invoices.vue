@@ -350,7 +350,7 @@
                 <!-- Link to settings -->
                 <div class="inv-brand-settings-hint">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                  Manage in <a href="#" @click.prevent="$emit('navigate','SettingsCompany')" class="inv-brand-settings-link">Settings &rsaquo; Branding &amp; Template</a>
+                  Manage in <a href="#" @click.prevent="goToBrandingSettings" class="inv-brand-settings-link">Settings &rsaquo; Branding &amp; Template</a>
                 </div>
 
               </div>
@@ -1362,7 +1362,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
@@ -1382,6 +1382,11 @@ import IrnQrCode from "../components/IrnQrCode.vue";
 
 const { toast } = useToast();
 const route = useRoute();
+const router = useRouter();
+
+function goToBrandingSettings() {
+  router.push({ name: "settings-company", query: { tab: "branding" } });
+}
 
 // ── e-Invoice state ────────────────────────────────────────────────────
 const eiGenerating   = ref(false);

@@ -1,12 +1,22 @@
 # Copyright (c) 2026
+import frappe
 from frappe.utils import flt
 from frappe.model.document import Document
+from zoho_books_clone.db.validators import validate_fiscal_year
 
 
 class Quotation(Document):
 
     def validate(self):
+        self._check_fiscal_lock()
         self._calculate_totals()
+
+    def _check_fiscal_lock(self):
+        if self.transaction_date and self.company:
+            try:
+                self.fiscal_year = validate_fiscal_year(self.transaction_date, self.company)
+            except Exception:
+                raise
 
     def _calculate_totals(self):
         for item in (self.items or []):

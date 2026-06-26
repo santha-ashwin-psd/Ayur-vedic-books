@@ -1538,6 +1538,9 @@ const showPreview       = ref(false);
 const drawerOpen   = ref(false);
 const editingName  = ref(null);
 const drawerSaving = ref(false);
+// Map of fiscal year name -> lock_date fetched from server; used to block saves
+// to locked periods before even hitting the API.
+const fyLockDates = ref([]);  // [{start, end, lock_date}]
 const addressLoading = ref(false);
 const moreActionsOpen = ref(false);
 const collapsed = reactive({ branding: false, details: false, billing: true, lines: false, notes: true });
@@ -1811,7 +1814,7 @@ function onDocClickForDownloadMenu(e) {
     showDownloadMenu.value = false;
   }
 }
-onMounted(() => { document.addEventListener('click', onDocClickForDownloadMenu); fetchCostCenters(); });
+onMounted(() => { document.addEventListener('click', onDocClickForDownloadMenu); fetchCostCenters(); loadFYLockDates(); });
 onUnmounted(() => document.removeEventListener('click', onDocClickForDownloadMenu));
 
 // ── New date / format helpers ───────────────────────────────────────────
@@ -2077,6 +2080,31 @@ async function openView(inv) {
 }
 
 // ── Save invoice ───────────────────────────────────────────────────────
+// Fetch fiscal year lock dates so we can block saves client-side immediately.
+async function loadFYLockDates() {
+  try {
+    const co = await resolveCompany();
+    const rows = await apiList("Fiscal Year", {
+      fields: ["name", "year_start_date", "year_end_date", "lock_date"],
+      filters: [["is_closed", "=", 0]],
+      limit: 50,
+    }).catch(() => []);
+    fyLockDates.value = (rows || [])
+      .filter(r => r.lock_date)
+      .map(r => ({ start: r.year_start_date, end: r.year_end_date, lock_date: r.lock_date }));
+  } catch { fyLockDates.value = []; }
+}
+
+function checkPostingDateLocked(posting_date) {
+  if (!posting_date) return null;
+  for (const fy of fyLockDates.value) {
+    if (posting_date >= fy.start && posting_date <= fy.end) {
+      if (posting_date <= fy.lock_date) return fy.lock_date;
+    }
+  }
+  return null;
+}
+
 async function saveInvoice(docstatus, andNew = false) {
   if (!form.customer) { toast("Customer is required","error"); return; }
   if (!form.posting_date) { toast("Invoice date is required","error"); return; }
@@ -2085,6 +2113,12 @@ async function saveInvoice(docstatus, andNew = false) {
   if ((form.remarks||'').length > 500) { toast("Internal Remarks cannot exceed 500 characters","error"); return; }
   if (!lines.value.some(l=>l.item_code&&flt(l.qty)>0)) { toast("Add at least one line item","error"); return; }
   if (form.update_stock && !form.set_warehouse) { toast("Dispatch Warehouse is required when Update Inventory is on","error"); return; }
+  // Check if the posting date falls in a locked fiscal period before hitting the server.
+  const lockedUpTo = checkPostingDateLocked(form.posting_date);
+  if (lockedUpTo) {
+    toast(`This period is locked up to ${lockedUpTo}. Unlock the period in Fiscal Years settings to save this invoice.`, "error");
+    return;
+  }
   drawerSaving.value=true;
   try {
     const company=await resolveCompany();

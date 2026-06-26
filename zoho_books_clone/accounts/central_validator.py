@@ -21,7 +21,8 @@ def on_validate(doc, _method=None):
     _check_posting_date(doc)
     _check_positive_amounts(doc)
     _check_period_not_closed(doc)
-    _check_lock_date(doc)          # Audit: strict period lock
+    _check_lock_date(doc)          # Audit: Books-wide lock date (Books Settings)
+    _check_fiscal_year_period_lock(doc)  # Per-fiscal-year period lock (Fiscal Year.lock_date)
 
 
 def _check_company_tenancy(doc):
@@ -143,10 +144,6 @@ def _check_lock_date(doc):
 
     posting_date = getattr(doc, date_field, None)
     if not posting_date:
-        return
-
-    # System Managers bypass the lock so they can make corrections
-    if "System Manager" in frappe.get_roles(frappe.session.user):
         return
 
     if getdate(posting_date) <= getdate(lock_date):
@@ -318,3 +315,45 @@ def _posting_date_field(doc) -> str | None:
         "Expense":          "posting_date",
         "Expense Claim":    "claim_date",
     }.get(doc.doctype)
+
+
+def _check_fiscal_year_period_lock(doc):
+    """
+    Block saves/submits when the posting date falls within a locked period
+    on the matching Fiscal Year record (lock_date field).
+    """
+    if getattr(doc, "voucher_type", None) == "Opening Entry":
+        return
+
+    date_field = _posting_date_field(doc)
+    company = getattr(doc, "company", None)
+    if not date_field or not company:
+        return
+
+    posting_date = getattr(doc, date_field, None)
+    if not posting_date:
+        return
+
+    # Find the fiscal year covering this posting date for this company
+    fy = frappe.db.sql("""
+        SELECT name, lock_date FROM `tabFiscal Year`
+        WHERE (LOWER(company) = LOWER(%s) OR company IS NULL OR company = '')
+          AND year_start_date <= %s
+          AND year_end_date   >= %s
+        ORDER BY year_start_date DESC
+        LIMIT 1
+    """, (company, posting_date, posting_date), as_dict=True)
+
+    if not fy or not fy[0].get("lock_date"):
+        return
+
+    if getdate(posting_date) <= getdate(fy[0]["lock_date"]):
+        frappe.throw(_(
+            "The accounting period up to {0} is locked in Fiscal Year {1}. "
+            "You cannot create or edit {2} documents dated on or before this date. "
+            "Unlock the period in Fiscal Years settings to proceed."
+        ).format(
+            frappe.bold(str(fy[0]["lock_date"])),
+            frappe.bold(fy[0]["name"]),
+            doc.doctype,
+        ))

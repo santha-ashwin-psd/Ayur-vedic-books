@@ -30,8 +30,10 @@ class CreditNote(Document):
         if self.posting_date and self.company:
             try:
                 self.fiscal_year = validate_fiscal_year(self.posting_date, self.company)
+            except frappe.ValidationError:
+                raise  # surface lock_date / closed-year errors
             except Exception:
-                pass
+                pass  # ignore only unexpected errors (missing FY on draft is caught above)
         self._validate_accounts()
 
     def _calculate_totals(self):

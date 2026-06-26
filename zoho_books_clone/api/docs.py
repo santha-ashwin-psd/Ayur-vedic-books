@@ -2,6 +2,7 @@ import frappe
 import json
 from frappe.utils import flt, today, getdate
 from zoho_books_clone.api.session import _get_company
+from zoho_books_clone.db.validators import validate_fiscal_year
 
 
 def _recalculate_invoice_outstanding(invoice_name):
@@ -292,11 +293,18 @@ def save_doc(doc):
         d.update(doc)
         if is_submitted:
             # Submitted documents are normally immutable in Frappe.
-            # This flag bypasses field-level and child-row validation so the
-            # Books SPA can freely edit any invoice regardless of status.
             # child rows added via d.update() have no DB name yet, so
             # validate_update_after_submit would throw DoesNotExistError on them.
             d.flags.ignore_validate_update_after_submit = True
+            # ignore_validate_update_after_submit skips ALL validate hooks, including
+            # the period lock checks. Run them explicitly so submitted docs in locked
+            # periods cannot be silently edited.
+            from zoho_books_clone.accounts.central_validator import (
+                _check_lock_date, _check_fiscal_year_period_lock, _check_period_not_closed
+            )
+            _check_period_not_closed(d)
+            _check_lock_date(d)
+            _check_fiscal_year_period_lock(d)
         d.save(ignore_permissions=True)
         # For submitted Sales Invoices, recalculate outstanding_amount after the
         # items have been updated (grand_total changes but outstanding_amount is
@@ -764,6 +772,9 @@ def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
         frappe.throw("Bill must be submitted before recording payment")
 
     company = bill.company or _get_company(frappe.session.user)
+
+    # Fiscal year lock — block payments into a locked or closed period
+    validate_fiscal_year(payment_date or today(), company)
     bank = paid_from or deposit_to or frappe.db.get_value(
         "Account", {"account_type": ["in", ["Bank", "Cash"]], "company": company, "is_group": 0}, "name"
     )

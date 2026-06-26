@@ -686,6 +686,16 @@
    "label": "Cheque Bounce Reason",
    "insert_after": "cheque_cleared_date",
    "in_list_view": 0
+  },
+  {
+   "fieldname": "fiscal_year",
+   "fieldtype": "Link",
+   "label": "Fiscal Year",
+   "options": "Fiscal Year",
+   "read_only": 1,
+   "hidden": 1,
+   "in_list_view": 0,
+   "no_copy": 1
   }
  ],
  "permissions": [

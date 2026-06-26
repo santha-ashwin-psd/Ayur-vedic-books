@@ -23,8 +23,10 @@ class SalesInvoice(Document):
         if self.posting_date and self.company:
             try:
                 self.fiscal_year = validate_fiscal_year(self.posting_date, self.company)
+            except frappe.ValidationError:
+                raise  # surface lock_date / closed-year errors
             except Exception:
-                pass  # Don't block save if fiscal year not set yet
+                pass  # ignore only unexpected errors (missing FY on draft is OK)
 
     def _set_customer_gstin(self):
         if self.customer and not self.customer_gstin:

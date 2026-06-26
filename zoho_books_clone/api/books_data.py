@@ -2,6 +2,7 @@ import frappe
 import json
 from frappe.utils import get_url, nowdate, flt
 from zoho_books_clone.api.session import _get_company
+from zoho_books_clone.db.validators import validate_fiscal_year
 
 # Currencies to auto-refresh on the Settings page
 _KNOWN_CURRENCIES = []  # INR-only: no external currencies to refresh
@@ -426,6 +427,9 @@ def record_payment(
     company  = inv.company or frappe.db.get_default("company")
     currency = inv.currency or "INR"
 
+    # Fiscal year lock — block payments into a locked or closed period
+    validate_fiscal_year(payment_date, company)
+
     # Resolve deposit_to first so we can derive the canonical company name from it.
     # Frappe validates that every account on a Payment Entry shares the same company
     # with a case-sensitive comparison, so the company on the Payment Entry MUST
@@ -481,6 +485,7 @@ def record_payment(
     pe.payment_type               = "Receive"
     pe.company                    = company
     pe.posting_date               = payment_date
+    pe.payment_date               = payment_date
     pe.mode_of_payment            = payment_mode
     pe.party_type                 = "Customer"
     pe.party                      = inv.customer

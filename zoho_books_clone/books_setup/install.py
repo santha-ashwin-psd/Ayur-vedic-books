@@ -12,7 +12,6 @@ def after_install():
     seed_payment_terms()
     create_default_accounts()
     seed_tax_templates()
-    seed_print_formats()
     seed_warehouses()
     seed_price_lists()
     seed_item_groups()
@@ -35,7 +34,6 @@ def after_migrate():
     if frappe.db.exists("DocType", "Payment Terms"):
         seed_payment_terms()
     seed_tax_templates()
-    seed_print_formats()
     seed_item_groups()
     seed_customer_custom_fields()
     seed_supplier_custom_fields()

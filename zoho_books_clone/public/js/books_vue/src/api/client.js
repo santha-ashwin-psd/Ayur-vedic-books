@@ -32,6 +32,7 @@ function _parseResponse(json, status) {
       .catch(() => {});
   }
   if (json.exc || json.exc_type) {
+    // Always throw — never fall through to return when server signals an exception.
     const excStr = (json.exc || "").replace(/\\n/g, "\n").replace(/\\"/g, '"');
     const match = excStr.match(/frappe\.exceptions\.\w+:\s*([^\n]+)/);
     if (match && match[1].trim()) {
@@ -44,10 +45,10 @@ function _parseResponse(json, status) {
         const text = _parseServerMessage(first);
         if (text) throw new Error(text);
       } catch (inner) {
-        if (inner instanceof Error && !inner.message.startsWith("{")) throw inner;
+        if (inner instanceof Error) throw inner;
       }
     }
-    throw new Error(json.exc_type || json.message || "Server error " + status);
+    throw new Error(json.message || json.exc_type || "Server error " + status);
   }
   if (json._server_messages) {
     try {
@@ -55,9 +56,7 @@ function _parseResponse(json, status) {
       const list = Array.isArray(msgs) ? msgs : [msgs];
       for (const m of list) {
         const text = _parseServerMessage(m);
-        if (text) {
-          alert(text);
-        }
+        if (text) console.warn("[server]", text);
       }
     } catch (e) {}
   }

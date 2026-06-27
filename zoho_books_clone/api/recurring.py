@@ -231,6 +231,24 @@ def run_subscription_now(name):
     doc = _get_ar(name)
     if doc.disabled:
         frappe.throw(_("Cannot run a paused subscription. Resume first."))
+
+    # Pre-flight: confirm today falls in an open, unlocked fiscal year for the
+    # reference document's company.  make_new_document() clones the source doc
+    # with today's date — if the period is locked or missing the generated doc
+    # would fail on save/submit anyway, but catching it here gives a clean
+    # error before any document is created.
+    try:
+        company = frappe.db.get_value(
+            doc.reference_doctype, doc.reference_document, "company"
+        ) or ""
+        if company:
+            from zoho_books_clone.db.validators import validate_fiscal_year
+            validate_fiscal_year(today(), company)
+    except frappe.ValidationError:
+        raise
+    except Exception:
+        pass  # company field absent on this doctype — skip the pre-flight
+
     try:
         new_doc = doc.make_new_document()
         if doc.notify_by_email and doc.recipients:

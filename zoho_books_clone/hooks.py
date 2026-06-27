@@ -39,8 +39,12 @@ doc_events = {
     "Expense":          {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
     "Expense Claim":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
     # Goods documents own the physical stock movement (Delivery Note out / Purchase Receipt in)
-    "Delivery Note":    {"on_submit": f"{_SL}.on_delivery_note_submit",    "on_cancel": f"{_SL}.on_delivery_note_cancel"},
-    "Purchase Receipt": {"on_submit": f"{_SL}.on_purchase_receipt_submit", "on_cancel": f"{_SL}.on_purchase_receipt_cancel"},
+    # Phase 2: validate hook added so central_validator period/lock checks run on these too.
+    "Delivery Note":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_SL}.on_delivery_note_submit",    "on_cancel": f"{_SL}.on_delivery_note_cancel"},
+    "Purchase Receipt": {"validate": f"{_CV}.on_validate", "on_submit": f"{_SL}.on_purchase_receipt_submit", "on_cancel": f"{_SL}.on_purchase_receipt_cancel"},
+    # Phase 2: Stock Entry and Bank Transaction wired to central_validator for period/lock checks.
+    "Stock Entry":      {"validate": f"{_CV}.on_validate"},
+    "Bank Transaction": {"validate": f"{_CV}.on_validate"},
     # Auto-stamp books_company on master records so they're company-isolated
     "Customer":  {"before_insert": f"{_TN}.auto_stamp_books_company"},
     "Supplier":  {"before_insert": f"{_TN}.auto_stamp_books_company"},

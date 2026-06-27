@@ -301,7 +301,7 @@
               <label class="nim-label">Parent Group</label>
               <select class="nim-input" v-model="form.parent_item_group">
                 <option value="">— Root (no parent) —</option>
-                <option v-for="g in allGroups.filter(g => g.is_group && g.name !== form.name)" :key="g.name" :value="g.name">
+                <option v-for="g in allGroups.filter(g => g.name !== form.name)" :key="g.name" :value="g.name">
                   {{ g.name }}
                 </option>
               </select>
@@ -382,10 +382,10 @@ function onResize() { isMobile.value = window.innerWidth <= 480; }
 
 const GROUP_DEFAULTS = [
   { name: "All Item Groups",  parent_item_group: "",                is_group: 1, description: "Root" },
-  { name: "Products",         parent_item_group: "All Item Groups", is_group: 0, description: "" },
-  { name: "Services",         parent_item_group: "All Item Groups", is_group: 0, description: "" },
-  { name: "Raw Materials",    parent_item_group: "All Item Groups", is_group: 0, description: "" },
-  { name: "Finished Goods",   parent_item_group: "All Item Groups", is_group: 0, description: "" },
+  { name: "Products",         parent_item_group: "All Item Groups", is_group: 1, description: "" },
+  { name: "Services",         parent_item_group: "All Item Groups", is_group: 1, description: "" },
+  { name: "Raw Materials",    parent_item_group: "All Item Groups", is_group: 1, description: "" },
+  { name: "Finished Goods",   parent_item_group: "All Item Groups", is_group: 1, description: "" },
 ];
 
 async function load() {

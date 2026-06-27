@@ -13,6 +13,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, today
+from zoho_books_clone.db.validators import validate_fiscal_year
 
 
 SE_TYPE_DIRECTION = {
@@ -31,6 +32,7 @@ class StockEntry(Document):
 
     def validate(self):
         self._set_defaults()
+        self._validate_fiscal_year()
         self._validate_items()
         self._calculate_totals()
 
@@ -43,6 +45,20 @@ class StockEntry(Document):
                 or frappe.db.get_default("company")
                 or ""
             )
+
+    def _validate_fiscal_year(self):
+        """Block saves into closed or missing fiscal years.
+
+        Stock Entry is not wired to central_validator, and its GL entries post
+        on submit with posting_date — so the year check must happen here, after
+        _set_defaults() has guaranteed both fields are non-empty.
+        Opening Stock is exempt: it establishes historical balances and must be
+        allowed to post to any date, matching the exemption in central_validator.
+        """
+        if self.stock_entry_type == "Opening Stock":
+            return
+        if self.posting_date and self.company:
+            validate_fiscal_year(self.posting_date, self.company)
 
     def _validate_items(self):
         if not self.items:

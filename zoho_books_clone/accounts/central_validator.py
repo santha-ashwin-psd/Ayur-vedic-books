@@ -314,6 +314,10 @@ def _posting_date_field(doc) -> str | None:
         "Credit Note":      "posting_date",
         "Expense":          "posting_date",
         "Expense Claim":    "claim_date",
+        # Phase 2: goods and banking documents added to central_validator
+        "Purchase Receipt": "posting_date",
+        "Stock Entry":      "posting_date",
+        "Bank Transaction": "date",
     }.get(doc.doctype)
 
 

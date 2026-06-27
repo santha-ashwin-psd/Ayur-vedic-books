@@ -1,131 +1,151 @@
 <template>
-<div class="cust-page">
+<div class="cust-page" @click="closeAllMenus">
 
   <div class="cust-toolbar">
     <div style="display:flex;align-items:center;gap:12px">
-      <span style="font-size:18px;font-weight:700;color:#1a1a2e">Team Members</span>
-      <span style="background:#F3F0FF;color:#2563eb;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{users.length}} members</span>
+      <span class="su-title">Team Members</span>
+      <span class="su-count-badge">{{ users.length }} members</span>
     </div>
-    <button v-if="!accessDenied" class="nim-btn nim-btn-primary" @click="openInvite"><span v-html="icon('plus',13)" style="vertical-align:-2px;margin-right:4px"/>Add Member</button>
+    <button v-if="!accessDenied" class="nim-btn nim-btn-primary su-add-btn" @click="openInvite">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Member
+    </button>
   </div>
 
-  <div v-if="!accessDenied" style="background:#f0f4ff;border:1px solid #c5d0fa;border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#3b4a7a;display:flex;gap:12px;align-items:flex-start">
-    <span style="font-size:18px;margin-top:-1px">🏢</span>
+  <div v-if="!accessDenied" class="su-info-banner">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     <div><strong>Company-scoped access:</strong> Members you add here will only see data belonging to your company. Each member gets their own email &amp; password. New user sign-ups always create a separate, isolated company.</div>
   </div>
 
-  <div v-if="accessDenied" style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:10px;padding:24px;text-align:center;color:#C92A2A;font-size:13.5px;margin-top:0">
+  <div v-if="accessDenied" class="su-denied">
     <div style="font-size:22px;margin-bottom:8px">🔒</div>
     <strong>Access Denied</strong><br/>
     <span style="color:#4a5568;font-size:13px">Only company admins can manage team members.</span>
   </div>
 
-  <div v-else class="cust-table-card su-tbl-card" style="margin-top:0">
-    <div v-if="loading" style="padding:40px;text-align:center;color:#868E96">Loading members…</div>
-    <table v-else class="su-desktop-table" style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr style="background:#f8f9fc;border-bottom:2px solid #e4e8f0">
-        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Member</th>
-        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Email</th>
-        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Role</th>
-        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Status</th>
-        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Last Login</th>
-        <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7db3">Actions</th>
-      </tr></thead>
-      <tbody>
-        <tr v-for="u in users" :key="u.name" style="border-bottom:1px solid #f0f2f7">
-          <td style="padding:12px 14px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div v-if="u.user_image" style="width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0"><img :src="u.user_image" style="width:100%;height:100%;object-fit:cover"/></div>
-              <div v-else style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#5e3dc7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0">{{userInitials(u.full_name||u.name)}}</div>
-              <div>
-                <div style="font-weight:600;color:#1a1a2e">{{u.full_name||u.name}}</div>
-                <div v-if="u.is_owner" style="font-size:10.5px;color:#f59e0b;font-weight:700;margin-top:1px">👑 Owner</div>
-              </div>
-            </div>
-          </td>
-          <td style="padding:12px 14px;color:#4a5568">{{u.name}}</td>
-          <td style="padding:12px 14px"><span :style="'background:'+(ROLE_BG[displayRole(u)]||'#F8F9FA')+';color:'+(ROLE_COLORS[displayRole(u)]||'#868E96')+';padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600'">{{displayRole(u)||'—'}}</span></td>
-          <td style="padding:12px 14px"><span :style="u.enabled?'background:#ebfbee;color:#2f9e44;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600':'background:#f8f9fa;color:#868e96;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600'">{{u.enabled?'Active':'Inactive'}}</span></td>
-          <td style="padding:12px 14px;color:#868e96;font-size:12px">{{u.last_login?fmtDate(u.last_login):'Never'}}</td>
-          <td style="padding:12px 14px;text-align:right">
-            <div style="display:flex;gap:6px;justify-content:flex-end">
-              <button v-if="!u.is_owner" class="nim-btn nim-btn-ghost" style="padding:4px 10px;font-size:12px" @click="editUser=u;editRole=u.books_role">Change Role</button>
-              <button v-if="!u.is_owner && !u.is_company_admin" class="nim-btn nim-btn-ghost" style="padding:4px 10px;font-size:12px" @click="openPerms(u)">Module Access</button>
-              <button v-if="!u.is_owner" class="nim-btn nim-btn-ghost" style="padding:4px 10px;font-size:12px" @click="toggleActive(u)">{{u.enabled?'Deactivate':'Activate'}}</button>
-              <button v-if="!u.is_owner" class="nim-btn nim-btn-ghost" style="padding:4px 10px;font-size:12px;color:#C92A2A;border-color:#ffd0d0" @click="showRemoveConfirm=u">Remove</button>
-            </div>
-          </td>
-        </tr>
-        <tr v-if="!users.length"><td colspan="6" style="padding:40px;text-align:center;color:#868e96">No members yet — add your first team member above</td></tr>
-      </tbody>
-    </table>
-
-    <!-- Mobile cards (shown at ≤768px) -->
-    <div v-if="!loading" class="su-mobile-cards">
-      <div v-if="!users.length" class="su-mc-empty">
-        <div style="font-size:32px;margin-bottom:8px">👥</div>
-        <div>No members yet</div>
-      </div>
-      <template v-else>
-        <div v-for="u in users" :key="u.name" class="su-mobile-card">
-          <div class="su-mc-top">
-            <span class="su-mc-name">{{ u.full_name||u.name }}</span>
-            <span :style="'background:'+(u.enabled?'#ebfbee':'#f8f9fa')+';color:'+(u.enabled?'#2f9e44':'#868e96')+';padding:2px 8px;border-radius:20px;font-size:11.5px;font-weight:600'">{{ u.enabled?'Active':'Inactive' }}</span>
-          </div>
-          <div class="su-mc-mid">{{ u.name }}</div>
-          <div class="su-mc-meta">
-            <span :style="'background:'+(ROLE_BG[displayRole(u)]||'#F8F9FA')+';color:'+(ROLE_COLORS[displayRole(u)]||'#868E96')+';padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600'">{{ displayRole(u)||'—' }}</span>
-            <span v-if="!u.is_owner" style="display:flex;gap:4px">
-              <button class="nim-btn nim-btn-ghost" style="padding:3px 8px;font-size:11.5px" @click.stop="editUser=u;editRole=u.books_role">Role</button>
-              <button class="nim-btn nim-btn-ghost" style="padding:3px 8px;font-size:11.5px;color:#C92A2A;border-color:#ffd0d0" @click.stop="showRemoveConfirm=u">Remove</button>
-            </span>
+  <div v-else class="su-cards-section">
+    <div v-if="loading" class="su-loading">Loading members…</div>
+    <div v-else class="su-cards-grid">
+      <!-- Member cards -->
+      <div v-for="u in users" :key="u.name" class="su-member-card" @click.self="closeAllMenus">
+        <!-- Card header: avatar + owner badge + menu -->
+        <div class="su-card-header">
+          <div v-if="u.is_owner" class="su-owner-tag">OWNER 👑</div>
+          <div v-else style="height:22px"></div>
+          <button v-if="!u.is_owner" class="su-menu-btn" @click.stop="toggleMenu(u.name)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+          </button>
+          <!-- Dropdown menu -->
+          <div v-if="openMenu === u.name" class="su-dropdown" @click.stop>
+            <button class="su-dd-item" @click="editUser=u;editRole=u.books_role;openMenu=null">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Change Role
+            </button>
+            <button v-if="!u.is_company_admin" class="su-dd-item" @click="openPerms(u);openMenu=null">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              Module Access
+            </button>
+            <button class="su-dd-item su-dd-item--warn" @click="toggleActive(u);openMenu=null">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              {{ u.enabled ? 'Deactivate' : 'Activate' }}
+            </button>
+            <div class="su-dd-divider"></div>
+            <button class="su-dd-item su-dd-item--danger" @click="showRemoveConfirm=u;openMenu=null">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              Remove
+            </button>
           </div>
         </div>
-      </template>
+
+        <!-- Avatar -->
+        <div class="su-card-avatar-wrap">
+          <div v-if="u.user_image" class="su-card-avatar su-card-avatar--img">
+            <img :src="u.user_image" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/>
+          </div>
+          <div v-else class="su-card-avatar">{{ userInitials(u.full_name||u.name) }}</div>
+        </div>
+
+        <!-- Name & email -->
+        <div class="su-card-name">{{ u.full_name||u.name }}</div>
+        <div class="su-card-email">{{ u.name }}</div>
+
+        <div class="su-card-divider"></div>
+
+        <!-- Meta rows -->
+        <div class="su-card-meta-row">
+          <span class="su-card-meta-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L2 7h20l-6-4z"/></svg>
+            Role
+          </span>
+          <span class="su-role-pill" :style="{ background: ROLE_BG[displayRole(u)]||'#F8F9FA', color: ROLE_COLORS[displayRole(u)]||'#868E96' }">
+            {{ displayRole(u)||'—' }}
+          </span>
+        </div>
+        <div class="su-card-meta-row">
+          <span class="su-card-meta-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Status
+          </span>
+          <span class="su-status-pill" :class="u.enabled ? 'su-status--active' : 'su-status--inactive'">
+            ● {{ u.enabled ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
+        <div class="su-card-meta-row">
+          <span class="su-card-meta-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Last Login
+          </span>
+          <span class="su-card-meta-value">{{ u.last_login ? fmtDate(u.last_login) : 'Never' }}</span>
+        </div>
+
+        <!-- Joined -->
+        <div class="su-card-joined">Joined on {{ u.creation ? fmtDate(u.creation) : '—' }}</div>
+      </div>
+
+      <!-- Add New Member card -->
+      <div class="su-add-card" @click="openInvite">
+        <div class="su-add-card-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+        </div>
+        <div class="su-add-card-title">Add New Member</div>
+        <div class="su-add-card-sub">Invite a new team member to your company</div>
+        <button class="su-add-card-btn" @click.stop="openInvite">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Member
+        </button>
+      </div>
     </div>
-  </div><!-- end v-else -->
+  </div>
 
   <Teleport to="body">
+    <!-- Invite drawer -->
     <div v-if="showInvite" class="nim-overlay" @click.self="showInvite=false">
       <div class="nim-dialog" style="width:560px">
         <div class="nim-header">
           <div>
             <span style="font-weight:700;color:#fff;font-size:15px">Add Team Member</span>
-            <div style="font-size:11.5px;color:#868e96;margin-top:2px">
-              Step {{stepIndex}} of {{totalSteps}} —
-              {{step===1?'Assign a Role':(step===2?'Module Access':'Set Credentials')}}
-            </div>
+            <div style="font-size:11.5px;color:#868e96;margin-top:2px">Step {{stepIndex}} of {{totalSteps}} — {{step===1?'Assign a Role':(step===2?'Module Access':'Set Credentials')}}</div>
           </div>
           <button class="nim-close" @click="showInvite=false">✕</button>
         </div>
         <div style="display:flex;gap:0;padding:0 24px;margin-bottom:-1px">
           <div v-for="s in stepsForRole" :key="s" :style="'flex:1;height:3px;border-radius:2px;margin:0 2px;background:'+(step>=s?'#2563eb':'#e4e8f0')"></div>
         </div>
-
-        <!-- Step 1: Role selection -->
         <div v-if="step===1" class="nim-body" style="display:grid;gap:12px">
           <div style="font-size:13px;color:#4a5568">Select the role this member will have in your company:</div>
-          <div v-for="r in ROLES" :key="r" @click="selectRole(r)"
-            :style="'padding:14px 16px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;'+(inviteForm.role===r?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
+          <div v-for="r in ROLES" :key="r" @click="selectRole(r)" :style="'padding:14px 16px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;'+(inviteForm.role===r?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
             <div :style="'width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+ROLE_COLORS[r]"></div>
-            <div style="flex:1">
-              <div style="font-weight:700;font-size:13px;color:#1a1a2e">{{r}}</div>
-              <div style="font-size:12px;color:#868e96;margin-top:2px">{{ROLE_DESC[r]}}</div>
-            </div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px;color:#1a1a2e">{{r}}</div><div style="font-size:12px;color:#868e96;margin-top:2px">{{ROLE_DESC[r]}}</div></div>
             <div v-if="inviteForm.role===r" style="color:#2563eb;font-size:16px">✓</div>
           </div>
           <div v-if="inviteError" style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:8px;padding:10px 14px;color:#C92A2A;font-size:12.5px">{{inviteError}}</div>
         </div>
-
-        <!-- Step 2: Module access -->
         <div v-if="step===2" class="nim-body" style="display:grid;gap:14px">
           <div style="background:#f5f0ff;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
             <span :style="'background:'+ROLE_COLORS[inviteForm.role]+';color:#fff;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700'">{{inviteForm.role}}</span>
             <span style="font-size:12.5px;color:#3b4a7a">Selected — <a href="#" @click.prevent="step=1" style="color:#2563eb;text-decoration:none">Change</a></span>
           </div>
-          <div style="font-size:13px;color:#4a5568">
-            {{ inviteForm.role==='Custom' ? 'Pick exactly which modules this member can access. Nothing is granted by default.' : 'Choose which modules this member can access. Defaults are based on the selected role.' }}
-          </div>
+          <div style="font-size:13px;color:#4a5568">{{ inviteForm.role==='Custom' ? 'Pick exactly which modules this member can access.' : 'Choose which modules this member can access.' }}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#f8f9fc;border-radius:8px;padding:14px">
             <label v-for="m in MODULES" :key="m.key" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#3b4a7a">
               <input type="checkbox" :checked="inviteForm.modules[m.key]" @change="inviteForm.modules[m.key] = $event.target.checked" style="width:14px;height:14px;cursor:pointer"/>
@@ -133,8 +153,6 @@
             </label>
           </div>
         </div>
-
-        <!-- Step 3: Credentials -->
         <div v-if="step===3" class="nim-body" style="display:grid;gap:14px">
           <div style="background:#f5f0ff;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
             <span :style="'background:'+ROLE_COLORS[inviteForm.role]+';color:#fff;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700'">{{inviteForm.role}}</span>
@@ -146,11 +164,10 @@
             <div class="nim-field"><label class="nim-label">Last Name</label><input class="nim-input" v-model="inviteForm.last_name" placeholder="Last"/></div>
           </div>
           <div style="background:#f0f9ff;border:1px solid #c5d9fa;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#1971C2;line-height:1.5">
-            <strong>📧 Invite by email</strong> — Books will email <em>{{inviteForm.email||'this user'}}</em> a temporary password and a sign-in link. They should change it on first login.
+            <strong>📧 Invite by email</strong> — Books will email <em>{{inviteForm.email||'this user'}}</em> a temporary password and a sign-in link.
           </div>
           <div v-if="inviteError" style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:8px;padding:10px 14px;color:#C92A2A;font-size:12.5px">{{inviteError}}</div>
         </div>
-
         <div class="nim-footer">
           <button class="nim-btn" @click="step===1?showInvite=false:prevStep()">{{step===1?'Cancel':'Back'}}</button>
           <button v-if="step!==3" class="nim-btn nim-btn-primary" @click="nextStep">{{nextLabel}}</button>
@@ -159,11 +176,12 @@
       </div>
     </div>
 
+    <!-- Module Access dialog -->
     <div v-if="permsUser" class="nim-overlay" @click.self="permsUser=null">
       <div class="nim-dialog" style="width:520px">
-        <div class="nim-header"><span style="font-weight:700">Module Access — {{permsUser.full_name||permsUser.name}}</span><button class="nim-close" @click="permsUser=null">✕</button></div>
+        <div class="nim-header"><span style="font-weight:700;color: #fff;">Module Access — {{permsUser.full_name||permsUser.name}}</span><button class="nim-close" @click="permsUser=null">✕</button></div>
         <div class="nim-body" style="display:grid;gap:14px">
-          <div style="font-size:13px;color:#4a5568">Toggle which modules this member can access. Changes apply immediately on save.</div>
+          <div style="font-size:13px;color:#4a5568">Toggle which modules this member can access.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#f8f9fc;border-radius:8px;padding:14px">
             <label v-for="m in MODULES" :key="m.key" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#3b4a7a">
               <input type="checkbox" :checked="permsDraft[m.key]" @change="permsDraft[m.key] = $event.target.checked" style="width:14px;height:14px;cursor:pointer"/>
@@ -178,12 +196,12 @@
       </div>
     </div>
 
+    <!-- Change Role dialog -->
     <div v-if="editUser" class="nim-overlay" @click.self="editUser=null">
       <div class="nim-dialog" style="width:420px">
-        <div class="nim-header"><span style="font-weight:700">Change Role — {{editUser.full_name||editUser.name}}</span><button class="nim-close" @click="editUser=null">✕</button></div>
+        <div class="nim-header"><span style="font-weight:700;color:#fff;">Change Role — {{editUser.full_name||editUser.name}}</span><button class="nim-close" @click="editUser=null">✕</button></div>
         <div class="nim-body" style="display:grid;gap:10px">
-          <div v-for="r in CHANGEABLE_ROLES" :key="r" @click="editRole=r"
-            :style="'padding:12px 14px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;'+(editRole===r?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
+          <div v-for="r in CHANGEABLE_ROLES" :key="r" @click="editRole=r" :style="'padding:12px 14px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;'+(editRole===r?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
             <div :style="'width:8px;height:8px;border-radius:50%;background:'+ROLE_COLORS[r]"></div>
             <div style="flex:1"><div style="font-weight:600;font-size:13px">{{r}}</div><div style="font-size:11.5px;color:#868e96">{{ROLE_DESC[r]}}</div></div>
             <div v-if="editRole===r" style="color:#2563eb">✓</div>
@@ -193,6 +211,7 @@
       </div>
     </div>
 
+    <!-- Remove confirm -->
     <div v-if="showRemoveConfirm" class="nim-overlay" @click.self="showRemoveConfirm=null">
       <div class="nim-dialog" style="width:400px">
         <div class="nim-header"><span style="font-weight:700;color:#C92A2A">Remove Member</span><button class="nim-close" @click="showRemoveConfirm=null">✕</button></div>
@@ -226,9 +245,6 @@ const MODULES = [
   { key: "admin",     label: "Admin / Settings" },
 ];
 
-// "Custom" sits at the bottom — same shape as a built-in role for picker UX,
-// but on save it maps to "Books Viewer" (least Frappe privilege) with whatever
-// module flags the admin actually ticked. No backend change required.
 const ROLES = ["Books Admin", "Accountant", "Books Manager", "Books Viewer", "Custom"];
 const CHANGEABLE_ROLES = ["Books Admin", "Accountant", "Books Manager", "Books Viewer"];
 
@@ -259,7 +275,7 @@ const DEFAULT_MODULES_BY_ROLE = {
   "Books Manager": { invoices: true, bills: true, payments: true, banking: true, inventory: true, accounts: true, reports: true, customers: true, taxes: false, admin: false },
   "Accountant":    { invoices: true, bills: true, payments: true, banking: true, inventory: false, accounts: true, reports: true, customers: true, taxes: true, admin: false },
   "Books Viewer":  { invoices: true, bills: true, payments: true, banking: false, inventory: false, accounts: false, reports: true, customers: true, taxes: false, admin: false },
-  "Custom":        Object.fromEntries(MODULES.map((m) => [m.key, false])),  // everything off until admin ticks it
+  "Custom":        Object.fromEntries(MODULES.map((m) => [m.key, false])),
 };
 function defaultModulesFor(role) { return { ...(DEFAULT_MODULES_BY_ROLE[role] || {}) }; }
 
@@ -280,12 +296,14 @@ const inviteForm = reactive({
 });
 const inviteError = ref("");
 
-const permsUser = ref(null);
+const permsUser  = ref(null);
 const permsDraft = reactive(defaultModulesFor("Books Viewer"));
 const permsSaving = ref(false);
+const openMenu = ref(null);
 
-// Books Admin role gives full perms automatically, so the module-access step
-// is skipped. Custom and the others all show all three steps.
+function toggleMenu(name) { openMenu.value = openMenu.value === name ? null : name; }
+function closeAllMenus() { openMenu.value = null; }
+
 const stepsForRole = computed(() => inviteForm.role === "Books Admin" ? [1, 3] : [1, 2, 3]);
 const totalSteps   = computed(() => stepsForRole.value.length);
 const stepIndex    = computed(() => stepsForRole.value.indexOf(step.value) + 1);
@@ -294,8 +312,6 @@ const nextLabel    = computed(() => {
   return "Next: Set Credentials →";
 });
 
-// On the table, show "Custom" for any Books Viewer whose module flags don't
-// match the Books Viewer defaults — that's the signature of a Custom invite.
 function displayRole(u) {
   if (u.books_role !== "Books Viewer") return u.books_role;
   if (!u.modules) return u.books_role;
@@ -355,14 +371,9 @@ async function sendInvite() {
   inviteError.value = "";
   if (!inviteForm.email || !inviteForm.first_name) { inviteError.value = "Email and first name are required."; return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteForm.email)) { inviteError.value = "Please enter a valid email address."; return; }
-  if (inviteForm.password) {
-    if (inviteForm.password.length < 8) { inviteError.value = "Password must be at least 8 characters."; return; }
-    if (inviteForm.password !== inviteForm.confirm_password) { inviteError.value = "Passwords do not match."; return; }
-  }
   saving.value = true;
   try {
     const modulePayload = Object.fromEntries(MODULES.map((m) => [m.key, inviteForm.modules[m.key] ? 1 : 0]));
-    // "Custom" is a UI affordance only — the server gets "Books Viewer" + the user's hand-picked module flags.
     const serverRole = inviteForm.role === "Custom" ? "Books Viewer" : inviteForm.role;
     await apiPOST("zoho_books_clone.api.admin.invite_member", {
       email: inviteForm.email, first_name: inviteForm.first_name,
@@ -428,19 +439,212 @@ function userInitials(name) {
 onMounted(load);
 </script>
 
-<style>
-.su-mobile-cards { display: none; }
-.su-desktop-table { display: table; }
+<style scoped>
+/* ── Toolbar ────────────────────────────────────────────────────────── */
+.su-title { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+.su-count-badge {
+  background: #F3F0FF; color: #2563eb;
+  padding: 2px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+}
+.su-add-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13.5px; font-weight: 600;
+  padding: 9px 18px; border-radius: 8px;
+}
 
+/* ── Info banner ────────────────────────────────────────────────────── */
+.su-info-banner {
+  background: #f0f4ff;
+  border: 1px solid #c5d0fa;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  color: #3b4a7a;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* ── Access denied ──────────────────────────────────────────────────── */
+.su-denied {
+  background: #fff5f5; border: 1px solid #ffd0d0;
+  border-radius: 10px; padding: 24px;
+  text-align: center; color: #C92A2A;
+  font-size: 13.5px; margin-top: 0;
+}
+
+/* ── Cards section ──────────────────────────────────────────────────── */
+.su-cards-section { margin-top: 4px; }
+.su-loading { padding: 40px; text-align: center; color: #868E96; }
+
+.su-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+/* ── Member card ────────────────────────────────────────────────────── */
+.su-member-card {
+  background: #fff;
+  border: 1px solid #e8ecf2;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  position: relative;
+  transition: box-shadow .15s;
+}
+.su-member-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+
+.su-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  position: relative;
+}
+.su-owner-tag {
+  background: #f0f4ff;
+  color: #2563eb;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: .4px;
+}
+.su-menu-btn {
+  background: none; border: none; cursor: pointer;
+  color: #9ca3af; padding: 4px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s;
+}
+.su-menu-btn:hover { background: #f3f4f6; color: #374151; }
+
+/* Dropdown */
+.su-dropdown {
+  position: absolute;
+  top: 28px; right: 0;
+  background: #fff;
+  border: 1px solid #e4e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  padding: 6px;
+  min-width: 160px;
+  z-index: 100;
+}
+.su-dd-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 10px;
+  font-size: 13px; font-weight: 500;
+  color: #374151; background: none; border: none;
+  border-radius: 7px; cursor: pointer; text-align: left;
+  transition: background .1s;
+}
+.su-dd-item:hover { background: #f8f9fc; }
+.su-dd-item--warn { color: #b45309; }
+.su-dd-item--warn:hover { background: #fffbeb; }
+.su-dd-item--danger { color: #C92A2A; }
+.su-dd-item--danger:hover { background: #fff5f5; }
+.su-dd-divider { border: none; border-top: 1px solid #f0f2f7; margin: 4px 0; }
+
+/* Avatar */
+.su-card-avatar-wrap { display: flex; justify-content: center; margin-bottom: 14px; }
+.su-card-avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #5e3dc7);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 20px; font-weight: 700;
+  overflow: hidden; flex-shrink: 0;
+}
+.su-card-avatar--img { background: none; }
+
+.su-card-name {
+  font-size: 15px; font-weight: 700; color: #111827;
+  text-align: center; margin-bottom: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.su-card-email {
+  font-size: 12.5px; color: #6b7280;
+  text-align: center; margin-bottom: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.su-card-divider {
+  border: none; border-top: 1px solid #f0f2f7; margin-bottom: 14px;
+}
+
+/* Meta rows */
+.su-card-meta-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.su-card-meta-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; color: #9ca3af;
+}
+.su-card-meta-value { font-size: 13px; font-weight: 600; color: #111827; }
+.su-card-joined {
+  font-size: 11.5px; color: #9ca3af;
+  margin-top: 10px; padding-top: 12px;
+  border-top: 1px solid #f0f2f7;
+}
+
+/* ── Pills ──────────────────────────────────────────────────────────── */
+.su-role-pill {
+  display: inline-block;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11.5px; font-weight: 600;
+  white-space: nowrap;
+}
+.su-status-pill {
+  display: inline-block;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11.5px; font-weight: 600;
+  white-space: nowrap;
+}
+.su-status--active   { background: #ebfbee; color: #2f9e44; }
+.su-status--inactive { background: #f8f9fa; color: #868e96; }
+
+/* ── Add New Member card ────────────────────────────────────────────── */
+.su-add-card {
+  background: #fff;
+  border: 2px dashed #c5d0fa;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; cursor: pointer;
+  transition: border-color .15s, background .15s;
+  min-height: 260px;
+}
+.su-add-card:hover { border-color: #2563eb; background: #f8f9ff; }
+.su-add-card-icon {
+  width: 60px; height: 60px; border-radius: 14px;
+  background: #eef2ff;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 6px;
+}
+.su-add-card-title {
+  font-size: 15px; font-weight: 700; color: #111827;
+}
+.su-add-card-sub {
+  font-size: 12.5px; color: #6b7280;
+  text-align: center; max-width: 180px;
+}
+.su-add-card-btn {
+  margin-top: 8px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 18px; border-radius: 8px;
+  border: 1.5px solid #2563eb; background: #fff;
+  color: #2563eb; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background .12s;
+}
+.su-add-card-btn:hover { background: #eef2ff; }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .su-desktop-table { display: none !important; }
-  .su-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; }
-  .su-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; }
-  .su-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-  .su-mc-name { font-size: 13.5px; font-weight: 700; color: #1a1a2e; }
-  .su-mc-mid { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
-  .su-mc-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #868e96; }
-  .su-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+  .su-cards-grid { grid-template-columns: 1fr; gap: 14px; }
 }
 @media (max-width: 480px) {
   .cust-page { padding: 12px !important; }

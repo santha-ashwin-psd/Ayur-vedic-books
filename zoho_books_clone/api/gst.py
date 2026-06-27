@@ -13,6 +13,7 @@ from frappe.utils import flt, today
 from zoho_books_clone.accounts.doctype.general_ledger_entry.general_ledger_entry import (
     make_gl_entries,
 )
+from zoho_books_clone.db.validators import validate_fiscal_year
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -53,6 +54,11 @@ def pay_gst(
     if total <= 0:
         frappe.throw(_("Total GST payment amount must be positive."))
 
+    # posting_date is always today() for GST payments — validate it falls in an
+    # open, unlocked fiscal year before building any GL entries.
+    posting_date = today()
+    validate_fiscal_year(posting_date, company)
+
     # Resolve bank GL
     bank_gl = None
     if bank_account:
@@ -85,7 +91,6 @@ def pay_gst(
 
     gl_map.append({"account": bank_gl, "debit": 0, "credit": total, "remarks": remark})
 
-    posting_date = today()
     voucher_no   = challan_ref or ("GST-PAY-" + today())
     for e in gl_map:
         e.update({
@@ -138,6 +143,10 @@ def create_tds_entry(
         frappe.throw(_("TDS amount must be between 0 and the gross amount."))
 
     date = date or today()
+
+    # Block GL posting into a closed or missing fiscal year.  date is resolved
+    # above so the check always has a concrete value to test against.
+    validate_fiscal_year(date, company)
 
     tds_payable = (
         _find_account(company, "Tax", "TDS Payable")

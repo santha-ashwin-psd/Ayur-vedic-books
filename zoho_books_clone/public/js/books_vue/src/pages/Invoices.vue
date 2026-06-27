@@ -303,59 +303,6 @@
         <div class="inv-content-row">
         <div class="inv-dbody">
 
-          <!-- ══ CARD 1: Branding & Template (readonly — manage in Settings) ══ -->
-          <div class="add-card">
-            <div class="add-card-header" @click="collapsed.branding=!collapsed.branding">
-              <div class="add-card-title">
-                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
-                Branding &amp; Template
-              </div>
-              <span class="add-card-chevron" :class="{collapsed:collapsed.branding}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-              </span>
-            </div>
-            <div class="add-card-body" :class="{collapsed:collapsed.branding}">
-              <div class="inv-brand-readonly">
-
-                <!-- Template chips (readonly) -->
-                <div class="inv-brand-row">
-                  <span class="inv-brand-lbl">Template</span>
-                  <div class="inv-brand-tmpl-btns">
-                    <span v-for="t in TEMPLATES" :key="t.key"
-                      class="inv-brand-tmpl-chip" :class="{active: selectedTemplate===t.key}">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                      {{ t.label }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Brand color (readonly) -->
-                <div class="inv-brand-row">
-                  <span class="inv-brand-lbl">Brand Color</span>
-                  <div class="inv-brand-color-preview">
-                    <span class="inv-brand-color-swatch" :style="{background:brandColor}"></span>
-                    <span class="inv-brand-color-hex">{{ brandColor }}</span>
-                  </div>
-                </div>
-
-                <!-- Company logo (readonly) -->
-                <div class="inv-brand-row">
-                  <span class="inv-brand-lbl">Logo</span>
-                  <div class="inv-brand-logo-preview">
-                    <img v-if="companyLogo" :src="logoSrc(companyLogo)" class="inv-brand-logo-thumb" alt="Company logo"/>
-                    <span v-else class="inv-brand-logo-none">No logo set</span>
-                  </div>
-                </div>
-
-                <!-- Link to settings -->
-                <div class="inv-brand-settings-hint">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                  Manage in <a href="#" @click.prevent="goToBrandingSettings" class="inv-brand-settings-link">Settings &rsaquo; Branding &amp; Template</a>
-                </div>
-
-              </div>
-            </div>
-          </div>
           <!-- ══ CARD 2: Invoice Details ══ -->
           <div class="add-card">
             <div class="add-card-header" @click="collapsed.details=!collapsed.details">
@@ -1723,7 +1670,7 @@ const previewData = computed(()=>({
 }));
 
 // ── Shared print/preview renderer (active template from Company Settings) ──
-const { setCompany, renderDocument, printDoc } = useLivePreview();
+const { setCompany, refreshBranding, renderDocument, printDoc } = useLivePreview();
 const INV_PRINT_CFG = { title: "INVOICE", partyLabel: "Bill To", partyField: "customer_name" };
 
 // Map the page's local print-data shape onto the standard doc contract that
@@ -1778,10 +1725,13 @@ const tlProgressWidth = computed(()=>{
 
 const showDownloadMenu = ref(false);
 
-function downloadInvoicePdf(mode = 'pdf') {
+async function downloadInvoicePdf(mode = 'pdf') {
   showDownloadMenu.value = false;
   const inv = viewInv.value;
   if (!inv) return;
+
+  // Pull the latest selected template from Company Settings before rendering.
+  try { await refreshBranding(); } catch {}
 
   // Build the same data shape used by the create/edit preview
   const data = {
@@ -2527,7 +2477,8 @@ function removeLogo() {
 }
 
 
-function printInvoice(data) {
+async function printInvoice(data) {
+  try { await refreshBranding(); } catch {}
   printDoc(_toPrintDoc(data), _invCfg(data));
 }
 

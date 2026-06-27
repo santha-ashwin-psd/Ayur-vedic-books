@@ -940,8 +940,8 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
-const { printDoc, renderDocument, setCompany } = useLivePreview();
-function printPO(d) { printDoc({ ...d, items: viewItems.value }, { title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
+const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
+async function printPO(d) { try { await refreshBranding(); } catch {} printDoc({ ...d, items: viewItems.value }, { title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
 
 const showDownloadMenu = ref(false);
 

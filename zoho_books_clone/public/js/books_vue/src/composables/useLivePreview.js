@@ -432,7 +432,8 @@ function _renderMinimal(doc, cfg) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 export function useLivePreview() {
-  function setCompany(c)    { _loadBranding(c); }
+  function setCompany(c)    { return _loadBranding(c); }
+  function refreshBranding() { return _loadBranding(_state.company); }
   function setTemplate(t)   { _state.template = t; _saveBranding(); }
   function setBrandColor(c) { _state.brandColor = c; _saveBranding(); }
   function setLogo(l)       { _state.logo = l; _saveBranding(); }
@@ -535,5 +536,5 @@ export function useLivePreview() {
   const brandColor = computed({ get: () => _state.brandColor, set: setBrandColor });
   const logo       = computed({ get: () => _state.logo,       set: setLogo });
 
-  return { state: _state, template, brandColor, logo, setCompany, renderDocument, printDoc };
+  return { state: _state, template, brandColor, logo, setCompany, refreshBranding, renderDocument, printDoc };
 }

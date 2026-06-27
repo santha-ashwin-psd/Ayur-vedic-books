@@ -830,8 +830,8 @@ const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "1
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
-const { printDoc, renderDocument, setCompany } = useLivePreview();
-function printBILL(d) { printDoc({ ...d, items: viewItems.value, taxes: viewTaxes.value }, { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
+const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
+async function printBILL(d) { try { await refreshBranding(); } catch {} printDoc({ ...d, items: viewItems.value, taxes: viewTaxes.value }, { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
 
 const showDownloadMenu = ref(false);
 

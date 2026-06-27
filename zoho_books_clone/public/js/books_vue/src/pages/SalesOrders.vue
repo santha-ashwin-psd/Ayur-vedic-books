@@ -1038,8 +1038,8 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 const { toast } = useToast();
 const route = useRoute();
 const { confirm } = useConfirm();
-const { printDoc, renderDocument, setCompany } = useLivePreview();
-function printSO(d) { printDoc({ ...d, items: viewItems.value }, { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
+const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
+async function printSO(d) { try { await refreshBranding(); } catch {} printDoc({ ...d, items: viewItems.value }, { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
 
 const showDownloadMenu = ref(false);
 

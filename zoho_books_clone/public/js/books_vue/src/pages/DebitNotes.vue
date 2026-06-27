@@ -710,8 +710,8 @@ import DocLink from "../components/DocLink.vue";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
-const { printDoc } = useLivePreview();
-function printDN(d) { printDoc(d, { title: "DEBIT NOTE", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
+const { printDoc, refreshBranding } = useLivePreview();
+async function printDN(d) { try { await refreshBranding(); } catch {} printDoc(d, { title: "DEBIT NOTE", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
 
 const { openEmail } = useEmailDialog();
 function dnStatus(d) {

@@ -129,7 +129,7 @@ async function onSend() {
     if (state.printConfig) {
       try {
         const doc = await apiGet(state.doctype, state.name);
-        if (doc?.company) setCompany(doc.company);
+        await setCompany(doc?.company || "");
         payload.pdf_html = renderDocument(doc, {
           ...state.printConfig,
           companyName: doc?.company || "",

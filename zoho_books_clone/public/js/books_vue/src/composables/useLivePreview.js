@@ -49,7 +49,7 @@ function _logoSrc(url) {
   return (window.frappe?.boot?.site_url || window.location.origin).replace(/\/$/, "") + url;
 }
 
-// ── TEMPLATE 1: "Executive" (key: classic) ───────────────────────────────────
+// ── TEMPLATE 1: "Classic" — formal letterhead, ruled frame ────────────────────
 function _renderClassic(doc, cfg) {
   const brand    = _state.brandColor;
   const logo     = _logoSrc(_state.logo);
@@ -61,10 +61,9 @@ function _renderClassic(doc, cfg) {
 
   const items = (doc.items || []).map((it, i) => `
     <tr>
-      <td class="n">${i + 1}</td>
+      <td class="c">${i + 1}</td>
       <td>
         <div class="inm">${_esc(it.item_name || it.item_code)}</div>
-        ${it.item_code && it.item_name && it.item_code !== it.item_name ? `<div class="ic">${_esc(it.item_code)}</div>` : ""}
         ${it.description && it.description !== it.item_name ? `<div class="ids">${_esc(it.description)}</div>` : ""}
       </td>
       ${cfg.includeHsn ? `<td class="c">${_esc(it.gst_hsn_code || it.hsn_code || "—")}</td>` : ""}
@@ -74,133 +73,104 @@ function _renderClassic(doc, cfg) {
       ${cfg.includeDiscount ? `<td class="c">${Number(it.discount_percentage || 0)}%</td>` : ""}
       <td class="r b">${_fmt(it.amount, currency)}</td>
     </tr>`).join("");
-
   const taxRows = (doc.taxes || []).map(t =>
-    `<tr><td class="tl">${_esc(t.description || t.account_head)}</td><td class="r">${_fmt(t.tax_amount || 0, currency)}</td></tr>`
-  ).join("");
-
+    `<tr><td class="tl">${_esc(t.description || t.account_head)}</td><td class="r">${_fmt(t.tax_amount || 0, currency)}</td></tr>`).join("");
   const colspan = 6 + (cfg.includeHsn ? 1 : 0) + (cfg.includeDiscount ? 1 : 0);
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <title>${_esc(cfg.title)} — ${_esc(doc.name)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:#1e293b;background:#fff;font-size:12.5px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .page{max-width:920px;margin:0 auto}
-  /* Header band */
-  .hd{background:${brand};color:#fff;display:flex;justify-content:space-between;align-items:center;padding:26px 40px}
-  .hd-l{display:flex;align-items:center;gap:16px}
-  .hd-logo{max-height:52px;max-width:120px;object-fit:contain;background:#fff;border-radius:8px;padding:6px}
-  .hd-co{font-size:21px;font-weight:800;letter-spacing:-.01em;line-height:1.15}
-  .hd-gst{font-size:10.5px;opacity:.85;margin-top:3px}
-  .hd-badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:12px 18px;text-align:right;min-width:190px}
-  .hd-badge .t{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
-  .hd-badge .num{font-size:19px;font-weight:800;margin-top:2px}
-  .hd-badge .dt{font-size:10.5px;opacity:.85;margin-top:4px}
-  .body{padding:28px 40px 36px}
-  /* Party cards */
-  .parties{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
-  .pc{border:1px solid #e6ebf1;border-radius:10px;padding:14px 16px}
-  .pc .lbl{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${brand};margin-bottom:5px}
-  .pc .nm{font-weight:700;color:#0f172a;font-size:13.5px}
-  .pc .sub{font-size:11px;color:#64748b;margin-top:3px;white-space:pre-line;line-height:1.45}
-  /* Meta pills */
-  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
-  .pill{background:#f4f7fb;border:1px solid #e6ebf1;border-radius:7px;padding:6px 12px;font-size:11px}
-  .pill b{color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:9.5px;display:block;margin-bottom:1px}
-  .pill span{color:#0f172a;font-weight:600}
-  /* Items */
-  table.it{width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e6ebf1;border-radius:10px;overflow:hidden}
-  table.it thead th{background:${brand}14;color:${brand};padding:10px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;text-align:left;border-bottom:2px solid ${brand}40}
-  table.it thead th.r{text-align:right}table.it thead th.c{text-align:center}
-  table.it tbody td{padding:11px 10px;border-bottom:1px solid #f0f3f7;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
-  table.it tbody tr:nth-child(even){background:#fafbfd}
-  table.it tbody tr:last-child td{border-bottom:none}
-  .it .n{color:#94a3b8;text-align:center;width:26px}
-  .it .inm{font-weight:600;color:#0f172a}.it .ic{font-size:10px;color:#94a3b8;margin-top:1px}.it .ids{font-size:10.5px;color:#64748b;margin-top:2px}
-  .it .r{text-align:right}.it .c{text-align:center}.it .b{font-weight:700;font-variant-numeric:tabular-nums}
+  body{font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;background:#fff;font-size:12.5px;line-height:1.55;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sheet{max-width:880px;margin:0 auto;padding:40px}
+  .frame{border:2px solid ${brand};padding:0}
+  .frame-in{border:1px solid #d8d8d8;margin:4px;padding:26px 30px}
+  /* Letterhead */
+  .lh{text-align:center;border-bottom:2px solid ${brand};padding-bottom:16px;margin-bottom:6px}
+  .lh img{max-height:54px;max-width:160px;object-fit:contain;margin:0 auto 8px;display:block}
+  .lh .co{font-size:24px;font-weight:700;letter-spacing:.02em;color:#111}
+  .lh .meta{font-size:10.5px;color:#666;margin-top:4px;font-family:Arial,sans-serif}
+  .title{text-align:center;font-size:15px;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:${brand};margin:16px 0 18px}
+  /* Parties row */
+  .pr{display:flex;justify-content:space-between;gap:24px;margin-bottom:6px;font-family:Arial,sans-serif}
+  .pr .blk{font-size:12px}
+  .pr .blk.r{text-align:right}
+  .pr .l{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${brand};margin-bottom:3px}
+  .pr .nm{font-weight:700;font-size:13.5px;color:#111;font-family:Georgia,serif}
+  .pr .sub{color:#555;font-size:11px;margin-top:2px;white-space:pre-line;line-height:1.45}
+  .pr .kv{margin-top:6px}
+  hr.sep{border:none;border-top:1px solid #ddd;margin:16px 0}
+  /* Table */
+  table.it{width:100%;border-collapse:collapse;font-size:12px;font-family:Arial,sans-serif;margin-top:4px}
+  table.it th{background:${brand};color:#fff;padding:9px 10px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;text-align:left;border:1px solid ${brand}}
+  table.it th.r{text-align:right}table.it th.c{text-align:center}
+  table.it td{padding:9px 10px;border:1px solid #dcdcdc;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
+  .it .inm{font-weight:700;color:#1a1a1a;font-family:Georgia,serif}
+  .it .ids{font-size:10.5px;color:#666;margin-top:2px}
+  .it .r{text-align:right}.it .c{text-align:center}.it .b{font-weight:700}
   /* Totals */
-  .tw{display:flex;justify-content:flex-end;margin-top:16px}
-  .tt{width:300px;border:1px solid #e6ebf1;border-radius:10px;overflow:hidden}
-  .tt .row{display:flex;justify-content:space-between;padding:9px 16px;font-size:12.5px;border-bottom:1px solid #f0f3f7}
-  .tt .row .tl{color:#64748b}.tt .row span:last-child{font-variant-numeric:tabular-nums}
-  .tt .grand{background:${brand};color:#fff;font-weight:800;font-size:15px;padding:12px 16px;display:flex;justify-content:space-between}
-  /* Bottom */
-  .notes{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  .bx{border:1px solid #e6ebf1;border-radius:10px;padding:13px 16px;font-size:11.5px;color:#374151;line-height:1.6}
-  .bx .h{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${brand};margin-bottom:5px}
-  .sig{display:flex;gap:18px;margin-top:30px}
-  .sig div{flex:1;border-top:1.5px solid #cbd5e1;padding-top:7px;font-size:10px;color:#94a3b8;text-align:center}
-  .ft{margin-top:22px;padding:12px 40px;border-top:1px solid #eef2f6;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8}
-  @media print{.page{max-width:none}}
-</style></head><body><div class="page">
-  <div class="hd">
-    <div class="hd-l">
-      ${logo ? `<img src="${_esc(logo)}" class="hd-logo"/>` : ""}
-      <div>
-        <div class="hd-co">${_esc(doc.company || cfg.companyName || "")}</div>
-        ${doc.company_gstin || doc.gstin ? `<div class="hd-gst">GSTIN: ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}
-      </div>
+  .tw{display:flex;justify-content:flex-end;margin-top:14px}
+  .tt{width:300px;border:1px solid #ccc;font-family:Arial,sans-serif}
+  .tt tr td{padding:7px 14px;font-size:12.5px;border-bottom:1px solid #eee}
+  .tt .tl{color:#555}.tt .r{text-align:right}
+  .tt .grand td{background:${brand};color:#fff;font-weight:700;font-size:14px;border:none}
+  /* Notes / sign */
+  .notes{margin-top:18px;font-family:Arial,sans-serif;font-size:11.5px;color:#444;line-height:1.6}
+  .notes .h{font-weight:700;color:${brand};font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+  .sig{display:flex;justify-content:space-between;gap:40px;margin-top:40px;font-family:Arial,sans-serif}
+  .sig div{flex:1;border-top:1px solid #999;padding-top:6px;font-size:10px;color:#777;text-align:center}
+  .ft{text-align:center;margin-top:18px;font-size:9.5px;color:#999;font-family:Arial,sans-serif;font-style:italic}
+  @media print{.sheet{padding:0;max-width:none}}
+</style></head><body><div class="sheet"><div class="frame"><div class="frame-in">
+  <div class="lh">
+    ${logo ? `<img src="${_esc(logo)}"/>` : ""}
+    <div class="co">${_esc(doc.company || cfg.companyName || "")}</div>
+    <div class="meta">${doc.company_gstin || doc.gstin ? "GSTIN: " + _esc(doc.company_gstin || doc.gstin) : ""}</div>
+  </div>
+  <div class="title">${_esc(cfg.title)}</div>
+  <div class="pr">
+    <div class="blk">
+      <div class="l">${_esc(cfg.partyLabel)}</div>
+      <div class="nm">${_esc(party)}</div>
+      ${doc.address_display ? `<div class="sub">${_esc(doc.address_display)}</div>` : ""}
+      ${doc.customer_gstin || doc.supplier_gstin ? `<div class="sub">GSTIN: ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}
     </div>
-    <div class="hd-badge">
-      <div class="t">${_esc(cfg.title)}</div>
-      <div class="num">${_esc(doc.name || "")}</div>
-      <div class="dt">${_esc(docDate)}${doc.status ? " · " + _esc(doc.status) : ""}</div>
+    <div class="blk r">
+      <div class="l">${_esc(cfg.title)} No.</div>
+      <div class="nm">${_esc(doc.name || "")}</div>
+      <div class="kv"><div class="l">Date</div><div class="sub">${_esc(docDate)}</div></div>
+      ${doc.due_date ? `<div class="kv"><div class="l">Due Date</div><div class="sub">${_esc(doc.due_date)}</div></div>` : ""}
+      ${doc.valid_till ? `<div class="kv"><div class="l">Valid Till</div><div class="sub">${_esc(doc.valid_till)}</div></div>` : ""}
+      ${doc.po_no ? `<div class="kv"><div class="l">PO Number</div><div class="sub">${_esc(doc.po_no)}</div></div>` : ""}
+      ${doc.place_of_supply ? `<div class="kv"><div class="l">Place of Supply</div><div class="sub">${_esc(doc.place_of_supply)}</div></div>` : ""}
     </div>
   </div>
-  <div class="body">
-    <div class="parties">
-      <div class="pc">
-        <div class="lbl">From</div>
-        <div class="nm">${_esc(doc.company || cfg.companyName || "")}</div>
-        ${doc.company_gstin || doc.gstin ? `<div class="sub">GSTIN: ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}
-      </div>
-      <div class="pc">
-        <div class="lbl">${_esc(cfg.partyLabel)}</div>
-        <div class="nm">${_esc(party)}</div>
-        ${doc.address_display ? `<div class="sub">${_esc(doc.address_display)}</div>` : ""}
-        ${doc.customer_gstin || doc.supplier_gstin ? `<div class="sub">GSTIN: ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}
-      </div>
-    </div>
-    <div class="meta">
-      <div class="pill"><b>Date</b><span>${_esc(docDate)}</span></div>
-      ${doc.due_date ? `<div class="pill"><b>Due Date</b><span>${_esc(doc.due_date)}</span></div>` : ""}
-      ${doc.valid_till ? `<div class="pill"><b>Valid Till</b><span>${_esc(doc.valid_till)}</span></div>` : ""}
-      ${doc.delivery_date ? `<div class="pill"><b>Delivery</b><span>${_esc(doc.delivery_date)}</span></div>` : ""}
-      ${doc.po_no ? `<div class="pill"><b>PO Number</b><span>${_esc(doc.po_no)}</span></div>` : ""}
-      ${doc.place_of_supply ? `<div class="pill"><b>Place of Supply</b><span>${_esc(doc.place_of_supply)}</span></div>` : ""}
-      ${doc.currency && doc.currency !== "INR" ? `<div class="pill"><b>Currency</b><span>${_esc(doc.currency)}</span></div>` : ""}
-    </div>
-    ${doc.shipping_address ? `<div class="pc" style="margin-bottom:16px"><div class="lbl">Ship To</div><div class="sub" style="margin-top:2px">${_esc(doc.shipping_address)}</div></div>` : ""}
-    <table class="it">
-      <thead><tr>
-        <th class="c" style="width:26px">#</th><th>Item / Description</th>
-        ${cfg.includeHsn ? `<th class="c" style="width:74px">HSN/SAC</th>` : ""}
-        <th class="r" style="width:48px">Qty</th><th class="c" style="width:50px">UOM</th>
-        <th class="r" style="width:104px">Rate</th>
-        ${cfg.includeDiscount ? `<th class="c" style="width:50px">Disc</th>` : ""}
-        <th class="r" style="width:110px">Amount</th>
-      </tr></thead>
-      <tbody>${items || `<tr><td colspan="${colspan}" style="text-align:center;color:#9ca3af;padding:26px">No items</td></tr>`}</tbody>
-    </table>
-    <div class="tw"><div class="tt">
-      <div class="row"><span class="tl">Subtotal</span><span>${_fmt(netTotal, currency)}</span></div>
-      ${taxRows}
-      ${doc.discount_amount ? `<div class="row"><span class="tl" style="color:#dc2626">Discount</span><span style="color:#dc2626">− ${_fmt(doc.discount_amount, currency)}</span></div>` : ""}
-      <div class="grand"><span>Grand Total</span><span>${_fmt(doc.grand_total, currency)}</span></div>
-    </div></div>
-    ${(doc.remarks || doc.terms || doc.customer_note) ? `
-    <div class="notes">
-      ${doc.remarks ? `<div class="bx"><div class="h">Remarks</div>${_esc(doc.remarks)}</div>` : "<div></div>"}
-      ${doc.terms || doc.customer_note ? `<div class="bx"><div class="h">${doc.customer_note ? "Note" : "Terms & Conditions"}</div>${_esc(doc.customer_note || doc.terms)}</div>` : ""}
-    </div>` : ""}
-    <div class="sig"><div>Prepared By</div><div>Authorised Signatory</div><div>Receiver's Signature</div></div>
-  </div>
-  <div class="ft"><span>${_esc(doc.company || cfg.companyName || "")}</span><span>${_esc(doc.name)} · Printed ${_today()}</span></div>
-</div></body></html>`;
+  ${doc.shipping_address ? `<hr class="sep"/><div class="pr"><div class="blk"><div class="l">Ship To</div><div class="sub">${_esc(doc.shipping_address)}</div></div></div>` : ""}
+  <table class="it">
+    <thead><tr>
+      <th class="c" style="width:30px">#</th><th>Item &amp; Description</th>
+      ${cfg.includeHsn ? `<th class="c" style="width:72px">HSN/SAC</th>` : ""}
+      <th class="r" style="width:46px">Qty</th><th class="c" style="width:48px">UOM</th>
+      <th class="r" style="width:100px">Rate</th>
+      ${cfg.includeDiscount ? `<th class="c" style="width:46px">Disc</th>` : ""}
+      <th class="r" style="width:110px">Amount</th>
+    </tr></thead>
+    <tbody>${items || `<tr><td colspan="${colspan}" style="text-align:center;color:#999;padding:24px">No items</td></tr>`}</tbody>
+  </table>
+  <div class="tw"><table class="tt">
+    <tr><td class="tl">Subtotal</td><td class="r">${_fmt(netTotal, currency)}</td></tr>
+    ${taxRows}
+    ${doc.discount_amount ? `<tr><td class="tl" style="color:#b91c1c">Discount</td><td class="r" style="color:#b91c1c">− ${_fmt(doc.discount_amount, currency)}</td></tr>` : ""}
+    <tr class="grand"><td>Grand Total</td><td class="r">${_fmt(doc.grand_total, currency)}</td></tr>
+  </table></div>
+  ${doc.remarks ? `<div class="notes"><div class="h">Remarks</div>${_esc(doc.remarks)}</div>` : ""}
+  ${doc.terms || doc.customer_note ? `<div class="notes"><div class="h">${doc.customer_note ? "Note" : "Terms & Conditions"}</div>${_esc(doc.customer_note || doc.terms)}</div>` : ""}
+  <div class="sig"><div>Prepared By</div><div>Authorised Signatory</div><div>Receiver's Signature</div></div>
+  <div class="ft">${_esc(doc.company || "")} · ${_esc(doc.name)} · Printed ${_today()}</div>
+</div></div></div></body></html>`;
 }
 
-// ── TEMPLATE 2: "Sidebar" (key: modern) ──────────────────────────────────────
+// ── TEMPLATE 2: "Modern" — rounded cards, soft, contemporary ──────────────────
 function _renderModern(doc, cfg) {
   const brand    = _state.brandColor;
   const logo     = _logoSrc(_state.logo);
@@ -212,8 +182,7 @@ function _renderModern(doc, cfg) {
 
   const items = (doc.items || []).map((it, i) => `
     <tr>
-      <td>
-        <div class="inm">${_esc(it.item_name || it.item_code)}</div>
+      <td><div class="inm">${_esc(it.item_name || it.item_code)}</div>
         ${it.description && it.description !== it.item_name ? `<div class="ids">${_esc(it.description)}</div>` : ""}
         ${cfg.includeHsn && (it.gst_hsn_code || it.hsn_code) ? `<div class="ihs">HSN ${_esc(it.gst_hsn_code || it.hsn_code)}</div>` : ""}
       </td>
@@ -222,97 +191,102 @@ function _renderModern(doc, cfg) {
       ${cfg.includeDiscount ? `<td class="c mut">${Number(it.discount_percentage || 0)}%</td>` : ""}
       <td class="r b">${_fmt(it.amount, currency)}</td>
     </tr>`).join("");
-
   const colspan = 4 + (cfg.includeDiscount ? 1 : 0);
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <title>${_esc(cfg.title)} — ${_esc(doc.name)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:#0f172a;background:#fff;font-size:12.5px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .wrap{display:flex;min-height:100%;max-width:920px;margin:0 auto}
-  /* Sidebar */
-  .side{width:232px;flex-shrink:0;background:${brand};color:#fff;padding:30px 22px;display:flex;flex-direction:column}
-  .side-logo{max-height:50px;max-width:150px;object-fit:contain;background:#fff;border-radius:8px;padding:6px;margin-bottom:16px}
-  .side-co{font-size:18px;font-weight:800;line-height:1.2}
-  .side-blk{margin-top:16px}
-  .side-blk .l{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.7;margin-bottom:3px}
-  .side-blk .v{font-size:11.5px;opacity:.95;white-space:pre-line;line-height:1.5}
-  .side-doc{margin-top:auto;padding-top:24px}
-  .side-doc .t{font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;opacity:.85}
-  .side-doc .num{font-size:24px;font-weight:800;margin-top:4px;line-height:1}
-  /* Main */
-  .main{flex:1;padding:34px 36px}
-  .billto .l{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${brand};margin-bottom:4px}
-  .billto .nm{font-size:16px;font-weight:800;color:#0f172a}
-  .billto .sub{font-size:11px;color:#64748b;margin-top:3px;white-space:pre-line;line-height:1.45}
-  .meta{display:flex;flex-wrap:wrap;gap:22px;margin:20px 0 22px;padding:14px 0;border-top:1px solid #eef2f6;border-bottom:1px solid #eef2f6}
-  .meta .m .l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8}
-  .meta .m .v{font-size:12.5px;font-weight:700;color:#0f172a;margin-top:2px}
+  body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:#1f2937;background:#f1f5f9;font-size:12.5px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .page{max-width:900px;margin:0 auto;padding:28px}
+  /* Hero card */
+  .hero{background:${brand};color:#fff;border-radius:18px;padding:26px 30px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 10px 30px ${brand}40}
+  .hero .co{font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .hero img{max-height:46px;max-width:130px;object-fit:contain;background:#fff;border-radius:10px;padding:6px;margin-bottom:10px;display:block}
+  .hero .gst{font-size:10.5px;opacity:.85;margin-top:4px}
+  .hero .rt{text-align:right}
+  .hero .badge{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;opacity:.85}
+  .hero .num{font-size:26px;font-weight:800;margin-top:2px;line-height:1}
+  .hero .dt{font-size:11px;opacity:.85;margin-top:6px}
+  /* Info chips */
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0}
+  .chip{background:#fff;border-radius:12px;padding:10px 16px;box-shadow:0 2px 8px rgba(15,23,42,.06);font-size:11.5px}
+  .chip .l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8}
+  .chip .v{font-weight:700;color:#0f172a;margin-top:2px}
+  /* Party cards */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+  .card{background:#fff;border-radius:14px;padding:16px 18px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .card .l{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:${brand};margin-bottom:5px}
+  .card .nm{font-size:14px;font-weight:800;color:#0f172a}
+  .card .sub{font-size:11px;color:#64748b;margin-top:3px;white-space:pre-line;line-height:1.45}
+  /* Items card */
+  .tbl-card{background:#fff;border-radius:14px;padding:8px 10px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
   table{width:100%;border-collapse:collapse;font-size:12.5px}
-  thead th{text-align:left;padding:0 8px 10px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;border-bottom:2px solid ${brand}}
+  thead th{text-align:left;padding:12px 12px;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;border-bottom:2px solid #eef2f7}
   thead th.r{text-align:right}thead th.c{text-align:center}
-  tbody td{padding:12px 8px;border-bottom:1px solid #f0f3f7;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
-  .inm{font-weight:600}.ids{font-size:10.5px;color:#64748b;margin-top:2px}.ihs{font-size:10px;color:#94a3b8;margin-top:2px}
-  .r{text-align:right}.c{text-align:center}.b{font-weight:700;font-variant-numeric:tabular-nums}.mut{color:#94a3b8;font-size:10.5px}
-  .tw{display:flex;justify-content:flex-end;margin-top:18px}
-  .tt{width:290px}
-  .tt .row{display:flex;justify-content:space-between;padding:7px 0;font-size:12.5px;color:#475569}
-  .tt .row span:last-child{font-variant-numeric:tabular-nums;color:#0f172a}
-  .tt .grand{margin-top:8px;background:${brand};color:#fff;border-radius:10px;padding:13px 18px;display:flex;justify-content:space-between;font-weight:800;font-size:15px}
-  .notes{margin-top:24px;font-size:11.5px;color:#374151;line-height:1.6}
+  tbody td{padding:13px 12px;border-bottom:1px solid #f4f6f9;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
+  tbody tr:last-child td{border-bottom:none}
+  .inm{font-weight:700;color:#0f172a}.ids{font-size:10.5px;color:#64748b;margin-top:2px}.ihs{font-size:10px;color:#94a3b8;margin-top:2px}
+  .r{text-align:right}.c{text-align:center}.b{font-weight:800}.mut{color:#94a3b8;font-size:10.5px}
+  /* Totals */
+  .tw{display:flex;justify-content:flex-end;margin-top:16px}
+  .tt{width:300px;background:#fff;border-radius:14px;padding:8px 18px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .tt .row{display:flex;justify-content:space-between;padding:8px 0;font-size:12.5px;color:#64748b;border-bottom:1px solid #f4f6f9}
+  .tt .row span:last-child{color:#0f172a;font-weight:600}
+  .tt .grand{display:flex;justify-content:space-between;align-items:center;margin:10px -18px -8px;padding:14px 18px;background:${brand};color:#fff;border-radius:0 0 14px 14px;font-weight:800;font-size:15px}
+  .notes{background:#fff;border-radius:14px;padding:14px 18px;margin-top:16px;box-shadow:0 2px 8px rgba(15,23,42,.06);font-size:11.5px;color:#374151;line-height:1.6}
   .notes .h{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${brand};margin-bottom:4px}
-  .sig{display:flex;gap:18px;margin-top:32px}
+  .sig{display:flex;gap:18px;margin-top:26px}
   .sig div{flex:1;border-top:1.5px solid #cbd5e1;padding-top:7px;font-size:10px;color:#94a3b8;text-align:center}
-  .ft{margin-top:26px;font-size:10px;color:#b6c0cc;text-align:right}
-  @media print{.wrap{max-width:none}.side{min-height:100vh}}
-</style></head><body><div class="wrap">
-  <aside class="side">
-    ${logo ? `<img src="${_esc(logo)}" class="side-logo"/>` : ""}
-    <div class="side-co">${_esc(doc.company || cfg.companyName || "")}</div>
-    ${doc.company_gstin || doc.gstin ? `<div class="side-blk"><div class="l">GSTIN</div><div class="v">${_esc(doc.company_gstin || doc.gstin)}</div></div>` : ""}
-    ${doc.shipping_address ? `<div class="side-blk"><div class="l">Ship To</div><div class="v">${_esc(doc.shipping_address)}</div></div>` : ""}
-    <div class="side-doc"><div class="t">${_esc(cfg.title)}</div><div class="num">${_esc(doc.name || "")}</div></div>
-  </aside>
-  <main class="main">
-    <div class="billto">
-      <div class="l">${_esc(cfg.partyLabel)}</div>
-      <div class="nm">${_esc(party)}</div>
-      ${doc.address_display ? `<div class="sub">${_esc(doc.address_display)}</div>` : ""}
-      ${doc.customer_gstin || doc.supplier_gstin ? `<div class="sub">GSTIN: ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}
+  .ft{text-align:center;margin-top:18px;font-size:10px;color:#a8b3c1}
+  @media print{body{background:#fff}.page{padding:0;max-width:none}.hero{box-shadow:none}.chip,.card,.tbl-card,.tt,.notes{box-shadow:none;border:1px solid #eef2f7}}
+</style></head><body><div class="page">
+  <div class="hero">
+    <div>
+      ${logo ? `<img src="${_esc(logo)}"/>` : ""}
+      <div class="co">${_esc(doc.company || cfg.companyName || "")}</div>
+      ${doc.company_gstin || doc.gstin ? `<div class="gst">GSTIN: ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}
     </div>
-    <div class="meta">
-      <div class="m"><div class="l">Date</div><div class="v">${_esc(docDate)}</div></div>
-      ${doc.due_date ? `<div class="m"><div class="l">Due Date</div><div class="v">${_esc(doc.due_date)}</div></div>` : ""}
-      ${doc.valid_till ? `<div class="m"><div class="l">Valid Till</div><div class="v">${_esc(doc.valid_till)}</div></div>` : ""}
-      ${doc.delivery_date ? `<div class="m"><div class="l">Delivery</div><div class="v">${_esc(doc.delivery_date)}</div></div>` : ""}
-      ${doc.po_no ? `<div class="m"><div class="l">PO Number</div><div class="v">${_esc(doc.po_no)}</div></div>` : ""}
-      ${doc.place_of_supply ? `<div class="m"><div class="l">Place of Supply</div><div class="v">${_esc(doc.place_of_supply)}</div></div>` : ""}
-      ${doc.status ? `<div class="m"><div class="l">Status</div><div class="v">${_esc(doc.status)}</div></div>` : ""}
+    <div class="rt">
+      <div class="badge">${_esc(cfg.title)}</div>
+      <div class="num">${_esc(doc.name || "")}</div>
+      <div class="dt">${_esc(docDate)}${doc.status ? " · " + _esc(doc.status) : ""}</div>
     </div>
-    <table>
-      <thead><tr>
-        <th>Item</th><th class="r" style="width:100px">Qty</th><th class="r" style="width:110px">Rate</th>
-        ${cfg.includeDiscount ? `<th class="c" style="width:54px">Disc</th>` : ""}
-        <th class="r" style="width:120px">Amount</th>
-      </tr></thead>
-      <tbody>${items || `<tr><td colspan="${colspan}" style="text-align:center;color:#9ca3af;padding:28px">No items</td></tr>`}</tbody>
-    </table>
-    <div class="tw"><div class="tt">
-      <div class="row"><span>Subtotal</span><span>${_fmt(netTotal, currency)}</span></div>
-      ${(doc.taxes || []).map(t => `<div class="row"><span>${_esc(t.description || t.account_head)}</span><span>${_fmt(t.tax_amount || 0, currency)}</span></div>`).join("")}
-      ${doc.discount_amount ? `<div class="row"><span style="color:#dc2626">Discount</span><span style="color:#dc2626">− ${_fmt(doc.discount_amount, currency)}</span></div>` : ""}
-      <div class="grand"><span>Grand Total</span><span>${_fmt(doc.grand_total, currency)}</span></div>
-    </div></div>
-    ${doc.terms || doc.customer_note ? `<div class="notes"><div class="h">${doc.customer_note ? "Note" : "Terms & Conditions"}</div>${_esc(doc.customer_note || doc.terms)}</div>` : ""}
-    ${doc.remarks ? `<div class="notes"><div class="h">Remarks</div>${_esc(doc.remarks)}</div>` : ""}
-    <div class="sig"><div>Prepared By</div><div>Authorised Signatory</div><div>Receiver's Signature</div></div>
-    <div class="ft">${_esc(doc.name)} · Printed ${_today()}</div>
-  </main>
+  </div>
+  <div class="chips">
+    <div class="chip"><div class="l">Date</div><div class="v">${_esc(docDate)}</div></div>
+    ${doc.due_date ? `<div class="chip"><div class="l">Due Date</div><div class="v">${_esc(doc.due_date)}</div></div>` : ""}
+    ${doc.valid_till ? `<div class="chip"><div class="l">Valid Till</div><div class="v">${_esc(doc.valid_till)}</div></div>` : ""}
+    ${doc.delivery_date ? `<div class="chip"><div class="l">Delivery</div><div class="v">${_esc(doc.delivery_date)}</div></div>` : ""}
+    ${doc.po_no ? `<div class="chip"><div class="l">PO Number</div><div class="v">${_esc(doc.po_no)}</div></div>` : ""}
+    ${doc.place_of_supply ? `<div class="chip"><div class="l">Place of Supply</div><div class="v">${_esc(doc.place_of_supply)}</div></div>` : ""}
+  </div>
+  <div class="cards">
+    <div class="card"><div class="l">From</div><div class="nm">${_esc(doc.company || cfg.companyName || "")}</div>${doc.company_gstin || doc.gstin ? `<div class="sub">GSTIN: ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}</div>
+    <div class="card"><div class="l">${_esc(cfg.partyLabel)}</div><div class="nm">${_esc(party)}</div>${doc.address_display ? `<div class="sub">${_esc(doc.address_display)}</div>` : ""}${doc.customer_gstin || doc.supplier_gstin ? `<div class="sub">GSTIN: ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}</div>
+  </div>
+  <div class="tbl-card"><table>
+    <thead><tr>
+      <th>Item</th><th class="r" style="width:96px">Qty</th><th class="r" style="width:110px">Rate</th>
+      ${cfg.includeDiscount ? `<th class="c" style="width:52px">Disc</th>` : ""}
+      <th class="r" style="width:120px">Amount</th>
+    </tr></thead>
+    <tbody>${items || `<tr><td colspan="${colspan}" style="text-align:center;color:#94a3b8;padding:28px">No items</td></tr>`}</tbody>
+  </table></div>
+  <div class="tw"><div class="tt">
+    <div class="row"><span>Subtotal</span><span>${_fmt(netTotal, currency)}</span></div>
+    ${(doc.taxes || []).map(t => `<div class="row"><span>${_esc(t.description || t.account_head)}</span><span>${_fmt(t.tax_amount || 0, currency)}</span></div>`).join("")}
+    ${doc.discount_amount ? `<div class="row"><span style="color:#dc2626">Discount</span><span style="color:#dc2626">− ${_fmt(doc.discount_amount, currency)}</span></div>` : ""}
+    <div class="grand"><span>Grand Total</span><span>${_fmt(doc.grand_total, currency)}</span></div>
+  </div></div>
+  ${doc.terms || doc.customer_note ? `<div class="notes"><div class="h">${doc.customer_note ? "Note" : "Terms & Conditions"}</div>${_esc(doc.customer_note || doc.terms)}</div>` : ""}
+  ${doc.remarks ? `<div class="notes"><div class="h">Remarks</div>${_esc(doc.remarks)}</div>` : ""}
+  <div class="sig"><div>Prepared By</div><div>Authorised Signatory</div><div>Receiver's Signature</div></div>
+  <div class="ft">${_esc(doc.name)} · Printed ${_today()}</div>
 </div></body></html>`;
 }
 
-// ── TEMPLATE 3: "Editorial" (key: minimal) ───────────────────────────────────
+// ── TEMPLATE 3: "Minimal" — Swiss, monochrome, single accent line ─────────────
 function _renderMinimal(doc, cfg) {
   const brand    = _state.brandColor;
   const logo     = _logoSrc(_state.logo);
@@ -324,108 +298,102 @@ function _renderMinimal(doc, cfg) {
 
   const items = (doc.items || []).map((it, i) => `
     <tr>
-      <td class="n">${i + 1}</td>
+      <td class="n">${String(i + 1).padStart(2, "0")}</td>
       <td>
         <span class="inm">${_esc(it.item_name || it.item_code)}</span>
         ${it.description && it.description !== it.item_name ? `<div class="ids">${_esc(it.description)}</div>` : ""}
       </td>
-      ${cfg.includeHsn ? `<td class="c">${_esc(it.gst_hsn_code || it.hsn_code || "—")}</td>` : ""}
-      <td class="r">${Number(it.qty || 0)} ${_esc(it.uom || "")}</td>
-      <td class="r">${_fmt(it.rate, currency)}</td>
-      ${cfg.includeDiscount ? `<td class="c">${Number(it.discount_percentage || 0) ? "−" + Number(it.discount_percentage) + "%" : "—"}</td>` : ""}
-      <td class="r b">${_fmt(it.amount, currency)}</td>
+      ${cfg.includeHsn ? `<td class="c mono">${_esc(it.gst_hsn_code || it.hsn_code || "—")}</td>` : ""}
+      <td class="r mono">${Number(it.qty || 0)} ${_esc(it.uom || "")}</td>
+      <td class="r mono">${_fmt(it.rate, currency)}</td>
+      ${cfg.includeDiscount ? `<td class="r mono">${Number(it.discount_percentage || 0) ? Number(it.discount_percentage) + "%" : "—"}</td>` : ""}
+      <td class="r mono b">${_fmt(it.amount, currency)}</td>
     </tr>`).join("");
-
   const colspan = 5 + (cfg.includeHsn ? 1 : 0) + (cfg.includeDiscount ? 1 : 0);
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <title>${_esc(cfg.title)} — ${_esc(doc.name)}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',system-ui,sans-serif;color:#111827;background:#fff;font-size:12.5px;line-height:1.65;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .page{max-width:800px;margin:0 auto;padding:56px 64px}
-  .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
-  .top-l{display:flex;align-items:center;gap:12px}
-  .logo{max-height:44px;max-width:120px;object-fit:contain}
-  .co{font-size:17px;font-weight:800;letter-spacing:-.01em}
-  .co-gst{font-size:10px;color:#9ca3af;margin-top:2px}
-  .doc{text-align:right}
-  .doc .t{font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:#9ca3af}
-  .doc .num{font-size:15px;font-weight:800;margin-top:3px;color:#111827}
-  .rule{height:2px;background:${brand};margin:14px 0 22px}
-  .meta{display:flex;justify-content:space-between;gap:30px;margin-bottom:24px}
-  .meta .blk{flex:1}
-  .meta .blk.r{text-align:right}
-  .meta .l{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;margin-bottom:3px}
-  .meta .v{font-size:13px;font-weight:700;color:#111827}
-  .meta .sub{font-size:11px;color:#6b7280;margin-top:2px;white-space:pre-line;line-height:1.45}
-  .meta .row2{margin-top:10px}
-  table{width:100%;border-collapse:collapse;font-size:12.5px}
-  thead th{text-align:left;padding:8px 6px;border-bottom:1px solid #111827;font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#6b7280}
+  body{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#111;background:#fff;font-size:12px;line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .page{max-width:780px;margin:0 auto;padding:64px 60px}
+  .accent{height:4px;width:48px;background:${brand};margin-bottom:28px}
+  /* Header */
+  .hdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:44px}
+  .hdr .co{font-size:18px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+  .hdr .co img{max-height:30px;max-width:90px;object-fit:contain}
+  .hdr .gst{font-size:10px;color:#999;margin-top:4px;font-weight:400}
+  .hdr .rt{text-align:right}
+  .hdr .t{font-size:10px;font-weight:600;letter-spacing:.34em;text-transform:uppercase;color:#999}
+  .hdr .num{font-size:17px;font-weight:700;margin-top:4px}
+  /* Meta grid */
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:18px 24px;margin-bottom:38px}
+  .meta .m .l{font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bbb}
+  .meta .m .v{font-size:12px;font-weight:600;color:#111;margin-top:3px}
+  .meta .m .v.sub{font-weight:400;color:#555;font-size:11px;white-space:pre-line;line-height:1.4}
+  /* Table */
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead th{text-align:left;padding:0 4px 10px;font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bbb;border-bottom:1px solid #111}
   thead th.r{text-align:right}thead th.c{text-align:center}
-  tbody td{padding:11px 6px;border-bottom:1px solid #f0f0f1;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
+  tbody td{padding:13px 4px;border-bottom:1px solid #f0f0f0;vertical-align:top;word-break:break-word;overflow-wrap:anywhere}
   tbody tr:last-child td{border-bottom:none}
-  .n{color:#cbd5e1;width:22px;font-variant-numeric:tabular-nums}
-  .inm{font-weight:700}.ids{font-size:11px;color:#6b7280;margin-top:2px}
-  .r{text-align:right;font-variant-numeric:tabular-nums}.c{text-align:center}.b{font-weight:700}
-  .tw{display:flex;justify-content:flex-end;margin-top:6px}
-  .tt{width:260px}
-  .tt .row{display:flex;justify-content:space-between;padding:6px 0;font-size:12.5px;color:#6b7280}
-  .tt .row span:last-child{color:#111827;font-variant-numeric:tabular-nums}
-  .tt .grand{display:flex;justify-content:space-between;margin-top:6px;padding-top:11px;border-top:2px solid ${brand};font-size:16px;font-weight:800;color:${brand}}
-  .notes{margin-top:26px;border-top:1px solid #f0f0f1;padding-top:14px;font-size:12px;color:#374151;line-height:1.6}
-  .notes .h{font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#111827;margin-bottom:4px}
-  .sig{display:flex;gap:24px;margin-top:38px}
-  .sig div{flex:1;border-top:1px solid #111827;padding-top:7px;font-size:10px;color:#9ca3af;text-align:center}
-  .ft{margin-top:28px;text-align:center;font-size:10px;color:#cbd5e1;letter-spacing:.04em}
-  @media print{.page{padding:40px 48px;max-width:none}}
+  .n{color:#ccc;width:30px;font-variant-numeric:tabular-nums}
+  .inm{font-weight:600}.ids{font-size:10.5px;color:#888;margin-top:2px}
+  .r{text-align:right}.c{text-align:center}.b{font-weight:700}
+  /* Totals */
+  .tw{display:flex;justify-content:flex-end;margin-top:8px}
+  .tt{width:280px}
+  .tt .row{display:flex;justify-content:space-between;padding:7px 0;font-size:12px;color:#777}
+  .tt .row span:last-child{color:#111}
+  .tt .grand{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;padding-top:14px;border-top:3px solid ${brand};font-size:18px;font-weight:700;color:#111}
+  .tt .grand .amt{color:${brand}}
+  /* Notes */
+  .notes{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:28px}
+  .notes .h{font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bbb;margin-bottom:6px}
+  .notes .bd{font-size:11.5px;color:#444;line-height:1.6}
+  .sig{display:flex;gap:30px;margin-top:54px}
+  .sig div{flex:1;border-top:1px solid #ccc;padding-top:6px;font-size:9.5px;color:#aaa;letter-spacing:.04em}
+  .ft{margin-top:34px;font-size:9px;color:#ccc;letter-spacing:.06em;text-transform:uppercase}
+  @media print{.page{padding:44px 40px;max-width:none}}
 </style></head><body><div class="page">
-  <div class="top">
-    <div class="top-l">
-      ${logo ? `<img src="${_esc(logo)}" class="logo"/>` : ""}
-      <div>
-        <div class="co">${_esc(doc.company || cfg.companyName || "")}</div>
-        ${doc.company_gstin || doc.gstin ? `<div class="co-gst">GSTIN: ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}
-      </div>
+  <div class="accent"></div>
+  <div class="hdr">
+    <div>
+      <div class="co">${logo ? `<img src="${_esc(logo)}"/>` : ""}${_esc(doc.company || cfg.companyName || "")}</div>
+      ${doc.company_gstin || doc.gstin ? `<div class="gst">GSTIN ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}
     </div>
-    <div class="doc"><div class="t">${_esc(cfg.title)}</div><div class="num">${_esc(doc.name || "")}</div></div>
+    <div class="rt"><div class="t">${_esc(cfg.title)}</div><div class="num mono">${_esc(doc.name || "")}</div></div>
   </div>
-  <div class="rule"></div>
   <div class="meta">
-    <div class="blk">
-      <div class="l">${_esc(cfg.partyLabel)}</div>
-      <div class="v">${_esc(party)}</div>
-      ${doc.address_display ? `<div class="sub">${_esc(doc.address_display)}</div>` : ""}
-      ${doc.customer_gstin || doc.supplier_gstin ? `<div class="sub">GSTIN: ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}
-    </div>
-    <div class="blk r">
-      <div class="l">Date</div><div class="v">${_esc(docDate)}</div>
-      ${doc.due_date ? `<div class="row2"><div class="l">Due Date</div><div class="v">${_esc(doc.due_date)}</div></div>` : ""}
-      ${doc.valid_till ? `<div class="row2"><div class="l">Valid Till</div><div class="v">${_esc(doc.valid_till)}</div></div>` : ""}
-      ${doc.delivery_date ? `<div class="row2"><div class="l">Delivery</div><div class="v">${_esc(doc.delivery_date)}</div></div>` : ""}
-      ${doc.po_no ? `<div class="row2"><div class="l">PO Number</div><div class="v">${_esc(doc.po_no)}</div></div>` : ""}
-    </div>
+    <div class="m" style="grid-column:span 2"><div class="l">${_esc(cfg.partyLabel)}</div><div class="v">${_esc(party)}</div>${doc.address_display ? `<div class="v sub">${_esc(doc.address_display)}</div>` : ""}${doc.customer_gstin || doc.supplier_gstin ? `<div class="v sub">GSTIN ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}</div>
+    <div class="m"><div class="l">Date</div><div class="v mono">${_esc(docDate)}</div></div>
+    ${doc.due_date ? `<div class="m"><div class="l">Due</div><div class="v mono">${_esc(doc.due_date)}</div></div>` : (doc.valid_till ? `<div class="m"><div class="l">Valid Till</div><div class="v mono">${_esc(doc.valid_till)}</div></div>` : "<div class='m'></div>")}
+    ${doc.po_no ? `<div class="m"><div class="l">PO Number</div><div class="v mono">${_esc(doc.po_no)}</div></div>` : ""}
+    ${doc.place_of_supply ? `<div class="m"><div class="l">Place of Supply</div><div class="v">${_esc(doc.place_of_supply)}</div></div>` : ""}
   </div>
   <table>
     <thead><tr>
-      <th style="width:22px"></th><th>Item</th>
-      ${cfg.includeHsn ? `<th class="c" style="width:72px">HSN/SAC</th>` : ""}
-      <th class="r" style="width:100px">Qty</th><th class="r" style="width:104px">Rate</th>
-      ${cfg.includeDiscount ? `<th class="c" style="width:54px">Disc</th>` : ""}
+      <th style="width:30px">No</th><th>Item</th>
+      ${cfg.includeHsn ? `<th class="c" style="width:70px">HSN/SAC</th>` : ""}
+      <th class="r" style="width:96px">Qty</th><th class="r" style="width:100px">Rate</th>
+      ${cfg.includeDiscount ? `<th class="r" style="width:52px">Disc</th>` : ""}
       <th class="r" style="width:110px">Amount</th>
     </tr></thead>
-    <tbody>${items || `<tr><td colspan="${colspan}" style="text-align:center;color:#9ca3af;padding:26px">No items</td></tr>`}</tbody>
+    <tbody>${items || `<tr><td colspan="${colspan}" style="text-align:center;color:#bbb;padding:24px">No items</td></tr>`}</tbody>
   </table>
   <div class="tw"><div class="tt">
-    <div class="row"><span>Subtotal</span><span>${_fmt(netTotal, currency)}</span></div>
-    ${(doc.taxes || []).map(t => `<div class="row"><span>${_esc(t.description || t.account_head)}</span><span>${_fmt(t.tax_amount || 0, currency)}</span></div>`).join("")}
-    ${doc.discount_amount ? `<div class="row"><span style="color:#dc2626">Discount</span><span style="color:#dc2626">− ${_fmt(doc.discount_amount, currency)}</span></div>` : ""}
-    <div class="grand"><span>Total Due</span><span>${_fmt(doc.grand_total, currency)}</span></div>
+    <div class="row"><span>Subtotal</span><span class="mono">${_fmt(netTotal, currency)}</span></div>
+    ${(doc.taxes || []).map(t => `<div class="row"><span>${_esc(t.description || t.account_head)}</span><span class="mono">${_fmt(t.tax_amount || 0, currency)}</span></div>`).join("")}
+    ${doc.discount_amount ? `<div class="row"><span style="color:#b91c1c">Discount</span><span class="mono" style="color:#b91c1c">− ${_fmt(doc.discount_amount, currency)}</span></div>` : ""}
+    <div class="grand"><span>Total</span><span class="amt mono">${_fmt(doc.grand_total, currency)}</span></div>
   </div></div>
-  ${doc.remarks ? `<div class="notes"><div class="h">Remarks</div>${_esc(doc.remarks)}</div>` : ""}
-  ${doc.terms || doc.customer_note ? `<div class="notes"><div class="h">${doc.customer_note ? "Note" : "Terms & Conditions"}</div>${_esc(doc.customer_note || doc.terms)}</div>` : ""}
+  ${(doc.remarks || doc.terms || doc.customer_note) ? `<div class="notes">
+    ${doc.remarks ? `<div><div class="h">Remarks</div><div class="bd">${_esc(doc.remarks)}</div></div>` : "<div></div>"}
+    ${doc.terms || doc.customer_note ? `<div><div class="h">${doc.customer_note ? "Note" : "Terms"}</div><div class="bd">${_esc(doc.customer_note || doc.terms)}</div></div>` : ""}
+  </div>` : ""}
   <div class="sig"><div>Prepared By</div><div>Authorised Signatory</div><div>Receiver's Signature</div></div>
-  <div class="ft">${_esc(doc.company || "")} · ${_esc(doc.name)} · Printed ${_today()}</div>
+  <div class="ft">${_esc(doc.company || "")} — ${_esc(doc.name)} — Printed ${_today()}</div>
 </div></body></html>`;
 }
 

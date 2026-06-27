@@ -167,6 +167,13 @@ def save_bank_account(
     if frappe.session.user == "Guest":
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
+    # Bank accounts are sensitive — restrict writes to finance roles instead of
+    # relying solely on ignore_permissions=True below.
+    from zoho_books_clone.utils.tenancy import get_user_company, _is_bypass
+    _allowed_roles = {"Books Admin", "Accountant", "System Manager", "Administrator"}
+    if not _is_bypass(frappe.session.user) and not (_allowed_roles & set(frappe.get_roles(frappe.session.user))):
+        frappe.throw(_("You do not have permission to manage bank accounts."), frappe.PermissionError)
+
     if not account_name.strip():
         frappe.throw(_("Account name is required"))
 
@@ -174,6 +181,11 @@ def save_bank_account(
         company = _get_company(frappe.session.user)
     if not company:
         frappe.throw(_("No company configured. Please set a default company in Books Settings."))
+
+    # Never let a user create/edit a bank account for another company.
+    _user_company = get_user_company(frappe.session.user)
+    if _user_company and company != _user_company:
+        frappe.throw(_("You cannot manage bank accounts for another company."), frappe.PermissionError)
 
     # A bank account is unusable without a ledger account — auto-provision one
     # (Zoho-style) when the caller didn't supply it. On edit, preserve any

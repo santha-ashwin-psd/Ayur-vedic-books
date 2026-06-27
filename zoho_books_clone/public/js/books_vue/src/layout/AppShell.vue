@@ -14,6 +14,7 @@
 
     <Toast />
     <Confirm />
+    <PromptDialog />
     <QuickCreateDrawer />
     <ConfirmCascadeDialog />
     <EmailDialog />
@@ -34,6 +35,7 @@ import AiPanel          from "./AiPanel.vue";
 import TutorialOverlay  from "./TutorialOverlay.vue";
 import Toast              from "../components/Toast.vue";
 import Confirm            from "../components/Confirm.vue";
+import PromptDialog       from "../components/PromptDialog.vue";
 import QuickCreateDrawer  from "../components/QuickCreateDrawer.vue";
 import ConfirmCascadeDialog from "../components/ConfirmCascadeDialog.vue";
 import EmailDialog          from "../components/EmailDialog.vue";

@@ -1226,6 +1226,7 @@ async function emailCN(c) {
     getDefaultsEndpoint: "zoho_books_clone.api.docs.get_credit_note_email_defaults",
     sendEndpoint: "zoho_books_clone.api.docs.send_credit_note_email",
     paramKey: "credit_note_name",
+    printConfig: { title: "CREDIT NOTE", partyLabel: "Customer", partyField: "customer_name" },
   });
 }
 async function applyCN(c) {
@@ -1364,6 +1365,7 @@ async function bulkEmail() {
       getDefaultsEndpoint: "zoho_books_clone.api.docs.get_credit_note_email_defaults",
       sendEndpoint: "zoho_books_clone.api.docs.send_credit_note_email",
       paramKey: "credit_note_name",
+      printConfig: { title: "CREDIT NOTE", partyLabel: "Customer", partyField: "customer_name" },
     });
     if (ok) sent++;
   }

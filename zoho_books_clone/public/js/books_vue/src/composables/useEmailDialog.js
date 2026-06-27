@@ -23,6 +23,10 @@ const state = reactive({
   sendEndpoint: "",
   enhanceEndpoint: "",
   paramKey: "name",      // the request key that holds the doc name (e.g. invoice_name, bill_name)
+  // When set, the dialog renders the document with the active branding template
+  // (useLivePreview) and sends the resulting HTML as `pdf_html` so the emailed
+  // PDF matches the on-screen download. Shape: { title, partyLabel, partyField }.
+  printConfig: null,
   resolve: null,
 });
 
@@ -35,6 +39,7 @@ export function useEmailDialog() {
     sendEndpoint,
     enhanceEndpoint = "",
     paramKey = "name",
+    printConfig = null,
   }) {
     return new Promise((resolve) => {
       Object.assign(state, {
@@ -46,6 +51,7 @@ export function useEmailDialog() {
         sendEndpoint,
         enhanceEndpoint,
         paramKey,
+        printConfig,
         resolve,
       });
     });

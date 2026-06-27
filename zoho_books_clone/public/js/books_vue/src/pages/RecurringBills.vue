@@ -431,6 +431,7 @@
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { apiList, apiSave, apiLinkValues, apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
@@ -439,9 +440,7 @@ import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
 
 const { toast } = useToast();
-function confirm({ title, body, okLabel }) {
-  return Promise.resolve(window.confirm(`${title}\n\n${body || ""}`));
-}
+const { confirm } = useConfirm();
 const activeTab = ref("all");
 const tabs = [
   { key: "all", label: "All" },

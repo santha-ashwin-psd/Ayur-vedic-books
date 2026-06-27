@@ -57,12 +57,14 @@
 
 <script setup>
 import { reactive, ref, watch, nextTick } from "vue";
-import { apiGET, apiPOST } from "../api/client.js";
+import { apiGET, apiPOST, apiGet } from "../api/client.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useToast } from "../composables/useToast.js";
+import { useLivePreview } from "../composables/useLivePreview.js";
 
 const { state, complete } = useEmailDialog();
 const { toast } = useToast();
+const { setCompany, renderDocument } = useLivePreview();
 
 const loading = ref(false);
 const sending = ref(false);
@@ -115,13 +117,26 @@ async function onSend() {
   if (!form.to) { toast("Recipient is required", "error"); return; }
   sending.value = true;
   try {
-    await apiPOST(state.sendEndpoint, {
+    const payload = {
       [state.paramKey]: state.name,
       to: form.to,
       subject: form.subject,
       body: form.body,
       cc: form.cc || "",
-    });
+    };
+    // Render the attached PDF from the user's active branding template so the
+    // emailed document matches the on-screen download exactly.
+    if (state.printConfig) {
+      try {
+        const doc = await apiGet(state.doctype, state.name);
+        if (doc?.company) setCompany(doc.company);
+        payload.pdf_html = renderDocument(doc, {
+          ...state.printConfig,
+          companyName: doc?.company || "",
+        });
+      } catch (e) { /* fall back to server print format */ }
+    }
+    await apiPOST(state.sendEndpoint, payload);
     toast("Email sent", "success");
     complete(true);
   } catch (e) {

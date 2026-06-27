@@ -1369,6 +1369,7 @@ async function emailBill(b) {
     getDefaultsEndpoint: "zoho_books_clone.api.docs.get_bill_email_defaults",
     sendEndpoint: "zoho_books_clone.api.docs.send_bill_email",
     paramKey: "bill_name",
+    printConfig: { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name" },
   });
 }
 async function payBill(b) {
@@ -1489,6 +1490,7 @@ async function bulkEmail() {
       getDefaultsEndpoint: "zoho_books_clone.api.docs.get_bill_email_defaults",
       sendEndpoint: "zoho_books_clone.api.docs.send_bill_email",
       paramKey: "bill_name",
+      printConfig: { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name" },
     });
     if (ok) sent++;
   }

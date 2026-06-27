@@ -181,6 +181,11 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from "vue";
+import { useConfirm } from "../composables/useConfirm.js";
+import { usePrompt } from "../composables/usePrompt.js";
+
+const { confirm } = useConfirm();
+const { prompt } = usePrompt();
 
 const tab = ref("smtp");
 const currentUser = computed(() => (window.frappe?.session?.user || ""));
@@ -261,7 +266,14 @@ async function saveSmtp() {
 }
 
 async function testSmtp() {
-  const to = window.prompt("Send test email to:", currentUser.value);
+  const to = await prompt({
+    title: "Send Test Email",
+    label: "Send test email to:",
+    defaultValue: currentUser.value,
+    placeholder: "name@example.com",
+    okLabel: "Send",
+    inputType: "email",
+  });
   if (!to) return;
   testing.value = true;
   smtpMsg.value = "";
@@ -333,7 +345,11 @@ async function onRoleChange(u, newRole) {
 }
 
 async function removeUser(u) {
-  if (!window.confirm(`Remove ${u.email} from your company? They will be disabled and cannot sign in.`)) return;
+  if (!await confirm({
+    title: "Remove User",
+    body: `Remove <b>${u.email}</b> from your company? They will be disabled and cannot sign in.`,
+    okLabel: "Remove",
+  })) return;
   try {
     await callApi("zoho_books_clone.api.admin.remove_user_from_company", { user: u.email });
     await loadUsers();

@@ -967,6 +967,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiGET, apiSave, apiDelete, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { usePrompt } from "../composables/usePrompt.js";
 import AddressManager from "../components/AddressManager.vue";
 import { fmt, fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
@@ -978,6 +979,7 @@ import {
 
 
 const { toast } = useToast();
+const { prompt } = usePrompt();
 
 const list          = ref([]);
 const loading       = ref(true);
@@ -1414,7 +1416,14 @@ async function emailVendorStatement() {
   try {
     const d = await apiGET("zoho_books_clone.api.docs.get_vendor_email_defaults",
       { vendor: selectedVendor.value.name });
-    const to = prompt(`Send statement to:`, d?.to || "");
+    const to = await prompt({
+      title: "Email Statement",
+      label: "Send statement to:",
+      defaultValue: d?.to || "",
+      placeholder: "name@example.com",
+      okLabel: "Send",
+      inputType: "email",
+    });
     if (!to) return;
     await (await import("../api/client.js")).apiPOST("zoho_books_clone.api.docs.send_vendor_statement_email", {
       vendor: selectedVendor.value.name,

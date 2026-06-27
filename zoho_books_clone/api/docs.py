@@ -50,12 +50,72 @@ def _recalculate_invoice_outstanding(invoice_name):
         )
 
 
+# ── Multi-tenant guards for the generic doc API ───────────────────────────────
+# get_doc / get_list deliberately run with ignore_permissions=True (Books custom
+# roles aren't recognised by Frappe's core permission check). We therefore must
+# re-apply company tenancy here so a user can never read another company's data,
+# rather than trusting client-supplied filters.
+
+def _tenancy_company_field(doctype):
+    """Return the field this doctype is scoped by ('company' or 'books_company'),
+    or None for global/shared doctypes (UOM, Currency, Books Settings, …)."""
+    try:
+        meta = frappe.get_meta(doctype)
+    except Exception:
+        return None
+    if meta.has_field("company"):
+        return "company"
+    if meta.has_field("books_company"):
+        return "books_company"
+    return None
+
+
+def _inject_tenancy_filters(doctype, filters):
+    """Force a company filter onto a list query for non-bypass users.
+    Returns (filters, allowed); allowed=False means the caller should see nothing."""
+    from zoho_books_clone.utils.tenancy import get_user_company, _is_bypass
+    user = frappe.session.user
+    if _is_bypass(user):
+        return filters, True
+    field = _tenancy_company_field(doctype)
+    if not field:
+        return filters, True  # global doctype — no tenancy to enforce
+    company = get_user_company(user)
+    if not company:
+        return filters, False  # unmapped session user → see nothing
+    if isinstance(filters, dict):
+        filters.setdefault(field, company)
+        return filters, True
+    filters = list(filters or [])
+    if not any(isinstance(f, (list, tuple)) and len(f) >= 1 and f[0] == field for f in filters):
+        filters.append([field, "=", company])
+    return filters, True
+
+
+def _assert_doc_tenancy(doc):
+    """Raise PermissionError if a single doc belongs to another company."""
+    from zoho_books_clone.utils.tenancy import get_user_company, _is_bypass
+    user = frappe.session.user
+    if _is_bypass(user):
+        return
+    field = _tenancy_company_field(doc.doctype)
+    if not field:
+        return
+    doc_company = doc.get(field)
+    if not doc_company:
+        return  # unscoped / legacy record — no opinion (matches tenancy hooks)
+    user_company = get_user_company(user)
+    if not user_company or doc_company != user_company:
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_doc(doctype, name):
     """
     Fetch a single document with ignore_permissions=True so the Books Manager
     custom role can read any doctype (frappe.client.get blocks custom roles).
-    @frappe.whitelist(allow_guest=False) already blocks unauthenticated callers.
+    @frappe.whitelist(allow_guest=False) already blocks unauthenticated callers,
+    and _assert_doc_tenancy enforces company isolation.
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
@@ -64,6 +124,7 @@ def get_doc(doctype, name):
     frappe.flags.ignore_permissions = True
     try:
         doc = frappe.get_doc(doctype, name)
+        _assert_doc_tenancy(doc)
         return doc.as_dict()
     finally:
         frappe.flags.ignore_permissions = False
@@ -77,8 +138,9 @@ def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit
     so the built-in get_list raises PermissionError. This wrapper bypasses that
     check after confirming the caller is authenticated.
 
-    The Vue SPA uses this through src/api/client.js → apiList(). Tenancy filters
-    (books_company / company) are added by the client; this endpoint trusts them.
+    The Vue SPA uses this through src/api/client.js → apiList(). The client adds
+    tenancy filters too, but this endpoint no longer trusts them — it re-injects
+    the company filter server-side so a tampered client can't read other tenants.
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
@@ -94,10 +156,14 @@ def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit
         except Exception:
             filters = []
 
+    filters, allowed = _inject_tenancy_filters(doctype, filters or [])
+    if not allowed:
+        return []
+
     return frappe.get_list(
         doctype,
         fields=fields or ["name"],
-        filters=filters or [],
+        filters=filters,
         order_by=order_by,
         start=int(start or 0),
         limit_page_length=int(limit_page_length or 50),
@@ -139,11 +205,31 @@ def get_invoice_email_defaults(invoice_name):
     }
 
 
+def _email_attachment(doctype, name, print_format, pdf_html=None, filename=None):
+    """Build the email PDF attachment.
+
+    Prefer caller-supplied HTML (rendered from the user's selected branding
+    template in Company Settings) so the emailed PDF matches exactly what the
+    user downloads on screen. Fall back to the Frappe print format otherwise.
+    """
+    if pdf_html:
+        try:
+            from frappe.utils.pdf import get_pdf
+            return [{"fname": "%s.pdf" % (filename or name), "fcontent": get_pdf(pdf_html)}]
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "email pdf_html render failed")
+    try:
+        return [frappe.attach_print(doctype, name, print_format=print_format, print_letterhead=True)]
+    except Exception:
+        return []
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_invoice_email(invoice_name, to, subject, body, cc=None):
+def send_invoice_email(invoice_name, to, subject, body, cc=None, pdf_html=None):
     """
     Send invoice email using Frappe's configured outgoing email account.
-    Attaches a PDF of the invoice.
+    Attaches a PDF of the invoice (rendered from the selected branding template
+    when pdf_html is supplied by the client).
     """
     if not to:
         frappe.throw("Recipient email (To) is required.")
@@ -158,18 +244,8 @@ def send_invoice_email(invoice_name, to, subject, body, cc=None):
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
 
-    # Attach PDF of the invoice
-    try:
-        pdf_attachment = frappe.attach_print(
-            inv.doctype,
-            inv.name,
-            print_format="Sales Invoice",
-            print_letterhead=True,
-        )
-        attachments = [pdf_attachment]
-    except Exception:
-        # If print format not found, send without attachment
-        attachments = []
+    # Attach PDF of the invoice — selected template when provided
+    attachments = _email_attachment(inv.doctype, inv.name, "Sales Invoice", pdf_html)
 
     # Send using Frappe's configured email account
     frappe.sendmail(
@@ -637,7 +713,7 @@ def get_bill_email_defaults(bill_name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_bill_email(bill_name, to, subject, body, cc=None):
+def send_bill_email(bill_name, to, subject, body, cc=None, pdf_html=None):
     """Send a bill email; attaches the bill PDF when print format exists."""
     if not to:
         frappe.throw("Recipient email (To) is required.")
@@ -647,11 +723,7 @@ def send_bill_email(bill_name, to, subject, body, cc=None):
     bill = frappe.get_doc("Purchase Invoice", bill_name)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(bill.doctype, bill.name, print_format="Purchase Invoice", print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(bill.doctype, bill.name, "Purchase Invoice", pdf_html)
 
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
@@ -1760,7 +1832,7 @@ def get_credit_note_email_defaults(credit_note_name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_credit_note_email(credit_note_name, to, subject, body, cc=None):
+def send_credit_note_email(credit_note_name, to, subject, body, cc=None, pdf_html=None):
     if not to:
         frappe.throw("Recipient email (To) is required.")
     if not frappe.has_permission("Sales Invoice", "read", credit_note_name):
@@ -1768,13 +1840,7 @@ def send_credit_note_email(credit_note_name, to, subject, body, cc=None):
     cn = frappe.get_doc("Sales Invoice", credit_note_name)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(cn.doctype, cn.name,
-                                           print_format="Sales Invoice",
-                                           print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(cn.doctype, cn.name, "Sales Invoice", pdf_html)
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
         subject=subject, message=body, attachments=attachments,
@@ -2268,7 +2334,7 @@ def get_quote_email_defaults(quotation_name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_quote_email(quotation_name, to, subject, body, cc=None):
+def send_quote_email(quotation_name, to, subject, body, cc=None, pdf_html=None):
     """Send a quote email and auto-flip status to 'Sent'."""
     if not to:
         frappe.throw("Recipient email (To) is required.")
@@ -2277,12 +2343,7 @@ def send_quote_email(quotation_name, to, subject, body, cc=None):
     qd = frappe.get_doc("Quotation", quotation_name)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(qd.doctype, qd.name,
-                                           print_format="Quotation", print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(qd.doctype, qd.name, "Quotation", pdf_html)
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
         subject=subject, message=body, attachments=attachments,
@@ -2594,7 +2655,7 @@ def get_sales_order_email_defaults(sales_order):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_sales_order_email(sales_order, to, subject, body, cc=None):
+def send_sales_order_email(sales_order, to, subject, body, cc=None, pdf_html=None):
     if not to:
         frappe.throw("Recipient email (To) is required.")
     if not frappe.has_permission("Sales Order", "read", sales_order):
@@ -2602,12 +2663,7 @@ def send_sales_order_email(sales_order, to, subject, body, cc=None):
     so = frappe.get_doc("Sales Order", sales_order)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(so.doctype, so.name,
-                                           print_format="Sales Order", print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(so.doctype, so.name, "Sales Order", pdf_html)
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
         subject=subject, message=body, attachments=attachments,
@@ -2893,7 +2949,7 @@ def get_purchase_order_email_defaults(purchase_order):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_purchase_order_email(purchase_order, to, subject, body, cc=None):
+def send_purchase_order_email(purchase_order, to, subject, body, cc=None, pdf_html=None):
     if not to:
         frappe.throw("Recipient email (To) is required.")
     if not frappe.has_permission("Purchase Order", "read", purchase_order):
@@ -2901,12 +2957,7 @@ def send_purchase_order_email(purchase_order, to, subject, body, cc=None):
     po = frappe.get_doc("Purchase Order", purchase_order)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(po.doctype, po.name,
-                                           print_format="Purchase Order", print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(po.doctype, po.name, "Purchase Order", pdf_html)
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
         subject=subject, message=body, attachments=attachments,

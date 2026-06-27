@@ -1155,6 +1155,7 @@ async function emailDN(d) {
     getDefaultsEndpoint: "zoho_books_clone.api.docs.get_bill_email_defaults",
     sendEndpoint: "zoho_books_clone.api.docs.send_bill_email",
     paramKey: "bill_name",
+    printConfig: { title: "DEBIT NOTE", partyLabel: "Vendor", partyField: "supplier_name" },
   });
 }
 async function applyDN(d) {
@@ -1320,6 +1321,7 @@ async function bulkEmail() {
       getDefaultsEndpoint: "zoho_books_clone.api.docs.get_bill_email_defaults",
       sendEndpoint: "zoho_books_clone.api.docs.send_bill_email",
       paramKey: "bill_name",
+      printConfig: { title: "DEBIT NOTE", partyLabel: "Vendor", partyField: "supplier_name" },
     });
     if (ok) sent++;
   }

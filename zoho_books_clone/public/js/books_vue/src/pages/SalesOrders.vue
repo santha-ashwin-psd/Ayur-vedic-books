@@ -1643,6 +1643,7 @@ async function emailSO(o) {
     getDefaultsEndpoint: "zoho_books_clone.api.docs.get_sales_order_email_defaults",
     sendEndpoint: "zoho_books_clone.api.docs.send_sales_order_email",
     paramKey: "sales_order",
+    printConfig: { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name" },
   });
 }
 
@@ -1740,6 +1741,7 @@ async function bulkEmail() {
       getDefaultsEndpoint: "zoho_books_clone.api.docs.get_sales_order_email_defaults",
       sendEndpoint: "zoho_books_clone.api.docs.send_sales_order_email",
       paramKey: "sales_order",
+      printConfig: { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name" },
     });
     if (ok) sent++;
   }

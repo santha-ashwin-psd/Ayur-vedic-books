@@ -13,8 +13,10 @@ class PurchaseOrder(Document):
         if self.transaction_date and self.company:
             try:
                 self.fiscal_year = validate_fiscal_year(self.transaction_date, self.company)
+            except frappe.ValidationError:
+                raise   # period lock / no-open-FY — must not be swallowed
             except Exception:
-                self.fiscal_year = ""
+                self.fiscal_year = ""   # only suppress unexpected errors (e.g. table missing on install)
         self._calculate_totals()
 
     def _calculate_totals(self):

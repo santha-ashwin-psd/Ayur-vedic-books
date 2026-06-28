@@ -485,6 +485,7 @@ async function load() {
     // which are global/legacy fiscal years created without a company stamp)
     const allFY = await apiList("Fiscal Year", {
       fields: ["name", "year_start_date", "year_end_date", "is_closed", "company", "lock_date"],
+      filters: co ? [["company", "=", co]] : [],
       limit: 50,
       order: "year_start_date desc",
     }).catch(() => null);
@@ -498,11 +499,11 @@ async function load() {
       const savedMap = {};
       savedLocal.forEach((y) => { savedMap[y.name] = y.periods || []; });
 
-      // Show years belonging to this company OR years with no company (global)
-      const relevant = allFY.filter(y =>
-        !y.company || y.company === co ||
-        (co && y.company.toLowerCase() === co.toLowerCase())
-      );
+      // Show years belonging to this company OR years with no company (global/legacy).
+      // Strictly exclude rows stamped with a *different* company.
+      const relevant = co
+        ? allFY.filter(y => !y.company || y.company.toLowerCase() === co.toLowerCase())
+        : allFY;
       allYears.value = relevant.map((y) => {
         // Merge: server lock_date is the authority; mark all periods whose end <=
         // lock_date as locked so the UI matches what the server enforces.
@@ -630,12 +631,14 @@ function validateForm() {
   if (!fForm.end) return "End date is required.";
   if (fForm.start >= fForm.end) return "End date must be after start date.";
   const co = currentCompany.value || "";
+  // The actual Frappe doc name will be "{label} - {company}" to stay unique per company.
+  const docYear = co ? `${fForm.name.trim()} - ${co}` : fForm.name.trim();
   for (const y of allYears.value) {
     if (editingName.value && y.name === editingName.value) continue;
     // Skip years from a different company for overlap checks
     if (y.company && co && y.company.toLowerCase() !== co.toLowerCase()) continue;
-    // Duplicate name check
-    if (y.name === fForm.name.trim()) {
+    // Duplicate name check — compare against the full doc name
+    if (y.name === docYear) {
       return `A fiscal year named "${fForm.name}" already exists. Use Edit to modify it.`;
     }
     // Date overlap check
@@ -657,11 +660,16 @@ async function saveYear() {
       // For Fiscal Year, name = year field value (autoname="field:year").
       // Always pass name so save_doc can detect an existing record and
       // call db_update() instead of insert() — avoids duplicate-key errors.
-      const docName = editingName.value || fForm.name;
+      // Fiscal Year autoname = field:year, so `year` is the document PK.
+      // Suffix with the company so each company's FY has a unique name
+      // in the shared tabFiscal Year table (e.g. "2025-26 - Acme Ltd").
+      const yearLabel = fForm.name.trim();
+      const docYear   = co ? `${yearLabel} - ${co}` : yearLabel;
+      const docName   = editingName.value || docYear;
       const doc = {
         doctype: "Fiscal Year",
         name: docName,
-        year: fForm.name,
+        year: docYear,
         year_start_date: fForm.start,
         year_end_date: fForm.end,
         company: co,

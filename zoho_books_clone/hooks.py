@@ -26,25 +26,32 @@ doc_events = {
     "Sales Invoice": {
         "validate":  f"{_CV}.on_validate",
         "on_submit": [f"{_CV}.on_submit", f"{_SL}.on_sales_invoice_submit"],
-        "on_cancel": f"{_SL}.on_sales_invoice_cancel",
+        "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_sales_invoice_cancel"], "before_delete": f"{_CV}.before_delete",
     },
     "Purchase Invoice": {
         "validate":  f"{_CV}.on_validate",
         "on_submit": [f"{_CV}.on_submit", f"{_SL}.on_purchase_invoice_submit"],
-        "on_cancel": f"{_SL}.on_purchase_invoice_cancel",
+        "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_purchase_invoice_cancel"], "before_delete": f"{_CV}.before_delete",
     },
-    "Payment Entry":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
-    "Journal Entry":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
-    "Credit Note":      {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
-    "Expense":          {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
-    "Expense Claim":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit"},
+    "Payment Entry":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "Journal Entry":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "Credit Note":      {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "Expense":          {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "Expense Claim":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
     # Goods documents own the physical stock movement (Delivery Note out / Purchase Receipt in)
     # Phase 2: validate hook added so central_validator period/lock checks run on these too.
-    "Delivery Note":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_SL}.on_delivery_note_submit",    "on_cancel": f"{_SL}.on_delivery_note_cancel"},
-    "Purchase Receipt": {"validate": f"{_CV}.on_validate", "on_submit": f"{_SL}.on_purchase_receipt_submit", "on_cancel": f"{_SL}.on_purchase_receipt_cancel"},
+    "Delivery Note":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_SL}.on_delivery_note_submit",    "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_delivery_note_cancel"], "before_delete": f"{_CV}.before_delete"},
+    "Purchase Receipt": {"validate": f"{_CV}.on_validate", "on_submit": f"{_SL}.on_purchase_receipt_submit", "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_purchase_receipt_cancel"], "before_delete": f"{_CV}.before_delete"},
+    # Purchase Order — wired so fiscal/period lock checks run on save and submit.
+    "Purchase Order":   {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
     # Phase 2: Stock Entry and Bank Transaction wired to central_validator for period/lock checks.
-    "Stock Entry":      {"validate": f"{_CV}.on_validate"},
-    "Bank Transaction": {"validate": f"{_CV}.on_validate"},
+    "Stock Entry":      {"validate": f"{_CV}.on_validate", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "Bank Transaction": {"validate": f"{_CV}.on_validate", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    # Phase 3: pre-sales and GST docs wired so Books lock date + fiscal-year
+    # period lock are enforced on these document types too.
+    "Sales Order":      {"validate": f"{_CV}.on_validate", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "Quotation":        {"validate": f"{_CV}.on_validate", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "TDS Entry":        {"validate": f"{_CV}.on_validate", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
     # Auto-stamp books_company on master records so they're company-isolated
     "Customer":  {"before_insert": f"{_TN}.auto_stamp_books_company"},
     "Supplier":  {"before_insert": f"{_TN}.auto_stamp_books_company"},

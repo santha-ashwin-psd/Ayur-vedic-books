@@ -844,28 +844,49 @@ def reset_number_series(prefix, doctype=""):  # noqa: ARG001 — doctype kept fo
 
 
 # ─── Email Templates ──────────────────────────────────────────────────────────
+# We store templates in Frappe's built-in "Email Template" doctype but prefix
+# them with the company name so each company's templates are isolated.
+# Stored name format: "<Company>::<template_name>"
+
+def _et_full_name(company: str, short_name: str) -> str:
+    return f"{company}::{short_name.strip()}"
+
+
+def _et_strip(company: str, full_name: str) -> str:
+    prefix = f"{company}::"
+    return full_name[len(prefix):] if full_name.startswith(prefix) else full_name
+
 
 @frappe.whitelist()
 def get_email_templates():
-    """List all Email Template documents."""
+    """List Email Templates belonging to the current user's company."""
+    company = _admin_company()
+    prefix = f"{company}::"
     try:
-        return frappe.get_all(
+        rows = frappe.get_all(
             "Email Template",
-            fields=["name", "subject", "use_html"],
+            fields=["name", "subject", "use_html", "modified"],
+            filters=[["name", "like", prefix + "%"]],
             limit=200,
             ignore_permissions=True,
         )
+        # Strip the company prefix from the name before returning to the UI
+        for r in rows:
+            r["name"] = _et_strip(company, r["name"])
+        return rows
     except Exception:
         return []
 
 
 @frappe.whitelist()
 def get_email_template(name):
-    """Fetch a single Email Template with body."""
+    """Fetch a single Email Template with body (short name, company-scoped)."""
+    company = _admin_company()
+    full_name = _et_full_name(company, name)
     try:
-        doc = frappe.get_doc("Email Template", name)
+        doc = frappe.get_doc("Email Template", full_name)
         return {
-            "name": doc.name,
+            "name": _et_strip(company, doc.name),
             "subject": doc.subject or "",
             "response": doc.response or "",
             "use_html": doc.use_html or 0,
@@ -876,33 +897,56 @@ def get_email_template(name):
 
 @frappe.whitelist()
 def save_email_template(name, subject, response="", use_html=0):
-    """Create or update an Email Template."""
+    """Create or update an Email Template (company-scoped)."""
     _require_admin()
+    company = _admin_company()
+    full_name = _et_full_name(company, name)
     use_html = int(use_html) if str(use_html).isdigit() else (1 if use_html in (True, "true", "True") else 0)
-    if frappe.db.exists("Email Template", name):
-        doc = frappe.get_doc("Email Template", name)
+    if frappe.db.exists("Email Template", full_name):
+        doc = frappe.get_doc("Email Template", full_name)
         doc.subject = subject
         doc.response = response
         doc.use_html = use_html
         doc.save(ignore_permissions=True)
     else:
         doc = frappe.new_doc("Email Template")
-        doc.name = name
+        # Frappe's Email Template uses autoname="field:template_name", so we
+        # must set the naming field, not doc.name directly.
+        doc.template_name = full_name
         doc.subject = subject
         doc.response = response
         doc.use_html = use_html
-        doc.insert(ignore_permissions=True)
+        doc.insert(ignore_permissions=True, set_name=full_name)
     frappe.db.commit()
-    return {"success": True, "name": doc.name}
+    return {"success": True, "name": _et_strip(company, doc.name)}
 
 
 @frappe.whitelist()
 def delete_email_template(name):
-    """Delete an Email Template."""
+    """Delete an Email Template (company-scoped)."""
     _require_admin()
-    frappe.delete_doc("Email Template", name, ignore_permissions=True, force=True)
+    company = _admin_company()
+    full_name = _et_full_name(company, name)
+    frappe.delete_doc("Email Template", full_name, ignore_permissions=True, force=True)
     frappe.db.commit()
     return {"success": True}
+
+
+@frappe.whitelist()
+def get_email_template_for_doc(doc_type, short_name):
+    """Resolve a company-scoped email template and return rendered subject+body fields.
+    Used by email-defaults endpoints to apply saved templates."""
+    company = _admin_company()
+    full_name = _et_full_name(company, short_name)
+    try:
+        doc = frappe.get_doc("Email Template", full_name)
+        return {
+            "subject": doc.subject or "",
+            "response": doc.response or "",
+            "use_html": doc.use_html or 0,
+        }
+    except Exception:
+        return None
 
 
 # ─── Payment Terms ────────────────────────────────────────────────────────────

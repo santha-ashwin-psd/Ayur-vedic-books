@@ -194,14 +194,40 @@ class SalesInvoice(Document):
             frappe.throw(_("Customer {0} has no email").format(self.customer))
         sym = self._get_currency_symbol()
         cur = self.currency or "INR"
-        frappe.sendmail(
-            recipients=[customer_email],
-            subject=f"Invoice {self.name} ({cur})",
-            message=(f"Dear {self.customer_name},<br><br>"
-                     f"Your invoice <b>{self.name}</b> for <b>{sym}{self.grand_total:,.2f} {cur}</b> is attached.<br>"
-                     f"Due: {self.due_date}"),
-            attachments=[frappe.attach_print(self.doctype, self.name, print_format="Sales Invoice")],
-        )
+        subject = f"Invoice {self.name} ({cur})"
+        body = (f"Dear {self.customer_name},<br><br>"
+                f"Your invoice <b>{self.name}</b> for <b>{sym}{self.grand_total:,.2f} {cur}</b> is attached.<br>"
+                f"Due: {self.due_date}")
+        pdf_attachment = frappe.attach_print(self.doctype, self.name, print_format="Sales Invoice")
+
+        # Prefer the company's own SMTP (configured under Settings → Email) so invoice
+        # mail consistently comes from the company's address, falling back to the
+        # system mail account if company SMTP isn't set up.
+        sent_via_company_smtp = False
+        try:
+            from zoho_books_clone.utils.email_company import (
+                send_company_email, CompanySmtpNotConfigured,
+            )
+            send_company_email(
+                to=customer_email,
+                subject=subject,
+                html=body,
+                company=self.company,
+                attachments=[pdf_attachment],
+            )
+            sent_via_company_smtp = True
+        except CompanySmtpNotConfigured:
+            pass
+        except Exception as e:
+            frappe.log_error(str(e), f"Company SMTP send failed for {self.name}, falling back")
+
+        if not sent_via_company_smtp:
+            frappe.sendmail(
+                recipients=[customer_email],
+                subject=subject,
+                message=body,
+                attachments=[pdf_attachment],
+            )
         frappe.msgprint(_("Invoice emailed to {0}").format(customer_email))
 
     @frappe.whitelist()

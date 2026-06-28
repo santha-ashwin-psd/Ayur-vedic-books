@@ -53,23 +53,36 @@ def send_company_email(
     company: str | None = None,
     text_fallback: str = "",
     cc: list[str] | None = None,
+    attachments: list[dict] | None = None,
 ) -> bool:
     """Send a business email via the company's configured SMTP.
-    Raises CompanySmtpNotConfigured if the company hasn't set up SMTP."""
+    Raises CompanySmtpNotConfigured if the company hasn't set up SMTP.
+    `attachments`, if given, should be a list of dicts as returned by
+    frappe.attach_print(), each with "fname" and "fcontent" keys."""
     cfg = get_company_smtp_config(company)
     recipients = [to] if isinstance(to, str) else list(to)
     cc_list = list(cc or [])
 
-    msg = MIMEMultipart("alternative")
+    msg = MIMEMultipart("alternative" if not attachments else "mixed")
     msg["Subject"] = subject
     msg["From"] = formataddr((cfg["from_name"], cfg["from_email"]))
     msg["To"] = ", ".join(recipients)
     if cc_list:
         msg["Cc"] = ", ".join(cc_list)
 
+    body = MIMEMultipart("alternative") if attachments else msg
     if text_fallback:
-        msg.attach(MIMEText(text_fallback, "plain", "utf-8"))
-    msg.attach(MIMEText(html, "html", "utf-8"))
+        body.attach(MIMEText(text_fallback, "plain", "utf-8"))
+    body.attach(MIMEText(html, "html", "utf-8"))
+    if attachments:
+        msg.attach(body)
+        from email.mime.application import MIMEApplication
+        for att in attachments:
+            fname = att.get("fname") or "attachment"
+            fcontent = att.get("fcontent") or b""
+            part = MIMEApplication(fcontent, Name=fname)
+            part["Content-Disposition"] = f'attachment; filename="{fname}"'
+            msg.attach(part)
 
     envelope_to = recipients + cc_list
 

@@ -1942,6 +1942,76 @@ def send_credit_note_email(credit_note_name, to, subject, body, cc=None, pdf_htm
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_debit_note_email_defaults(debit_note_name):
+    """Pre-fill the Send Email dialog for a Debit Note. Uses 'Debit Note' template if saved."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    dn = frappe.get_doc("Purchase Invoice", debit_note_name)
+    vendor_email = frappe.db.get_value("Supplier", dn.supplier, "email_id") or ""
+
+    variables = {
+        "customer_name": dn.supplier_name or dn.supplier,
+        "invoice_no":    dn.name,
+        "amount":        f"{abs(dn.grand_total):,.2f}",
+        "due_date":      str(dn.posting_date or ""),
+        "company":       dn.company or "",
+    }
+
+    tpl_subject, tpl_body = _get_email_template("Debit Note")
+    if tpl_subject or tpl_body:
+        subject = _render_template(tpl_subject or "Debit Note {{invoice_no}} from {{company}}", variables)
+        body    = _render_template(tpl_body or "", variables)
+    else:
+        subject = f"Debit Note {dn.name} from {dn.company or ''}"
+        body = (
+            f"Dear {dn.supplier_name or dn.supplier},<br><br>"
+            f"Please find your debit note <b>{dn.name}</b> details below:<br><br>"
+            f"<table style='border-collapse:collapse;font-size:14px'>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Debit Note #</td><td><b>{dn.name}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{abs(dn.grand_total):,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{dn.posting_date}</td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Against Bill</td><td>{dn.return_against or '—'}</td></tr>"
+            f"</table><br>"
+            f"This debit note may be applied against your open bills.<br><br>"
+            f"Regards,<br>{dn.company or ''}"
+        )
+    return {
+        "to": vendor_email, "subject": subject, "body": body,
+        "debit_note_name": dn.name,
+        "supplier_name": dn.supplier_name or dn.supplier,
+        "from_email": frappe.session.user,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def send_debit_note_email(debit_note_name, to, subject, body, cc=None, pdf_html=None):
+    if not to:
+        frappe.throw("Recipient email (To) is required.")
+    if not frappe.has_permission("Purchase Invoice", "read", debit_note_name):
+        frappe.throw("Not permitted", frappe.PermissionError)
+    dn = frappe.get_doc("Purchase Invoice", debit_note_name)
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
+    attachments = _email_attachment(dn.doctype, dn.name, "Purchase Invoice", pdf_html)
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list,
+        subject=subject, message=body, attachments=attachments,
+        reference_doctype="Purchase Invoice", reference_name=debit_note_name, now=True,
+    )
+    comm = frappe.get_doc({
+        "doctype": "Communication", "communication_type": "Communication",
+        "communication_medium": "Email", "sent_or_received": "Sent",
+        "subject": subject, "content": body, "sender": frappe.session.user,
+        "recipients": to, "cc": cc or "",
+        "reference_doctype": "Purchase Invoice", "reference_name": debit_note_name,
+        "status": "Linked",
+    })
+    comm.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "sent", "to": to, "debit_note": debit_note_name}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_credit_notes(invoice_name):
     """Return existing credit notes (return invoices) against a given Sales Invoice."""
     if frappe.session.user == "Guest":

@@ -106,6 +106,21 @@ class SalesInvoice(Document):
         post_sales_invoice(self)
         if getattr(self, "update_stock", 0) and getattr(self, "sales_order", None):
             self._release_reserved_qty(direction=-1)
+        self._maybe_auto_send_email()
+
+    def _maybe_auto_send_email(self):
+        """Send invoice email automatically if the per-company flag is on."""
+        try:
+            auto_send = frappe.db.get_value("Books Company", self.company, "auto_send_invoice")
+        except Exception:
+            auto_send = 0
+        if not auto_send:
+            return
+        try:
+            self.send_invoice_email()
+        except Exception as e:
+            # Log but never let a mail failure break the submission
+            frappe.log_error(str(e), f"Auto-send invoice email failed for {self.name}")
 
     def on_cancel(self):
         self.status = "Cancelled"
@@ -192,43 +207,33 @@ class SalesInvoice(Document):
         customer_email = frappe.db.get_value("Customer", self.customer, "email_id")
         if not customer_email:
             frappe.throw(_("Customer {0} has no email").format(self.customer))
+
         sym = self._get_currency_symbol()
         cur = self.currency or "INR"
         subject = f"Invoice {self.name} ({cur})"
-        body = (f"Dear {self.customer_name},<br><br>"
-                f"Your invoice <b>{self.name}</b> for <b>{sym}{self.grand_total:,.2f} {cur}</b> is attached.<br>"
-                f"Due: {self.due_date}")
-        pdf_attachment = frappe.attach_print(self.doctype, self.name, print_format="Sales Invoice")
+        body = (
+            f"Dear {self.customer_name},<br><br>"
+            f"Please find your invoice <b>{self.name}</b> for "
+            f"<b>{sym}{self.grand_total:,.2f} {cur}</b>.<br>"
+            f"Due date: {self.due_date}<br><br>"
+            f"Regards,<br>{self.company or ''}"
+        )
 
-        # Prefer the company's own SMTP (configured under Settings → Email) so invoice
-        # mail consistently comes from the company's address, falling back to the
-        # system mail account if company SMTP isn't set up.
-        sent_via_company_smtp = False
-        try:
-            from zoho_books_clone.utils.email_company import (
-                send_company_email, CompanySmtpNotConfigured,
-            )
-            send_company_email(
-                to=customer_email,
-                subject=subject,
-                html=body,
-                company=self.company,
-                attachments=[pdf_attachment],
-            )
-            sent_via_company_smtp = True
-        except CompanySmtpNotConfigured:
-            pass
-        except Exception as e:
-            frappe.log_error(str(e), f"Company SMTP send failed for {self.name}, falling back")
-
-        if not sent_via_company_smtp:
-            frappe.sendmail(
-                recipients=[customer_email],
-                subject=subject,
-                message=body,
-                attachments=[pdf_attachment],
-            )
-        frappe.msgprint(_("Invoice emailed to {0}").format(customer_email))
+        # Use frappe.sendmail so Frappe creates an Email Queue entry visible
+        # under Home > Email > Email Queue. This is the only correct way to
+        # send email from on_submit — attach_print is NOT used here because it
+        # requires a named Print Format doctype record ("Sales Invoice") that
+        # may not exist, which would crash silently and produce no queue entry.
+        # The manual Send Email button (EmailDialog -> docs.send_invoice_email)
+        # handles PDF attachment when the user explicitly sends.
+        frappe.sendmail(
+            recipients=[customer_email],
+            subject=subject,
+            message=body,
+            reference_doctype=self.doctype,
+            reference_name=self.name,
+            now=False,  # queue it — correct for on_submit context
+        )
 
     @frappe.whitelist()
     def get_payment_status(self):

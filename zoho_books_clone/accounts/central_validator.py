@@ -36,28 +36,7 @@ def on_submit(doc, _method=None):
     _check_required_accounts(doc)
     _check_credit_limit(doc)
     check_budget_for_doc(doc)
-    _maybe_auto_send_invoice_email(doc)
 
-
-def _maybe_auto_send_invoice_email(doc):
-    """
-    Company Settings → Reminders → "Auto-Send Invoice on Submit".
-    When enabled in Books Settings, email the invoice (with PDF) to the
-    customer right after it is submitted. Never blocks/aborts the submit —
-    any email failure is logged and swallowed.
-    """
-    if doc.doctype != "Sales Invoice":
-        return
-    try:
-        settings = frappe.get_single("Books Settings")
-    except Exception:
-        return
-    if not settings.get("auto_send_invoice"):
-        return
-    try:
-        doc.send_invoice_email()
-    except Exception as e:
-        frappe.log_error(str(e), f"Auto-send invoice email failed: {doc.name}")
 
 
 # ─── Individual checks ────────────────────────────────────────────────────────

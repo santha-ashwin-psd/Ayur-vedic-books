@@ -1151,10 +1151,10 @@ async function saveDN(submit) {
 async function emailDN(d) {
   // Reuse bill email defaults — supplier-side, same shape
   await openEmail({
-    doctype: "Purchase Invoice", name: d.name, docLabel: `Debit Note ${d.name}`,
-    getDefaultsEndpoint: "zoho_books_clone.api.docs.get_bill_email_defaults",
-    sendEndpoint: "zoho_books_clone.api.docs.send_bill_email",
-    paramKey: "bill_name",
+    doctype: "Debit Note", name: d.name, docLabel: `Debit Note ${d.name}`,
+    getDefaultsEndpoint: "zoho_books_clone.api.docs.get_debit_note_email_defaults",
+    sendEndpoint: "zoho_books_clone.api.docs.send_debit_note_email",
+    paramKey: "debit_note_name",
     printConfig: { title: "DEBIT NOTE", partyLabel: "Vendor", partyField: "supplier_name" },
   });
 }

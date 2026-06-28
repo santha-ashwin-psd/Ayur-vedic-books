@@ -527,7 +527,8 @@ def get_audit_log(page=0, page_len=50):
 
 @frappe.whitelist()
 def get_company_settings():
-    """Return company profile from Books Company + invoice/reminder settings from Books Settings."""
+    """Return all company settings from Books Company (profile + email/reminder flags)
+    and invoice_prefix / auto_reconcile from Books Settings."""
     company_name = _resolve_company_for()
 
     result = {
@@ -548,6 +549,7 @@ def get_company_settings():
         "company_phone": "",
         "company_email": "",
         "company_website": "",
+        # Reminder / auto-send — now per-company on Books Company
         "auto_send_invoice": 0,
         "send_payment_reminders": 0,
         "reminder_days_before": 3,
@@ -555,36 +557,37 @@ def get_company_settings():
         "auto_reconcile": 0,
     }
 
-    # Profile fields come from Books Company
+    # All company-specific fields (including reminder/email flags) come from Books Company
     if company_name and frappe.db.exists("Books Company", company_name):
         try:
             co = frappe.get_doc("Books Company", company_name)
-            result["default_currency"] = co.currency or "INR"
+            result["default_currency"]        = co.currency or "INR"
             result["fiscal_year_start_month"] = co.fiscal_year_start_month or "April"
-            result["gstin"] = co.gstin or ""
-            result["gst_state"] = co.gst_state or ""
-            result["logo_url"] = co.logo_url or ""
-            result["pdf_template"] = co.pdf_template or "classic"
-            result["brand_color"] = co.brand_color or "#1a6ef7"
-            result["company_logo"] = co.company_logo or ""
-            result["company_address"] = co.address_line or ""
-            result["company_city"] = co.city or ""
-            result["company_state"] = co.state or ""
-            result["company_pincode"] = co.pincode or ""
-            result["company_phone"] = co.phone or ""
-            result["company_email"] = co.email or ""
-            result["company_website"] = co.website or ""
+            result["gstin"]                   = co.gstin or ""
+            result["gst_state"]               = co.gst_state or ""
+            result["logo_url"]                = co.logo_url or ""
+            result["pdf_template"]            = co.pdf_template or "classic"
+            result["brand_color"]             = co.brand_color or "#1a6ef7"
+            result["company_logo"]            = co.company_logo or ""
+            result["company_address"]         = co.address_line or ""
+            result["company_city"]            = co.city or ""
+            result["company_state"]           = co.state or ""
+            result["company_pincode"]         = co.pincode or ""
+            result["company_phone"]           = co.phone or ""
+            result["company_email"]           = co.email or ""
+            result["company_website"]         = co.website or ""
+            # Per-company email / reminder flags (new fields on Books Company)
+            result["auto_send_invoice"]       = int(co.auto_send_invoice or 0)
+            result["send_payment_reminders"]  = int(co.send_payment_reminders or 0)
+            result["reminder_days_before"]    = int(co.reminder_days_before or 3)
+            result["reminder_days_after"]     = int(co.reminder_days_after or 7)
         except Exception:
             pass
 
-    # Invoice / reminder / reconcile settings come from Books Settings
+    # Non-company-specific settings still live in Books Settings
     try:
         settings = frappe.get_doc("Books Settings", "Books Settings")
         result["invoice_prefix"] = settings.get("invoice_prefix") or "INV"
-        result["auto_send_invoice"] = settings.get("auto_send_invoice") or 0
-        result["send_payment_reminders"] = settings.get("send_payment_reminders") or 0
-        result["reminder_days_before"] = settings.get("reminder_days_before") or 3
-        result["reminder_days_after"] = settings.get("reminder_days_after") or 7
         result["auto_reconcile"] = settings.get("auto_reconcile") or 0
     except Exception:
         pass
@@ -594,11 +597,12 @@ def get_company_settings():
 
 @frappe.whitelist()
 def save_company_settings(**kwargs):
-    """Save profile fields to Books Company; invoice/reminder settings to Books Settings."""
+    """Save all company-specific fields (including email/reminder flags) to Books Company;
+    non-company settings (invoice_prefix, auto_reconcile) go to Books Settings."""
     _require_admin()
     company_name = _resolve_company_for()
 
-    # Save profile fields to Books Company
+    # Save all company-specific fields to Books Company
     if company_name and frappe.db.exists("Books Company", company_name):
         try:
             co = frappe.get_doc("Books Company", company_name)
@@ -632,17 +636,25 @@ def save_company_settings(**kwargs):
                 co.email = kwargs["company_email"]
             if "company_website" in kwargs:
                 co.website = kwargs["company_website"]
+            # Per-company email / reminder flags (now live on Books Company)
+            if "auto_send_invoice" in kwargs:
+                co.auto_send_invoice = int(kwargs["auto_send_invoice"] or 0)
+            if "send_payment_reminders" in kwargs:
+                co.send_payment_reminders = int(kwargs["send_payment_reminders"] or 0)
+            if "reminder_days_before" in kwargs:
+                co.reminder_days_before = int(kwargs["reminder_days_before"] or 3)
+            if "reminder_days_after" in kwargs:
+                co.reminder_days_after = int(kwargs["reminder_days_after"] or 7)
             co.save(ignore_permissions=True)
         except Exception as e:
             frappe.log_error(str(e), "save_company_settings: Books Company")
 
-    # Save invoice / reminder / reconcile settings to Books Settings
+    # Non-company-specific settings still live in Books Settings
     try:
         settings = frappe.get_doc("Books Settings", "Books Settings")
     except Exception:
         settings = frappe.new_doc("Books Settings")
-    for f in ["invoice_prefix", "auto_send_invoice", "send_payment_reminders",
-              "reminder_days_before", "reminder_days_after", "auto_reconcile"]:
+    for f in ["invoice_prefix", "auto_reconcile"]:
         if f in kwargs:
             settings.set(f, kwargs[f])
     settings.save(ignore_permissions=True)

@@ -2252,8 +2252,24 @@ async function submitInv(inv) {
     action: async () => {
       confirmModal.loading = true;
       try {
-        const submitted = await apiSubmit("Sales Invoice", inv.name);
-        toast("Invoice submitted");
+        await apiSubmit("Sales Invoice", inv.name);
+        // Check auto_send_invoice setting for contextual toast only.
+        // The actual email is fired server-side inside on_submit so it
+        // works regardless of how the invoice is submitted.
+        try {
+          const csrf = window.frappe?.csrf_token || "";
+          const res = await fetch("/api/method/zoho_books_clone.api.admin.get_company_settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Frappe-CSRF-Token": csrf },
+            credentials: "same-origin",
+            body: new URLSearchParams({}),
+          });
+          const data = await res.json();
+          const autoSend = (data.message || {}).auto_send_invoice;
+          toast(autoSend ? "Invoice submitted \u2014 email sent to customer" : "Invoice submitted");
+        } catch {
+          toast("Invoice submitted");
+        }
         confirmModal.open = false;
         await load();
         await openView({ name: inv.name });

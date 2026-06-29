@@ -1474,30 +1474,103 @@ def ai_execute_pro_action(action, data):
 # ── COST CENTERS ──────────────────────────────────────────────────────────────
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def _get_period_date_range(budget_period):
+    """
+    Return (from_date, to_date) strings for the given budget_period value.
+    - Monthly   -> current calendar month (MTD)
+    - Quarterly -> current fiscal quarter (QTD), Apr/Jul/Oct/Jan starts
+    - Annual    -> current fiscal year (YTD), starts 1-Apr
+    """
+    from frappe.utils import nowdate, getdate, get_first_day, get_last_day, add_months
+    from datetime import date as _date
+
+    today = getdate(nowdate())
+    period = (budget_period or "Annual").strip()
+
+    if period == "Monthly":
+        from_date = get_first_day(today).strftime("%Y-%m-%d")
+        to_date   = get_last_day(today).strftime("%Y-%m-%d")
+        return from_date, to_date
+
+    if period == "Quarterly":
+        # Fiscal quarters: Q1=Apr-Jun, Q2=Jul-Sep, Q3=Oct-Dec, Q4=Jan-Mar
+        month = today.month
+        if month in (4, 5, 6):
+            q_start = _date(today.year, 4, 1)
+        elif month in (7, 8, 9):
+            q_start = _date(today.year, 7, 1)
+        elif month in (10, 11, 12):
+            q_start = _date(today.year, 10, 1)
+        else:  # Jan, Feb, Mar
+            q_start = _date(today.year, 1, 1)
+        q_end = getdate(get_last_day(add_months(q_start.strftime("%Y-%m-%d"), 2)))
+        return q_start.strftime("%Y-%m-%d"), q_end.strftime("%Y-%m-%d")
+
+    # Annual (default) — fiscal year Apr 1 → Mar 31
+    if today.month >= 4:
+        fy_start = _date(today.year, 4, 1)
+    else:
+        fy_start = _date(today.year - 1, 4, 1)
+    fy_end = _date(fy_start.year + 1, 3, 31)
+    return fy_start.strftime("%Y-%m-%d"), fy_end.strftime("%Y-%m-%d")
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_cost_center_spend(company=None):
     """
-    Actual net spend per cost center, summed from posted General Ledger Entries.
+    Actual net spend per cost center, summed from posted General Ledger Entries,
+    scoped to each cost center's configured budget_period (Monthly / Quarterly / Annual).
+
     Calculates (debit - credit) for Expense and Income/Revenue accounts, so:
     - Purchase bill expense lines    -> counted as positive spend (debit)
     - Sales invoice income lines     -> counted as negative spend (credit)
     - Receivables/Payables/Bank/Cash -> excluded (balance sheet asset/liability accounts)
+
     Returns a map { cost_center_name: spend }.
     """
     if not company:
         company = _get_company(frappe.session.user)
-    rows = frappe.db.sql("""
-        SELECT gl.cost_center, SUM(gl.debit - gl.credit) AS spend
-        FROM `tabGeneral Ledger Entry` gl
-        JOIN `tabAccount` a ON a.name = gl.account
-        WHERE gl.company = %s
-          AND IFNULL(gl.cost_center, '') <> ''
-          AND IFNULL(gl.is_cancelled, 0) = 0
-          AND a.account_type NOT IN (
-                'Receivable', 'Payable', 'Bank', 'Cash'
-          )
-        GROUP BY gl.cost_center
+
+    # Fetch all cost centers with their budget_period in a single query
+    cc_rows = frappe.db.sql("""
+        SELECT name, budget_period
+        FROM `tabCost Center`
+        WHERE company = %s
+          AND IFNULL(disabled, 0) = 0
     """, (company,), as_dict=True)
-    return {r.cost_center: flt(r.spend) for r in rows}
+
+    # Group cost centers by period so we issue at most 3 GL queries
+    from collections import defaultdict
+    period_to_ccs = defaultdict(list)
+    for cc in cc_rows:
+        period = (cc.budget_period or "Annual").strip()
+        period_to_ccs[period].append(cc.name)
+
+    result = {}
+
+    for period, cc_names in period_to_ccs.items():
+        from_date, to_date = _get_period_date_range(period)
+        placeholders = ", ".join(["%s"] * len(cc_names))
+        rows = frappe.db.sql("""
+            SELECT gl.cost_center, SUM(gl.debit - gl.credit) AS spend
+            FROM `tabGeneral Ledger Entry` gl
+            JOIN `tabAccount` a ON a.name = gl.account
+            WHERE gl.company = %s
+              AND gl.cost_center IN ({placeholders})
+              AND gl.posting_date BETWEEN %s AND %s
+              AND IFNULL(gl.is_cancelled, 0) = 0
+              AND a.account_type NOT IN (
+                    'Receivable', 'Payable', 'Bank', 'Cash'
+              )
+            GROUP BY gl.cost_center
+        """.format(placeholders=placeholders),
+            (company, *cc_names, from_date, to_date),
+            as_dict=True,
+        )
+        for r in rows:
+            result[r.cost_center] = flt(r.spend)
+
+    return result
 
 
 # ── CHART OF ACCOUNTS ─────────────────────────────────────────────────────────

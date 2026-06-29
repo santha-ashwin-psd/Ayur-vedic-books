@@ -3,11 +3,18 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 from frappe.model.document import Document
+from zoho_books_clone.db.validators import validate_fiscal_year
 
 
 class PurchaseReceipt(Document):
 
     def validate(self):
+        # Purchase Receipt is not wired to central_validator, so fiscal year
+        # validation must run here.  Block saves into closed or missing periods
+        # before any inventory or fulfilment logic runs.
+        if self.posting_date and self.company:
+            validate_fiscal_year(self.posting_date, self.company)
+
         if not self.items:
             frappe.throw(_("Purchase Receipt must have at least one item row."))
         for row in self.items:

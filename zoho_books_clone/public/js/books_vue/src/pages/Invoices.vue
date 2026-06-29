@@ -303,59 +303,6 @@
         <div class="inv-content-row">
         <div class="inv-dbody">
 
-          <!-- ══ CARD 1: Branding & Template (readonly — manage in Settings) ══ -->
-          <div class="add-card">
-            <div class="add-card-header" @click="collapsed.branding=!collapsed.branding">
-              <div class="add-card-title">
-                <span class="add-card-title-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
-                Branding &amp; Template
-              </div>
-              <span class="add-card-chevron" :class="{collapsed:collapsed.branding}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-              </span>
-            </div>
-            <div class="add-card-body" :class="{collapsed:collapsed.branding}">
-              <div class="inv-brand-readonly">
-
-                <!-- Template chips (readonly) -->
-                <div class="inv-brand-row">
-                  <span class="inv-brand-lbl">Template</span>
-                  <div class="inv-brand-tmpl-btns">
-                    <span v-for="t in TEMPLATES" :key="t.key"
-                      class="inv-brand-tmpl-chip" :class="{active: selectedTemplate===t.key}">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                      {{ t.label }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Brand color (readonly) -->
-                <div class="inv-brand-row">
-                  <span class="inv-brand-lbl">Brand Color</span>
-                  <div class="inv-brand-color-preview">
-                    <span class="inv-brand-color-swatch" :style="{background:brandColor}"></span>
-                    <span class="inv-brand-color-hex">{{ brandColor }}</span>
-                  </div>
-                </div>
-
-                <!-- Company logo (readonly) -->
-                <div class="inv-brand-row">
-                  <span class="inv-brand-lbl">Logo</span>
-                  <div class="inv-brand-logo-preview">
-                    <img v-if="companyLogo" :src="logoSrc(companyLogo)" class="inv-brand-logo-thumb" alt="Company logo"/>
-                    <span v-else class="inv-brand-logo-none">No logo set</span>
-                  </div>
-                </div>
-
-                <!-- Link to settings -->
-                <div class="inv-brand-settings-hint">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                  Manage in <a href="#" @click.prevent="goToBrandingSettings" class="inv-brand-settings-link">Settings &rsaquo; Branding &amp; Template</a>
-                </div>
-
-              </div>
-            </div>
-          </div>
           <!-- ══ CARD 2: Invoice Details ══ -->
           <div class="add-card">
             <div class="add-card-header" @click="collapsed.details=!collapsed.details">
@@ -1379,6 +1326,7 @@ import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import IrnQrCode from "../components/IrnQrCode.vue";
+import { useLivePreview } from "../composables/useLivePreview.js";
 
 const { toast } = useToast();
 const route = useRoute();
@@ -1721,7 +1669,29 @@ const previewData = computed(()=>({
   logo: logoSrc(form.logo),
 }));
 
-const previewHtml = computed(()=>renderInvoice(previewData.value, selectedTemplate.value, brandColor.value, previewData.value.logo || companyLogo.value));
+// ── Shared print/preview renderer (active template from Company Settings) ──
+const { setCompany, refreshBranding, renderDocument, printDoc } = useLivePreview();
+const INV_PRINT_CFG = { title: "INVOICE", partyLabel: "Bill To", partyField: "customer_name" };
+
+// Map the page's local print-data shape onto the standard doc contract that
+// useLivePreview.renderDocument expects (net_total / grand_total / taxes[].tax_amount).
+function _toPrintDoc(data) {
+  return {
+    ...data,
+    net_total: data.subtotal,
+    total_taxes_and_charges: data.totalTax,
+    grand_total: data.grandTotal,
+    address_display: data.address_display || data.billing_address || "",
+    taxes: (data.taxes || []).map(t => ({
+      description: t.description || t.account_head || "",
+      rate: t.rate,
+      tax_amount: t.tax_amount != null ? t.tax_amount : t.amount,
+    })),
+  };
+}
+function _invCfg(data) { return { ...INV_PRINT_CFG, companyName: data?.company || window.__booksCompany || "" }; }
+
+const previewHtml = computed(()=>renderDocument(_toPrintDoc(previewData.value), _invCfg(previewData.value)));
 
 const timelineSteps = computed(()=>{
   if (!viewInv.value) return [];
@@ -1755,10 +1725,13 @@ const tlProgressWidth = computed(()=>{
 
 const showDownloadMenu = ref(false);
 
-function downloadInvoicePdf(mode = 'pdf') {
+async function downloadInvoicePdf(mode = 'pdf') {
   showDownloadMenu.value = false;
   const inv = viewInv.value;
   if (!inv) return;
+
+  // Pull the latest selected template from Company Settings before rendering.
+  try { await refreshBranding(); } catch {}
 
   // Build the same data shape used by the create/edit preview
   const data = {
@@ -1781,7 +1754,7 @@ function downloadInvoicePdf(mode = 'pdf') {
   };
 
   // Render using the same template + branding as the live preview
-  const html = renderInvoice(data, selectedTemplate.value, brandColor.value, data.logo || companyLogo.value || '');
+  const html = renderDocument(_toPrintDoc(data), _invCfg(data));
 
   if (mode === 'print') {
     // Open rendered HTML in a new window and trigger print dialog
@@ -2250,6 +2223,7 @@ async function openEmail(inv) {
     sendEndpoint:        "zoho_books_clone.api.docs.send_invoice_email",
     enhanceEndpoint:     "zoho_books_clone.api.books_data.ai_enhance_email",
     paramKey: "invoice_name",
+    printConfig: { title: "INVOICE", partyLabel: "Bill To", partyField: "customer_name" },
   });
 }
 // sendEmail / enhanceEmail removed — EmailDialog handles both via its
@@ -2278,8 +2252,24 @@ async function submitInv(inv) {
     action: async () => {
       confirmModal.loading = true;
       try {
-        const submitted = await apiSubmit("Sales Invoice", inv.name);
-        toast("Invoice submitted");
+        await apiSubmit("Sales Invoice", inv.name);
+        // Check auto_send_invoice setting for contextual toast only.
+        // The actual email is fired server-side inside on_submit so it
+        // works regardless of how the invoice is submitted.
+        try {
+          const csrf = window.frappe?.csrf_token || "";
+          const res = await fetch("/api/method/zoho_books_clone.api.admin.get_company_settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Frappe-CSRF-Token": csrf },
+            credentials: "same-origin",
+            body: new URLSearchParams({}),
+          });
+          const data = await res.json();
+          const autoSend = (data.message || {}).auto_send_invoice;
+          toast(autoSend ? "Invoice submitted \u2014 email sent to customer" : "Invoice submitted");
+        } catch {
+          toast("Invoice submitted");
+        }
         confirmModal.open = false;
         await load();
         await openView({ name: inv.name });
@@ -2419,9 +2409,6 @@ function exportCSV() {
 }
 
 // ── Branding persistence — loaded from Books Company settings ──
-function saveBranding() {
-  // no-op: branding is managed centrally in Settings > Branding & Template
-}
 async function loadBranding() {
   try {
     const csrf = window.frappe?.csrf_token || "";
@@ -2505,134 +2492,10 @@ function removeLogo() {
   if (inp) inp.value = "";
 }
 
-// ── Invoice rendering ──────────────────────────────────────────────────
-function renderInvoice(d, tmpl, color, logo) {
-  const fmt = v=>"₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
-  const fmtD = v=>v?new Date(v).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}):"—";
-  const co = d.company||window.__booksCompany||"Your Company";
-  const c = color||"#1a6ef7";
-  const itemRows = (d.items||[]).filter(it=>it.item_code||it.item_name).map(it=>`
-    <tr>
-      <td>${it.item_name||it.item_code||""}${it.description?`<br><small style="color:#888">${it.description}</small>`:""}</td>
-      <td style="text-align:center">${it.hsn_code||"—"}</td>
-      <td style="text-align:center">${Number(it.qty||0)}</td>
-      <td style="text-align:right">${fmt(it.rate)}</td>
-      <td style="text-align:right">${it.discount_percentage?it.discount_percentage+"%":"—"}</td>
-      <td style="text-align:right;font-weight:600">${fmt(it.amount)}</td>
-    </tr>`).join("");
-  const taxRows2 = (d.taxes||[]).filter(t=>t.rate>0||t.amount>0).map(t=>`
-    <tr><td>${t.description||"Tax"}</td><td style="text-align:right">${fmt(t.amount||t.tax_amount||0)}</td></tr>`).join("");
-  const logoTag = logo?`<img src="${logo}" style="max-width:80px;max-height:55px;object-fit:contain;display:block;margin-bottom:8px" alt="logo"/>`:"";
-  const noItems = `<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">No items</td></tr>`;
-  if (tmpl==="modern") return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#1a1a2e;background:#fff}
-.hband{background:${c};color:#fff;padding:28px 36px}.hinner{display:flex;justify-content:space-between;align-items:flex-start}
-.co-name{font-size:19px;font-weight:700}.inv-chip{background:rgba(255,255,255,.2);border-radius:6px;padding:3px 12px;font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:6px;display:inline-block}
-.inv-num{font-size:22px;font-weight:700}.body{padding:28px 36px}
-.mgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:24px;padding:18px;background:#f8fafc;border-radius:8px}
-.ml{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;margin-bottom:4px}
-.mv{font-size:13px;font-weight:600;color:#1a1a2e}table.it{width:100%;border-collapse:collapse;margin-bottom:18px}
-table.it thead th{padding:9px 11px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;border-bottom:2px solid #e8ecf0;text-align:left}
-table.it tbody td{padding:9px 11px;border-bottom:1px solid #f0f2f5;font-size:12px}
-.tw{display:flex;justify-content:flex-end;margin-bottom:20px}.tot{width:270px;background:#f8fafc;border-radius:8px;padding:14px}
-.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.tr2.gr{border-top:2px solid ${c};margin-top:7px;padding-top:9px;font-size:14px;font-weight:700;color:${c}}
-@media print{@page{size:A4;margin:0}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-/* ── Per-invoice logo widget ── */
-.inv-logo-preview {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 7px;
-  padding: 6px 10px;
-}
-.inv-logo-thumb {
-  max-width: 90px;
-  max-height: 44px;
-  object-fit: contain;
-  border-radius: 4px;
-  display: block;
-}
-.inv-logo-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid rgba(220,38,38,.3);
-  background: none;
-  color: #dc2626;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.inv-logo-remove:hover { background: #fee2e2; }
-.add-logo-upload.uploading { opacity: .7; cursor: wait; }
-@keyframes inv-spin { to { transform: rotate(360deg); } }
 
-@media (max-width: 480px) {
-  .view-toggle-btn { display: none !important; }
-}
-</style></head><body>
-<div class="hband"><div class="hinner"><div>${logoTag}<div class="co-name">${co}</div></div><div style="text-align:right"><div class="inv-chip">INVOICE</div><div class="inv-num">${d.name||"DRAFT"}</div></div></div></div>
-<div class="body"><div class="mgrid">
-<div><div class="ml">Bill To</div><div class="mv">${d.customer_name||d.customer||"—"}</div>${d.billing_address?`<div style="font-size:11px;color:#6b7280;margin-top:4px">${d.billing_address}</div>`:""}</div>
-<div><div class="ml">Invoice Date</div><div class="mv">${fmtD(d.posting_date)}</div><div class="ml" style="margin-top:10px">Due Date</div><div class="mv">${fmtD(d.due_date)}</div></div>
-<div>${d.po_no?`<div class="ml">PO Number</div><div class="mv">${d.po_no}</div>`:""} ${d.place_of_supply?`<div class="ml" style="margin-top:10px">Place of Supply</div><div class="mv">${d.place_of_supply}</div>`:""}</div>
-</div>
-<table class="it"><thead><tr><th style="width:35%">Item</th><th style="width:10%">HSN/SAC</th><th style="width:8%;text-align:center">Qty</th><th style="width:14%;text-align:right">Rate</th><th style="width:10%;text-align:right">Disc</th><th style="width:14%;text-align:right">Amount</th></tr></thead><tbody>${itemRows||noItems}</tbody></table>
-<div class="tw"><div class="tot"><div class="tr2"><span style="color:#6b7280">Subtotal</span><span>${fmt(d.subtotal||0)}</span></div>${taxRows2}<div class="tr2 gr"><span>Total</span><span>${fmt(d.grandTotal||0)}</span></div></div></div>
-${d.terms?`<div style="background:#f0f9ff;border-radius:8px;padding:11px 14px;font-size:12px;color:#374151"><strong>Note:</strong> ${d.terms}</div>`:""}</div></body></html>`;
-
-  if (tmpl==="minimal") return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#333;background:#fff;padding:48px}
-.page{max-width:720px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;padding-bottom:20px;border-bottom:3px solid ${c}}
-.co-name{font-size:17px;font-weight:700;color:#111}.inv-label{font-size:30px;font-weight:300;color:#999;letter-spacing:3px}.inv-num{font-size:13px;font-weight:700;color:${c};margin-top:4px}
-.brow{display:flex;justify-content:space-between;margin-bottom:32px}.lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#aaa;margin-bottom:6px}
-.val{font-size:13px;color:#222;font-weight:600}.sval{font-size:11.5px;color:#777;margin-top:3px}
-table.it{width:100%;border-collapse:collapse;margin-bottom:20px}table.it thead th{padding:7px 0;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#bbb;border-bottom:1px solid #eee;text-align:left}
-table.it tbody td{padding:9px 0;border-bottom:1px solid #f5f5f5;font-size:12px;vertical-align:top}
-.tot{margin-left:auto;width:230px}.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#666}.tr2.gr{border-top:3px solid ${c};margin-top:7px;padding-top:9px;color:${c};font-size:14px;font-weight:700}
-.notes{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11.5px;color:#888;word-break: break-word;}
-@media print{body{padding:24px}@page{size:A4;margin:15mm}}</style></head><body>
-<div class="page"><div class="header"><div>${logoTag}<div class="co-name">${co}</div></div><div style="text-align:right"><div class="inv-label">INVOICE</div><div class="inv-num">${d.name||"DRAFT"}</div></div></div>
-<div class="brow"><div><div class="lbl">Bill To</div><div class="val">${d.customer_name||d.customer||"—"}</div>${d.billing_address?`<div class="sval">${d.billing_address}</div>`:""}</div>
-<div style="text-align:right"><div class="lbl">Invoice Date</div><div class="val">${fmtD(d.posting_date)}</div><div class="lbl" style="margin-top:10px">Due Date</div><div class="val">${fmtD(d.due_date)}</div></div>
-${d.po_no?`<div style="text-align:right"><div class="lbl">PO Number</div><div class="val">${d.po_no}</div></div>`:""}</div>
-<table class="it"><thead><tr><th style="width:40%">Description</th><th style="width:10%;text-align:center">Qty</th><th style="width:15%;text-align:right">Rate</th><th style="width:10%;text-align:right">Disc</th><th style="width:15%;text-align:right">Amount</th></tr></thead>
-<tbody>${(d.items||[]).filter(it=>it.item_code||it.item_name).map(it=>`<tr><td>${it.item_name||it.item_code||""}${it.description?`<br><span style="color:#bbb;font-size:11px">${it.description}</span>`:""}</td><td style="text-align:center">${Number(it.qty||0)}</td><td style="text-align:right">${fmt(it.rate)}</td><td style="text-align:right">${it.discount_percentage?it.discount_percentage+"%":"—"}</td><td style="text-align:right;font-weight:600">${fmt(it.amount)}</td></tr>`).join("")||`<tr><td colspan="5" style="text-align:center;color:#bbb;padding:20px">No items</td></tr>`}</tbody></table>
-<div class="tot"><div class="tr2"><span>Subtotal</span><span>${fmt(d.subtotal||0)}</span></div>${(d.taxes||[]).filter(t=>t.rate>0||t.amount>0).map(t=>`<div class="tr2"><span>${t.description||"Tax"}</span><span>${fmt(t.amount||t.tax_amount||0)}</span></div>`).join("")}<div class="tr2 gr"><span>Total</span><span>${fmt(d.grandTotal||0)}</span></div></div>
-${d.terms?`<div class="notes"><strong>Note:</strong> ${d.terms}</div>`:""}</div></body></html>`;
-
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#333;background:#fff;padding:40px}
-.page{max-width:750px;margin:0 auto}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px}
-.co-name{font-size:21px;font-weight:bold;color:${c};margin-bottom:4px}.inv-label{font-size:28px;font-weight:bold;color:${c};text-align:right;letter-spacing:2px}
-.meta{text-align:right;margin-top:8px}.meta table{margin-left:auto}.meta td{padding:2px 6px;font-size:13px}.meta td:first-child{color:#6b7280;text-align:right;font-size:11.5px}.meta td:last-child{font-weight:600;color:#1a1a2e}
-.div{border:none;border-top:2px solid ${c};margin:18px 0}.brow{display:flex;justify-content:space-between;margin-bottom:22px}
-.lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9ca3af;margin-bottom:5px}.val{font-size:13px;font-weight:600;color:#1a1a2e}.sval{font-size:12px;color:#495057;margin-top:3px;white-space:pre-wrap}
-table.it{width:100%;border-collapse:collapse;margin-bottom:14px}table.it thead tr{background:${c};color:#fff}table.it thead th{padding:8px 10px;font-size:10.5px;font-weight:700;text-align:left;letter-spacing:.04em}
-table.it tbody td{padding:8px 10px;border-bottom:1px solid #f0f2f5;font-size:13px}table.it tbody tr:last-child td{border-bottom:2px solid ${c}}
-.tw{display:flex;justify-content:flex-end;margin-bottom:22px}.tot{width:260px}.tr2{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
-.tr2.gr{border-top:2px solid ${c};margin-top:6px;padding-top:8px;font-size:15px;font-weight:700;color:${c}}
-.fn{border-top:1px solid #ddd;padding-top:12px;font-size:11px;color:#666}
-@media print{body{padding:0}@page{size:A4;margin:20mm}}</style></head><body>
-<div class="page"><div class="header"><div>${logoTag}<div class="co-name">${co}</div></div><div><div class="inv-label">INVOICE</div><div class="meta"><table><tr><td>Invoice #</td><td>${d.name||"DRAFT"}</td></tr><tr><td>Date</td><td>${fmtD(d.posting_date)}</td></tr><tr><td>Due Date</td><td>${fmtD(d.due_date)}</td></tr>${d.po_no?`<tr><td>PO #</td><td>${d.po_no}</td></tr>`:""}</table></div></div></div>
-<hr class="div"/>
-<div class="brow"><div><div class="lbl">Bill To</div><div class="val">${d.customer_name||d.customer||"—"}</div>${d.billing_address?`<div class="sval">${d.billing_address}</div>`:""}</div>${d.place_of_supply?`<div><div class="lbl">Place of Supply</div><div style="font-size:12px">${d.place_of_supply}</div></div>`:""}</div>
-<table class="it"><thead><tr><th style="width:35%">Item</th><th style="width:10%">HSN/SAC</th><th style="width:8%;text-align:center">Qty</th><th style="width:14%;text-align:right">Rate</th><th style="width:10%;text-align:right">Discount</th><th style="width:14%;text-align:right">Amount</th></tr></thead><tbody>${itemRows||noItems}</tbody></table>
-<div class="tw"><div class="tot"><div class="tr2"><span>Subtotal</span><span>${fmt(d.subtotal||0)}</span></div>${taxRows2}<div class="tr2 gr"><span>Grand Total</span><span>${fmt(d.grandTotal||0)}</span></div></div></div>
-${d.terms?`<div class="fn"><div class="lbl">Notes</div><p style="word-break: break-word;">${d.terms}</p></div>`:""}</div></body></html>`;
-}
-
-function printInvoice(data) {
-  const html=renderInvoice(data, selectedTemplate.value, brandColor.value, data.logo || companyLogo.value || "");
-  const win=window.open("","_blank","width=820,height=1060,scrollbars=yes");
-  if (!win) { toast("Pop-up blocked — allow pop-ups to print","error"); return; }
-  win.document.write(html);
-  win.document.close();
-  setTimeout(()=>{ try { win.focus(); win.print(); } catch {} }, 600);
+async function printInvoice(data) {
+  try { await refreshBranding(); } catch {}
+  printDoc(_toPrintDoc(data), _invCfg(data));
 }
 
 function printViewInvoice() {
@@ -2653,6 +2516,7 @@ function printViewInvoice() {
 onMounted(async () => {
   await load();
   loadCustomers(); loadItems(); loadTaxAccount(); loadBranding();
+  try { setCompany(window.__booksCompany || await resolveCompany()); } catch {}
 
   // Cross-document deep link: /invoices?open=INV-...
   useOpenFromQuery({

@@ -31,13 +31,26 @@ def validate_fiscal_year(posting_date: str, company: str) -> str:
             )
         )
 
-    # Period lock check
+    # Fiscal Year period lock check
     lock_date = fy[0].get("lock_date")
     if lock_date and getdate(posting_date) <= getdate(lock_date):
         frappe.throw(_(
             "Posting date {0} is on or before the period lock date {1}. "
             "Remove the lock date on the Fiscal Year to post to this period."
         ).format(posting_date, lock_date))
+
+    # Books Settings (global) lock date check — applies to all doc types
+    try:
+        books_lock = frappe.db.get_single_value("Books Settings", "lock_date")
+        if books_lock and getdate(posting_date) <= getdate(books_lock):
+            frappe.throw(_(
+                "The period up to {0} is locked. You cannot post to a date on or before "
+                "the Books Lock Date. Contact your System Manager to unlock the period."
+            ).format(books_lock))
+    except frappe.ValidationError:
+        raise
+    except Exception:
+        pass  # Books Settings may not exist during install
 
     return fy[0].name
 

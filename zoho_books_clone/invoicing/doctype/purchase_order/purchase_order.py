@@ -2,11 +2,21 @@
 import frappe
 from frappe.utils import flt
 from frappe.model.document import Document
+from zoho_books_clone.db.validators import validate_fiscal_year
 
 
 class PurchaseOrder(Document):
 
     def validate(self):
+        # Mirror SalesOrder: stamp fiscal_year so downstream GL and reports
+        # can group by year without an extra query.
+        if self.transaction_date and self.company:
+            try:
+                self.fiscal_year = validate_fiscal_year(self.transaction_date, self.company)
+            except frappe.ValidationError:
+                raise   # period lock / no-open-FY — must not be swallowed
+            except Exception:
+                self.fiscal_year = ""   # only suppress unexpected errors (e.g. table missing on install)
         self._calculate_totals()
 
     def _calculate_totals(self):

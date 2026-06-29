@@ -4,28 +4,33 @@ from frappe.utils import today, add_days, getdate, flt
 
 def send_payment_reminders():
     """
-    Per-company payment reminders driven by Books Settings.
-    Sends:
-      - "upcoming" reminder: N days before due_date (if reminder_days_before > 0)
-      - "overdue" reminder: N days after due_date (if reminder_days_after > 0)
-    Only runs when send_payment_reminders = 1 in Books Settings.
+    Per-company payment reminders.
+    Iterates every active Books Company that has send_payment_reminders enabled
+    and uses that company's own reminder_days_before / reminder_days_after values.
     """
-    try:
-        settings = frappe.get_single("Books Settings")
-    except Exception:
-        return
+    companies = frappe.get_all(
+        "Books Company",
+        filters={"is_active": 1, "send_payment_reminders": 1},
+        fields=["name", "reminder_days_before", "reminder_days_after"],
+    )
+    for co in companies:
+        try:
+            _send_reminders_for_company(
+                company=co["name"],
+                days_before=int(co.get("reminder_days_before") or 3),
+                days_after=int(co.get("reminder_days_after") or 7),
+            )
+        except Exception as e:
+            frappe.log_error(str(e), f"Payment reminders failed for company: {co['name']}")
 
-    if not settings.get("send_payment_reminders"):
-        return
 
-    days_before = int(settings.get("reminder_days_before") or 3)
-    days_after  = int(settings.get("reminder_days_after")  or 7)
-    company     = settings.get("default_company") or ""
-
-    base_filters = {"docstatus": 1, "outstanding_amount": [">", 0]}
-    if company:
-        base_filters["company"] = company
-
+def _send_reminders_for_company(company: str, days_before: int, days_after: int):
+    """Send upcoming and overdue reminders for a single company."""
+    base_filters = {
+        "docstatus": 1,
+        "outstanding_amount": [">", 0],
+        "company": company,
+    }
     fields = ["name", "customer", "customer_name", "grand_total",
               "outstanding_amount", "due_date", "company"]
 
@@ -53,8 +58,7 @@ def send_payment_reminders():
         for inv in overdue:
             _send_reminder(inv, kind="overdue", sent=sent)
 
-    # 3. Also catch anything past due with no recent reminder sent
-    #    (belt-and-suspenders for invoices that slipped through)
+    # 3. Belt-and-suspenders: anything past due with no reminder sent yet today
     very_overdue = frappe.get_all(
         "Sales Invoice",
         filters={**base_filters, "due_date": ["<", today()]},
@@ -74,30 +78,41 @@ def _send_reminder(inv, kind, sent):
     if not email:
         return
 
-    name     = inv["name"]
-    cname    = inv["customer_name"] or inv["customer"]
-    amount   = flt(inv["outstanding_amount"])
-    due      = inv["due_date"]
-    company  = inv.get("company") or ""
+    name    = inv["name"]
+    cname   = inv["customer_name"] or inv["customer"]
+    amount  = flt(inv["outstanding_amount"])
+    due     = inv["due_date"]
+    company = inv.get("company") or ""
 
     if kind == "upcoming":
-        subject = f"Upcoming Payment Due – Invoice {name}"
+        subject = f"Upcoming Payment Due \u2013 Invoice {name}"
         body = (
             f"Dear {cname},<br><br>"
-            f"This is a friendly reminder that invoice <b>{name}</b> of <b>₹{amount:,.2f}</b> "
+            f"This is a friendly reminder that invoice <b>{name}</b> of <b>\u20b9{amount:,.2f}</b> "
             f"is due on <b>{due}</b>.<br>"
             "Please arrange payment before the due date to avoid any late fees.<br><br>"
             f"Regards,<br>{company}"
         )
     else:
-        subject = f"Payment Overdue – Invoice {name}"
+        subject = f"Payment Overdue \u2013 Invoice {name}"
         body = (
             f"Dear {cname},<br><br>"
-            f"Invoice <b>{name}</b> of <b>₹{amount:,.2f}</b> was due on <b>{due}</b> "
+            f"Invoice <b>{name}</b> of <b>\u20b9{amount:,.2f}</b> was due on <b>{due}</b> "
             "and is now overdue.<br>"
             "Please arrange payment at your earliest convenience.<br><br>"
             f"Regards,<br>{company}"
         )
+
+    try:
+        from zoho_books_clone.utils.email_company import (
+            send_company_email, CompanySmtpNotConfigured,
+        )
+        send_company_email(to=email, subject=subject, html=body, company=company)
+        return
+    except CompanySmtpNotConfigured:
+        pass
+    except Exception as e:
+        frappe.log_error(str(e), f"Company SMTP reminder send failed: {name}, falling back")
 
     try:
         frappe.sendmail(
@@ -131,7 +146,6 @@ def send_reorder_alerts():
     if not alerts:
         return
 
-    # Build HTML rows for the email table
     rows_html = ""
     for a in alerts:
         shortage = flt(a.get("shortage_qty", 0))
@@ -171,7 +185,6 @@ def send_reorder_alerts():
 
     subject = f"[Books] Reorder Alert — {len(alerts)} item(s) below threshold"
 
-    # Send to every System Manager who has an email address
     managers = frappe.get_all(
         "Has Role",
         filters={"role": "System Manager", "parenttype": "User"},

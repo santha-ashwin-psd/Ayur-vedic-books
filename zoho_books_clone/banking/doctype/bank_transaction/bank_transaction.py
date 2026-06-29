@@ -1,11 +1,21 @@
 import frappe
+from frappe import _
 from frappe.utils import flt
 from frappe.model.document import Document
+from zoho_books_clone.db.validators import validate_fiscal_year
 
 
 class BankTransaction(Document):
 
     def validate(self):
+        # Bank Transaction is not wired to central_validator, but _post_gl()
+        # writes GL entries dated self.date on submit.  Guard that date here so
+        # GL entries can never land in a closed or missing fiscal year.
+        if self.date and self.bank_account:
+            company = frappe.db.get_value("Bank Account", self.bank_account, "company") or ""
+            if company:
+                validate_fiscal_year(self.date, company)
+
         self._set_balance()
 
     def on_submit(self):

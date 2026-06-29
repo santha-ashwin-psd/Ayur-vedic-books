@@ -80,11 +80,11 @@
             <template v-if="!selectedCC.is_group">
               <div class="cc-stat-grid">
                 <div class="cc-stat-box">
-                  <div class="cc-stat-lbl">Annual Budget</div>
+                  <div class="cc-stat-lbl">{{(selectedCC.budget_period||'Annual')}} Budget</div>
                   <div class="cc-stat-val" style="color:#3B5BDB">{{fmtINR(selectedCC.budget)||"—"}}</div>
                 </div>
                 <div class="cc-stat-box">
-                  <div class="cc-stat-lbl">Spent (YTD)</div>
+                  <div class="cc-stat-lbl">Spent ({{selectedCC.budget_period==='Monthly'?'MTD':selectedCC.budget_period==='Quarterly'?'QTD':'YTD'}})</div>
                   <div class="cc-stat-val" :style="{color:pct(spend[selectedCC.name]||0,selectedCC.budget)>=100?'#C92A2A':pct(spend[selectedCC.name]||0,selectedCC.budget)>=80?'#E67700':'#1A1D23'}">{{fmtINR(spend[selectedCC.name]||0)}}</div>
                 </div>
                 <div class="cc-stat-box">
@@ -198,6 +198,7 @@
               <textarea v-model="fForm.desc" class="b-input" rows="2" style="resize:vertical" placeholder="What this cost center tracks..."></textarea>
             </div>
           </div>
+          <template v-if="!fForm.is_group">
           <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#868E96;margin-bottom:10px;margin-top:20px;padding-top:20px;border-top:1px solid #E2E8F0">Budget</div>
           <div class="cc-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
             <div>
@@ -227,6 +228,7 @@
               </select>
             </div>
           </div>
+          </template>
           <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#868E96;margin-bottom:10px;margin-top:20px;padding-top:20px;border-top:1px solid #E2E8F0">Settings</div>
           <div class="cc-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div>
@@ -375,6 +377,7 @@ function closeDrawer() { showDrawer.value = false; editing.value = null; }
 
 async function saveCC() {
   if (!fForm.name.trim()) { toast("Cost Center Name is required", "error"); return; }
+  if (!fForm.parent && !fForm.is_group) { toast("A root-level cost center (no parent) must be marked as a Group. Enable \"Is Group\" in the Settings section.", "error"); return; }
   saving.value = true;
   const data = { ...fForm, budget: Number(fForm.budget) || 0 };
   const company = await resolveCompany();

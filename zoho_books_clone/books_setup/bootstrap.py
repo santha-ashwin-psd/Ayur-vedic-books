@@ -97,9 +97,11 @@ def _seed_coa(company: str) -> None:
 def _seed_fiscal_year(company: str, fy_start: str = "04-01") -> None:
     """Create a Fiscal Year for `company` covering today, if absent.
 
-    Each tenant gets its own FY document named "{year_label} - {company}".
-    The validate_overlap check in FiscalYear.py is company-scoped, so
-    we must check existence before inserting to stay idempotent.
+    Fiscal Year autoname is ``field:year``, so the ``year`` field value becomes
+    the document PK.  We suffix it with the company name — "{year_label} - {company}"
+    — to keep each company's FY unique in a multi-tenant database.  The
+    ``company`` field is also explicitly stamped so the FY is correctly scoped
+    by the filtering in FiscalYears.vue and central_validator.
     """
     try:
         today = datetime.date.today()
@@ -115,7 +117,15 @@ def _seed_fiscal_year(company: str, fy_start: str = "04-01") -> None:
         else:
             year_label = f"{start.year}-{str(end.year)[-2:]}"
 
-        # Idempotency: skip if a FY already covers this period for this company
+        # Full document name: "{year_label} - {company}"
+        # Must be unique per company because autoname = field:year.
+        doc_name = f"{year_label} - {company}"
+
+        # Idempotency: skip if this exact FY doc already exists, OR if any FY
+        # for this company already covers the same date range.
+        if frappe.db.exists("Fiscal Year", doc_name):
+            return
+
         existing = frappe.db.sql("""
             SELECT name FROM `tabFiscal Year`
             WHERE company = %s
@@ -128,10 +138,10 @@ def _seed_fiscal_year(company: str, fy_start: str = "04-01") -> None:
             return
 
         fy = frappe.new_doc("Fiscal Year")
-        fy.year            = year_label
+        fy.year            = doc_name          # PK via autoname=field:year
         fy.year_start_date = start.strftime("%Y-%m-%d")
         fy.year_end_date   = end.strftime("%Y-%m-%d")
-        fy.company         = company
+        fy.company         = company           # explicit company stamp
         # flags.ignore_validate skips the overlap check in FiscalYear.validate()
         # which would otherwise trigger because fy.name is not yet persisted
         fy.flags.ignore_validate = True

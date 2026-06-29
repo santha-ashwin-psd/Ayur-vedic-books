@@ -1038,8 +1038,8 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 const { toast } = useToast();
 const route = useRoute();
 const { confirm } = useConfirm();
-const { printDoc, renderDocument, setCompany } = useLivePreview();
-function printSO(d) { printDoc({ ...d, items: viewItems.value }, { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
+const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
+async function printSO(d) { try { await refreshBranding(); } catch {} printDoc({ ...d, items: viewItems.value }, { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
 
 const showDownloadMenu = ref(false);
 
@@ -1643,6 +1643,7 @@ async function emailSO(o) {
     getDefaultsEndpoint: "zoho_books_clone.api.docs.get_sales_order_email_defaults",
     sendEndpoint: "zoho_books_clone.api.docs.send_sales_order_email",
     paramKey: "sales_order",
+    printConfig: { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name" },
   });
 }
 
@@ -1740,6 +1741,7 @@ async function bulkEmail() {
       getDefaultsEndpoint: "zoho_books_clone.api.docs.get_sales_order_email_defaults",
       sendEndpoint: "zoho_books_clone.api.docs.send_sales_order_email",
       paramKey: "sales_order",
+      printConfig: { title: "SALES ORDER", partyLabel: "Customer", partyField: "customer_name" },
     });
     if (ok) sent++;
   }

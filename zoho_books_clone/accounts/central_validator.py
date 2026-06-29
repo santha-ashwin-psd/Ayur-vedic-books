@@ -38,6 +38,28 @@ def on_submit(doc, _method=None):
     check_budget_for_doc(doc)
 
 
+def on_cancel(doc, _method=None):
+    """
+    Block cancellation of documents whose posting date falls in a locked period.
+    Cancelling reverses GL entries and distorts closed-period financials just as
+    much as creating a new document would — so the same lock rules apply.
+    System Managers are exempt (same as for saves).
+    """
+    _check_lock_date(doc)
+    _check_fiscal_year_period_lock(doc)
+
+
+def before_delete(doc, _method=None):
+    """
+    Block deletion of documents whose posting date falls in a locked period.
+    Draft documents can be deleted without submitting, so this guard is needed
+    independently of on_cancel.
+    """
+    _check_lock_date(doc)
+    _check_fiscal_year_period_lock(doc)
+
+
+
 # ─── Individual checks ────────────────────────────────────────────────────────
 
 def _check_company(doc):
@@ -314,6 +336,17 @@ def _posting_date_field(doc) -> str | None:
         "Credit Note":      "posting_date",
         "Expense":          "posting_date",
         "Expense Claim":    "claim_date",
+        # Phase 2: goods and banking documents added to central_validator
+        "Purchase Receipt": "posting_date",
+        "Stock Entry":      "posting_date",
+        "Bank Transaction": "date",
+        "Purchase Order":   "transaction_date",
+        # Phase 3: pre-sales and GST documents added so Books lock date
+        # and fiscal-year period lock are enforced consistently.
+        "Sales Order":      "transaction_date",
+        "Quotation":        "transaction_date",
+        "Delivery Note":    "posting_date",
+        "TDS Entry":        "date",
     }.get(doc.doctype)
 
 

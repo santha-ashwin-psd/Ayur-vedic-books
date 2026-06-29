@@ -725,8 +725,8 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 const { toast } = useToast();
 const route = useRoute();
 const { confirm } = useConfirm();
-const { printDoc } = useLivePreview();
-function printCN(d) { printDoc(d, { title: "CREDIT NOTE", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
+const { printDoc, refreshBranding } = useLivePreview();
+async function printCN(d) { try { await refreshBranding(); } catch {} printDoc(d, { title: "CREDIT NOTE", partyLabel: "Customer", partyField: "customer_name", companyName: d?.company || "" }); }
 
 const { openEmail } = useEmailDialog();
 // Credit-note-specific status — based on docstatus + available balance
@@ -1226,6 +1226,7 @@ async function emailCN(c) {
     getDefaultsEndpoint: "zoho_books_clone.api.docs.get_credit_note_email_defaults",
     sendEndpoint: "zoho_books_clone.api.docs.send_credit_note_email",
     paramKey: "credit_note_name",
+    printConfig: { title: "CREDIT NOTE", partyLabel: "Customer", partyField: "customer_name" },
   });
 }
 async function applyCN(c) {
@@ -1364,6 +1365,7 @@ async function bulkEmail() {
       getDefaultsEndpoint: "zoho_books_clone.api.docs.get_credit_note_email_defaults",
       sendEndpoint: "zoho_books_clone.api.docs.send_credit_note_email",
       paramKey: "credit_note_name",
+      printConfig: { title: "CREDIT NOTE", partyLabel: "Customer", partyField: "customer_name" },
     });
     if (ok) sent++;
   }

@@ -4,11 +4,19 @@ from frappe import _
 from frappe.utils import flt
 from frappe.model.document import Document
 from zoho_books_clone.accounts.accounting_engine import post_journal_entry, reverse_voucher
+from zoho_books_clone.db.validators import validate_fiscal_year
 
 
 class JournalEntry(Document):
 
     def validate(self):
+        # Ensure posting_date falls inside an open, unlocked fiscal year before
+        # any further checks — this guards against both "no FY found" and the
+        # period lock_date, which central_validator._check_period_not_closed
+        # does not cover (it only catches closed years, not missing ones).
+        if self.posting_date and self.company:
+            self.fiscal_year = validate_fiscal_year(self.posting_date, self.company)
+
         if not self.accounts:
             frappe.throw(_("Journal Entry must have at least one account row."))
         total_debit  = sum(flt(r.debit)  for r in self.accounts)

@@ -940,8 +940,8 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
-const { printDoc, renderDocument, setCompany } = useLivePreview();
-function printPO(d) { printDoc({ ...d, items: viewItems.value }, { title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
+const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
+async function printPO(d) { try { await refreshBranding(); } catch {} printDoc({ ...d, items: viewItems.value }, { title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
 
 const showDownloadMenu = ref(false);
 
@@ -1522,6 +1522,7 @@ async function emailPO(o) {
     getDefaultsEndpoint: "zoho_books_clone.api.docs.get_purchase_order_email_defaults",
     sendEndpoint: "zoho_books_clone.api.docs.send_purchase_order_email",
     paramKey: "purchase_order",
+    printConfig: { title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name" },
   });
 }
 
@@ -1623,6 +1624,7 @@ async function bulkEmail() {
       getDefaultsEndpoint: "zoho_books_clone.api.docs.get_purchase_order_email_defaults",
       sendEndpoint: "zoho_books_clone.api.docs.send_purchase_order_email",
       paramKey: "purchase_order",
+      printConfig: { title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name" },
     });
     if (ok) sent++;
   }

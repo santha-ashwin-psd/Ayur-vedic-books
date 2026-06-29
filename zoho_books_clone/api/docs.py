@@ -5,6 +5,46 @@ from zoho_books_clone.api.session import _get_company
 from zoho_books_clone.db.validators import validate_fiscal_year
 
 
+# ─── Email Template helpers ───────────────────────────────────────────────────
+
+def _resolve_company_for_user():
+    """Return the Books Company for the current session user."""
+    user = frappe.session.user
+    name = frappe.db.get_value("Books Company Member", {"user": user}, "company")
+    if not name:
+        name = frappe.db.get_single_value("Books Settings", "default_company") or ""
+    return name
+
+
+def _get_email_template(template_short_name):
+    """Look up a company-scoped Email Template and return (subject, body) or (None, None).
+
+    Templates are stored as "<Company>::<short_name>" in Frappe's Email Template
+    doctype (see admin.py save_email_template). Returns the raw template strings
+    so callers can substitute {{variable}} placeholders themselves.
+    """
+    try:
+        company = _resolve_company_for_user()
+        if not company:
+            return None, None
+        full_name = f"{company}::{template_short_name}"
+        if not frappe.db.exists("Email Template", full_name):
+            return None, None
+        doc = frappe.get_doc("Email Template", full_name)
+        return (doc.subject or None), (doc.response or None)
+    except Exception:
+        return None, None
+
+
+def _render_template(tpl, variables):
+    """Replace {{key}} placeholders in a template string with actual values."""
+    if not tpl:
+        return tpl
+    for k, v in variables.items():
+        tpl = tpl.replace("{{" + k + "}}", str(v) if v is not None else "")
+    return tpl
+
+
 def _recalculate_invoice_outstanding(invoice_name):
     """Recalculate and persist outstanding_amount for a submitted Sales Invoice.
 
@@ -50,12 +90,72 @@ def _recalculate_invoice_outstanding(invoice_name):
         )
 
 
+# ── Multi-tenant guards for the generic doc API ───────────────────────────────
+# get_doc / get_list deliberately run with ignore_permissions=True (Books custom
+# roles aren't recognised by Frappe's core permission check). We therefore must
+# re-apply company tenancy here so a user can never read another company's data,
+# rather than trusting client-supplied filters.
+
+def _tenancy_company_field(doctype):
+    """Return the field this doctype is scoped by ('company' or 'books_company'),
+    or None for global/shared doctypes (UOM, Currency, Books Settings, …)."""
+    try:
+        meta = frappe.get_meta(doctype)
+    except Exception:
+        return None
+    if meta.has_field("company"):
+        return "company"
+    if meta.has_field("books_company"):
+        return "books_company"
+    return None
+
+
+def _inject_tenancy_filters(doctype, filters):
+    """Force a company filter onto a list query for non-bypass users.
+    Returns (filters, allowed); allowed=False means the caller should see nothing."""
+    from zoho_books_clone.utils.tenancy import get_user_company, _is_bypass
+    user = frappe.session.user
+    if _is_bypass(user):
+        return filters, True
+    field = _tenancy_company_field(doctype)
+    if not field:
+        return filters, True  # global doctype — no tenancy to enforce
+    company = get_user_company(user)
+    if not company:
+        return filters, False  # unmapped session user → see nothing
+    if isinstance(filters, dict):
+        filters.setdefault(field, company)
+        return filters, True
+    filters = list(filters or [])
+    if not any(isinstance(f, (list, tuple)) and len(f) >= 1 and f[0] == field for f in filters):
+        filters.append([field, "=", company])
+    return filters, True
+
+
+def _assert_doc_tenancy(doc):
+    """Raise PermissionError if a single doc belongs to another company."""
+    from zoho_books_clone.utils.tenancy import get_user_company, _is_bypass
+    user = frappe.session.user
+    if _is_bypass(user):
+        return
+    field = _tenancy_company_field(doc.doctype)
+    if not field:
+        return
+    doc_company = doc.get(field)
+    if not doc_company:
+        return  # unscoped / legacy record — no opinion (matches tenancy hooks)
+    user_company = get_user_company(user)
+    if not user_company or doc_company != user_company:
+        frappe.throw("Not permitted", frappe.PermissionError)
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_doc(doctype, name):
     """
     Fetch a single document with ignore_permissions=True so the Books Manager
     custom role can read any doctype (frappe.client.get blocks custom roles).
-    @frappe.whitelist(allow_guest=False) already blocks unauthenticated callers.
+    @frappe.whitelist(allow_guest=False) already blocks unauthenticated callers,
+    and _assert_doc_tenancy enforces company isolation.
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
@@ -64,6 +164,7 @@ def get_doc(doctype, name):
     frappe.flags.ignore_permissions = True
     try:
         doc = frappe.get_doc(doctype, name)
+        _assert_doc_tenancy(doc)
         return doc.as_dict()
     finally:
         frappe.flags.ignore_permissions = False
@@ -77,8 +178,9 @@ def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit
     so the built-in get_list raises PermissionError. This wrapper bypasses that
     check after confirming the caller is authenticated.
 
-    The Vue SPA uses this through src/api/client.js → apiList(). Tenancy filters
-    (books_company / company) are added by the client; this endpoint trusts them.
+    The Vue SPA uses this through src/api/client.js → apiList(). The client adds
+    tenancy filters too, but this endpoint no longer trusts them — it re-injects
+    the company filter server-side so a tampered client can't read other tenants.
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
@@ -94,10 +196,14 @@ def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit
         except Exception:
             filters = []
 
+    filters, allowed = _inject_tenancy_filters(doctype, filters or [])
+    if not allowed:
+        return []
+
     return frappe.get_list(
         doctype,
         fields=fields or ["name"],
-        filters=filters or [],
+        filters=filters,
         order_by=order_by,
         start=int(start or 0),
         limit_page_length=int(limit_page_length or 50),
@@ -110,24 +216,38 @@ def get_invoice_email_defaults(invoice_name):
     """
     Return pre-filled To, Subject, and body for the Send Email dialog.
     Uses the customer's email_id and the invoice's grand_total / due_date.
+    If a company-scoped Email Template named "Sales Invoice" exists it is used
+    (with {{variable}} substitution); otherwise falls back to the built-in body.
     """
     inv = frappe.get_doc("Sales Invoice", invoice_name)
     customer_email = frappe.db.get_value("Customer", inv.customer, "email_id") or ""
 
-    subject = f"Invoice {inv.name} from {inv.company or frappe.db.get_default('company') or ''}"
+    variables = {
+        "customer_name": inv.customer_name or inv.customer,
+        "invoice_no":    inv.name,
+        "amount":        f"{inv.grand_total:,.2f}",
+        "due_date":      str(inv.due_date or ""),
+        "company":       inv.company or "",
+    }
 
-    body = (
-        f"Dear {inv.customer_name or inv.customer},<br><br>"
-        f"Please find your invoice <b>{inv.name}</b> details below:<br><br>"
-        f"<table style='border-collapse:collapse;font-size:14px'>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Invoice #</td><td><b>{inv.name}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{inv.grand_total:,.2f}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Due Date</td><td>{inv.due_date}</td></tr>"
-        f"</table><br>"
-        f"Kindly make the payment by the due date.<br><br>"
-        f"Thanks for your business.<br><br>"
-        f"Regards,<br>{inv.company or ''}"
-    )
+    tpl_subject, tpl_body = _get_email_template("Sales Invoice")
+    if tpl_subject or tpl_body:
+        subject = _render_template(tpl_subject or "Invoice {{invoice_no}} from {{company}}", variables)
+        body    = _render_template(tpl_body or "", variables)
+    else:
+        subject = f"Invoice {inv.name} from {inv.company or frappe.db.get_default('company') or ''}"
+        body = (
+            f"Dear {inv.customer_name or inv.customer},<br><br>"
+            f"Please find your invoice <b>{inv.name}</b> details below:<br><br>"
+            f"<table style='border-collapse:collapse;font-size:14px'>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Invoice #</td><td><b>{inv.name}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{inv.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Due Date</td><td>{inv.due_date}</td></tr>"
+            f"</table><br>"
+            f"Kindly make the payment by the due date.<br><br>"
+            f"Thanks for your business.<br><br>"
+            f"Regards,<br>{inv.company or ''}"
+        )
 
     return {
         "to": customer_email,
@@ -139,11 +259,31 @@ def get_invoice_email_defaults(invoice_name):
     }
 
 
+def _email_attachment(doctype, name, print_format, pdf_html=None, filename=None):
+    """Build the email PDF attachment.
+
+    Prefer caller-supplied HTML (rendered from the user's selected branding
+    template in Company Settings) so the emailed PDF matches exactly what the
+    user downloads on screen. Fall back to the Frappe print format otherwise.
+    """
+    if pdf_html:
+        try:
+            from frappe.utils.pdf import get_pdf
+            return [{"fname": "%s.pdf" % (filename or name), "fcontent": get_pdf(pdf_html)}]
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "email pdf_html render failed")
+    try:
+        return [frappe.attach_print(doctype, name, print_format=print_format, print_letterhead=True)]
+    except Exception:
+        return []
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_invoice_email(invoice_name, to, subject, body, cc=None):
+def send_invoice_email(invoice_name, to, subject, body, cc=None, pdf_html=None):
     """
     Send invoice email using Frappe's configured outgoing email account.
-    Attaches a PDF of the invoice.
+    Attaches a PDF of the invoice (rendered from the selected branding template
+    when pdf_html is supplied by the client).
     """
     if not to:
         frappe.throw("Recipient email (To) is required.")
@@ -158,18 +298,8 @@ def send_invoice_email(invoice_name, to, subject, body, cc=None):
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
 
-    # Attach PDF of the invoice
-    try:
-        pdf_attachment = frappe.attach_print(
-            inv.doctype,
-            inv.name,
-            print_format="Sales Invoice",
-            print_letterhead=True,
-        )
-        attachments = [pdf_attachment]
-    except Exception:
-        # If print format not found, send without attachment
-        attachments = []
+    # Attach PDF of the invoice — selected template when provided
+    attachments = _email_attachment(inv.doctype, inv.name, "Sales Invoice", pdf_html)
 
     # Send using Frappe's configured email account
     frappe.sendmail(
@@ -610,22 +740,36 @@ def get_bill_payments(bill_name):
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_bill_email_defaults(bill_name):
-    """Pre-fill the Send Email dialog for a Bill."""
+    """Pre-fill the Send Email dialog for a Bill. Uses 'Purchase Invoice' template if saved."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     bill = frappe.get_doc("Purchase Invoice", bill_name)
     supplier_email = frappe.db.get_value("Supplier", bill.supplier, "email_id") or ""
-    subject = f"Bill {bill.name} from {bill.company or ''}"
-    body = (
-        f"Dear {bill.supplier_name or bill.supplier},<br><br>"
-        f"Please find your bill <b>{bill.name}</b> details below:<br><br>"
-        f"<table style='border-collapse:collapse;font-size:14px'>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Bill #</td><td><b>{bill.name}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{bill.grand_total:,.2f}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Due Date</td><td>{bill.due_date or '—'}</td></tr>"
-        f"</table><br>"
-        f"Regards,<br>{bill.company or ''}"
-    )
+
+    variables = {
+        "customer_name": bill.supplier_name or bill.supplier,
+        "invoice_no":    bill.name,
+        "amount":        f"{bill.grand_total:,.2f}",
+        "due_date":      str(bill.due_date or ""),
+        "company":       bill.company or "",
+    }
+
+    tpl_subject, tpl_body = _get_email_template("Purchase Invoice")
+    if tpl_subject or tpl_body:
+        subject = _render_template(tpl_subject or "Bill {{invoice_no}} from {{company}}", variables)
+        body    = _render_template(tpl_body or "", variables)
+    else:
+        subject = f"Bill {bill.name} from {bill.company or ''}"
+        body = (
+            f"Dear {bill.supplier_name or bill.supplier},<br><br>"
+            f"Please find your bill <b>{bill.name}</b> details below:<br><br>"
+            f"<table style='border-collapse:collapse;font-size:14px'>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Bill #</td><td><b>{bill.name}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{bill.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Due Date</td><td>{bill.due_date or '—'}</td></tr>"
+            f"</table><br>"
+            f"Regards,<br>{bill.company or ''}"
+        )
     return {
         "to": supplier_email,
         "subject": subject,
@@ -637,7 +781,7 @@ def get_bill_email_defaults(bill_name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_bill_email(bill_name, to, subject, body, cc=None):
+def send_bill_email(bill_name, to, subject, body, cc=None, pdf_html=None):
     """Send a bill email; attaches the bill PDF when print format exists."""
     if not to:
         frappe.throw("Recipient email (To) is required.")
@@ -647,11 +791,7 @@ def send_bill_email(bill_name, to, subject, body, cc=None):
     bill = frappe.get_doc("Purchase Invoice", bill_name)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(bill.doctype, bill.name, print_format="Purchase Invoice", print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(bill.doctype, bill.name, "Purchase Invoice", pdf_html)
 
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
@@ -1733,24 +1873,38 @@ def refund_credit_note(credit_note_name, amount, refund_mode="Bank Transfer",
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_credit_note_email_defaults(credit_note_name):
-    """Pre-fill the Send Email dialog for a Credit Note."""
+    """Pre-fill the Send Email dialog for a Credit Note. Uses 'Credit Note' template if saved."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     cn = frappe.get_doc("Sales Invoice", credit_note_name)
     cust_email = frappe.db.get_value("Customer", cn.customer, "email_id") or ""
-    subject = f"Credit Note {cn.name} from {cn.company or ''}"
-    body = (
-        f"Dear {cn.customer_name or cn.customer},<br><br>"
-        f"Please find your credit note <b>{cn.name}</b> details below:<br><br>"
-        f"<table style='border-collapse:collapse;font-size:14px'>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Credit Note #</td><td><b>{cn.name}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{abs(cn.grand_total):,.2f}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{cn.posting_date}</td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Against Invoice</td><td>{cn.return_against or '—'}</td></tr>"
-        f"</table><br>"
-        f"This credit note may be applied against your open invoices or refunded.<br><br>"
-        f"Regards,<br>{cn.company or ''}"
-    )
+
+    variables = {
+        "customer_name": cn.customer_name or cn.customer,
+        "invoice_no":    cn.name,
+        "amount":        f"{abs(cn.grand_total):,.2f}",
+        "due_date":      str(cn.posting_date or ""),
+        "company":       cn.company or "",
+    }
+
+    tpl_subject, tpl_body = _get_email_template("Credit Note")
+    if tpl_subject or tpl_body:
+        subject = _render_template(tpl_subject or "Credit Note {{invoice_no}} from {{company}}", variables)
+        body    = _render_template(tpl_body or "", variables)
+    else:
+        subject = f"Credit Note {cn.name} from {cn.company or ''}"
+        body = (
+            f"Dear {cn.customer_name or cn.customer},<br><br>"
+            f"Please find your credit note <b>{cn.name}</b> details below:<br><br>"
+            f"<table style='border-collapse:collapse;font-size:14px'>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Credit Note #</td><td><b>{cn.name}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{abs(cn.grand_total):,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{cn.posting_date}</td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Against Invoice</td><td>{cn.return_against or '—'}</td></tr>"
+            f"</table><br>"
+            f"This credit note may be applied against your open invoices or refunded.<br><br>"
+            f"Regards,<br>{cn.company or ''}"
+        )
     return {
         "to": cust_email, "subject": subject, "body": body,
         "credit_note_name": cn.name,
@@ -1760,7 +1914,7 @@ def get_credit_note_email_defaults(credit_note_name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_credit_note_email(credit_note_name, to, subject, body, cc=None):
+def send_credit_note_email(credit_note_name, to, subject, body, cc=None, pdf_html=None):
     if not to:
         frappe.throw("Recipient email (To) is required.")
     if not frappe.has_permission("Sales Invoice", "read", credit_note_name):
@@ -1768,13 +1922,7 @@ def send_credit_note_email(credit_note_name, to, subject, body, cc=None):
     cn = frappe.get_doc("Sales Invoice", credit_note_name)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(cn.doctype, cn.name,
-                                           print_format="Sales Invoice",
-                                           print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(cn.doctype, cn.name, "Sales Invoice", pdf_html)
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
         subject=subject, message=body, attachments=attachments,
@@ -1791,6 +1939,76 @@ def send_credit_note_email(credit_note_name, to, subject, body, cc=None):
     comm.insert(ignore_permissions=True)
     frappe.db.commit()
     return {"status": "sent", "to": to, "credit_note": credit_note_name}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_debit_note_email_defaults(debit_note_name):
+    """Pre-fill the Send Email dialog for a Debit Note. Uses 'Debit Note' template if saved."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    dn = frappe.get_doc("Purchase Invoice", debit_note_name)
+    vendor_email = frappe.db.get_value("Supplier", dn.supplier, "email_id") or ""
+
+    variables = {
+        "customer_name": dn.supplier_name or dn.supplier,
+        "invoice_no":    dn.name,
+        "amount":        f"{abs(dn.grand_total):,.2f}",
+        "due_date":      str(dn.posting_date or ""),
+        "company":       dn.company or "",
+    }
+
+    tpl_subject, tpl_body = _get_email_template("Debit Note")
+    if tpl_subject or tpl_body:
+        subject = _render_template(tpl_subject or "Debit Note {{invoice_no}} from {{company}}", variables)
+        body    = _render_template(tpl_body or "", variables)
+    else:
+        subject = f"Debit Note {dn.name} from {dn.company or ''}"
+        body = (
+            f"Dear {dn.supplier_name or dn.supplier},<br><br>"
+            f"Please find your debit note <b>{dn.name}</b> details below:<br><br>"
+            f"<table style='border-collapse:collapse;font-size:14px'>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Debit Note #</td><td><b>{dn.name}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{abs(dn.grand_total):,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{dn.posting_date}</td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Against Bill</td><td>{dn.return_against or '—'}</td></tr>"
+            f"</table><br>"
+            f"This debit note may be applied against your open bills.<br><br>"
+            f"Regards,<br>{dn.company or ''}"
+        )
+    return {
+        "to": vendor_email, "subject": subject, "body": body,
+        "debit_note_name": dn.name,
+        "supplier_name": dn.supplier_name or dn.supplier,
+        "from_email": frappe.session.user,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def send_debit_note_email(debit_note_name, to, subject, body, cc=None, pdf_html=None):
+    if not to:
+        frappe.throw("Recipient email (To) is required.")
+    if not frappe.has_permission("Purchase Invoice", "read", debit_note_name):
+        frappe.throw("Not permitted", frappe.PermissionError)
+    dn = frappe.get_doc("Purchase Invoice", debit_note_name)
+    recipients = [e.strip() for e in to.split(",") if e.strip()]
+    cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
+    attachments = _email_attachment(dn.doctype, dn.name, "Purchase Invoice", pdf_html)
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list,
+        subject=subject, message=body, attachments=attachments,
+        reference_doctype="Purchase Invoice", reference_name=debit_note_name, now=True,
+    )
+    comm = frappe.get_doc({
+        "doctype": "Communication", "communication_type": "Communication",
+        "communication_medium": "Email", "sent_or_received": "Sent",
+        "subject": subject, "content": body, "sender": frappe.session.user,
+        "recipients": to, "cc": cc or "",
+        "reference_doctype": "Purchase Invoice", "reference_name": debit_note_name,
+        "status": "Linked",
+    })
+    comm.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "sent", "to": to, "debit_note": debit_note_name}
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
@@ -2242,23 +2460,38 @@ def get_quote_conversions(quotation_name):
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_quote_email_defaults(quotation_name):
+    """Pre-fill the Send Email dialog for a Quotation. Uses 'Quotation' template if saved."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     qd = frappe.get_doc("Quotation", quotation_name)
     cust_email = frappe.db.get_value("Customer", qd.customer, "email_id") or ""
-    subject = f"Quotation {qd.name} from {qd.company or ''}"
-    body = (
-        f"Dear {qd.customer_name or qd.customer},<br><br>"
-        f"Please find your quotation <b>{qd.name}</b> details below:<br><br>"
-        f"<table style='border-collapse:collapse;font-size:14px'>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Quotation #</td><td><b>{qd.name}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{qd.grand_total:,.2f}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{qd.transaction_date}</td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Valid Till</td><td>{qd.valid_till or '—'}</td></tr>"
-        f"</table><br>"
-        f"Looking forward to your confirmation.<br><br>"
-        f"Regards,<br>{qd.company or ''}"
-    )
+
+    variables = {
+        "customer_name": qd.customer_name or qd.customer,
+        "invoice_no":    qd.name,
+        "amount":        f"{qd.grand_total:,.2f}",
+        "due_date":      str(qd.valid_till or ""),
+        "company":       qd.company or "",
+    }
+
+    tpl_subject, tpl_body = _get_email_template("Quotation")
+    if tpl_subject or tpl_body:
+        subject = _render_template(tpl_subject or "Quotation {{invoice_no}} from {{company}}", variables)
+        body    = _render_template(tpl_body or "", variables)
+    else:
+        subject = f"Quotation {qd.name} from {qd.company or ''}"
+        body = (
+            f"Dear {qd.customer_name or qd.customer},<br><br>"
+            f"Please find your quotation <b>{qd.name}</b> details below:<br><br>"
+            f"<table style='border-collapse:collapse;font-size:14px'>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Quotation #</td><td><b>{qd.name}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{qd.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{qd.transaction_date}</td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Valid Till</td><td>{qd.valid_till or '—'}</td></tr>"
+            f"</table><br>"
+            f"Looking forward to your confirmation.<br><br>"
+            f"Regards,<br>{qd.company or ''}"
+        )
     return {
         "to": cust_email, "subject": subject, "body": body,
         "quotation_name": qd.name,
@@ -2268,7 +2501,7 @@ def get_quote_email_defaults(quotation_name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_quote_email(quotation_name, to, subject, body, cc=None):
+def send_quote_email(quotation_name, to, subject, body, cc=None, pdf_html=None):
     """Send a quote email and auto-flip status to 'Sent'."""
     if not to:
         frappe.throw("Recipient email (To) is required.")
@@ -2277,12 +2510,7 @@ def send_quote_email(quotation_name, to, subject, body, cc=None):
     qd = frappe.get_doc("Quotation", quotation_name)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(qd.doctype, qd.name,
-                                           print_format="Quotation", print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(qd.doctype, qd.name, "Quotation", pdf_html)
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
         subject=subject, message=body, attachments=attachments,
@@ -2568,23 +2796,38 @@ def cancel_sales_order_safe(sales_order):
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_sales_order_email_defaults(sales_order):
+    """Pre-fill Send Email dialog for a Sales Order. Uses 'Sales Order' template if saved."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     so = frappe.get_doc("Sales Order", sales_order)
     cust_email = frappe.db.get_value("Customer", so.customer, "email_id") or ""
-    subject = f"Sales Order {so.name} from {so.company or ''}"
-    body = (
-        f"Dear {so.customer_name or so.customer},<br><br>"
-        f"Confirmation of your Sales Order:<br><br>"
-        f"<table style='border-collapse:collapse;font-size:14px'>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order #</td><td><b>{so.name}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{so.grand_total:,.2f}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order Date</td><td>{so.transaction_date}</td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Delivery Date</td><td>{so.delivery_date or '—'}</td></tr>"
-        f"</table><br>"
-        f"Thank you for your order.<br><br>"
-        f"Regards,<br>{so.company or ''}"
-    )
+
+    variables = {
+        "customer_name": so.customer_name or so.customer,
+        "invoice_no":    so.name,
+        "amount":        f"{so.grand_total:,.2f}",
+        "due_date":      str(so.delivery_date or ""),
+        "company":       so.company or "",
+    }
+
+    tpl_subject, tpl_body = _get_email_template("Sales Order")
+    if tpl_subject or tpl_body:
+        subject = _render_template(tpl_subject or "Sales Order {{invoice_no}} from {{company}}", variables)
+        body    = _render_template(tpl_body or "", variables)
+    else:
+        subject = f"Sales Order {so.name} from {so.company or ''}"
+        body = (
+            f"Dear {so.customer_name or so.customer},<br><br>"
+            f"Confirmation of your Sales Order:<br><br>"
+            f"<table style='border-collapse:collapse;font-size:14px'>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order #</td><td><b>{so.name}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{so.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order Date</td><td>{so.transaction_date}</td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Delivery Date</td><td>{so.delivery_date or '—'}</td></tr>"
+            f"</table><br>"
+            f"Thank you for your order.<br><br>"
+            f"Regards,<br>{so.company or ''}"
+        )
     return {
         "to": cust_email, "subject": subject, "body": body,
         "sales_order_name": so.name,
@@ -2594,7 +2837,7 @@ def get_sales_order_email_defaults(sales_order):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_sales_order_email(sales_order, to, subject, body, cc=None):
+def send_sales_order_email(sales_order, to, subject, body, cc=None, pdf_html=None):
     if not to:
         frappe.throw("Recipient email (To) is required.")
     if not frappe.has_permission("Sales Order", "read", sales_order):
@@ -2602,12 +2845,7 @@ def send_sales_order_email(sales_order, to, subject, body, cc=None):
     so = frappe.get_doc("Sales Order", sales_order)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(so.doctype, so.name,
-                                           print_format="Sales Order", print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(so.doctype, so.name, "Sales Order", pdf_html)
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
         subject=subject, message=body, attachments=attachments,
@@ -2871,19 +3109,33 @@ def get_purchase_order_email_defaults(purchase_order):
         frappe.throw("Not permitted", frappe.PermissionError)
     po = frappe.get_doc("Purchase Order", purchase_order)
     supplier_email = frappe.db.get_value("Supplier", po.supplier, "email_id") or ""
-    subject = f"Purchase Order {po.name} from {po.company or ''}"
-    body = (
-        f"Dear {po.supplier_name or po.supplier},<br><br>"
-        f"Please find our Purchase Order:<br><br>"
-        f"<table style='border-collapse:collapse;font-size:14px'>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>PO #</td><td><b>{po.name}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{po.grand_total:,.2f}</b></td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order Date</td><td>{po.transaction_date}</td></tr>"
-        f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Expected Delivery</td><td>{po.expected_delivery_date or '—'}</td></tr>"
-        f"</table><br>"
-        f"Please confirm receipt and expected dispatch.<br><br>"
-        f"Regards,<br>{po.company or ''}"
-    )
+
+    variables = {
+        "customer_name": po.supplier_name or po.supplier,
+        "invoice_no":    po.name,
+        "amount":        f"{po.grand_total:,.2f}",
+        "due_date":      str(po.expected_delivery_date or ""),
+        "company":       po.company or "",
+    }
+
+    tpl_subject, tpl_body = _get_email_template("Purchase Order")
+    if tpl_subject or tpl_body:
+        subject = _render_template(tpl_subject or "Purchase Order {{invoice_no}} from {{company}}", variables)
+        body    = _render_template(tpl_body or "", variables)
+    else:
+        subject = f"Purchase Order {po.name} from {po.company or ''}"
+        body = (
+            f"Dear {po.supplier_name or po.supplier},<br><br>"
+            f"Please find our Purchase Order:<br><br>"
+            f"<table style='border-collapse:collapse;font-size:14px'>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>PO #</td><td><b>{po.name}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{po.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order Date</td><td>{po.transaction_date}</td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Expected Delivery</td><td>{po.expected_delivery_date or '—'}</td></tr>"
+            f"</table><br>"
+            f"Please confirm receipt and expected dispatch.<br><br>"
+            f"Regards,<br>{po.company or ''}"
+        )
     return {
         "to": supplier_email, "subject": subject, "body": body,
         "purchase_order_name": po.name,
@@ -2893,7 +3145,7 @@ def get_purchase_order_email_defaults(purchase_order):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
-def send_purchase_order_email(purchase_order, to, subject, body, cc=None):
+def send_purchase_order_email(purchase_order, to, subject, body, cc=None, pdf_html=None):
     if not to:
         frappe.throw("Recipient email (To) is required.")
     if not frappe.has_permission("Purchase Order", "read", purchase_order):
@@ -2901,12 +3153,7 @@ def send_purchase_order_email(purchase_order, to, subject, body, cc=None):
     po = frappe.get_doc("Purchase Order", purchase_order)
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    attachments = []
-    try:
-        attachments = [frappe.attach_print(po.doctype, po.name,
-                                           print_format="Purchase Order", print_letterhead=True)]
-    except Exception:
-        attachments = []
+    attachments = _email_attachment(po.doctype, po.name, "Purchase Order", pdf_html)
     frappe.sendmail(
         recipients=recipients, cc=cc_list,
         subject=subject, message=body, attachments=attachments,

@@ -191,6 +191,7 @@ const _CO_SCOPED = new Set([
   "Sales Invoice", "Purchase Invoice", "Quotation", "Sales Order", "Purchase Order",
   "Payment Entry", "Stock Entry", "Journal Entry", "Account", "Warehouse", "Cost Center",
   "Bank Account", "Expense Claim",
+  "Fiscal Year",
 ]);
 
 // Master types with no native company field — filtered by `books_company` custom field

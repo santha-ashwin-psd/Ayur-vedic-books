@@ -96,7 +96,7 @@
                 <button class="inv-act-btn" @click="openView(r)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="r.ui_status==='Active'" class="inv-act-btn" @click="quickAction(r,'pause')" title="Pause"><span v-html="icon('pause',13)"></span></button>
                 <button v-else-if="r.ui_status==='Paused'" class="inv-act-btn" @click="quickAction(r,'resume')" title="Resume"><span v-html="icon('play',13)"></span></button>
-                <button class="inv-act-btn rec-act-danger" @click="quickAction(r,'delete')" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                <button v-if="r.ui_status!=='Cancelled'&&r.ui_status!=='Completed'" class="inv-act-btn rec-act-danger" @click="quickAction(r,'delete')" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
             <tr v-if="!sorted.length"><td colspan="10" class="rec-empty">
@@ -153,7 +153,7 @@
               <button class="inv-act-btn" @click="openView(r)" title="View"><span v-html="icon('eye',13)"></span></button>
               <button v-if="r.ui_status==='Active'" class="inv-act-btn" @click="quickAction(r,'pause')" title="Pause"><span v-html="icon('pause',13)"></span></button>
               <button v-else-if="r.ui_status==='Paused'" class="inv-act-btn" @click="quickAction(r,'resume')" title="Resume"><span v-html="icon('play',13)"></span></button>
-              <button class="inv-act-btn rec-act-danger" @click="quickAction(r,'delete')" title="Delete"><span v-html="icon('trash',13)"></span></button>
+              <button v-if="r.ui_status!=='Cancelled'&&r.ui_status!=='Completed'" class="inv-act-btn rec-act-danger" @click="quickAction(r,'delete')" title="Delete"><span v-html="icon('trash',13)"></span></button>
             </div>
           </div>
         </div>
@@ -408,11 +408,11 @@
 
         <!-- action bar -->
         <div class="rec-view-actbar">
-          <button class="rec-va-btn" @click="openEdit(viewDoc)" :disabled="viewDoc.ui_status==='Completed'"><span v-html="icon('edit',13)"></span><div class="rec-va-btn-text"> Edit</div></button>
+          <button class="rec-va-btn" @click="openEdit(viewDoc)" :disabled="viewDoc.ui_status==='Completed'||viewDoc.ui_status==='Cancelled'"><span v-html="icon('edit',13)"></span><div class="rec-va-btn-text"> Edit</div></button>
           <button class="rec-va-btn" @click="runNow(viewDoc)" :disabled="viewDoc.ui_status!=='Active' || actionLoading"><span v-html="icon('play',13)"></span><div class="rec-va-btn-text"> Run Now</div></button>
           <button v-if="viewDoc.ui_status==='Active'" class="rec-va-btn" @click="actionOn(viewDoc,'pause')" :disabled="actionLoading"><span v-html="icon('pause',13)"></span><div class="rec-va-btn-text"> Pause</div></button>
           <button v-else-if="viewDoc.ui_status==='Paused'" class="rec-va-btn" @click="actionOn(viewDoc,'resume')" :disabled="actionLoading"><span v-html="icon('play',13)"></span><div class="rec-va-btn-text"> Resume</div></button>
-          <button class="rec-va-btn rec-va-warn" @click="actionOn(viewDoc,'cancel')" :disabled="actionLoading || viewDoc.ui_status==='Completed'"><span v-html="icon('x',13)"></span><div class="rec-va-btn-text"> Cancel</div></button>
+          <button class="rec-va-btn rec-va-warn" @click="actionOn(viewDoc,'cancel')" :disabled="actionLoading||viewDoc.ui_status==='Completed'||viewDoc.ui_status==='Cancelled'"><span v-html="icon('x',13)"></span><div class="rec-va-btn-text"> Cancel</div></button>
           <button class="rec-va-btn rec-va-danger" @click="actionOn(viewDoc,'delete')" :disabled="actionLoading"><span v-html="icon('trash',13)"></span><div class="rec-va-btn-text"> Delete</div></button>
         </div>
 
@@ -704,7 +704,8 @@ async function load() {
         r =>
           r.ui_status === "Active" &&
           r.next_schedule_date &&
-          r.next_schedule_date < new Date().toISOString().slice(0, 10)
+          r.next_schedule_date < new Date().toISOString().slice(0, 10) &&
+          !r.is_due
       ).length,
     };
   } catch (e) {
@@ -936,7 +937,7 @@ watch(() => form.reference_document, async (v) => {
     });
     const row = r?.message || {};
     Object.assign(referenceMeta, {
-      party_label: form.reference_doctype === "Customer",
+      party_label: form.reference_doctype === "Sales Invoice" ? "Customer" : "Party",
       party: row[fields[0]] || "",
       amount: Number(row[fields[1]]) || 0,
     });

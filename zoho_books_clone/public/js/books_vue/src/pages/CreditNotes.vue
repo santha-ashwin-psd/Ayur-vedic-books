@@ -82,7 +82,7 @@
                 <button class="inv-act-btn" @click="openView(c)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="c.docstatus===0" class="inv-act-btn" @click="openEdit(c)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button v-if="c.docstatus===1 && balanceFor(c.name)>0" class="inv-act-btn cn-act-apply" @click="applyCN(c)" title="Apply to Invoice">↳</button>
-                <button v-if="c.docstatus===1" class="inv-act-btn cn-act-cancel" @click="cancelCN(c)" title="Cancel Credit Note"><span v-html="icon('x',12)"></span></button>
+                <button v-if="c.docstatus===1 && cnStatus(c)!=='applied'" class="inv-act-btn cn-act-cancel" @click="cancelCN(c)" title="Cancel Credit Note"><span v-html="icon('x',12)"></span></button>
                 <button v-if="c.docstatus===0 || c.docstatus===2" class="inv-act-btn cn-act-del" @click="deleteCN(c)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
@@ -120,6 +120,7 @@
               <button class="cn-mc-btn" @click.stop="openView(c)">View</button>
               <button v-if="c.docstatus===0" class="cn-mc-btn" @click.stop="openEdit(c)">Edit</button>
               <button v-if="c.docstatus===1&&balanceFor(c.name)>0" class="cn-mc-btn cn-mc-apply" @click.stop="applyCN(c)">Apply</button>
+              <button v-if="c.docstatus===1 && cnStatus(c)!=='applied'" class="cn-mc-btn cn-mc-cancel" @click.stop="cancelCN(c)">Cancel</button>
               <button v-if="c.docstatus===0||c.docstatus===2" class="cn-mc-btn cn-mc-danger" @click.stop="deleteCN(c)">Delete</button>
             </div>
           </div>
@@ -561,7 +562,7 @@
             <button v-if="viewDoc.docstatus===1 && viewBalance>0" class="cn-vf-btn cn-vf-btn-refund" @click="refundCN(viewDoc)">
               ↩  <div class="cn-view-action-btn">Refund Credit</div>
             </button>
-            <button v-if="viewDoc.docstatus===1 && viewBalance>0 && viewBalance<10" class="cn-vf-btn cn-vf-btn-outline" @click="writeOffCN(viewDoc)">
+            <button v-if="viewDoc.docstatus===1 && viewBalance>0 && viewBalance<=500" class="cn-vf-btn cn-vf-btn-outline" @click="writeOffCN(viewDoc)">
               ✎ <div class="cn-view-action-btn">Write Off</div>
             </button>
           </div>
@@ -579,7 +580,7 @@
             <button class="cn-vf-sec-btn" @click="printCN(viewDoc)">
               <span v-html="icon('printer',13)"></span> <div class="cn-view-action-btn">Print</div>
             </button>
-            <button v-if="viewDoc.docstatus===1" class="cn-vf-sec-btn cn-vf-sec-danger" @click="cancelCN(viewDoc)">
+            <button v-if="viewDoc.docstatus===1 && cnStatus(viewDoc)!=='applied'" class="cn-vf-sec-btn cn-vf-sec-danger" @click="cancelCN(viewDoc)">
               <span v-html="icon('x-circle',13)"></span> <div class="cn-view-action-btn">Cancel</div>
             </button>
             <button v-if="viewDoc.docstatus===0 || viewDoc.docstatus===2" class="cn-vf-sec-btn cn-vf-sec-danger" @click="deleteCN(viewDoc)">
@@ -1333,7 +1334,11 @@ async function cancelCN(c) {
   try {
     await apiPOST("zoho_books_clone.api.docs.cancel_credit_note", { name: c.name });
     toast.success("Credit Note cancelled — invoice outstanding restored");
-    await load(); if (viewDoc.value?.name === c.name) await openView(c);
+    await load();
+    if (viewDoc.value?.name === c.name) {
+      const fresh = list.value.find(x => x.name === c.name);
+      if (fresh) await openView(fresh); else viewOpen.value = false;
+    }
   } catch (e) { toast.error(e.message || "Cancel failed"); }
 }
 async function deleteCN(c) {
@@ -1918,6 +1923,7 @@ onMounted(async () => {
   .cn-mc-balance { font-size: 11.5px; color: #868e96; margin-bottom: 8px; }
   .cn-mc-footer { display: flex; gap: 6px; margin-top: 8px; }
   .cn-mc-btn { flex: 1; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; color: #374151; }
+  .cn-mc-cancel { background: #fff7ed; border-color: #fde68a; color: #d97706; }
   .cn-mc-apply { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
   .cn-mc-danger { background: #fff1f2; border-color: #fecaca; color: #dc2626; }
   .cn-mc--skeleton { pointer-events: none; }

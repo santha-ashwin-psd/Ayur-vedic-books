@@ -283,7 +283,7 @@
               <div style="display:flex;gap:6px;border-top:1px solid #f3f4f6;padding-top:10px">
                 <button class="inv-act-btn" @click.stop="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="isDraft(o)" class="inv-act-btn" @click.stop="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteSO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                <button v-if="canDelete(o)" class="inv-act-btn" style="color:#dc2626" @click.stop="deleteSO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </div>
             </div>
           </template>
@@ -1172,13 +1172,15 @@ function headerBg(o) {
   return "linear-gradient(135deg,#374151,#6b7280)";
 }
 function canInvoice(o) {
+  if (o?.docstatus !== 1) return false;
   const s = (o?.status||"").toLowerCase();
-  return s !== "draft" && s !== "cancelled" && s !== "closed" && s !== "invoiced";
+  return s !== "cancelled" && s !== "closed" && s !== "invoiced";
 }
 function canCancel(o) {
+  if (o?.docstatus !== 1) return false;
   const s = (o?.status||"").toLowerCase();
-  // Allow cancel from any status except already-cancelled
-  return s !== "cancelled";
+  // Only cancel submitted orders that are not already terminal
+  return s !== "cancelled" && s !== "closed" && s !== "invoiced";
 }
 function canDelete(o) {
   const s = (o?.status||"").toLowerCase();

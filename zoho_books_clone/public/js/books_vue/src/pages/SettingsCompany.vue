@@ -360,7 +360,7 @@
   </div>
 
   <!-- ── Reminders ─────────────────────────────────────────────────── -->
-  <div v-else class="sc-body sc-body--two-col">
+  <div v-else-if="activeTab === 'reminders'" class="sc-body sc-body--two-col">
     <div class="sc-col-main">
       <div class="sc-card">
         <div class="sc-card-header">
@@ -416,6 +416,65 @@
     </div>
   </div>
 
+  <!-- ── Period Lock ──────────────────────────────────────────────────── -->
+  <div v-else-if="activeTab === 'period_lock'" class="sc-body sc-body--two-col">
+    <div class="sc-col-main">
+      <div class="sc-card">
+        <div class="sc-card-header">
+          <div class="sc-card-icon sc-card-icon--red">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div>
+            <div class="sc-card-title">Books Lock Date</div>
+            <div class="sc-card-subtitle">Freeze all financial transactions on or before this date</div>
+          </div>
+        </div>
+        <div class="sc-divider"></div>
+        <div class="sc-fg sc-fg--single">
+          <div class="nim-field">
+            <label class="nim-label">Books Lock Date</label>
+            <input class="nim-input" type="date" v-model="form.lock_date" />
+            <div class="sc-hint" style="margin-top:6px">
+              Freeze all financial transactions on or before this date.
+              Only a System Manager can post past it.
+            </div>
+          </div>
+          <div v-if="form.lock_date" class="sc-lock-status">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Locked up to {{ new Date(form.lock_date).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) }}
+          </div>
+          <div v-else class="sc-lock-status sc-lock-status--none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            No lock date set — all periods are open
+          </div>
+          <div v-if="form.lock_date" class="sc-clear-lock-row">
+            <button class="sc-remove-btn" @click="form.lock_date = ''">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              Clear Lock Date
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sc-col-side">
+      <div class="sc-info-card sc-info-card--warn">
+        <div class="sc-info-icon sc-info-icon--red">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="sc-info-title sc-info-title--red">How Period Lock Works</div>
+        <div class="sc-info-body">
+          <ul>
+            <li>All transactions dated <strong>on or before</strong> the lock date are frozen.</li>
+            <li>Applies to Invoices, Bills, Payments, Journal Entries, Credit Notes, and more.</li>
+            <li>Only a <strong>System Manager</strong> role can post past the lock date.</li>
+            <li>Clear the date to remove the lock entirely.</li>
+            <li>This is separate from fiscal year period locks, which apply per period in the Fiscal Years page.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 </template>
 
@@ -439,6 +498,7 @@ const form = reactive({
   auto_send_invoice: 0, send_payment_reminders: 0,
   reminder_days_before: 3, reminder_days_after: 7, auto_reconcile: 0,
   pdf_template: "classic", brand_color: "#1a6ef7", company_logo: "",
+  lock_date: "",
 });
 const saving = ref(false);
 
@@ -447,6 +507,7 @@ const TABS = [
   { k: "tax",       l: "Tax" },
   { k: "branding",  l: "Branding & Template" },
   { k: "reminders", l: "Reminders" },
+  { k: "period_lock", l: "Period Lock" },
 ];
 
 const validTabKeys = TABS.map(t => t.k);
@@ -888,6 +949,27 @@ onMounted(load);
   .sc-logo-box { width: 100%; height: 120px; }
 }
 
+/* ── Period Lock status ────────────────────────────────────────────── */
+.sc-lock-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+}
+.sc-lock-status--none {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #14532d;
+}
+.sc-clear-lock-row { display: flex; }
+.sc-card-icon--red { background: #fef2f2; color: #dc2626; }
+
 /* ── Info / tips sidebar card ──────────────────────────────────────── */
 .sc-info-card {
   background: #f8faff;
@@ -912,6 +994,9 @@ onMounted(load);
   color: #1e40af;
   margin-bottom: 10px;
 }
+.sc-info-card--warn { background: #fffbeb; border-color: #fcd34d; }
+.sc-info-icon--red { background: #fef2f2; color: #dc2626; }
+.sc-info-title--red { color: #991b1b; }
 .sc-info-body {
   font-size: 12px;
   color: #4b5563;

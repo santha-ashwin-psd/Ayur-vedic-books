@@ -539,13 +539,18 @@ def delete_bank_transfer(reference: str = "", from_transaction: str = "") -> dic
     if not names:
         frappe.throw(_("Transfer not found."))
 
+    from zoho_books_clone.accounts.central_validator import assert_not_locked
     for nm in names:
+        # force=True bypasses before_delete hooks — run the lock check explicitly.
+        assert_not_locked("Bank Transaction", nm)
         try:
             doc = frappe.get_doc("Bank Transaction", nm)
             if doc.docstatus == 1:
                 doc.flags.ignore_permissions = True
                 doc.cancel()
             frappe.delete_doc("Bank Transaction", nm, ignore_permissions=True, force=True)
+        except frappe.ValidationError:
+            raise  # surface lock/period errors to the caller
         except Exception:
             pass
         # Remove any GL entries posted against this transaction.
@@ -699,8 +704,11 @@ def delete_bank_account(name: str) -> dict:
         pluck="name",
     )
 
+    from zoho_books_clone.accounts.central_validator import assert_not_locked
     deleted_txns = []
     for txn_name in txn_names:
+        # force=True bypasses before_delete hooks — run the lock check explicitly.
+        assert_not_locked("Bank Transaction", txn_name)
         try:
             doc = frappe.get_doc("Bank Transaction", txn_name)
             if doc.docstatus == 1:
@@ -712,6 +720,8 @@ def delete_bank_account(name: str) -> dict:
                 force=True,
             )
             deleted_txns.append(txn_name)
+        except frappe.ValidationError:
+            raise  # surface lock/period errors to the caller
         except Exception as e:
             frappe.log_error("Could not delete Bank Transaction {0}: {1}".format(txn_name, e))
 

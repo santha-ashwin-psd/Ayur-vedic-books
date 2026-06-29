@@ -78,7 +78,7 @@
           <button v-if="r._source==='dn' && r.docstatus===0" class="dc-mob-act" @click.stop="submitOne(r)" title="Submit">
             <span v-html="icon('check', 15)"></span>
           </button>
-          <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled'" class="dc-mob-act dc-mob-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel">
+          <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled' && r.status!=='Delivered' && r.status!=='Fully Delivered'" class="dc-mob-act dc-mob-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel">
             <span v-html="icon('x', 15)"></span>
           </button>
           <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="dc-mob-act dc-mob-act-del" @click.stop="deleteTarget={row:r,mode:'delete'}" title="Delete">
@@ -138,7 +138,7 @@
               <button class="inv-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
               <button v-if="canEdit(r)" class="inv-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
               <button v-if="r._source==='dn' && r.docstatus===0" class="inv-act-btn" @click.stop="submitOne(r)" title="Submit"><span v-html="icon('check',12)"></span></button>
-              <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled'" class="inv-act-btn dc-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel"><span v-html="icon('x',12)"></span></button>
+              <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled' && r.status!=='Delivered' && r.status!=='Fully Delivered'" class="inv-act-btn dc-act-cancel" @click.stop="deleteTarget={row:r,mode:'cancel'}" title="Cancel"><span v-html="icon('x',12)"></span></button>
               <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="inv-act-btn dc-act-del" @click.stop="deleteTarget={row:r,mode:'delete'}" title="Delete"><span v-html="icon('trash',12)"></span></button>
             </div>
           </td>
@@ -178,6 +178,14 @@
             </button>
             <button v-if="viewDoc.docstatus===0" class="inv-ab-btn inv-ab-primary" @click="submitChallan" :disabled="submitting">
               <span v-html="icon('send',13)"></span> {{ submitting ? 'Submitting…' : 'Submit Challan' }}
+            </button>
+            <button v-if="viewDoc._source==='dn' && viewDoc.docstatus===1 && viewDoc.status!=='Cancelled' && viewDoc.status!=='Delivered' && viewDoc.status!=='Fully Delivered'"
+              class="inv-ab-btn dc-act-cancel" @click="deleteTarget={row:viewDoc,mode:'cancel'}">
+              <span v-html="icon('x',13)"></span> Cancel
+            </button>
+            <button v-if="viewDoc._source==='dn' && (viewDoc.docstatus===0 || viewDoc.docstatus===2 || viewDoc.status==='Cancelled')"
+              class="inv-ab-btn dc-act-del" @click="deleteTarget={row:viewDoc,mode:'delete'}">
+              <span v-html="icon('trash',13)"></span> Delete
             </button>
           </div>
 
@@ -980,7 +988,7 @@ async function bulkSubmit() {
   await load();
 }
 async function bulkCancel() {
-  const rows = selectedRows().filter(r => r.docstatus === 1 && r.status !== "Cancelled");
+  const rows = selectedRows().filter(r => r.docstatus === 1 && r.status !== "Cancelled" && r.status !== "Delivered" && r.status !== "Fully Delivered");
   if (!rows.length) { toast.error("No submitted challans selected"); return; }
   bulkBusy.value = true;
   let ok = 0, fail = 0;
@@ -1389,6 +1397,7 @@ async function confirmDeleteAction() {
       toast.success(`Challan ${row.name} cancelled`);
     }
     deleteTarget.value = null;
+    viewOpen.value = false;
     await load();
   } catch (e) {
     toast.error(e.message || (mode === "delete" ? "Delete failed" : "Cancel failed"));

@@ -140,15 +140,11 @@ def send_invoice_email(invoice_name, to, subject, body, cc=None):
     except Exception:
         pass
 
-    frappe.sendmail(
-        recipients=recipients,
-        cc=cc_list,
-        subject=subject,
-        message=body,
-        attachments=attachments,
-        reference_doctype="Sales Invoice",
-        reference_name=invoice_name,
-        now=True,
+    # Company SMTP when configured, otherwise the platform (wecode) SMTP.
+    from zoho_books_clone.utils.email_company import send_business_email
+    send_business_email(
+        to=recipients, subject=subject, html=body, company=inv.company,
+        cc=cc_list or None, attachments=attachments or None,
     )
 
     # Log communication — "email_status" field does NOT exist in this Frappe version,
@@ -227,14 +223,12 @@ def send_quote_email(quote_name, to, subject, body, cc=None):
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
 
-    frappe.sendmail(
-        recipients=recipients,
-        cc=cc_list,
-        subject=subject,
-        message=body,
-        reference_doctype="Quotation",
-        reference_name=quote_name,
-        now=True,
+    # Company SMTP when configured, otherwise the platform (wecode) SMTP.
+    from zoho_books_clone.utils.email_company import send_business_email
+    send_business_email(
+        to=recipients, subject=subject, html=body,
+        company=frappe.db.get_value("Quotation", quote_name, "company"),
+        cc=cc_list or None,
     )
 
     # Mark the quotation as Sent

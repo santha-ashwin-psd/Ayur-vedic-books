@@ -46,20 +46,19 @@ def get_company_smtp_config(company: str | None = None) -> dict:
     return cfg
 
 
-def send_company_email(
+def _smtp_send(
+    cfg: dict,
     to: str | list[str],
     subject: str,
     html: str,
-    company: str | None = None,
     text_fallback: str = "",
     cc: list[str] | None = None,
     attachments: list[dict] | None = None,
 ) -> bool:
-    """Send a business email via the company's configured SMTP.
-    Raises CompanySmtpNotConfigured if the company hasn't set up SMTP.
-    `attachments`, if given, should be a list of dicts as returned by
-    frappe.attach_print(), each with "fname" and "fcontent" keys."""
-    cfg = get_company_smtp_config(company)
+    """Low-level send via an SMTP config dict. The config shape is identical for
+    the per-company SMTP and the platform (system/wecode) SMTP, so both routes
+    reuse this single sender. `attachments`, if given, is a list of dicts as
+    returned by frappe.attach_print(), each with "fname" and "fcontent" keys."""
     recipients = [to] if isinstance(to, str) else list(to)
     cc_list = list(cc or [])
 
@@ -100,6 +99,59 @@ def send_company_email(
             server.login(cfg["login"], cfg["password"])
             server.sendmail(cfg["from_email"], envelope_to, msg.as_string())
     return True
+
+
+def send_company_email(
+    to: str | list[str],
+    subject: str,
+    html: str,
+    company: str | None = None,
+    text_fallback: str = "",
+    cc: list[str] | None = None,
+    attachments: list[dict] | None = None,
+) -> bool:
+    """Send strictly via the company's configured SMTP.
+    Raises CompanySmtpNotConfigured if the company hasn't set up SMTP."""
+    cfg = get_company_smtp_config(company)
+    return _smtp_send(cfg, to, subject, html, text_fallback, cc, attachments)
+
+
+def send_business_email(
+    to: str | list[str],
+    subject: str,
+    html: str,
+    company: str | None = None,
+    text_fallback: str = "",
+    cc: list[str] | None = None,
+    attachments: list[dict] | None = None,
+) -> str:
+    """Send a customer/vendor-facing email (invoices, reminders, statements …).
+
+    Routing:
+      • If the company has **enabled & fully configured** its own SMTP → use it.
+      • Otherwise → use the platform (system) SMTP — wecode18@gmail.com — which
+        always works out of the box. This is the default.
+
+    A configured-but-failing company SMTP is logged and also falls back to the
+    platform SMTP, so a send never hard-fails on a transient problem. Sign-in /
+    OTP email is unaffected — it always uses the system SMTP directly.
+
+    Returns "company" or "system" to indicate which transport was used.
+    """
+    try:
+        cfg = get_company_smtp_config(company)
+    except CompanySmtpNotConfigured:
+        cfg = None
+    if cfg:
+        try:
+            _smtp_send(cfg, to, subject, html, text_fallback, cc, attachments)
+            return "company"
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "Company SMTP send failed; using platform SMTP")
+
+    from zoho_books_clone.utils.email_system import get_system_smtp_config
+    _smtp_send(get_system_smtp_config(), to, subject, html, text_fallback, cc, attachments)
+    return "system"
 
 
 def test_company_smtp(

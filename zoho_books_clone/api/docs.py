@@ -369,35 +369,17 @@ def _email_attachment(doctype, name, print_format, pdf_html=None, filename=None)
 
 def _send_business_email(recipients, cc_list, subject, body, reference_doctype,
                          reference_name, attachments=None, company=None):
-    """Send a customer/vendor-facing email through the company's own SMTP
-    (configured under Settings → Email).
+    """Send a customer/vendor-facing email.
 
-    Falls back to Frappe's configured mailer when the company hasn't set up
-    SMTP — mirrors the payment-reminder behaviour in utils/scheduler.py so
-    nothing breaks for companies that haven't configured it yet. A configured-
-    but-failing SMTP is logged and also falls back, so a manual send never
-    hard-errors on a transient SMTP problem.
-    """
-    try:
-        from zoho_books_clone.utils.email_company import (
-            send_company_email, CompanySmtpNotConfigured,
-        )
-        send_company_email(
-            to=recipients, subject=subject, html=body, company=company,
-            cc=cc_list or None, attachments=attachments or None,
-        )
-        return
-    except CompanySmtpNotConfigured:
-        pass
-    except Exception:
-        frappe.log_error(
-            frappe.get_traceback(),
-            f"Company SMTP send failed for {reference_doctype} {reference_name}; using system mailer",
-        )
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list, subject=subject, message=body,
-        attachments=attachments, reference_doctype=reference_doctype,
-        reference_name=reference_name, now=True,
+    Routing is centralised in utils/email_company.send_business_email:
+    the company's own SMTP is used when it's enabled & configured under
+    Settings → Email, otherwise the platform (wecode) SMTP — which always works
+    out of the box — is used by default. `reference_doctype`/`reference_name`
+    are accepted for call-site clarity (and future logging)."""
+    from zoho_books_clone.utils.email_company import send_business_email
+    send_business_email(
+        to=recipients, subject=subject, html=body, company=company,
+        cc=cc_list or None, attachments=attachments or None,
     )
 
 

@@ -254,12 +254,16 @@
 
   <!-- ════════ CREATE / EDIT DRAWER ════════ -->
   <Teleport to="body">
+    <Transition name="cc-drawer">
     <div v-if="showDrawer" class="cc-drawer-bg" @click.self="closeDrawer">
       <div class="cc-drawer">
         <div class="cc-drawer-hdr">
-          <div>
-            <div class="cc-drawer-title">{{ editing?'Edit Cost Center':'New Cost Center' }}</div>
-            <div class="cc-drawer-sub">Track expenses by department or project</div>
+          <div class="cc-drawer-hdr-left">
+            <div class="cc-drawer-badge"><span v-html="icon('costcenter',18)"></span></div>
+            <div>
+              <div class="cc-drawer-title">{{ editing?'Edit Cost Center':'New Cost Center' }}</div>
+              <div class="cc-drawer-sub">Track expenses by department or project</div>
+            </div>
           </div>
           <button class="cc-drawer-x" @click="closeDrawer"><span v-html="icon('x',16)"></span></button>
         </div>
@@ -298,7 +302,9 @@
               <div class="cc-field">
                 <label class="cc-label">Colour Tag</label>
                 <div class="cc-swatches">
-                  <div v-for="c in CC_COLORS" :key="c" class="cc-swatch" :style="{background:c,outline:fForm.color===c?'2px solid '+c:'none',border:fForm.color===c?'2px solid #fff':'2px solid transparent'}" @click="fForm.color=c"></div>
+                  <button type="button" v-for="c in CC_COLORS" :key="c" class="cc-swatch" :class="{active:fForm.color===c}" :style="{'--sw':c,background:c}" @click="fForm.color=c">
+                    <span v-if="fForm.color===c" v-html="icon('check',12)"></span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -344,24 +350,30 @@
           <div class="cc-grid2">
             <div class="cc-field">
               <label class="cc-label">Is Group?</label>
-              <div class="cc-radio-row">
-                <label class="cc-radio"><input type="radio" v-model="fForm.is_group" :value="1" /> Yes</label>
-                <label class="cc-radio"><input type="radio" v-model="fForm.is_group" :value="0" /> No</label>
+              <div class="cc-seg">
+                <button type="button" class="cc-seg-btn" :class="{active:fForm.is_group===1}" @click="fForm.is_group=1">Yes</button>
+                <button type="button" class="cc-seg-btn" :class="{active:fForm.is_group===0}" @click="fForm.is_group=0">No</button>
               </div>
             </div>
             <div class="cc-field">
               <label class="cc-label">Status</label>
-              <select v-model="fForm.status" class="b-input"><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+              <div class="cc-seg">
+                <button type="button" class="cc-seg-btn" :class="{active:fForm.status==='Active'}" @click="fForm.status='Active'">Active</button>
+                <button type="button" class="cc-seg-btn cc-seg-btn--off" :class="{active:fForm.status==='Inactive'}" @click="fForm.status='Inactive'">Inactive</button>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="cc-drawer-foot">
           <button class="b-btn b-btn-ghost" @click="closeDrawer">Cancel</button>
-          <button class="b-btn b-btn-primary" @click="saveCC" :disabled="saving" style="min-width:120px">{{ saving?'Saving…':editing?'Update':'Create' }}</button>
+          <button class="cc-save-btn" @click="saveCC" :disabled="saving">
+            <span v-html="icon('check',14)"></span> {{ saving?'Saving…':editing?'Update':'Create' }}
+          </button>
         </div>
       </div>
     </div>
+    </Transition>
   </Teleport>
 </div>
 </template>
@@ -471,16 +483,32 @@ function matchesFilters(c) {
   return true;
 }
 const listFiltered = computed(() => allCC.value.filter(matchesFilters));
-const filtering = computed(() => !!ccSearch.value.trim() || typeFilter.value !== "All");
 
-// Tree: hierarchical when unfiltered, flat list when searching/filtering
+// Tree view:
+//  • Text search → flat list of matches (a search ignores hierarchy).
+//  • Type filter → keep the hierarchy but prune to subtrees that contain a
+//    matching node, so ancestors (the parent group) stay at the top and
+//    expand/collapse keeps working.
 const visibleNodes = computed(() => {
-  if (filtering.value) {
-    return listFiltered.value.map((c) => ({ ...c, depth: 0, hasChildren: allCC.value.some((x) => x.parent === c.name), isOpen: false }));
+  const q = ccSearch.value.trim().toLowerCase();
+  if (q) {
+    return allCC.value
+      .filter((c) => (typeFilter.value === "All" || c.type === typeFilter.value)
+        && ((c.name || "").toLowerCase().includes(q) || (c.code || "").toLowerCase().includes(q)))
+      .map((c) => ({ ...c, depth: 0, hasChildren: allCC.value.some((x) => x.parent === c.name), isOpen: false }));
   }
+
+  const typeOk = (c) => typeFilter.value === "All" || c.type === typeFilter.value;
+  const subtreeOk = (name) => {
+    const node = allCC.value.find((c) => c.name === name);
+    if (node && typeOk(node)) return true;
+    return allCC.value.some((c) => c.parent === name && subtreeOk(c.name));
+  };
+
   const result = [];
   (function walk(parent, depth) {
     allCC.value.filter((c) => (c.parent || "") === (parent || "")).forEach((c) => {
+      if (typeFilter.value !== "All" && !subtreeOk(c.name)) return;
       const hasChildren = allCC.value.some((x) => x.parent === c.name);
       const isOpen = expandedCC.value.includes(c.name);
       result.push({ ...c, depth, hasChildren, isOpen });
@@ -788,28 +816,68 @@ onMounted(load);
 /* ═══════════════════════════════════════════════════════════
    Drawer (create / edit)
    ═══════════════════════════════════════════════════════════ */
-.cc-drawer-bg  { position:fixed; inset:0; z-index:9000; background:rgba(15,23,42,.45); display:flex; justify-content:flex-end; backdrop-filter:blur(2px); }
-.cc-drawer     { width:480px; max-width:95vw; height:100%; background:#fff; display:flex; flex-direction:column; box-shadow:-20px 0 60px rgba(0,0,0,.15); }
-.cc-drawer-hdr { background:linear-gradient(135deg,#2563eb,#4f46e5); padding:18px 24px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
-.cc-drawer-title { color:#fff; font-size:16px; font-weight:700; }
-.cc-drawer-sub   { color:rgba(255,255,255,.7); font-size:12px; margin-top:2px; }
-.cc-drawer-x   { background:rgba(255,255,255,.2); border:none; cursor:pointer; width:30px; height:30px; border-radius:6px; color:#fff; display:flex; align-items:center; justify-content:center; }
-.cc-drawer-body { flex:1; overflow-y:auto; padding:24px; }
-.cc-drawer-foot { padding:16px 24px; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; gap:10px; background:#F8F9FC; flex-shrink:0; }
+.cc-drawer-bg  { position:fixed; inset:0; z-index:9000; background:rgba(15,23,42,.45); display:flex; justify-content:flex-end; backdrop-filter:blur(3px); }
+.cc-drawer     { width:480px; max-width:95vw; height:100%; background:#fff; display:flex; flex-direction:column; box-shadow:-24px 0 70px rgba(15,23,42,.22); }
 
-.cc-section-title { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#868E96; margin-bottom:10px; }
-.cc-section-divided { margin-top:20px; padding-top:20px; border-top:1px solid #E2E8F0; }
+/* Header — light, modern, with a gradient icon badge (matches page card headers) */
+.cc-drawer-hdr { background:linear-gradient(180deg,#f6f9ff,#fff); border-bottom:1px solid #eef0f3; padding:18px 22px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-shrink:0; }
+.cc-drawer-hdr-left { display:flex; align-items:center; gap:12px; min-width:0; }
+.cc-drawer-badge { width:40px; height:40px; border-radius:11px; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff;
+  background:linear-gradient(135deg,#2f74f5,#1a6ef7); box-shadow:0 4px 12px rgba(26,110,247,.32), inset 0 1px 0 rgba(255,255,255,.2); }
+.cc-drawer-title { color:#1A1D23; font-size:16px; font-weight:700; }
+.cc-drawer-sub   { color:#868E96; font-size:12px; margin-top:2px; }
+.cc-drawer-x   { background:#f1f5f9; border:none; cursor:pointer; width:32px; height:32px; border-radius:8px; color:#64748b; display:flex; align-items:center; justify-content:center; transition:background .15s,color .15s; flex-shrink:0; }
+.cc-drawer-x:hover { background:#e2e8f0; color:#334155; }
+.cc-drawer-body { flex:1; overflow-y:auto; padding:22px; }
+.cc-drawer-foot { padding:16px 22px; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; gap:10px; background:#F8F9FC; flex-shrink:0; }
+
+.cc-section-title { display:flex; align-items:center; gap:7px; font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#64748b; margin-bottom:12px; }
+.cc-section-title::before { content:""; width:3px; height:12px; border-radius:2px; background:linear-gradient(180deg,#2f74f5,#1a6ef7); }
+.cc-section-divided { margin-top:22px; padding-top:20px; border-top:1px solid #eef0f3; }
 .cc-fields { display:grid; gap:14px; margin-bottom:14px; }
 .cc-grid2  { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
 .cc-field  { min-width:0; }
-.cc-label  { display:block; font-size:11.5px; font-weight:600; color:#495057; margin-bottom:4px; }
+.cc-label  { display:block; font-size:11.5px; font-weight:600; color:#475569; margin-bottom:5px; }
 .cc-req    { color:#C92A2A; }
-.cc-swatches { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
-.cc-swatch  { width:22px; height:22px; border-radius:50%; cursor:pointer; transition:all .15s; flex-shrink:0; }
-.cc-radio-row { display:flex; align-items:center; gap:12px; margin-top:6px; }
-.cc-radio   { display:flex; align-items:center; gap:5px; cursor:pointer; font-size:13px; }
-.cc-radio input { accent-color:#1a6ef7; }
-.b-input { width:100%; box-sizing:border-box; }
+
+/* Modern inputs inside the drawer */
+.cc-drawer-body .b-input {
+  width:100%; box-sizing:border-box; border:1px solid #e2e8f0; border-radius:9px;
+  padding:9px 11px; font-size:13px; color:#1A1D23; background:#fff;
+  transition:border-color .15s, box-shadow .15s; font-family:inherit;
+}
+.cc-drawer-body .b-input:hover:not(:disabled) { border-color:#cbd5e1; }
+.cc-drawer-body .b-input:focus { border-color:#1a6ef7; box-shadow:0 0 0 3px rgba(26,110,247,.13); outline:none; }
+.cc-drawer-body .b-input:disabled { background:#f8fafc; color:#94a3b8; cursor:not-allowed; }
+
+/* Colour swatches */
+.cc-swatches { display:flex; gap:9px; flex-wrap:wrap; margin-top:6px; }
+.cc-swatch  { width:26px; height:26px; border-radius:50%; cursor:pointer; transition:transform .12s, box-shadow .15s; flex-shrink:0;
+  border:2px solid #fff; box-shadow:0 0 0 1px #e2e8f0; display:flex; align-items:center; justify-content:center; color:#fff; padding:0; }
+.cc-swatch:hover { transform:scale(1.12); }
+.cc-swatch.active { box-shadow:0 0 0 2px var(--sw); transform:scale(1.05); }
+
+/* Segmented toggle (Is Group / Status) */
+.cc-seg     { display:inline-flex; width:100%; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:9px; padding:3px; gap:3px; margin-top:1px; }
+.cc-seg-btn { flex:1; border:none; background:none; cursor:pointer; padding:7px 10px; border-radius:7px; font-size:12.5px; font-weight:600; color:#64748b; transition:background .15s, color .15s, box-shadow .15s; font-family:inherit; }
+.cc-seg-btn:hover:not(.active) { color:#334155; }
+.cc-seg-btn.active { background:#fff; color:#1a6ef7; box-shadow:0 1px 3px rgba(15,23,42,.12); }
+.cc-seg-btn--off.active { color:#64748b; }
+
+/* Footer primary button — gradient, matches page accent */
+.cc-save-btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:120px;
+  border:none; border-radius:9px; padding:9px 18px; font-size:13px; font-weight:600; color:#fff; cursor:pointer;
+  background:linear-gradient(135deg,#2f74f5,#1a6ef7); box-shadow:0 4px 12px rgba(26,110,247,.28), inset 0 1px 0 rgba(255,255,255,.18);
+  transition:box-shadow .18s, transform .18s, filter .18s; }
+.cc-save-btn:hover:not(:disabled) { filter:brightness(1.04); transform:translateY(-1px); box-shadow:0 6px 18px rgba(26,110,247,.36); }
+.cc-save-btn:active:not(:disabled) { transform:translateY(0); }
+.cc-save-btn:disabled { opacity:.6; cursor:not-allowed; }
+
+/* Slide-in / fade transition */
+.cc-drawer-enter-active, .cc-drawer-leave-active { transition:opacity .25s ease; }
+.cc-drawer-enter-active .cc-drawer, .cc-drawer-leave-active .cc-drawer { transition:transform .3s cubic-bezier(.4,0,.2,1); }
+.cc-drawer-enter-from, .cc-drawer-leave-to { opacity:0; }
+.cc-drawer-enter-from .cc-drawer, .cc-drawer-leave-to .cc-drawer { transform:translateX(100%); }
 
 /* Mobile back button — hidden on desktop */
 .cc-mobile-back { display:none; }

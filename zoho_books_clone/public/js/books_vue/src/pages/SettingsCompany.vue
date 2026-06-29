@@ -232,7 +232,15 @@
               Valid GSTIN
             </div>
           </div>
-          <div class="nim-field"><label class="nim-label">GST State</label><input class="nim-input" v-model="form.gst_state" placeholder="Maharashtra"/></div>
+          <div class="nim-field">
+            <label class="nim-label">GST State</label>
+            <input class="nim-input sc-input--readonly" :value="form.gst_state" readonly tabindex="-1"
+              placeholder="Auto-filled from GSTIN"/>
+            <div class="sc-field-hint">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg>
+              Derived automatically from the GSTIN's first 2 digits (state code).
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -479,11 +487,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
-import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
+import { COUNTRIES, statesFor, stateFromGstin } from "../composables/useCountryState.js";
 import { GSTIN_REGEX } from "../composables/useValidation.js";
 
 const { toast } = useToast();
@@ -539,6 +547,9 @@ function handleBrandingLogoUpload(e) {
 }
 
 const stateOptions = computed(() => statesFor(form.company_country));
+
+// GST State is always derived from the GSTIN's first 2 digits (state code).
+watch(() => form.gstin, (g) => { form.gst_state = stateFromGstin(g); });
 
 async function load() {
   try {
@@ -606,8 +617,18 @@ onMounted(load);
   font-size: 13.5px;
   font-weight: 600;
   padding: 9px 20px;
-  border-radius: 8px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #2f74f5 0%, #1a6ef7 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(26,110,247,.28), inset 0 1px 0 rgba(255,255,255,.18);
+  transition: box-shadow .18s ease, transform .18s ease, filter .18s ease;
 }
+.sc-save-btn:hover:not(:disabled) {
+  filter: brightness(1.04);
+  box-shadow: 0 6px 18px rgba(26,110,247,.36), inset 0 1px 0 rgba(255,255,255,.2);
+  transform: translateY(-1px);
+}
+.sc-save-btn:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 8px rgba(26,110,247,.3); }
 
 /* ── Tabs ──────────────────────────────────────────────────────────── */
 .sc-tabs {
@@ -620,7 +641,7 @@ onMounted(load);
 }
 .sc-tabs::-webkit-scrollbar { display: none; }
 .sc-tab {
-  padding: 10px 20px;
+  padding: 10px 18px;
   border: none;
   background: none;
   cursor: pointer;
@@ -629,11 +650,12 @@ onMounted(load);
   color: #868e96;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
   margin-bottom: -2px;
-  transition: color .15s;
+  transition: color .15s, background .15s;
 }
-.sc-tab:hover { color: #374151; }
-.sc-tab--active { color: #2563eb; border-bottom-color: #2563eb; }
+.sc-tab:hover { color: #374151; background: rgba(37,99,235,.05); }
+.sc-tab--active { color: #2563eb; border-bottom-color: #2563eb; background: linear-gradient(180deg, rgba(37,99,235,.06), rgba(37,99,235,0)); }
 
 /* ── Body layouts ──────────────────────────────────────────────────── */
 .sc-body {
@@ -659,7 +681,13 @@ onMounted(load);
   border: 1px solid #e8ecf2;
   border-radius: 14px;
   padding: 22px 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.03);
+  transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+.sc-card:hover {
+  box-shadow: 0 6px 20px rgba(16,24,40,.07), 0 2px 6px rgba(16,24,40,.04);
+  border-color: #dbe3ee;
+  transform: translateY(-1px);
 }
 
 .sc-card-header {
@@ -670,15 +698,16 @@ onMounted(load);
 .sc-card-icon {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background: #eff6ff;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #eaf1ff 0%, #dbe7ff 100%);
   color: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,.08), 0 2px 6px rgba(37,99,235,.12);
 }
-.sc-card-icon--blue { background: #eff6ff; color: #2563eb; }
+.sc-card-icon--blue { background: linear-gradient(135deg, #eaf1ff 0%, #dbe7ff 100%); color: #2563eb; }
 
 .sc-card-title {
   font-size: 14px;
@@ -717,6 +746,23 @@ onMounted(load);
 .sc-fg--single { grid-template-columns: 1fr; }
 .sc-fg--three  { grid-template-columns: 1fr 1fr 1fr; }
 .sc-full { grid-column: 1 / -1; }
+
+/* Read-only, auto-derived field (e.g. GST State from GSTIN) */
+.sc-input--readonly {
+  background: #f8fafc;
+  color: #475569;
+  cursor: default;
+}
+.sc-input--readonly:focus { border-color: #e4e8f0; box-shadow: none; }
+.sc-field-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 12px;
+  color: #6b7280;
+}
+.sc-field-hint svg { flex-shrink: 0; color: #94a3b8; }
 
 /* ── Logo area ─────────────────────────────────────────────────────── */
 .sc-logo-area {
@@ -972,21 +1018,24 @@ onMounted(load);
 
 /* ── Info / tips sidebar card ──────────────────────────────────────── */
 .sc-info-card {
-  background: #f8faff;
+  background: linear-gradient(160deg, #f3f8ff 0%, #fbfdff 100%);
   border: 1px solid #dbeafe;
+  border-left: 3px solid #2563eb;
   border-radius: 14px;
   padding: 20px;
+  box-shadow: 0 1px 3px rgba(37,99,235,.05);
 }
 .sc-info-icon {
   width: 36px;
   height: 36px;
-  border-radius: 9px;
-  background: #eff6ff;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #eaf1ff 0%, #d7e6ff 100%);
   color: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
+  box-shadow: 0 2px 6px rgba(37,99,235,.14);
 }
 .sc-info-title {
   font-size: 13px;
@@ -994,8 +1043,8 @@ onMounted(load);
   color: #1e40af;
   margin-bottom: 10px;
 }
-.sc-info-card--warn { background: #fffbeb; border-color: #fcd34d; }
-.sc-info-icon--red { background: #fef2f2; color: #dc2626; }
+.sc-info-card--warn { background: linear-gradient(160deg, #fffaf0 0%, #fffdf8 100%); border-color: #fcd34d; border-left-color: #f59e0b; }
+.sc-info-icon--red { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #dc2626; box-shadow: 0 2px 6px rgba(220,38,38,.16); }
 .sc-info-title--red { color: #991b1b; }
 .sc-info-body {
   font-size: 12px;

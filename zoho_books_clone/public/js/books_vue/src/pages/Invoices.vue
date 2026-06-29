@@ -765,13 +765,13 @@
           <button v-if="viewInv.docstatus===1 && flt(viewInv.outstanding_amount) > 0" class="inv-ab-btn" @click="openCreditNote(viewInv)">
             <span v-html="icon('creditnote',13)"></span> <span class="ab-label">Credit Note</span>
           </button>
-          <button v-if="viewInv.docstatus===1" class="inv-ab-btn" @click="makeRecurring(viewInv)">
+          <button v-if="viewInv.docstatus===1&&!viewInv.is_return" class="inv-ab-btn" @click="makeRecurring(viewInv)">
             <span v-html="icon('repeat',13)"></span> <span class="ab-label">Make Recurring</span>
           </button>
           <button v-if="viewInv.docstatus===1" class="inv-ab-btn inv-ab-danger" @click="confirmAction('cancel', viewInv)">
             Cancel
           </button>
-          <button v-if="viewInv.docstatus===0" class="inv-ab-btn inv-ab-danger" @click="confirmAction('delete', viewInv)">
+          <button v-if="viewInv.docstatus===0||viewInv.docstatus===2" class="inv-ab-btn inv-ab-danger" @click="confirmAction('delete', viewInv)">
             <span v-html="icon('delete',13)"></span> <span class="ab-label">Delete</span>
           </button>
         </div>
@@ -1549,7 +1549,7 @@ const isSEZ = computed(() => form.gst_treatment === "SEZ");
 function todayStr() { return new Date().toISOString().slice(0,10); }
 function dueDateDefault() { const d=new Date(); d.setDate(d.getDate()+30); return d.toISOString().slice(0,10); }
 
-function isOverdue(inv) { return inv.outstanding_amount>0&&inv.due_date&&new Date(inv.due_date)<new Date(); }
+function isOverdue(inv) { return inv.docstatus!==2&&inv.outstanding_amount>0&&inv.due_date&&new Date(inv.due_date)<new Date(); }
 function statusLabel(inv) {
   if (inv.docstatus===2) return "CANCELLED";
   if (isOverdue(inv)) { const days=Math.floor((Date.now()-new Date(inv.due_date))/86400000); return `OVERDUE ${days}d`; }

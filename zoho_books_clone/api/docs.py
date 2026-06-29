@@ -211,6 +211,95 @@ def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit
     )
 
 
+# ─── Fiscal Year CRUD (company-resolved server-side) ─────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_fiscal_years():
+    """Return all Fiscal Year records for the current user's resolved company.
+    Uses _resolve_company_for() so Books Company Member rows take priority
+    over Books Settings default_company.  Also returns legacy rows where
+    company IS NULL (global rows created before per-company support).
+    Response: { company, years: [ {name, year_label, year_start_date,
+                                    year_end_date, is_closed, lock_date} ] }
+    """
+    from zoho_books_clone.api.admin import _resolve_company_for
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    company = _resolve_company_for()
+    if company:
+        rows = frappe.db.sql("""
+            SELECT name, year, year_start_date, year_end_date, is_closed,
+                   company, lock_date
+            FROM `tabFiscal Year`
+            WHERE LOWER(company) = LOWER(%s)
+            ORDER BY year_start_date DESC
+            LIMIT 100
+        """, (company,), as_dict=True)
+    else:
+        rows = frappe.db.sql("""
+            SELECT name, year, year_start_date, year_end_date, is_closed,
+                   company, lock_date
+            FROM `tabFiscal Year`
+            ORDER BY year_start_date DESC
+            LIMIT 100
+        """, as_dict=True)
+    # Derive a display label: strip " - CompanyName" suffix added at creation time
+    for r in rows:
+        raw = r.get("year") or r.get("name") or ""
+        co_suffix = " - " + (r.get("company") or "")
+        r["year_label"] = raw[:-len(co_suffix)] if r.get("company") and raw.endswith(co_suffix) else raw
+        r["year_start_date"] = str(r["year_start_date"] or "")
+        r["year_end_date"]   = str(r["year_end_date"] or "")
+        r["lock_date"]       = str(r["lock_date"] or "")
+    return {"company": company, "years": rows}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def save_fiscal_year(year_label, start_date, end_date, doc_name=None):
+    """Create or update a Fiscal Year for the current user's resolved company.
+    year_label  – short label like "2025-26" (without company suffix)
+    start_date  – YYYY-MM-DD
+    end_date    – YYYY-MM-DD
+    doc_name    – existing document name to update; omit to create new
+    Returns the saved document as a dict.
+    """
+    from zoho_books_clone.api.admin import _resolve_company_for
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    company = _resolve_company_for()
+    # The year field (= document name via autoname=field:year) is suffixed with
+    # the company so each company's years are unique in the shared table.
+    year_label = (year_label or "").strip()
+    if not year_label:
+        frappe.throw("year_label is required")
+    full_year = (year_label + " - " + company) if company else year_label
+    effective_name = doc_name or full_year
+    if frappe.db.exists("Fiscal Year", effective_name):
+        d = frappe.get_doc("Fiscal Year", effective_name)
+        d.year_start_date = start_date
+        d.year_end_date   = end_date
+        d.save(ignore_permissions=True)
+    else:
+        d = frappe.get_doc({
+            "doctype":         "Fiscal Year",
+            "year":            full_year,
+            "year_start_date": start_date,
+            "year_end_date":   end_date,
+            "company":         company,
+        })
+        d.insert(ignore_permissions=True)
+    frappe.db.commit()
+    result = d.as_dict()
+    # Attach the clean display label so the frontend can use it immediately
+    co_suffix = " - " + (company or "")
+    raw = result.get("year") or result.get("name") or ""
+    result["year_label"] = raw[:-len(co_suffix)] if company and raw.endswith(co_suffix) else raw
+    result["year_start_date"] = str(result.get("year_start_date") or "")
+    result["year_end_date"]   = str(result.get("year_end_date") or "")
+    result["lock_date"]       = str(result.get("lock_date") or "")
+    return result
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_invoice_email_defaults(invoice_name):
     """
@@ -543,6 +632,11 @@ def delete_doc(doctype, name):
     # don't prevent deletion after we've confirmed the session is valid.
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+
+    # force=True bypasses before_delete hooks, so we run the lock check explicitly
+    # before handing off to Frappe's delete path.
+    from zoho_books_clone.accounts.central_validator import assert_not_locked
+    assert_not_locked(doctype, name)
 
     frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
     frappe.db.commit()

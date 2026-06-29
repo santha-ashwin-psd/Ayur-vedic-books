@@ -9,6 +9,22 @@ from frappe import _
 from frappe.utils import flt, getdate
 
 
+# ─── Shared lock-check helper (also called directly from API delete functions) ─
+
+def assert_not_locked(doctype: str, name: str) -> None:
+    """
+    Raise ValidationError if the named document's posting date falls within a
+    locked period.  Called directly by API-layer delete functions that use
+    ignore_permissions=True / force=True and therefore bypass before_delete hooks.
+    """
+    try:
+        doc = frappe.get_doc(doctype, name)
+    except frappe.DoesNotExistError:
+        return  # already gone — nothing to guard
+    _check_lock_date(doc)
+    _check_fiscal_year_period_lock(doc)
+
+
 # ─── Hook entry point ─────────────────────────────────────────────────────────
 
 def on_validate(doc, _method=None):
@@ -21,7 +37,7 @@ def on_validate(doc, _method=None):
     _check_posting_date(doc)
     _check_positive_amounts(doc)
     _check_period_not_closed(doc)
-    _check_lock_date(doc)          # Audit: Books-wide lock date (Books Settings)
+    _check_lock_date(doc)          # Audit: per-company lock date (Books Company.lock_date)
     _check_fiscal_year_period_lock(doc)  # Per-fiscal-year period lock (Fiscal Year.lock_date)
 
 
@@ -145,17 +161,21 @@ def _check_period_not_closed(doc):
 def _check_lock_date(doc):
     """
     Audit: Strict period lock — block any save/submit on a document whose
-    posting date falls on or before the Books Lock Date configured in
-    Books Settings.  System Managers are exempt so they can perform corrections.
+    posting date falls on or before the Books Lock Date configured per company
+    in Books Company.  System Managers are exempt so they can perform corrections.
     """
     # Opening Entries are always exempt — they set up historical balances.
     if getattr(doc, "voucher_type", None) == "Opening Entry":
         return
 
+    company = getattr(doc, "company", None)
+    if not company:
+        return
+
     try:
-        lock_date = frappe.db.get_single_value("Books Settings", "lock_date")
+        lock_date = frappe.db.get_value("Books Company", company, "lock_date")
     except Exception:
-        return   # Books Settings may not exist yet during install
+        return   # Books Company may not exist yet during install
 
     if not lock_date:
         return

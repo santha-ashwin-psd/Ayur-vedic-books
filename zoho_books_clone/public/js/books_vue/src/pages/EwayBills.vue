@@ -316,7 +316,7 @@
           <button class="ew-va-btn" @click="openExtend(viewDoc)" :disabled="actionLoading || viewDoc.ui_status!=='Generated'">
             <span v-html="icon('refresh',13)"></span> <div class="ew-va-btn-text">Extend</div>
           </button>
-          <button class="ew-va-btn ew-va-danger" @click="doCancel(viewDoc)" :disabled="actionLoading || viewDoc.ui_status==='Cancelled'">
+          <button class="ew-va-btn ew-va-danger" @click="doCancel(viewDoc)" :disabled="actionLoading || viewDoc.ui_status==='Cancelled' || viewDoc.ui_status==='Expired'">
             <span v-html="icon('x',13)"></span> <div class="ew-va-btn-text">Cancel EWB</div>
           </button>
         </div>
@@ -544,7 +544,7 @@ async function load() {
     const data = rows?.message ?? rows ?? [];
     list.value = (Array.isArray(data) ? data : []).map((r) => ({
       ...r,
-      days_left: r.valid_upto ? Math.ceil((new Date(r.valid_upto) - new Date()) / 86400000) : null,
+      days_left: r.valid_upto ? Math.max(0, Math.ceil((new Date(r.valid_upto) - new Date()) / 86400000)) : null,
     }));
     stats.value = st?.message ?? st ?? stats.value;
   } catch (e) {
@@ -562,6 +562,7 @@ async function confirmDelete() {
     await apiDelete("E Way Bill", row.name);
     toast.success(`E-Way Bill ${row.ewb_no || row.name} deleted`);
     deleteTarget.value = null;
+    viewOpen.value = false;
     await load();
   } catch (e) {
     toast.error(e.message || "Delete failed");
@@ -718,6 +719,8 @@ async function saveVehicle() {
 }
 
 async function saveExtend() {
+  const days = Number(extendEdit.days) || 0;
+  if (days < 1 || days > 30) return toast.error("Extra days must be between 1 and 30");
   actionLoading.value = true;
   try {
     const r = await apiPOST("zoho_books_clone.api.eway.extend_validity", {
@@ -771,7 +774,7 @@ function toggle(name) {
 }
 function toggleAll(e) {
   selected.value = e.target.checked
-    ? new Set(sortedRows.value.map(r => r.name))
+    ? new Set(sortedRows.value.filter(r => r.ui_status === "Generated").map(r => r.name))
     : new Set();
 }
 function _selectedRows() {
@@ -811,6 +814,7 @@ async function bulkCancelEwb() {
 async function bulkExtend() {
   const rows = _selectedRows().filter(r => r.ui_status === "Generated");
   if (!rows.length) { toast.error("No Generated EWBs selected"); return; }
+  if (!(await confirm({ title: `Extend ${rows.length} E-Way Bill(s)?`, body: "Each EWB will be extended by 1 day. This action cannot be undone.", okLabel: "Extend All", okStyle: "primary" }))) return;
   bulkBusy.value = true;
   let ok = 0, fail = 0;
   for (const r of rows) {

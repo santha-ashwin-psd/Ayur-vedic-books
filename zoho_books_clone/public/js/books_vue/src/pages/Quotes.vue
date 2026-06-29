@@ -192,9 +192,9 @@
             <td style="text-align:center" @click.stop>
               <div style="display:flex;gap:4px;justify-content:center">
                 <button class="inv-act-btn" @click="openView(q)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button v-if="q.docstatus!==1" class="inv-act-btn" @click="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="q.docstatus===0" class="inv-act-btn" @click="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
                 <button v-if="canConvert(q)" class="inv-act-btn inv-act-pay" @click="openConvertModal(q)" title="Convert to Invoice / SO"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-                <button class="inv-act-btn" style="color:#dc2626" @click.stop="deleteQT(q)" title="Delete"><span v-html="icon('trash',13)"></span></button>
+                <button v-if="q.docstatus!==1" class="inv-act-btn" style="color:#dc2626" @click.stop="deleteQT(q)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </div>
             </td>
           </tr>
@@ -260,8 +260,8 @@
           <div v-if="q.valid_till" class="qt-mc-sub" :class="isExpired(q)?'text-danger':''">Valid till: {{ fmtDate(q.valid_till) }}</div>
           <div class="qt-mc-footer">
             <button class="qt-mc-btn" @click.stop="openView(q)">View</button>
-            <button v-if="q.docstatus!==1" class="qt-mc-btn" @click.stop="openEdit(q)">Edit</button>
-            <button class="qt-mc-btn qt-mc-danger" @click.stop="deleteQT(q)">Delete</button>
+            <button v-if="q.docstatus===0" class="qt-mc-btn" @click.stop="openEdit(q)">Edit</button>
+            <button v-if="q.docstatus!==1" class="qt-mc-btn qt-mc-danger" @click.stop="deleteQT(q)">Delete</button>
           </div>
         </div>
       </template>
@@ -301,7 +301,7 @@
             </div>
             <div style="display:flex;gap:6px;border-top:1px solid #f3f4f6;padding-top:10px">
               <button class="inv-act-btn" @click.stop="openView(q)" title="View"><span v-html="icon('eye',13)"></span></button>
-              <button v-if="q.docstatus!==1" class="inv-act-btn" @click.stop="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+              <button v-if="q.docstatus===0" class="inv-act-btn" @click.stop="openEdit(q)" title="Edit"><span v-html="icon('edit',13)"></span></button>
             </div>
           </div>
         </template>
@@ -674,11 +674,14 @@
 
           <!-- Action buttons bar -->
           <div class="inv-action-bar">
-            <button v-if="viewDoc.docstatus!==1" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
+            <button v-if="viewDoc.docstatus===0" class="inv-ab-btn" @click="viewOpen=false;openEdit(viewDoc)">
               <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
             </button>
-            <button v-if="viewDoc.docstatus!==1" class="inv-ab-btn inv-ab-submit" :disabled="viewSubmitting" @click="submitFromView(viewDoc)">
+            <button v-if="viewDoc.docstatus===0" class="inv-ab-btn inv-ab-submit" :disabled="viewSubmitting" @click="submitFromView(viewDoc)">
               <span v-html="icon('check',13)"></span> <span class="ab-label">{{ viewSubmitting ? 'Submitting…' : 'Submit' }}</span>
+            </button>
+            <button v-if="viewDoc.docstatus===1 && viewDoc.status!=='Converted' && viewDoc.status!=='Accepted'" class="inv-ab-btn quote-cancel-btn" :disabled="viewCancelling" @click="cancelQT(viewDoc)">
+              <span v-html="icon('x-circle',13)"></span> <span class="ab-label">{{ viewCancelling ? 'Cancelling…' : 'Cancel' }}</span>
             </button>
             <button class="inv-ab-btn" @click="emailQT(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
@@ -706,16 +709,16 @@
                 </button>
               </div>
             </div>
-            <button v-if="viewDoc.docstatus===1 && viewDoc.status!=='Accepted' && viewDoc.status!=='Converted'" class="inv-ab-btn" @click="markStatus(viewDoc,'Accepted')">
+            <button v-if="viewDoc.docstatus===1 && viewDoc.status!=='Accepted' && viewDoc.status!=='Converted' && effectiveStatus(viewDoc)!=='Expired'" class="inv-ab-btn" @click="markStatus(viewDoc,'Accepted')">
               <span v-html="icon('check',13)"></span> <span class="ab-label">Accept</span>
             </button>
-            <button v-if="viewDoc.docstatus===1 && viewDoc.status!=='Declined' && viewDoc.status!=='Converted'" class="inv-ab-btn" @click="markStatus(viewDoc,'Declined')">
+            <button v-if="viewDoc.docstatus===1 && viewDoc.status!=='Declined' && viewDoc.status!=='Converted' && effectiveStatus(viewDoc)!=='Expired'" class="inv-ab-btn" @click="markStatus(viewDoc,'Declined')">
               <span v-html="icon('x',13)"></span> <span class="ab-label">Decline</span>
             </button>
             <button v-if="canConvert(viewDoc)" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="openConvertModal(viewDoc)">
               <span v-html="icon('repeat',13)"></span> <span class="ab-label">Convert</span>
             </button>
-            <button class="inv-ab-btn quote-delete-btn" @click="deleteQT(viewDoc)">
+            <button v-if="viewDoc.docstatus!==1" class="inv-ab-btn quote-delete-btn" @click="deleteQT(viewDoc)">
               <span v-html="icon('trash',13)"></span> <span class="ab-label quote-delete-lbl">Delete</span>
             </button>
           </div>
@@ -1053,7 +1056,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue";
-import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, resolveCompany, refreshCsrfToken } from "../api/client.js";
+import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, apiCancel, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useRoute, useRouter } from "vue-router";
@@ -1152,6 +1155,7 @@ const viewDoc        = ref(null);
 const viewTab        = ref("details");
 const viewLoading    = ref(false);
 const viewSubmitting = ref(false);
+const viewCancelling = ref(false);
 const viewItems   = ref([]);
 const addressLoading = ref(false);
 const conv        = reactive({ sales_orders: [], sales_invoices: [] });
@@ -1251,7 +1255,7 @@ function blankLine() {
 // ── Status helpers ────────────────────────────────────────────────────
 function isExpired(q) {
   if (!q?.valid_till) return false;
-  if (q.status === "Converted" || q.status === "Accepted") return false;
+  if (q.status === "Converted" || q.status === "Accepted" || q.status === "Declined" || q.status === "Lost") return false;
   return new Date(q.valid_till) < new Date();
 }
 function effectiveStatus(q) {
@@ -1289,7 +1293,7 @@ function sortArrowTxt(col) {
 function canConvert(q) {
   if (q?.docstatus !== 1) return false;
   const s = effectiveStatus(q);
-  return s !== "Converted" && s !== "Declined" && s !== "Lost";
+  return s !== "Converted" && s !== "Declined" && s !== "Lost" && s !== "Expired";
 }
 
 // ── Timeline ──────────────────────────────────────────────────────────
@@ -2029,6 +2033,22 @@ async function submitFromView(q) {
   }
 }
 
+async function cancelQT(q) {
+  if (!q?.name) return;
+  if (!await confirm({ title: 'Cancel Quotation', body: `Cancel ${q.name}? This will reverse the submission.`, okLabel: 'Cancel Quotation', okStyle: 'danger' })) return;
+  viewCancelling.value = true;
+  try {
+    await apiCancel('Quotation', q.name);
+    toast.success(`Quotation ${q.name} cancelled`);
+    await openView(q);
+    await load();
+  } catch (e) {
+    toast.error(e.message || 'Failed to cancel quotation');
+  } finally {
+    viewCancelling.value = false;
+  }
+}
+
 // ── Bulk actions ──────────────────────────────────────────────────────
 async function bulkDelete() {
   const drafts = sorted.value.filter(q => selected.value.has(q.name) && (q.status === "Draft" || !q.status));
@@ -2247,6 +2267,9 @@ onUnmounted(() => document.removeEventListener('click', onDocClickForDownloadMen
 .inv-ab-submit { color:#2563eb !important; border-color:rgba(37,99,235,.3) !important; }
 .inv-ab-submit:hover:not(:disabled) { background:#eff6ff !important; }
 .inv-ab-submit:disabled { opacity:.55; cursor:not-allowed; }
+.quote-cancel-btn { color: #d97706 !important; border-color: rgba(217,119,6,.3) !important; background: #fff; }
+.quote-cancel-btn:hover:not(:disabled) { background: #fffbeb !important; }
+.quote-cancel-btn:disabled { opacity: .55; cursor: not-allowed; }
 .quote-delete-btn{color: #dc2626 !important;
     border-color: #dc262638;
     background: #fff;}

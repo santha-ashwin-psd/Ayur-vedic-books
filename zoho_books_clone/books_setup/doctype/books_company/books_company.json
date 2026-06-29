@@ -467,6 +467,19 @@
    "default": "7",
    "depends_on": "eval:doc.send_payment_reminders",
    "idx": 61
+  },
+  {
+   "fieldname": "sec_lock",
+   "fieldtype": "Section Break",
+   "idx": 62,
+   "label": "Period Lock"
+  },
+  {
+   "fieldname": "lock_date",
+   "fieldtype": "Date",
+   "idx": 63,
+   "label": "Books Lock Date",
+   "description": "Freeze all financial transactions on or before this date. Only a System Manager can post past it."
   }
  ],
  "permissions": [

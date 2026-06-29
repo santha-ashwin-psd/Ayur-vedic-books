@@ -555,6 +555,7 @@ def get_company_settings():
         "reminder_days_before": 3,
         "reminder_days_after": 7,
         "auto_reconcile": 0,
+        "lock_date": "",
     }
 
     # All company-specific fields (including reminder/email flags) come from Books Company
@@ -581,6 +582,8 @@ def get_company_settings():
             result["send_payment_reminders"]  = int(co.send_payment_reminders or 0)
             result["reminder_days_before"]    = int(co.reminder_days_before or 3)
             result["reminder_days_after"]     = int(co.reminder_days_after or 7)
+            # Period lock — stored on Books Company, drives central_validator
+            result["lock_date"]               = str(co.lock_date or "")
         except Exception:
             pass
 
@@ -645,6 +648,9 @@ def save_company_settings(**kwargs):
                 co.reminder_days_before = int(kwargs["reminder_days_before"] or 3)
             if "reminder_days_after" in kwargs:
                 co.reminder_days_after = int(kwargs["reminder_days_after"] or 7)
+            # Period lock — write back to Books Company
+            if "lock_date" in kwargs:
+                co.lock_date = kwargs["lock_date"] or None
             co.save(ignore_permissions=True)
         except Exception as e:
             frappe.log_error(str(e), "save_company_settings: Books Company")
@@ -662,6 +668,37 @@ def save_company_settings(**kwargs):
     frappe.db.commit()
     return {"success": True}
 
+
+# ─── Books Lock Date (per-company) ───────────────────────────────────────────
+
+@frappe.whitelist()
+def get_books_lock_date():
+    """Return the Books Lock Date for the current user's resolved company.
+    Uses _resolve_company_for() so Books Company Member rows take priority
+    over the global Books Settings default_company fallback.
+    Returns { company, lock_date } so the frontend can show the correct context.
+    """
+    company = _resolve_company_for()
+    lock_date = ""
+    if company and frappe.db.exists("Books Company", company):
+        lock_date = str(frappe.db.get_value("Books Company", company, "lock_date") or "")
+    return {"company": company, "lock_date": lock_date}
+
+
+@frappe.whitelist(methods=["POST"])
+def set_books_lock_date(lock_date=None):
+    """Set or clear the Books Lock Date for the current user's resolved company.
+    Pass lock_date="" or lock_date=None to clear.
+    """
+    _require_admin()
+    company = _resolve_company_for()
+    if not company or not frappe.db.exists("Books Company", company):
+        frappe.throw("Could not resolve company for the current user.")
+    co = frappe.get_doc("Books Company", company)
+    co.lock_date = lock_date or None
+    co.save(ignore_permissions=True)
+    frappe.db.commit()
+    return {"company": company, "lock_date": str(co.lock_date or "")}
 
 # ─── SMTP / Email Settings (per-company) ──────────────────────────────────────
 

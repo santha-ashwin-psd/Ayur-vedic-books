@@ -45,6 +45,12 @@
     </div>
   </div>
 
+  <!-- Load error banner -->
+  <div v-if="loadError" style="padding:10px 16px;background:#FFF5F5;border:1px solid #FFD8D8;border-radius:8px;font-size:13px;color:#C92A2A;display:flex;align-items:center;gap:8px">
+    <span>⚠</span><span>{{loadError}}</span>
+    <button class="b-btn b-btn-ghost" style="margin-left:auto;font-size:12px" @click="load">Retry</button>
+  </div>
+
   <div class="fy-main-layout" style="display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start">
 
     <div class="fy-left-panel" :class="{'fy-left-panel--hidden': selectedYear}" style="display:flex;flex-direction:column;gap:12px">
@@ -59,7 +65,7 @@
           <div v-else-if="isCurrent(y.start,y.end)"
             style="position:absolute;top:0;right:0;background:#2F9E44;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:0 10px 0 6px;letter-spacing:.5px">CURRENT</div>
 
-          <div style="font-size:15px;font-weight:700;margin-bottom:3px;padding-right:70px">{{y.name}}</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:3px;padding-right:70px">{{y.year_label || y.name}}</div>
           <div style="font-size:12px;color:#868E96;margin-bottom:10px;">{{fmtDate(y.start)}} → {{fmtDate(y.end)}}</div>
 
           <template v-if="isCurrent(y.start,y.end)">
@@ -90,6 +96,10 @@
           </div>
         </div>
 
+        <div v-if="!allYears.length && !loadError" style="padding:28px;text-align:center;color:#868E96;font-size:13px">
+          No fiscal years found for this company.
+        </div>
+
         <button class="b-btn b-btn-ghost" @click="openAdd" style="width:100%;justify-content:center">
           <span v-html="icon('plus',13)"></span>Add Fiscal Year
         </button>
@@ -117,7 +127,7 @@
         <div class="b-card" style="padding:0;overflow:hidden;margin-bottom:14px">
           <div style="padding:16px 20px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;background:#F8F9FC">
             <div>
-              <div style="font-size:16px;font-weight:700">{{selectedYearData.name}}</div>
+              <div style="font-size:16px;font-weight:700">{{selectedYearData.year_label || selectedYearData.name}}</div>
               <div style="font-size:12px;color:#868E96;margin-top:2px;">
                 {{fmtDate(selectedYearData.start)}} → {{fmtDate(selectedYearData.end)}}
                 &nbsp;·&nbsp;{{daysBetween(selectedYearData.start,selectedYearData.end)}} days
@@ -241,7 +251,7 @@
         <div style="background:linear-gradient(135deg,#2563eb,#4f46e5);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
           <div>
             <div style="color:#fff;font-size:16px;font-weight:700">{{editingName?"Edit Fiscal Year":"New Fiscal Year"}}</div>
-            <div style="color:rgba(255,255,255,.75);font-size:12px;margin-top:2px">
+            <div style="color:rgba(255,255,255,.75);font-size:12px;margin-top:2px;">
               {{editingName?"Update dates, periods and year-end settings":"Define the year range and accounting periods"}}
             </div>
           </div>
@@ -377,7 +387,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiGET, apiPOST, apiList, resolveCompany } from "../api/client.js";
+import { apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 
@@ -387,6 +397,7 @@ const FY_MONTHS      = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","O
 const FY_MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 const loading        = ref(true);
+const loadError      = ref("");
 const allYears       = ref([]);
 const selectedYear   = ref(null);
 const editingName    = ref(null);
@@ -395,7 +406,9 @@ const showCloseModal  = ref(false);
 const showAllPeriods  = ref(false);
 const closeModalYear = ref(null);
 const saving         = ref(false);
-const fromFrappe     = ref(false);
+// frappeConnected: true once we successfully loaded at least one response from Frappe.
+// Never reset to false after first success — a re-load failure doesn't mean Frappe is gone.
+const frappeConnected = ref(false);
 const drawerError    = ref("");
 const nameManuallyEdited = ref(false);
 const currentCompany = ref("");
@@ -428,9 +441,6 @@ function daysElapsed(start, end) {
 function isCurrent(start, end) { return todayLocal() >= start && todayLocal() <= end; }
 function isPast(end) { return todayLocal() > end; }
 
-function saveLocal() { try { localStorage.setItem("books_fiscal_years", JSON.stringify(allYears.value)); } catch {} }
-function loadLocal() { try { return JSON.parse(localStorage.getItem("books_fiscal_years") || "null"); } catch { return null; } }
-
 function generatePeriods(start, end, type, existingPeriods) {
   const lockMap = {};
   (existingPeriods || []).forEach((p) => { lockMap[p.start] = p.locked; });
@@ -461,79 +471,49 @@ function generatePeriods(start, end, type, existingPeriods) {
   return periods;
 }
 
-function buildDefaultYears() {
-  const now = new Date();
-  const curFYStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-  const yrs = [];
-  for (let i = 0; i < 3; i++) {
-    const ys = curFYStart - i, ye = ys + 1;
-    const start = ys + "-04-01", end = ye + "-03-31";
-    yrs.push({ name: ys + "-" + String(ye).slice(2), start, end, period_type: "Monthly", closing_acct: "Retained Earnings", auto_close: 0, is_default: i === 0 ? 1 : 0, is_closed: i >= 2 ? 1 : 0, periods: generatePeriods(start, end, "Monthly"), source: "local" });
-  }
-  return yrs;
-}
-
 async function load() {
   loading.value = true;
-  let loadedFromFrappe = false;
+  loadError.value = "";
   try {
-    // Resolve the current user's company so we only load/manage that company's years
-    const co = await resolveCompany().catch(() => "");
+    const res = await apiGET("zoho_books_clone.api.docs.get_fiscal_years");
+    const co = res?.company || "";
     currentCompany.value = co;
+    const allFY = res?.years || [];
 
-    // Fetch fiscal years for this company (also include rows with empty/null company
-    // which are global/legacy fiscal years created without a company stamp)
-    const allFY = await apiList("Fiscal Year", {
-      fields: ["name", "year_start_date", "year_end_date", "is_closed", "company", "lock_date"],
-      filters: co ? [["company", "=", co]] : [],
-      limit: 50,
-      order: "year_start_date desc",
-    }).catch(() => null);
+    // Mark Frappe as connected on any successful response (even empty list)
+    frappeConnected.value = true;
 
-    if (allFY && allFY.length) {
-      loadedFromFrappe = true;
-      fromFrappe.value = true;
-      // Restore any previously saved period lock state from localStorage so
-      // lock choices survive a page refresh (Frappe doesn't store period locks).
-      const savedLocal = loadLocal() || [];
-      const savedMap = {};
-      savedLocal.forEach((y) => { savedMap[y.name] = y.periods || []; });
+    allYears.value = allFY.map((y) => {
+      const serverLockDate = y.lock_date || "";
+      return {
+        // name = full doc name ("2025-26 - Acme Ltd"), year_label = display ("2025-26")
+        name: y.name, year_label: y.year_label || y.name,
+        start: y.year_start_date, end: y.year_end_date,
+        period_type: "Monthly", closing_acct: "Retained Earnings",
+        auto_close: 0, is_default: 0, is_closed: y.is_closed ? 1 : 0,
+        company: y.company || "",
+        periods: generatePeriods(y.year_start_date, y.year_end_date, "Monthly",
+          serverLockDate
+            ? generatePeriods(y.year_start_date, y.year_end_date, "Monthly").map(p =>
+                ({ ...p, locked: p.end <= serverLockDate }))
+            : []
+        ),
+      };
+    });
 
-      // Show years belonging to this company OR years with no company (global/legacy).
-      // Strictly exclude rows stamped with a *different* company.
-      const relevant = co
-        ? allFY.filter(y => !y.company || y.company.toLowerCase() === co.toLowerCase())
-        : allFY;
-      allYears.value = relevant.map((y) => {
-        // Merge: server lock_date is the authority; mark all periods whose end <=
-        // lock_date as locked so the UI matches what the server enforces.
-        const serverLockDate = y.lock_date || "";
-        const basePeriods = savedMap[y.name] || [];
-        const mergedPeriods = basePeriods.map((p) =>
-          serverLockDate && p.end <= serverLockDate ? { ...p, locked: true } : p
-        );
-        return {
-          name: y.name, start: y.year_start_date, end: y.year_end_date,
-          period_type: "Monthly", closing_acct: "Retained Earnings",
-          auto_close: 0, is_default: 0, is_closed: y.is_closed ? 1 : 0,
-          company: y.company || "",
-          // Pass merged periods so generatePeriods restores locked state via lockMap
-          periods: generatePeriods(y.year_start_date, y.year_end_date, "Monthly", mergedPeriods),
-          source: "frappe",
-        };
-      });
-      // Persist merged state so next refresh also picks up locks
-      saveLocal();
+    const cur = allYears.value.find((y) => isCurrent(y.start, y.end));
+    if (!selectedYear.value || !allYears.value.find(y => y.name === selectedYear.value)) {
+      selectedYear.value = (cur || allYears.value[0] || {}).name || null;
     }
-  } catch { fromFrappe.value = false; }
-  if (!loadedFromFrappe || !allYears.value.length) {
-    const saved = loadLocal();
-    if (saved && saved.length) allYears.value = saved;
-    else { allYears.value = buildDefaultYears(); saveLocal(); }
+  } catch (e) {
+    loadError.value = "Could not load fiscal years — " + (e.message || "server error. Check that the Frappe server is reachable.");
+    // Do NOT populate fake/local years. Keep existing list if we had one from a prior successful load.
+    if (!frappeConnected.value) {
+      allYears.value = [];
+    }
+  } finally {
+    loading.value = false;
   }
-  const cur = allYears.value.find((y) => isCurrent(y.start, y.end));
-  selectedYear.value = (cur || allYears.value[0] || {}).name || null;
-  loading.value = false;
 }
 
 const stats = computed(() => {
@@ -541,7 +521,7 @@ const stats = computed(() => {
   const allPeriods = allYears.value.flatMap((y) => y.periods || []);
   return {
     total: allYears.value.length,
-    currentName: cur ? cur.name : "None",
+    currentName: cur ? (cur.year_label || cur.name) : "None",
     elapsed: cur ? daysElapsed(cur.start, cur.end) + " / " + daysBetween(cur.start, cur.end) : "—",
     locked: allPeriods.filter((p) => p.locked).length,
     needsClosing: allYears.value.filter((y) => isPast(y.end) && !y.is_closed).length,
@@ -556,18 +536,14 @@ const periodPreview = computed(() => {
 
 function selectYear(name) { selectedYear.value = name; }
 
-// Compute the effective Fiscal Year lock_date from its periods:
-// the latest end date among all locked non-current periods, or "" if none locked.
 function computeFYLockDate(y) {
   const locked = (y.periods || []).filter((p) => p.locked && !p.is_current);
   if (!locked.length) return "";
   return locked.map((p) => p.end).sort().reverse()[0];
 }
 
-// Persist the lock_date on the Fiscal Year record in Frappe so the server
-// can enforce it in central_validator._check_fiscal_year_period_lock.
 async function persistFYLockDate(y) {
-  if (!fromFrappe.value) return;
+  if (!frappeConnected.value) return;
   const lockDateVal = computeFYLockDate(y);
   try {
     await apiPOST("frappe.client.set_value", {
@@ -586,7 +562,6 @@ function togglePeriodLock(yearName, idx) {
   if (!y) return;
   const nowLocked = !y.periods[idx].locked;
   y.periods[idx] = { ...y.periods[idx], locked: nowLocked };
-  saveLocal();
   persistFYLockDate(y);
   toast(nowLocked ? "Period locked" : "Period unlocked");
 }
@@ -596,7 +571,6 @@ function lockAllPeriods(yearName, lock) {
   y.periods = y.periods.map((p) =>
     p.is_current ? p : { ...p, locked: lock ? !!p.is_past : false }
   );
-  saveLocal();
   persistFYLockDate(y);
   toast(lock ? "All past periods locked" : "All periods unlocked");
 }
@@ -611,7 +585,8 @@ function openEdit(name) {
   const y = allYears.value.find((x) => x.name === name);
   if (!y) return;
   editingName.value = name; nameManuallyEdited.value = true; drawerError.value = "";
-  Object.assign(fForm, { name: y.name, start: y.start, end: y.end, period_type: y.period_type || "Monthly", closing_acct: y.closing_acct || "Retained Earnings", auto_close: y.auto_close || 0, is_default: y.is_default || 0 });
+  // fForm.name should show the display label (without company suffix), not the full doc name
+  Object.assign(fForm, { name: y.year_label || y.name, start: y.start, end: y.end, period_type: y.period_type || "Monthly", closing_acct: y.closing_acct || "Retained Earnings", auto_close: y.auto_close || 0, is_default: y.is_default || 0 });
   showDrawer.value = true;
 }
 function closeDrawer() { showDrawer.value = false; editingName.value = null; drawerError.value = ""; }
@@ -630,20 +605,18 @@ function validateForm() {
   if (!fForm.start) return "Start date is required.";
   if (!fForm.end) return "End date is required.";
   if (fForm.start >= fForm.end) return "End date must be after start date.";
-  const co = currentCompany.value || "";
-  // The actual Frappe doc name will be "{label} - {company}" to stay unique per company.
-  const docYear = co ? `${fForm.name.trim()} - ${co}` : fForm.name.trim();
+  const label = fForm.name.trim();
   for (const y of allYears.value) {
+    // Skip the year currently being edited
     if (editingName.value && y.name === editingName.value) continue;
-    // Skip years from a different company for overlap checks
-    if (y.company && co && y.company.toLowerCase() !== co.toLowerCase()) continue;
-    // Duplicate name check — compare against the full doc name
-    if (y.name === docYear) {
-      return `A fiscal year named "${fForm.name}" already exists. Use Edit to modify it.`;
+    // Duplicate check: compare the SHORT display label only (never the full doc name with company suffix)
+    if ((y.year_label || y.name) === label) {
+      return `A fiscal year named "${label}" already exists for this company. Use Edit to modify it.`;
     }
-    // Date overlap check
+    // Date overlap check — closed years are exempt
+    if (y.is_closed) continue;
     if (fForm.start <= y.end && fForm.end >= y.start) {
-      return `Dates overlap with existing fiscal year "${y.name}" (${fmtDate(y.start)} – ${fmtDate(y.end)}).`;
+      return `Dates overlap with existing fiscal year "${y.year_label || y.name}" (${fmtDate(y.start)} – ${fmtDate(y.end)}).`;
     }
   }
   return "";
@@ -654,49 +627,26 @@ async function saveYear() {
   const err = validateForm();
   if (err) { drawerError.value = err; return; }
   saving.value = true;
-  if (fromFrappe.value) {
-    try {
-      const co = currentCompany.value || await resolveCompany().catch(() => "");
-      // For Fiscal Year, name = year field value (autoname="field:year").
-      // Always pass name so save_doc can detect an existing record and
-      // call db_update() instead of insert() — avoids duplicate-key errors.
-      // Fiscal Year autoname = field:year, so `year` is the document PK.
-      // Suffix with the company so each company's FY has a unique name
-      // in the shared tabFiscal Year table (e.g. "2025-26 - Acme Ltd").
-      const yearLabel = fForm.name.trim();
-      const docYear   = co ? `${yearLabel} - ${co}` : yearLabel;
-      const docName   = editingName.value || docYear;
-      const doc = {
-        doctype: "Fiscal Year",
-        name: docName,
-        year: docYear,
-        year_start_date: fForm.start,
-        year_end_date: fForm.end,
-        company: co,
-      };
-      await apiPOST("zoho_books_clone.api.docs.save_doc", { doc: JSON.stringify(doc) });
+  try {
+    if (frappeConnected.value) {
+      // Backend resolves the correct company via _resolve_company_for()
+      await apiPOST("zoho_books_clone.api.docs.save_fiscal_year", {
+        year_label: fForm.name.trim(),
+        start_date: fForm.start,
+        end_date:   fForm.end,
+        doc_name:   editingName.value || "",
+      });
       await load();
       toast(editingName.value ? "Fiscal year updated" : "Fiscal year created");
       closeDrawer();
-    } catch (e) { drawerError.value = "Save error: " + (e.message || "could not save"); }
-  } else {
-    const periods = generatePeriods(
-      fForm.start, fForm.end, fForm.period_type,
-      editingName.value ? (allYears.value.find((y) => y.name === editingName.value) || {}).periods : []
-    );
-    const newY = { name: fForm.name, start: fForm.start, end: fForm.end, period_type: fForm.period_type, closing_acct: fForm.closing_acct, auto_close: fForm.auto_close, is_default: fForm.is_default, is_closed: 0, periods, source: "local" };
-    if (editingName.value) {
-      const i = allYears.value.findIndex((y) => y.name === editingName.value);
-      if (i >= 0) allYears.value[i] = { ...allYears.value[i], ...newY };
     } else {
-      allYears.value.unshift(newY);
-      selectedYear.value = newY.name;
+      drawerError.value = "Not connected to server. Please refresh the page and try again.";
     }
-    saveLocal();
-    toast(editingName.value ? "Fiscal year updated" : "Fiscal year created");
-    closeDrawer();
+  } catch (e) {
+    drawerError.value = "Save error: " + (e.message || "could not save");
+  } finally {
+    saving.value = false;
   }
-  saving.value = false;
 }
 
 function openCloseYear(name) { closeModalYear.value = name; showCloseModal.value = true; }
@@ -704,41 +654,33 @@ function openCloseYear(name) { closeModalYear.value = name; showCloseModal.value
 async function doCloseYear() {
   const name = closeModalYear.value;
   if (!name) return;
-  const y = allYears.value.find((x) => x.name === name);
-  if (!y) return;
   showCloseModal.value = false; closeModalYear.value = null;
-  if (fromFrappe.value) {
+  if (frappeConnected.value) {
     try {
       const res = await apiPOST("zoho_books_clone.accounts.fiscal_close.close_fiscal_year", { fiscal_year: name });
       await load();
       const je = res?.journal_entry;
       toast(je ? "Year closed — Closing JE " + je + " posted" : res?.message || "Fiscal year closed in Frappe");
-      return;
     } catch (e) {
-      // A real close failure must NOT silently mark the year closed — the
-      // closing Journal Entry never posted, so leave the year open.
       toast("Failed to close fiscal year — " + (e.message || "please try again"), "error");
-      return;
     }
+  } else {
+    toast("Not connected to server — cannot close year", "error");
   }
-  y.is_closed = 1;
-  y.periods.forEach((p) => { p.locked = true; });
-  saveLocal();
-  toast("Fiscal year \"" + name + "\" closed and all periods locked");
 }
 
-// ── Books lock date (global posting freeze, enforced server-side) ──
-const lockDate = ref("");        // currently stored lock date
-const lockDateInput = ref("");   // date input value
+// ── Books lock date (per-company, resolved server-side) ──────────────────────
+const lockDate = ref("");
+const lockDateInput = ref("");
 const lockSaving = ref(false);
 
 function fmtLock(d) { if (!d) return ""; try { return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); } catch { return d; } }
 
 async function loadLockDate() {
   try {
-    const r = await apiGET("frappe.client.get_value", { doctype: "Books Settings", fieldname: "lock_date" });
-    // apiGET unwraps json.message, so r is already { lock_date: "..." }
+    const r = await apiGET("zoho_books_clone.api.admin.get_books_lock_date");
     const v = r?.lock_date || "";
+    if (r?.company && !currentCompany.value) currentCompany.value = r.company;
     lockDate.value = v;
     lockDateInput.value = v;
   } catch { lockDate.value = ""; }
@@ -748,8 +690,8 @@ async function saveLockDate() {
   if (!lockDateInput.value) return;
   lockSaving.value = true;
   try {
-    await apiPOST("frappe.client.set_value", { doctype: "Books Settings", name: "Books Settings", fieldname: "lock_date", value: lockDateInput.value });
-    lockDate.value = lockDateInput.value;
+    const r = await apiPOST("zoho_books_clone.api.admin.set_books_lock_date", { lock_date: lockDateInput.value });
+    lockDate.value = r?.lock_date || lockDateInput.value;
     toast("Books locked up to " + fmtLock(lockDate.value), "success");
   } catch (e) { toast(e.message || "Failed to set lock date", "error"); }
   finally { lockSaving.value = false; }
@@ -758,14 +700,14 @@ async function saveLockDate() {
 async function clearLockDate() {
   lockSaving.value = true;
   try {
-    await apiPOST("frappe.client.set_value", { doctype: "Books Settings", name: "Books Settings", fieldname: "lock_date", value: "" });
+    await apiPOST("zoho_books_clone.api.admin.set_books_lock_date", { lock_date: "" });
     lockDate.value = ""; lockDateInput.value = "";
     toast("Books lock date cleared", "success");
   } catch (e) { toast(e.message || "Failed to clear lock date", "error"); }
   finally { lockSaving.value = false; }
 }
 
-onMounted(() => { load(); loadLockDate(); });
+onMounted(async () => { await load(); await loadLockDate(); });
 </script>
 
 <style scoped>

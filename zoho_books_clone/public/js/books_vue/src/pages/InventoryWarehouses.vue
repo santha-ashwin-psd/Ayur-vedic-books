@@ -359,7 +359,12 @@
           <button class="nim-close" @click="adjDrawer.open=false">✕</button>
         </div>
         <div class="nim-dialog-body" style="display:flex;flex-direction:column;gap:16px">
-          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:14px">
+          <div v-if="adjDrawer.pick_item">
+            <label class="nim-label">Item <span style="color:#dc2626">*</span></label>
+            <SearchableSelect v-model="adjDrawer.item_code" :options="allItems"
+              value-key="name" label-key="item_name" placeholder="Search item to add stock…" />
+          </div>
+          <div v-if="adjDrawer.item_code" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:14px">
             <div style="width:40px;height:40px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0" v-html="icon('box',18)"></div>
             <div>
               <div style="font-size:13.5px;font-weight:700;color:#111827">{{ adjDrawer.item_name }}</div>
@@ -401,7 +406,7 @@
         <div class="nim-dialog-footer">
           <button class="nim-btn nim-btn-ghost" @click="adjDrawer.open=false">Cancel</button>
           <button class="nim-btn" style="background:#2563eb;color:#fff;border-color:#2563eb"
-            :disabled="adjDrawer.saving || adjDrawer.new_qty==='' || adjDrawer.new_qty===null || !adjDrawer.reason"
+            :disabled="adjDrawer.saving || !adjDrawer.item_code || adjDrawer.new_qty==='' || adjDrawer.new_qty===null || !adjDrawer.reason"
             @click="submitAdjustment">
             {{ adjDrawer.saving ? 'Saving…' : 'Save Adjustment' }}
           </button>
@@ -536,7 +541,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, flt } from "../utils/format.js";
@@ -569,7 +574,7 @@ const filterType     = ref("All");
 const filterDDOpen   = ref(false);
 
 const adjDrawer = reactive({
-  open: false, saving: false,
+  open: false, saving: false, pick_item: false,
   item_code: "", item_name: "", warehouse: "",
   current_qty: 0, new_qty: "", reason: "", notes: "",
 });
@@ -687,7 +692,7 @@ function selectChild(child) {
 
 function openNewAdjustment(wh) {
   Object.assign(adjDrawer, {
-    open: true, saving: false,
+    open: true, saving: false, pick_item: true,
     item_code: "", item_name: "",
     warehouse: wh?.name || "",
     current_qty: 0, new_qty: "", reason: "Opening Stock", notes: "",
@@ -696,7 +701,7 @@ function openNewAdjustment(wh) {
 
 function openAdjustment(row) {
   Object.assign(adjDrawer, {
-    open: true, saving: false,
+    open: true, saving: false, pick_item: false,
     item_code:   row.item_code,
     item_name:   row.item_name || row.item_code,
     warehouse:   selectedChild.value?.name || selectedWH.value?.name || "",
@@ -705,6 +710,16 @@ function openAdjustment(row) {
     reason:      "", notes: "",
   });
 }
+
+// When an item is picked in "Add Stock" mode, fill its name and current qty
+// (best-effort from the currently loaded stock; defaults to 0 for a new item).
+watch(() => adjDrawer.item_code, (code) => {
+  if (!adjDrawer.pick_item || !code) return;
+  const it = allItems.value.find((i) => i.name === code);
+  adjDrawer.item_name = it?.item_name || code;
+  const row = stockItems.value.find((r) => r.item_code === code);
+  adjDrawer.current_qty = row ? flt(row.actual_qty) : 0;
+});
 
 async function submitAdjustment() {
   if (adjDrawer.new_qty === "" || adjDrawer.new_qty === null) return toast("New quantity is required", "error");

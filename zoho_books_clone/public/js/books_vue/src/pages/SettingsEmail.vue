@@ -48,11 +48,11 @@
           <input class="nim-input" v-model="form.smtp_from_name" :placeholder="form.company" :disabled="!form.smtp_enabled"/>
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3b4a7a;cursor:pointer">
-          <input type="checkbox" :checked="form.smtp_use_tls" @change="form.smtp_use_tls = $event.target.checked ? 1 : 0" :disabled="!form.smtp_enabled"/>
+          <input type="radio" name="smtp-enc" :checked="form.smtp_use_tls && !form.smtp_use_ssl" @change="setEncryption('tls')" :disabled="!form.smtp_enabled"/>
           Use TLS (port 587)
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#3b4a7a;cursor:pointer">
-          <input type="checkbox" :checked="form.smtp_use_ssl" @change="form.smtp_use_ssl = $event.target.checked ? 1 : 0" :disabled="!form.smtp_enabled"/>
+          <input type="radio" name="smtp-enc" :checked="form.smtp_use_ssl && !form.smtp_use_tls" @change="setEncryption('ssl')" :disabled="!form.smtp_enabled"/>
           Use SSL (port 465)
         </label>
       </div>
@@ -108,7 +108,30 @@ async function load() {
   loading.value = false;
 }
 
+// TLS and SSL are mutually exclusive — selecting one clears the other and
+// snaps the port to its conventional default (only when it's still the other's).
+function setEncryption(kind) {
+  if (kind === "tls") {
+    form.smtp_use_tls = 1; form.smtp_use_ssl = 0;
+    if (Number(form.smtp_port) === 465) form.smtp_port = 587;
+  } else {
+    form.smtp_use_ssl = 1; form.smtp_use_tls = 0;
+    if (Number(form.smtp_port) === 587) form.smtp_port = 465;
+  }
+}
+
+function validate() {
+  if (!form.smtp_enabled) return true; // nothing to validate when disabled
+  if (!String(form.smtp_server).trim()) { toast("SMTP Server is required", "error"); return false; }
+  if (!Number(form.smtp_port))          { toast("A valid Port is required", "error"); return false; }
+  if (!String(form.smtp_login).trim())  { toast("Username (login) is required", "error"); return false; }
+  if (!form.smtp_password && !form.smtp_password_set) { toast("Password is required", "error"); return false; }
+  if (!form.smtp_use_tls && !form.smtp_use_ssl) { toast("Choose an encryption method — TLS or SSL", "error"); return false; }
+  return true;
+}
+
 async function save() {
+  if (!validate()) return;
   saving.value = true;
   try {
     const payload = { ...form };

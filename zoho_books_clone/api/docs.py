@@ -367,10 +367,45 @@ def _email_attachment(doctype, name, print_format, pdf_html=None, filename=None)
         return []
 
 
+def _send_business_email(recipients, cc_list, subject, body, reference_doctype,
+                         reference_name, attachments=None, company=None):
+    """Send a customer/vendor-facing email through the company's own SMTP
+    (configured under Settings → Email).
+
+    Falls back to Frappe's configured mailer when the company hasn't set up
+    SMTP — mirrors the payment-reminder behaviour in utils/scheduler.py so
+    nothing breaks for companies that haven't configured it yet. A configured-
+    but-failing SMTP is logged and also falls back, so a manual send never
+    hard-errors on a transient SMTP problem.
+    """
+    try:
+        from zoho_books_clone.utils.email_company import (
+            send_company_email, CompanySmtpNotConfigured,
+        )
+        send_company_email(
+            to=recipients, subject=subject, html=body, company=company,
+            cc=cc_list or None, attachments=attachments or None,
+        )
+        return
+    except CompanySmtpNotConfigured:
+        pass
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            f"Company SMTP send failed for {reference_doctype} {reference_name}; using system mailer",
+        )
+    frappe.sendmail(
+        recipients=recipients, cc=cc_list, subject=subject, message=body,
+        attachments=attachments, reference_doctype=reference_doctype,
+        reference_name=reference_name, now=True,
+    )
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def send_invoice_email(invoice_name, to, subject, body, cc=None, pdf_html=None):
     """
-    Send invoice email using Frappe's configured outgoing email account.
+    Send invoice email via the company's own SMTP (Settings → Email), falling
+    back to Frappe's configured mailer when the company hasn't set it up.
     Attaches a PDF of the invoice (rendered from the selected branding template
     when pdf_html is supplied by the client).
     """
@@ -390,16 +425,11 @@ def send_invoice_email(invoice_name, to, subject, body, cc=None, pdf_html=None):
     # Attach PDF of the invoice — selected template when provided
     attachments = _email_attachment(inv.doctype, inv.name, "Sales Invoice", pdf_html)
 
-    # Send using Frappe's configured email account
-    frappe.sendmail(
-        recipients=recipients,
-        cc=cc_list,
-        subject=subject,
-        message=body,
-        attachments=attachments,
-        reference_doctype="Sales Invoice",
-        reference_name=invoice_name,
-        now=True,  # send immediately (not queued)
+    # Send via the company's own SMTP (Settings → Email), falling back to
+    # Frappe's configured mailer when the company hasn't set it up.
+    _send_business_email(
+        recipients, cc_list, subject, body, "Sales Invoice", invoice_name,
+        attachments=attachments, company=inv.company,
     )
 
     # Log a communication record so it appears in the timeline
@@ -887,12 +917,9 @@ def send_bill_email(bill_name, to, subject, body, cc=None, pdf_html=None):
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
     attachments = _email_attachment(bill.doctype, bill.name, "Purchase Invoice", pdf_html)
 
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list,
-        subject=subject, message=body,
-        attachments=attachments,
-        reference_doctype="Purchase Invoice", reference_name=bill_name,
-        now=True,
+    _send_business_email(
+        recipients, cc_list, subject, body, "Purchase Invoice", bill_name,
+        attachments=attachments, company=bill.company,
     )
     comm = frappe.get_doc({
         "doctype": "Communication", "communication_type": "Communication",
@@ -2017,10 +2044,9 @@ def send_credit_note_email(credit_note_name, to, subject, body, cc=None, pdf_htm
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
     attachments = _email_attachment(cn.doctype, cn.name, "Sales Invoice", pdf_html)
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list,
-        subject=subject, message=body, attachments=attachments,
-        reference_doctype="Sales Invoice", reference_name=credit_note_name, now=True,
+    _send_business_email(
+        recipients, cc_list, subject, body, "Sales Invoice", credit_note_name,
+        attachments=attachments, company=cn.company,
     )
     comm = frappe.get_doc({
         "doctype": "Communication", "communication_type": "Communication",
@@ -2087,10 +2113,9 @@ def send_debit_note_email(debit_note_name, to, subject, body, cc=None, pdf_html=
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
     attachments = _email_attachment(dn.doctype, dn.name, "Purchase Invoice", pdf_html)
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list,
-        subject=subject, message=body, attachments=attachments,
-        reference_doctype="Purchase Invoice", reference_name=debit_note_name, now=True,
+    _send_business_email(
+        recipients, cc_list, subject, body, "Purchase Invoice", debit_note_name,
+        attachments=attachments, company=dn.company,
     )
     comm = frappe.get_doc({
         "doctype": "Communication", "communication_type": "Communication",
@@ -2605,10 +2630,9 @@ def send_quote_email(quotation_name, to, subject, body, cc=None, pdf_html=None):
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
     attachments = _email_attachment(qd.doctype, qd.name, "Quotation", pdf_html)
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list,
-        subject=subject, message=body, attachments=attachments,
-        reference_doctype="Quotation", reference_name=quotation_name, now=True,
+    _send_business_email(
+        recipients, cc_list, subject, body, "Quotation", quotation_name,
+        attachments=attachments, company=qd.company,
     )
     comm = frappe.get_doc({
         "doctype": "Communication", "communication_type": "Communication",
@@ -2940,10 +2964,9 @@ def send_sales_order_email(sales_order, to, subject, body, cc=None, pdf_html=Non
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
     attachments = _email_attachment(so.doctype, so.name, "Sales Order", pdf_html)
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list,
-        subject=subject, message=body, attachments=attachments,
-        reference_doctype="Sales Order", reference_name=sales_order, now=True,
+    _send_business_email(
+        recipients, cc_list, subject, body, "Sales Order", sales_order,
+        attachments=attachments, company=so.company,
     )
     comm = frappe.get_doc({
         "doctype": "Communication", "communication_type": "Communication",
@@ -3248,10 +3271,9 @@ def send_purchase_order_email(purchase_order, to, subject, body, cc=None, pdf_ht
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
     attachments = _email_attachment(po.doctype, po.name, "Purchase Order", pdf_html)
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list,
-        subject=subject, message=body, attachments=attachments,
-        reference_doctype="Purchase Order", reference_name=purchase_order, now=True,
+    _send_business_email(
+        recipients, cc_list, subject, body, "Purchase Order", purchase_order,
+        attachments=attachments, company=po.company,
     )
     comm = frappe.get_doc({
         "doctype": "Communication", "communication_type": "Communication",
@@ -3452,10 +3474,9 @@ def send_vendor_statement_email(vendor, to, subject, body, cc=None):
         frappe.throw("Recipient email (To) is required.")
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list,
-        subject=subject, message=body,
-        reference_doctype="Supplier", reference_name=vendor, now=True,
+    _send_business_email(
+        recipients, cc_list, subject, body, "Supplier", vendor,
+        company=frappe.db.get_value("Supplier", vendor, "books_company"),
     )
     comm = frappe.get_doc({
         "doctype": "Communication", "communication_type": "Communication",
@@ -3671,10 +3692,9 @@ def send_customer_statement_email(customer, to, subject, body, cc=None):
         frappe.throw("Recipient email (To) is required.")
     recipients = [e.strip() for e in to.split(",") if e.strip()]
     cc_list = [e.strip() for e in (cc or "").split(",") if e.strip()]
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list,
-        subject=subject, message=body,
-        reference_doctype="Customer", reference_name=customer, now=True,
+    _send_business_email(
+        recipients, cc_list, subject, body, "Customer", customer,
+        company=frappe.db.get_value("Customer", customer, "books_company"),
     )
     comm = frappe.get_doc({
         "doctype": "Communication", "communication_type": "Communication",

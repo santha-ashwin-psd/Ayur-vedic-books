@@ -139,7 +139,7 @@
                 <SearchableSelect v-model="form.employee_name" :options="vendorOptions"
                   placeholder="Search supplier…" @search="fetchVendors" @open="fetchVendors('')"
                   :createable="true" createDoctype="Supplier"
-                  @select="opt => { form.employee_name = opt?.value ?? opt; form.vendor_display = opt?.label ?? opt?.value ?? ''; fetchVendors(''); }" />
+                  @select="opt => { form.employee_name = opt?.value ?? opt; fetchVendors(''); }" />
               </div>
               <div>
                 <label class="inv-lbl">Expense Date <span class="inv-req">*</span></label>
@@ -339,6 +339,9 @@
           <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="openEdit(viewDoc);viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
+          <button v-if="viewDoc.docstatus===1" class="form-btn form-btn-outline" :disabled="cancelling" @click="cancelExpense(viewDoc)">
+            <span v-html="icon('x',13)"></span> {{ cancelling ? 'Cancelling…' : 'Cancel Expense' }}
+          </button>
         </div>
 
       </template>
@@ -351,17 +354,18 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGet, apiGET, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiCancel, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import QuickCreateDrawer from "../components/QuickCreateDrawer.vue";
-import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
 
 const { toast } = useToast();
+const { confirm } = useConfirm();
 const activeTab=ref("all");
 const tabs=[{key:"all",label:"All"},{key:"draft",label:"Draft"},{key:"submitted",label:"Submitted"}];
 const expenseCategories=["Travel","Food & Meals","Accommodation","Office Supplies","Utilities","Marketing","Software","Hardware","Training","Miscellaneous"];
@@ -370,12 +374,12 @@ const list=ref([]),loading=ref(false),search=ref(""),selected=ref(new Set());
 const drawerOpen=ref(false),drawerSaving=ref(false),editingName=ref("");
 const expCollapsed=reactive({basic:false,payment:false,notes:true});
 const viewOpen=ref(false),viewDoc=ref(null);
+const cancelling=ref(false);
 const receiptFile=ref(null);
 function onReceiptChange(e){const f=e.target.files[0];if(f)receiptFile.value=f;e.target.value="";}
 const sortCol=ref("posting_date"),sortDir=ref("desc");
 let _id=1;
 const vendorOptions          = ref([]);
-const itemOptions            = ref([]);
 const expenseAccountOptions  = ref([]);
 const paidThroughOptions     = ref([]);
 
@@ -386,14 +390,6 @@ async function fetchVendors(q = "") {
     const rows = await apiList("Supplier", { fields: ["name", "supplier_name"], filters, limit: 30, order: "supplier_name asc" });
     vendorOptions.value = rows.map(r => ({ label: r.supplier_name || r.name, value: r.name }));
   } catch { vendorOptions.value = []; }
-}
-async function fetchExpenseItems(q = "") {
-  try {
-    const filters = [["disabled", "=", 0]];
-    if (q) filters.push(["item_name", "like", `%${q}%`]);
-    const rows = await apiList("Item", { fields: ["name", "item_name", "description", "standard_rate"], filters, limit: 30, order: "item_name asc" });
-    itemOptions.value = rows.map(r => ({ label: r.item_name || r.name, value: r.item_name || r.name, description: r.description || "", rate: r.standard_rate || 0 }));
-  } catch { itemOptions.value = []; }
 }
 async function fetchExpenseAccounts(q = "") {
   try {
@@ -413,11 +409,7 @@ async function fetchPaidThroughAccounts(q = "") {
     paidThroughOptions.value = rows.map(r => ({ label: r.name, value: r.name }));
   } catch { paidThroughOptions.value = []; }
 }
-function onExpItemSelect(line, opt) {
-  line.description = opt?.label || opt?.value || "";
-  if (opt?.rate) line.amount = opt.rate;
-}
-const form=reactive({posting_date:new Date().toISOString().slice(0,10),employee_name:"",vendor_display:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:"",cost_center:""});
+const form=reactive({posting_date:new Date().toISOString().slice(0,10),employee_name:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:"",cost_center:""});
 const costCenters=ref([]);
 async function fetchCostCenters(){try{const co=await resolveCompany();const r=await apiGET("frappe.client.get_list",{doctype:"Cost Center",fields:JSON.stringify(["name"]),filters:JSON.stringify([["disabled","=",0],["company","=",co],["is_group","=",0]]),order_by:"name asc",limit_page_length:100})||[];costCenters.value=r.map(c=>c.name);}catch{costCenters.value=[];}}
 
@@ -477,9 +469,13 @@ function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db
 const allChecked=computed(()=>sorted.value.length>0&&sorted.value.every(e=>selected.value.has(e.name)));
 function toggle(n){const s=new Set(selected.value);s.has(n)?s.delete(n):s.add(n);selected.value=s;}
 function toggleAll(e){selected.value=e.target.checked?new Set(sorted.value.map(x=>x.name)):new Set();}
-function openNew(){editingName.value="";receiptFile.value=null;Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",vendor_display:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:"",cost_center:""});Object.assign(expCollapsed,{basic:false,payment:false,notes:true});drawerOpen.value=true;}
+function openNew(){editingName.value="";receiptFile.value=null;Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),employee_name:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:"",cost_center:""});Object.assign(expCollapsed,{basic:false,payment:false,notes:true});drawerOpen.value=true;}
 async function openEdit(e){
   editingName.value=e.name;
+  receiptFile.value=null;
+  // Reset to blanks first so a failed/partial fetch below can never leave
+  // stale account/cost-center values from a previously edited expense.
+  Object.assign(form,{posting_date:"",employee_name:"",expense_type:"",total_claimed_amount:0,currency:"INR",remark:"",expense_account:"",paid_through:"",cost_center:""});
   try{
     const doc=await apiGet("Expense",e.name);
     Object.assign(form,{
@@ -489,20 +485,30 @@ async function openEdit(e){
       paid_through:    doc.paid_through||"",
       cost_center:     doc.cost_center||"",
       expense_type: doc.expense_type||"",
-      total_claimed_amount: flt(doc.total_amount||doc.amount),
+      // Prefer the base `amount` (what this field maps to on save) over the
+      // tax-inclusive `total_amount` — loading the inclusive total here would
+      // re-apply gst_rate on top of it on every subsequent edit.
+      total_claimed_amount: flt(doc.amount ?? doc.total_amount),
       currency: "INR",
       remark: doc.description||doc.notes||"",
     });
     // Expense is FLAT (one row = one expense), so seed a single line for editing
   }catch{
+    // Full doc fetch failed — fall back to what the list row gave us, but
+    // never silently carry over account fields the list doesn't include;
+    // tell the user so they can re-check before saving.
     Object.assign(form,{
       posting_date:e.posting_date||"",
       employee_name:e.vendor||e.employee_name||"",
       expense_type:e.expense_type||"",
-      total_claimed_amount:flt(e.total_amount||e.total_claimed_amount),
+      total_claimed_amount:flt(e.amount ?? e.total_amount ?? e.total_claimed_amount),
       currency:"INR",
       remark:e.description||"",
+      expense_account:"",
+      paid_through:"",
+      cost_center:"",
     });
+    toast.warning("Couldn't load full expense details — please re-select Expense Account and Paid Through before saving.");
   }
   drawerOpen.value=true;
 }
@@ -517,6 +523,7 @@ async function openView(e) {
 }
 
 async function saveExpense(submit){
+  if(!form.employee_name)             return toast.error("Vendor / Supplier is required");
   if(!flt(form.total_claimed_amount)) return toast.error("Enter an amount");
   if(flt(form.total_claimed_amount) > 999999999.99) return toast.error("Amount cannot exceed ₹99,99,99,999.99");
   if(!form.expense_type)              return toast.error("Category is required");
@@ -565,6 +572,25 @@ async function saveExpense(submit){
   finally{drawerSaving.value=false;}
 }
 
+async function cancelExpense(doc){
+  const ok = await confirm({
+    title: "Cancel Expense",
+    body: `Cancel ${doc.name}? This will reverse its GL entries. This cannot be undone.`,
+    okLabel: "Cancel Expense",
+    cancelLabel: "Go back",
+    okStyle: "danger",
+  });
+  if(!ok) return;
+  cancelling.value=true;
+  try{
+    await apiCancel("Expense", doc.name);
+    toast.success(`${doc.name} cancelled`);
+    viewOpen.value=false;
+    await load();
+  }catch(e){toast.error(e.message||"Failed to cancel expense");}
+  finally{cancelling.value=false;}
+}
+
 async function uploadAttachment(file, doctype, docname) {
   const fd = new FormData();
   fd.append("file", file, file.name);
@@ -581,7 +607,7 @@ async function uploadAttachment(file, doctype, docname) {
   const data = await res.json();
   return data?.message?.file_url || data?.file_url || null;
 }
-onMounted(() => { load(); fetchVendors(""); fetchExpenseItems(""); fetchExpenseAccounts(""); fetchPaidThroughAccounts(""); fetchCostCenters(); });
+onMounted(() => { load(); fetchVendors(""); fetchExpenseAccounts(""); fetchPaidThroughAccounts(""); fetchCostCenters(); });
 </script>
 
 <style scoped>

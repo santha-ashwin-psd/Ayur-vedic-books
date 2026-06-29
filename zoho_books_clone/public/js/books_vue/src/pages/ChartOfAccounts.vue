@@ -23,7 +23,7 @@
       <button class="b-btn b-btn-ghost" @click="collapseAll"><span v-html="icon('chevR',13)"></span> Collapse All</button>
       <button class="b-btn b-btn-ghost" @click="load"><span v-html="icon('refresh',13)"></span> Refresh</button>
     </div>
-    <button class="b-btn b-btn-primary" @click="openAdd()"><span v-html="icon('plus',13)"></span> Add Account</button>
+    <button class="b-btn b-btn-primary" @click="openAdd()" :disabled="!$canWrite('accounts')" :title="!$canWrite('accounts') ? 'Read-only access' : ''"><span v-html="icon('plus',13)"></span> Add Account</button>
   </div>
 
   <div class="b-card" style="padding:0;overflow:hidden">

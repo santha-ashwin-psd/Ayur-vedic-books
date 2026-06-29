@@ -10,7 +10,7 @@
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="sales-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
-        <button class="sales-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Expense</button>
+        <button class="sales-btn-primary" @click="openNew" :disabled="!$canWrite('bills')" :title="!$canWrite('bills') ? 'Read-only access' : ''"><span v-html="icon('plus',13)"></span> New Expense</button>
       </div>
     </div>
 

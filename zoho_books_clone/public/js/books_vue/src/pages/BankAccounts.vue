@@ -8,7 +8,7 @@
       </div>
       <div class="ba-primary-btn">
         <button class="ba-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
-        <button class="ba-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Account</button>
+        <button class="ba-btn-primary" @click="openNew" :disabled="!$canWrite('banking')" :title="!$canWrite('banking') ? 'Read-only access' : ''"><span v-html="icon('plus',13)"></span> New Account</button>
       </div>
     </div>
 

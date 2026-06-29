@@ -57,26 +57,31 @@ const router = useRouter();
 const members = ref([]);
 const loading = ref(true);
 
+// Module keys match the backend Books Company Member `mod_*` flags and the
+// gating in utils/access.py. Per-role rows show each role's default grants;
+// admins can fine-tune any member's modules on the Users page.
 const ROLES = [
   { name: "Books Admin",   desc: "Full access — manages users, settings, and all transactions", color: "#2563eb", bg: "#eff6ff",
-    perms: { invoices:1, bills:1, banking:1, inventory:1, accounting:1, reports:1, settings:1, users:1 } },
-  { name: "Accountant",    desc: "Creates & edits transactions, views reports. No user/settings access", color: "#1971C2", bg: "#E7F5FF",
-    perms: { invoices:1, bills:1, banking:1, inventory:1, accounting:1, reports:1, settings:0, users:0 } },
-  { name: "Books Manager", desc: "Operational manager — read-write on transactions, no user mgmt", color: "#2F9E44", bg: "#EBFBEE",
-    perms: { invoices:1, bills:1, banking:1, inventory:1, accounting:0, reports:1, settings:0, users:0 } },
-  { name: "Books Viewer",  desc: "Read-only across documents and reports", color: "#868E96", bg: "#F1F3F5",
-    perms: { invoices:0, bills:0, banking:0, inventory:0, accounting:0, reports:1, settings:0, users:0 } },
+    perms: { invoices:1, bills:1, payments:1, banking:1, inventory:1, accounts:1, reports:1, customers:1, taxes:1, admin:1 } },
+  { name: "Accountant",    desc: "Read-write on transactions & accounting, views reports. No admin/user access", color: "#1971C2", bg: "#E7F5FF",
+    perms: { invoices:1, bills:1, payments:1, banking:1, inventory:1, accounts:1, reports:1, customers:1, taxes:1, admin:0 } },
+  { name: "Books Manager", desc: "Operational manager — read-write on transactions, no accounting/admin", color: "#2F9E44", bg: "#EBFBEE",
+    perms: { invoices:1, bills:1, payments:1, banking:1, inventory:1, accounts:0, reports:1, customers:1, taxes:0, admin:0 } },
+  { name: "Books Viewer",  desc: "Read-only — can view its modules but cannot create, edit, or delete", color: "#868E96", bg: "#F1F3F5",
+    perms: { invoices:1, bills:1, payments:1, banking:0, inventory:0, accounts:0, reports:1, customers:1, taxes:0, admin:0 } },
 ];
 
 const MODULES = [
-  { key: "invoices",   lbl: "Sales / Invoicing" },
-  { key: "bills",      lbl: "Purchases / Bills" },
-  { key: "banking",    lbl: "Banking" },
-  { key: "inventory",  lbl: "Inventory" },
-  { key: "accounting", lbl: "Accounting" },
-  { key: "reports",    lbl: "Reports" },
-  { key: "settings",   lbl: "Settings" },
-  { key: "users",      lbl: "User Mgmt" },
+  { key: "invoices",  lbl: "Sales / Invoicing" },
+  { key: "bills",     lbl: "Purchases / Bills" },
+  { key: "payments",  lbl: "Payments" },
+  { key: "banking",   lbl: "Banking" },
+  { key: "inventory", lbl: "Inventory" },
+  { key: "accounts",  lbl: "Accounting" },
+  { key: "reports",   lbl: "Reports" },
+  { key: "customers", lbl: "Customers & Suppliers" },
+  { key: "taxes",     lbl: "Taxes & GST" },
+  { key: "admin",     lbl: "Admin / Settings" },
 ];
 
 async function load() {

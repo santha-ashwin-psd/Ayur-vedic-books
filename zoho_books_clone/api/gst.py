@@ -46,6 +46,12 @@ def pay_gst(
       DR Output IGST Payable  (reduce liability)
       CR Bank GL Account      (cash outflow)
     """
+    # Authorization: posts GL (money out) — require accounts-module write access
+    # and reject a company that isn't the caller's own.
+    from zoho_books_clone.utils.access import require_module, assert_company
+    assert_company(company)
+    require_module("accounts", write=True)
+
     cgst  = flt(cgst_amount)
     sgst  = flt(sgst_amount)
     igst  = flt(igst_amount)
@@ -133,6 +139,12 @@ def create_tds_entry(
       CR TDS Payable        (TDS withheld for government)
       CR Accounts Payable   (net amount due to vendor)
     """
+    # Authorization: posts GL — require accounts-module write access and reject a
+    # company that isn't the caller's own.
+    from zoho_books_clone.utils.access import require_module, assert_company
+    assert_company(company)
+    require_module("accounts", write=True)
+
     amount_f = flt(amount)
     tds_f    = flt(tds_amount)
     net      = round(amount_f - tds_f, 2)

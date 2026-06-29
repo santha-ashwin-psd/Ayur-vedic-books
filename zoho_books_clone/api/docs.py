@@ -159,6 +159,8 @@ def get_doc(doctype, name):
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "read")
     # Set ignore_permissions BEFORE fetching so frappe.get_doc doesn't run
     # Frappe's internal role-permission check (which blocks the Books Manager role).
     frappe.flags.ignore_permissions = True
@@ -184,6 +186,12 @@ def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+
+    # Module read gating — a user without the module flag gets an empty list
+    # rather than another tenant's or another module's data.
+    from zoho_books_clone.utils.access import can_read
+    if not can_read(doctype):
+        return []
 
     if isinstance(fields, str):
         try:
@@ -456,6 +464,11 @@ def save_doc(doc):
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
 
+    # Custom role/module authorization (on top of tenancy): read-only roles and
+    # users without the relevant module flag cannot create or edit.
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "write")
+
     # Strip stale child-row identity fields so Frappe replaces rows cleanly
     # instead of trying to look up rows by old hash names that may no longer exist.
     _CHILD_META_KEYS = ("name", "parent", "parenttype", "parentfield", "owner",
@@ -572,6 +585,9 @@ def submit_doc(doctype, name, ignore_budget_warning=0):
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
 
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "submit")
+
     d = frappe.get_doc(doctype, name)
     d.flags.ignore_permissions = True
     if int(ignore_budget_warning or 0) == 1:
@@ -629,6 +645,8 @@ def cancel_doc(doctype, name):
     """Cancel a submitted document."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "cancel")
     d = frappe.get_doc(doctype, name)
     d.flags.ignore_permissions = True
     d.cancel()
@@ -644,6 +662,9 @@ def delete_doc(doctype, name):
     # don't prevent deletion after we've confirmed the session is valid.
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "delete")
 
     # force=True bypasses before_delete hooks, so we run the lock check explicitly
     # before handing off to Frappe's delete path.

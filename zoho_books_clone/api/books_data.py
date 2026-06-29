@@ -1573,6 +1573,52 @@ def get_cost_center_spend(company=None):
     return result
 
 
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_cost_center_transactions(cost_center, company=None, period=None, limit=100):
+    """
+    The posted General Ledger lines that make up a single cost center's spend
+    for its budget period — i.e. the drill-down behind get_cost_center_spend().
+
+    Uses the same account filter as get_cost_center_spend (excludes Receivable /
+    Payable / Bank / Cash) and the same period window, so the summed
+    (debit - credit) of the returned rows reconciles to that cost center's
+    spend figure.
+
+    Returns a list of dicts ordered newest-first:
+        posting_date, account, voucher_type, voucher_no, debit, credit, party, remarks
+    """
+    if not cost_center:
+        return []
+    if not company:
+        company = _get_company(frappe.session.user)
+
+    # Default to the cost center's own configured budget period.
+    if not period:
+        period = frappe.db.get_value("Cost Center", cost_center, "budget_period") or "Annual"
+
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 100
+    limit = max(1, min(limit, 500))
+
+    from_date, to_date = _get_period_date_range(period)
+
+    return frappe.db.sql("""
+        SELECT gl.posting_date, gl.account, gl.voucher_type, gl.voucher_no,
+               gl.debit, gl.credit, gl.party, gl.remarks
+        FROM `tabGeneral Ledger Entry` gl
+        JOIN `tabAccount` a ON a.name = gl.account
+        WHERE gl.company = %s
+          AND gl.cost_center = %s
+          AND gl.posting_date BETWEEN %s AND %s
+          AND IFNULL(gl.is_cancelled, 0) = 0
+          AND a.account_type NOT IN ('Receivable', 'Payable', 'Bank', 'Cash')
+        ORDER BY gl.posting_date DESC, gl.creation DESC
+        LIMIT %s
+    """, (company, cost_center, from_date, to_date, limit), as_dict=True)
+
+
 # ── CHART OF ACCOUNTS ─────────────────────────────────────────────────────────
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])

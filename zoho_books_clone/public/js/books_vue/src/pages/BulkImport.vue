@@ -7,7 +7,7 @@
       <div class="bi-title">Bulk Import</div>
       <div class="bi-subtitle">Import your business data quickly and accurately using a CSV file.</div>
     </div>
-    <button class="bi-download-btn" @click="downloadSample">
+    <button class="sales-btn-ghost bi-download-btn" @click="downloadSample">
       <span v-html="icon('download',14)" style="vertical-align:-2px;margin-right:6px"></span> Download Sample CSV
     </button>
   </div>
@@ -27,8 +27,8 @@
       <button v-for="t in filteredTypes" :key="t.key"
         class="bi-type-card" :class="{ active: dtype===t.key }"
         @click="switchType(t.key)">
-        <div class="bi-type-icon-wrap" :style="{ background: t.iconBg || '#EEF2FF' }">
-          <span class="bi-type-icon" :style="{ color: t.iconColor || '#4C6EF5' }" v-html="icon(t.icon, 20)"></span>
+        <div class="bi-type-icon-wrap" :style="{ background: t.iconBg || '#eaf1ff' }">
+          <span class="bi-type-icon" :style="{ color: t.iconColor || '#1a6ef7' }" v-html="icon(t.icon, 20)"></span>
         </div>
         <span class="bi-type-label">{{t.label}}</span>
         <span class="bi-type-req">{{requiredCountFor(t)}} required field{{requiredCountFor(t)===1?'':'s'}}</span>
@@ -73,9 +73,9 @@
           <template v-if="!fileName">
             <div class="bi-dz-icon-stack">
               <svg width="52" height="60" viewBox="0 0 52 60" fill="none">
-                <rect x="2" y="2" width="40" height="52" rx="4" fill="#EEF2FF" stroke="#C5D0FF" stroke-width="1.5"/>
-                <rect x="10" y="2" width="40" height="52" rx="4" fill="white" stroke="#C5D0FF" stroke-width="1.5"/>
-                <text x="30" y="32" text-anchor="middle" font-size="9" font-weight="700" fill="#4C6EF5" font-family="sans-serif">CSV</text>
+                <rect x="2" y="2" width="40" height="52" rx="4" fill="#eaf1ff" stroke="#bfdbfe" stroke-width="1.5"/>
+                <rect x="10" y="2" width="40" height="52" rx="4" fill="white" stroke="#bfdbfe" stroke-width="1.5"/>
+                <text x="30" y="32" text-anchor="middle" font-size="9" font-weight="700" fill="#1a6ef7" font-family="sans-serif">CSV</text>
               </svg>
               <div class="bi-dz-upload-badge">
                 <span v-html="icon('upload', 12)"></span>
@@ -245,7 +245,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in pagedRows" :key="row.idx" :class="'bi-row-'+row.status">
+          <tr v-for="row in paged" :key="row.idx" :class="'bi-row-'+row.status">
             <td><input type="checkbox" :checked="included[row.idx]" @change="toggleIncluded(row.idx, $event.target.checked)"/></td>
             <td class="c-muted">{{row.rowNumber}}</td>
             <td>
@@ -263,7 +263,7 @@
               <span v-else :class="{'bi-cell-empty': !row.data[f.key]}">{{row.data[f.key] || '—'}}</span>
             </td>
           </tr>
-          <tr v-if="!pagedRows.length">
+          <tr v-if="!paged.length">
             <td :colspan="displayFields.length+3" class="b-empty">No rows match this filter.</td>
           </tr>
         </tbody>
@@ -271,14 +271,7 @@
     </div>
 
     <div class="bi-pager">
-      <div class="c-muted" style="font-size:12px">
-        Showing {{pagedRangeLabel}} of {{filteredRows.length}} filtered row{{filteredRows.length!==1?'s':''}}
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button class="b-icon-btn" :disabled="page<=1" @click="page--"><span v-html="icon('chevL',14)"></span></button>
-        <span class="c-muted" style="font-size:12px">Page {{page}} / {{totalPages}}</span>
-        <button class="b-icon-btn" :disabled="page>=totalPages" @click="page++"><span v-html="icon('chevR',14)"></span></button>
-      </div>
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="totalItems" />
     </div>
 
     <div class="bi-footer-bar">
@@ -352,13 +345,14 @@ import { ref, reactive, computed } from "vue";
 import { useRouter } from "vue-router";
 import { apiPOST, apiGET } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { usePagination } from "../composables/usePagination.js";
 import { icon } from "../utils/icons.js";
+import Pagination from "../components/Pagination.vue";
 
 const { toast } = useToast();
 const router = useRouter();
 
 const BATCH_SIZE = 40;
-const PAGE_SIZE = 25;
 
 const STEPS = [
   { n: 1, label: "Upload",       sub: "Upload your CSV file" },
@@ -371,7 +365,7 @@ const STEPS = [
 // ── Field definitions mirror api/import_data.py exactly (keys, required-ness,
 //    and types) so client-side validation/mapping predicts server behaviour. ──
 const TYPES = [
-  { key: "Customer",        label: "Customers",      icon: "users",    iconBg: "#EEF2FF", iconColor: "#4C6EF5", route: "/customers", fields: [
+  { key: "Customer",        label: "Customers",      icon: "users",    iconBg: "#eaf1ff", iconColor: "#1a6ef7", route: "/customers", fields: [
     { key: "customer_name", label: "Customer Name", required: true,  type: "text" },
     { key: "customer_type", label: "Customer Type", required: false, type: "text" },
     { key: "email_id",      label: "Email",          required: false, type: "email" },
@@ -537,7 +531,6 @@ const editableRows  = ref([]);   // [{ [targetFieldKey]: value }] snapshot, edit
 const included      = ref([]);   // parallel boolean array
 const searchQuery   = ref("");
 const statusFilter  = ref("all");
-const page          = ref(1);
 const editing       = ref(null); // { idx, field }
 
 // Step 4 — import
@@ -797,24 +790,15 @@ const filteredRows = computed(() => {
   return rows;
 });
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredRows.value.length / PAGE_SIZE)));
-const pagedRows = computed(() => {
-  const start = (page.value - 1) * PAGE_SIZE;
-  return filteredRows.value.slice(start, start + PAGE_SIZE);
-});
-const pagedRangeLabel = computed(() => {
-  if (!filteredRows.value.length) return "0";
-  const start = (page.value - 1) * PAGE_SIZE + 1;
-  const end = Math.min(filteredRows.value.length, start + PAGE_SIZE - 1);
-  return `${start}–${end}`;
-});
+// Shared client-side pagination (same component used across list pages)
+const { page, pageSize, paged, totalItems } = usePagination(filteredRows, { storageKey: "bulkimport" });
 
 function setStatusFilter(f) { statusFilter.value = f; page.value = 1; }
 
 const includedCount = computed(() => included.value.filter(Boolean).length);
-const allVisibleIncluded = computed(() => pagedRows.value.length > 0 && pagedRows.value.every(r => included.value[r.idx]));
+const allVisibleIncluded = computed(() => paged.value.length > 0 && paged.value.every(r => included.value[r.idx]));
 function toggleIncluded(idx, val) { included.value[idx] = val; }
-function toggleAllVisible(val) { pagedRows.value.forEach(r => { included.value[r.idx] = val; }); }
+function toggleAllVisible(val) { paged.value.forEach(r => { included.value[r.idx] = val; }); }
 
 function startEdit(idx, field) { editing.value = { idx, field }; }
 
@@ -902,20 +886,15 @@ function goToList() {
 
 
 <style scoped>
-.bi-page { display: flex; flex-direction: column; gap: 14px; }
+.bi-page { display: flex; flex-direction: column; gap: 14px; padding: 24px; }
 
 /* ── Header ── */
 .bi-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 2px; }
 .bi-title { font-size: 20px; font-weight: 800; color: #111827; letter-spacing: -0.3px; }
 .bi-subtitle { font-size: 13px; color: #6B7280; margin-top: 3px; }
 
-.bi-download-btn {
-  display: inline-flex; align-items: center; white-space: nowrap; flex-shrink: 0;
-  border: 1.5px solid #3B5BDB; color: #3B5BDB; background: #fff;
-  border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600;
-  cursor: pointer; transition: background .12s;
-}
-.bi-download-btn:hover { background: #EEF2FF; }
+/* Layout only — visual styling comes from the shared .sales-btn-ghost */
+.bi-download-btn { white-space: nowrap; flex-shrink: 0; }
 
 /* ── Category tabs + type cards wrapper ── */
 .bi-category-section {
@@ -931,7 +910,7 @@ function goToList() {
   transition: color .12s, border-color .12s; display: inline-flex; align-items: center;
 }
 .bi-cat-tab:hover { color: #374151; }
-.bi-cat-tab.active { color: #3B5BDB; border-bottom-color: #3B5BDB; }
+.bi-cat-tab.active { color: #1a6ef7; border-bottom-color: #1a6ef7; }
 
 /* ── Type selector cards ── */
 .bi-type-row {
@@ -946,8 +925,8 @@ function goToList() {
   margin: 0 4px;
   transition: border-color .12s, background .12s, box-shadow .12s;
 }
-.bi-type-card:hover { border-color: #BAC8FF; background: #fff; box-shadow: 0 1px 6px rgba(59,91,219,.07); }
-.bi-type-card.active { border-color: #3B5BDB; background: #fff; box-shadow: 0 0 0 3px rgba(59,91,219,.09); }
+.bi-type-card:hover { border-color: #bfdbfe; background: #fff; box-shadow: 0 1px 6px rgba(26,110,247,.07); }
+.bi-type-card.active { border-color: #1a6ef7; background: #fff; box-shadow: 0 0 0 3px rgba(26,110,247,.09); }
 .bi-type-icon-wrap {
   width: 36px; height: 36px; border-radius: 9px;
   display: flex; align-items: center; justify-content: center; margin-bottom: 5px;
@@ -955,11 +934,11 @@ function goToList() {
 .bi-type-icon { display: flex; align-items: center; }
 .bi-type-label { font-size: 13px; font-weight: 700; color: #111827; }
 .bi-type-req { font-size: 11px; color: #9CA3AF; }
-.bi-type-card.active .bi-type-req { color: #3B5BDB; }
+.bi-type-card.active .bi-type-req { color: #1a6ef7; }
 .bi-type-check {
   position: absolute; top: 8px; right: 8px;
   width: 17px; height: 17px; border-radius: 50%;
-  background: #3B5BDB; color: #fff;
+  background: #1a6ef7; color: #fff;
   display: flex; align-items: center; justify-content: center;
 }
 
@@ -976,11 +955,11 @@ function goToList() {
   font-size: 12px; font-weight: 700; background: #fff; color: #9CA3AF;
   border: 2px solid #D1D5DB; transition: all .15s;
 }
-.bi-step.active .bi-step-dot { background: #3B5BDB; border-color: #3B5BDB; color: #fff; box-shadow: 0 0 0 3px rgba(59,91,219,.15); }
+.bi-step.active .bi-step-dot { background: #1a6ef7; border-color: #1a6ef7; color: #fff; box-shadow: 0 0 0 3px rgba(26,110,247,.15); }
 .bi-step.done .bi-step-dot { background: #ECFDF5; border-color: #6EE7B7; color: #059669; }
 .bi-step-info { display: flex; flex-direction: column; gap: 1px; }
 .bi-step-label { font-size: 12px; font-weight: 600; color: #9CA3AF; white-space: nowrap; }
-.bi-step.active .bi-step-label { color: #3B5BDB; }
+.bi-step.active .bi-step-label { color: #1a6ef7; }
 .bi-step.done .bi-step-label { color: #059669; }
 .bi-step-sub { font-size: 11px; color: #D1D5DB; white-space: nowrap; }
 .bi-step.active .bi-step-sub { color: #93C5FD; }
@@ -988,7 +967,7 @@ function goToList() {
 .bi-step-line.filled { background: #6EE7B7; }
 .bi-step-line.flowing::after {
   content: ""; position: absolute; inset: 0;
-  background: repeating-linear-gradient(90deg, #3B5BDB 0 8px, transparent 8px 16px);
+  background: repeating-linear-gradient(90deg, #1a6ef7 0 8px, transparent 8px 16px);
   animation: bi-flow 0.6s linear infinite;
 }
 @keyframes bi-flow { from { transform: translateX(-16px); } to { transform: translateX(0); } }
@@ -1002,33 +981,33 @@ function goToList() {
 .bi-upload-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; margin-top: 16px; }
 .bi-dropzone-wrap { display: flex; flex-direction: column; gap: 12px; }
 .bi-dropzone {
-  border: 2px dashed #BAC8FF; border-radius: 14px; padding: 44px 24px;
+  border: 2px dashed #bfdbfe; border-radius: 14px; padding: 44px 24px;
   text-align: center; cursor: pointer;
-  transition: background .15s, border-color .15s; background: #F8F9FF;
+  transition: background .15s, border-color .15s; background: #f8faff;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 4px; min-height: 230px;
 }
-.bi-dropzone:hover, .bi-dropzone.dragging { background: #EEF2FF; border-color: #4C6EF5; }
+.bi-dropzone:hover, .bi-dropzone.dragging { background: #eaf1ff; border-color: #1a6ef7; }
 .bi-dropzone.has-file { cursor: default; border-style: solid; border-color: #6EE7B7; background: #F0FDF9; }
 .bi-dz-icon-stack { position: relative; width: 60px; height: 66px; margin-bottom: 12px; }
 .bi-dz-upload-badge {
   position: absolute; bottom: 0; right: -4px;
   width: 22px; height: 22px; border-radius: 50%;
-  background: #3B5BDB; color: #fff; display: flex; align-items: center; justify-content: center;
-  border: 2px solid #F8F9FF;
+  background: #1a6ef7; color: #fff; display: flex; align-items: center; justify-content: center;
+  border: 2px solid #f8faff;
 }
 .bi-dz-title { font-size: 14px; font-weight: 700; color: #374151; }
-.bi-dz-browse { font-size: 13px; color: #3B5BDB; font-weight: 500; margin-top: 3px; }
+.bi-dz-browse { font-size: 13px; color: #1a6ef7; font-weight: 500; margin-top: 3px; }
 .bi-dz-sub { font-size: 12px; color: #9CA3AF; margin-top: 8px; }
 .bi-dz-icon { color: #059669; margin-bottom: 4px; }
 .bi-dz-icon.ok { color: #059669; }
 .bi-dz-remove { margin-top: 10px; font-size: 11.5px; padding: 4px 10px; }
 .bi-secure-note {
   display: flex; align-items: flex-start; gap: 8px;
-  background: #EEF2FF; border-radius: 8px; padding: 9px 12px;
+  background: #eaf1ff; border-radius: 8px; padding: 9px 12px;
 }
-.bi-secure-icon { color: #3B5BDB; margin-top: 1px; flex-shrink: 0; }
-.bi-secure-title { font-size: 12px; font-weight: 600; color: #3B5BDB; }
+.bi-secure-icon { color: #1a6ef7; margin-top: 1px; flex-shrink: 0; }
+.bi-secure-title { font-size: 12px; font-weight: 600; color: #1a6ef7; }
 .bi-secure-sub { font-size: 11px; color: #6B7280; }
 .bi-req-panel { padding: 18px; border: 1px solid #E5E7EB; border-radius: 12px; background: #FAFAFA; display: flex; flex-direction: column; }
 .bi-req-panel-title { font-size: 14px; font-weight: 700; color: #111827; margin-bottom: 4px; }
@@ -1068,7 +1047,7 @@ function goToList() {
 /* ── Step 3 ── */
 .bi-summary-row { display: flex; gap: 8px; align-items: center; padding: 12px 20px; border-bottom: 1px solid #F3F4F6; flex-wrap: wrap; }
 .bi-summary-chip { border: 1px solid #E5E7EB; background: #fff; border-radius: 18px; padding: 5px 12px; font-size: 12px; color: #374151; cursor: pointer; display: flex; gap: 5px; align-items: center; }
-.bi-summary-chip.active { background: #3B5BDB; color: #fff; border-color: #3B5BDB; }
+.bi-summary-chip.active { background: #1a6ef7; color: #fff; border-color: #1a6ef7; }
 .bi-summary-chip.green.active { background: #059669; border-color: #059669; }
 .bi-summary-chip.blue.active { background: #1D4ED8; border-color: #1D4ED8; }
 .bi-summary-chip.amber.active { background: #D97706; border-color: #D97706; }
@@ -1080,21 +1059,21 @@ function goToList() {
 .bi-row-skip { background: #FFFBEB; }
 .bi-row-fail { background: #FEF2F2; }
 .bi-cell { font-size: 12px; white-space: nowrap; cursor: text; }
-.bi-cell:hover { background: #F8F9FF; }
+.bi-cell:hover { background: #f8faff; }
 .bi-cell-empty { color: #D1D5DB; }
-.bi-cell-input { font: inherit; font-size: 12px; border: 1px solid #4C6EF5; border-radius: 4px; padding: 2px 5px; width: 100%; min-width: 80px; }
+.bi-cell-input { font: inherit; font-size: 12px; border: 1px solid #1a6ef7; border-radius: 4px; padding: 2px 5px; width: 100%; min-width: 80px; }
 .bi-pager { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-top: 1px solid #F3F4F6; }
 .bi-footer-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-top: 1px solid #F3F4F6; }
 .bi-footer-right { display: flex; align-items: center; gap: 12px; }
 
 /* ── Step 4 ── */
 .bi-importing { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px 20px; text-align: center; }
-.bi-spinner { width: 38px; height: 38px; border-radius: 50%; border: 3px solid #E5E7EB; border-top-color: #3B5BDB; animation: bi-spin 0.8s linear infinite; }
+.bi-spinner { width: 38px; height: 38px; border-radius: 50%; border: 3px solid #E5E7EB; border-top-color: #1a6ef7; animation: bi-spin 0.8s linear infinite; }
 @keyframes bi-spin { to { transform: rotate(360deg); } }
 .bi-importing-title { font-size: 14px; font-weight: 700; color: #111827; }
 .bi-importing-sub { font-size: 12.5px; color: #9CA3AF; }
 .bi-progress-track { width: 100%; max-width: 360px; height: 8px; border-radius: 6px; background: #F3F4F6; overflow: hidden; margin: 6px 0; }
-.bi-progress-fill { height: 100%; background: linear-gradient(90deg, #4C6EF5, #3B5BDB); transition: width .25s ease; }
+.bi-progress-fill { height: 100%; background: linear-gradient(90deg, #1a6ef7, #1a6ef7); transition: width .25s ease; }
 
 /* ── Step 5 ── */
 .bi-results-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 16px 0 20px; }
@@ -1117,11 +1096,43 @@ function goToList() {
 .bi-error-row { font-weight: 600; color: #9CA3AF; flex-shrink: 0; }
 .bi-error-msg { color: #DC2626; }
 
-@media (max-width: 760px) {
+/* Blue focus rings, matching the rest of the app */
+.bi-map-select:focus, .bi-search:focus-within, .bi-cell-input:focus {
+  border-color: #1a6ef7; outline: none;
+}
+
+/* ── Responsive ladder (mirrors styles/list.css breakpoints) ── */
+@media (max-width: 1023px) {
+  .bi-page { padding: 16px; }
   .bi-upload-grid, .bi-map-grid { grid-template-columns: 1fr; }
-  .bi-results-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 767px) {
+  .bi-page { padding: 12px; gap: 12px; }
+  .bi-head { flex-direction: column; align-items: stretch; }
+  .bi-stepper { overflow-x: auto; }
   .bi-step-sub { display: none; }
+  .bi-step-label { font-size: 11px; }
+  .bi-results-grid { grid-template-columns: 1fr; }
+  .bi-type-card { min-width: 130px; }
+  .bi-card { padding: 18px; }
+}
+@media (max-width: 599px) {
+  .bi-page { padding: 10px; }
+  .bi-summary-row { gap: 6px; }
+  .bi-search { margin-left: 0 !important; width: 100%; }
+  .bi-search input { width: 100%; }
+  .bi-footer-bar, .bi-step-actions { flex-direction: column; align-items: stretch; gap: 10px; }
+  .bi-footer-right { flex-direction: column; align-items: stretch; gap: 8px; }
+  .bi-footer-right .b-btn, .bi-step-actions .b-btn { width: 100%; justify-content: center; }
+  .bi-step-actions-hint { margin-right: 0; text-align: center; }
+  .bi-card { padding: 16px; }
+}
+@media (max-width: 479px) {
+  .bi-page { padding: 8px; }
+  .bi-step-dot { width: 24px; height: 24px; font-size: 11px; }
   .bi-step-label { font-size: 10px; }
-  .bi-type-card { min-width: 110px; }
+  .bi-step-line { min-width: 14px; margin: 0 6px; }
+  .bi-type-card { min-width: 120px; }
+  .bi-cell { font-size: 11.5px; }
 }
 </style>

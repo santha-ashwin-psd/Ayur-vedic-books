@@ -1000,9 +1000,26 @@ const collapsed = reactive({ address: false, otherDetails: false });
 
 const SUPPLIER_TYPES = ["Company", "Individual"];
 
+// Supplier type metadata
+const STYPE_META = {
+  "Company":    { bg: "#dbeafe", text: "#1d4ed8", icon: "🏢" },
+  "Individual": { bg: "#f1f5f9", text: "#475569", icon: "👤" },
+};
+
+// Supplier groups seeded for Ayurvedic raw material sourcing
+const supplierGroups = ref([]);
+const supplierGroupOptions = [
+  "Raw Material Supplier", "Herb Supplier", "Mineral Supplier",
+  "Packing Material Supplier", "Service Provider",
+  "Equipment Supplier", "Contract Manufacturer", "Transporter",
+];
+
+const groupFilterV    = ref("");
+
 const form = reactive({
   name: "",
   supplier_name: "", supplier_type: "Company",
+  supplier_group: "",
   tax_id: "", default_currency: "INR", payment_terms: "",
   email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
   address_line1: "", address_line2: "",
@@ -1026,13 +1043,15 @@ const filtered = computed(() => {
   let r = list.value;
   if (activeFilter.value === "active")   r = r.filter((v) => !v.disabled);
   if (activeFilter.value === "disabled") r = r.filter((v) =>  v.disabled);
+  if (groupFilterV.value) r = r.filter((v) => v.supplier_group === groupFilterV.value);
   const q = search.value.toLowerCase().trim();
   if (q) r = r.filter((v) =>
-    (v.supplier_name || "").toLowerCase().includes(q) ||
-    (v.name          || "").toLowerCase().includes(q) ||
-    (v.email_id      || "").toLowerCase().includes(q) ||
-    (v.mobile_no     || "").toLowerCase().includes(q) ||
-    (v.tax_id        || "").toLowerCase().includes(q)
+    (v.supplier_name  || "").toLowerCase().includes(q) ||
+    (v.name           || "").toLowerCase().includes(q) ||
+    (v.email_id       || "").toLowerCase().includes(q) ||
+    (v.mobile_no      || "").toLowerCase().includes(q) ||
+    (v.tax_id         || "").toLowerCase().includes(q) ||
+    (v.supplier_group || "").toLowerCase().includes(q)
   );
   return r;
 });
@@ -1041,11 +1060,22 @@ async function load() {
   loading.value = true;
   try {
     const rows = await apiList("Supplier", {
-      fields: ["name","supplier_name","supplier_type","email_id","mobile_no",
+      fields: ["name","supplier_name","supplier_type","supplier_group","email_id","mobile_no",
         "tax_id","city","state","disabled","default_currency"],
       order: "supplier_name asc", limit: 300,
     });
     list.value = rows || [];
+
+    // Load supplier groups
+    try {
+      const grps = await apiList("Supplier Group", { fields: ["name"], order: "name asc", limit: 100 }).catch(() => null);
+      if (grps && grps.length) {
+        supplierGroups.value = grps.map(g => g.name);
+      } else {
+        supplierGroups.value = supplierGroupOptions;
+      }
+    } catch { supplierGroups.value = supplierGroupOptions; }
+
   } catch (e) {
     toast("Failed to load vendors: " + (e.message || e), "error");
   } finally { loading.value = false; }

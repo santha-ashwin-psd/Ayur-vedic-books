@@ -6,7 +6,7 @@
     <div class="sales-toolbar">
       <div class="cust-toolbar-left">
         <div class="sales-pills">
-          <button v-for="f in [{k:'all',l:'All'},{k:'active',l:'Active'},{k:'disabled',l:'Disabled'}]"
+          <button v-for="f in [{k:'all',l:'All'},{k:'active',l:'Active'},{k:'disabled',l:'Disabled'},{k:'dealer',l:'🏪 Dealers'},{k:'distributor',l:'🚚 Distributors'}]"
             :key="f.k" class="sales-pill" :class="{'active': activeFilter===f.k}"
             @click="activeFilter=f.k">
             {{f.l}}
@@ -15,6 +15,14 @@
         </div>
       </div>
       <div class="cust-toolbar-right">
+        <select v-if="customerGroups.length" class="sales-select" v-model="groupFilter" title="Filter by customer group">
+          <option value="">All Groups</option>
+          <option v-for="g in customerGroups" :key="g" :value="g">{{ g }}</option>
+        </select>
+        <select v-if="territories.length" class="sales-select" v-model="territoryFilter" title="Filter by territory">
+          <option value="">All Territories</option>
+          <option v-for="t in territories" :key="t" :value="t">{{ t }}</option>
+        </select>
         <div class="sales-search">
           <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
           <input v-model="search" placeholder="Search customers…" class="sales-search-input" autocomplete="off"/>
@@ -72,6 +80,7 @@
               </th>
               <th class="vt-th">Customer Name</th>
               <th class="vt-th">Type</th>
+              <th class="vt-th">Group / Territory</th>
               <th class="vt-th">GSTIN</th>
               <th class="vt-th vt-th-num">Outstanding</th>
               <th class="vt-th">Last Invoice</th>
@@ -114,7 +123,15 @@
                 </div>
               </td>
               <td class="vt-td">
-                <span class="vt-badge" :class="c.customer_type && c.customer_type!=='Individual' ? 'vt-badge-blue' : 'vt-badge-gray'">{{c.customer_type||'—'}}</span>
+                <span class="vt-badge"
+                  :style="CTYPE_META[c.customer_type] ? { background: CTYPE_META[c.customer_type].bg, color: CTYPE_META[c.customer_type].text, border: 'none' } : {}">
+                  {{ CTYPE_META[c.customer_type]?.icon || '' }} {{c.customer_type||'—'}}
+                </span>
+              </td>
+              <td class="vt-td vt-td-secondary">
+                <div v-if="c.customer_group" style="font-size:12px;font-weight:600;color:#374151">{{ c.customer_group }}</div>
+                <div v-if="c.territory" style="font-size:11px;color:#9ca3af;margin-top:2px">📍 {{ c.territory }}</div>
+                <span v-if="!c.customer_group && !c.territory">—</span>
               </td>
               <td class="vt-td vt-td-mono">
                 <span v-if="c.tax_id">{{c.tax_id}}</span>
@@ -700,12 +717,51 @@
 
             <div style="margin-bottom:20px">
               <label class="inv-lbl" style="margin-bottom:8px;display:block">Customer Type</label>
-              <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px">
                 <button v-for="opt in CUSTOMER_TYPES" :key="opt" type="button"
-                  @click="form.customer_type=opt"
-                  :style="'padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;border:1.5px solid '+(form.customer_type===opt?'#16a34a':'#e2e8f0')+';background:'+(form.customer_type===opt?'#f0fdf4':'#fff')+';color:'+(form.customer_type===opt?'#15803d':'#6b7280')">
-                  {{opt}}
+                  @click="form.customer_type = opt"
+                  :style="{
+                    padding:'10px 8px', borderRadius:'10px', fontSize:'12px', fontWeight:'600',
+                    cursor:'pointer', fontFamily:'inherit', transition:'all .15s', textAlign:'center',
+                    border: '1.5px solid ' + (form.customer_type===opt ? CTYPE_META[opt].text : '#e2e8f0'),
+                    background: form.customer_type===opt ? CTYPE_META[opt].bg : '#fff',
+                    color: form.customer_type===opt ? CTYPE_META[opt].text : '#6b7280',
+                    boxShadow: form.customer_type===opt ? '0 0 0 3px ' + CTYPE_META[opt].bg : 'none',
+                  }">
+                  <div style="font-size:18px;margin-bottom:4px">{{ CTYPE_META[opt].icon }}</div>
+                  <div>{{ opt }}</div>
                 </button>
+              </div>
+              <div v-if="form.customer_type && CTYPE_META[form.customer_type]"
+                style="margin-top:8px;padding:7px 12px;border-radius:7px;font-size:12px;font-weight:500"
+                :style="{background: CTYPE_META[form.customer_type].bg, color: CTYPE_META[form.customer_type].text}">
+                {{ CTYPE_META[form.customer_type].icon }} {{ CTYPE_META[form.customer_type].desc }}
+              </div>
+            </div>
+
+            <!-- Customer Group & Territory -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+              <div>
+                <label class="inv-lbl" style="margin-bottom:6px;display:block">Customer Group</label>
+                <select v-model="form.customer_group" class="inv-fi">
+                  <option value="">— Select Group —</option>
+                  <optgroup v-if="form.customer_type==='Distributor'" label="Distributor Groups">
+                    <option v-for="g in customerGroups.filter(g=>g.toLowerCase().includes('distributor'))" :key="g" :value="g">{{ g }}</option>
+                  </optgroup>
+                  <optgroup v-if="form.customer_type==='Dealer'" label="Dealer Groups">
+                    <option v-for="g in customerGroups.filter(g=>g.toLowerCase().includes('dealer'))" :key="g" :value="g">{{ g }}</option>
+                  </optgroup>
+                  <optgroup label="All Groups">
+                    <option v-for="g in customerGroups" :key="g" :value="g">{{ g }}</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div>
+                <label class="inv-lbl" style="margin-bottom:6px;display:block">Territory</label>
+                <select v-model="form.territory" class="inv-fi">
+                  <option value="">— Select Territory —</option>
+                  <option v-for="t in territories" :key="t" :value="t">{{ t }}</option>
+                </select>
               </div>
             </div>
 
@@ -1229,6 +1285,28 @@ const PLACE_OF_SUPPLY = [
 
 const CUSTOMER_TYPES = ["Company", "Individual", "Government", "Dealer", "Distributor"];
 
+// Customer type metadata — colour + description
+const CTYPE_META = {
+  "Company":     { bg: "#dbeafe", text: "#1d4ed8", icon: "🏢", desc: "B2B registered company" },
+  "Individual":  { bg: "#f1f5f9", text: "#475569", icon: "👤", desc: "Direct individual buyer" },
+  "Government":  { bg: "#ede9fe", text: "#6d28d9", icon: "🏛️", desc: "Govt / PSU department" },
+  "Dealer":      { bg: "#fef9c3", text: "#a16207", icon: "🏪", desc: "Authorised dealer / reseller" },
+  "Distributor": { bg: "#dcfce7", text: "#15803d", icon: "🚚", desc: "Regional distributor / stockist" },
+};
+
+// Default customer groups seeded per type (fallback if API is unavailable)
+const DEFAULT_CUSTOMER_GROUPS = {
+  "Company":     ["Wholesale", "Institutional"],
+  "Individual":  ["Retail", "Walk-in"],
+  "Government":  ["Government"],
+  "Dealer":      ["Dealer - Local", "Dealer - Regional", "Dealer - National"],
+  "Distributor": ["Distributor - State", "Distributor - Zone", "Distributor - National"],
+};
+
+// All flat group list loaded from server
+const customerGroups = ref([]);
+const territories    = ref([]);
+
 // ── State ──
 const list = ref([]);
 const lastInvoiceByCust = ref({});   // {customer: {name, date, amount}}
@@ -1330,6 +1408,7 @@ const form = reactive({
   name: "",
   customer_name: "", customer_type: "Company", salutation: "",
   first_name: "", last_name: "", company_name: "",
+  customer_group: "", territory: "",
   gst_treatment: "Registered Business",
   tax_id: "", default_currency: "INR", credit_limit: 0,
   email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
@@ -1463,9 +1542,11 @@ function validateCustomerForm() {
 }
 
 const counts = computed(() => ({
-  all:      list.value.length,
-  active:   list.value.filter((c) => !c.disabled).length,
-  disabled: list.value.filter((c) => c.disabled).length,
+  all:          list.value.length,
+  active:       list.value.filter((c) => !c.disabled).length,
+  disabled:     list.value.filter((c) =>  c.disabled).length,
+  dealer:       list.value.filter((c) => c.customer_type === "Dealer").length,
+  distributor:  list.value.filter((c) => c.customer_type === "Distributor").length,
 }));
 
 const totalOutstanding = computed(() =>
@@ -1499,17 +1580,26 @@ const custKpiCards = computed(() => [
   },
 ]);
 
+const groupFilter     = ref("");
+const territoryFilter = ref("");
+
 const filtered = computed(() => {
   let r = list.value;
-  if (activeFilter.value === "active")   r = r.filter((c) => !c.disabled);
-  if (activeFilter.value === "disabled") r = r.filter((c) =>  c.disabled);
+  if (activeFilter.value === "active")      r = r.filter((c) => !c.disabled);
+  if (activeFilter.value === "disabled")    r = r.filter((c) =>  c.disabled);
+  if (activeFilter.value === "dealer")      r = r.filter((c) => c.customer_type === "Dealer");
+  if (activeFilter.value === "distributor") r = r.filter((c) => c.customer_type === "Distributor");
+  if (groupFilter.value)     r = r.filter((c) => c.customer_group === groupFilter.value);
+  if (territoryFilter.value) r = r.filter((c) => c.territory === territoryFilter.value);
   const q = search.value.toLowerCase().trim();
   if (q) r = r.filter((c) =>
-    (c.customer_name || "").toLowerCase().includes(q) ||
-    (c.name          || "").toLowerCase().includes(q) ||
-    (c.email_id      || "").toLowerCase().includes(q) ||
-    (c.mobile_no     || "").toLowerCase().includes(q) ||
-    (c.tax_id        || "").toLowerCase().includes(q)
+    (c.customer_name  || "").toLowerCase().includes(q) ||
+    (c.name           || "").toLowerCase().includes(q) ||
+    (c.email_id       || "").toLowerCase().includes(q) ||
+    (c.mobile_no      || "").toLowerCase().includes(q) ||
+    (c.tax_id         || "").toLowerCase().includes(q) ||
+    (c.customer_group || "").toLowerCase().includes(q) ||
+    (c.territory      || "").toLowerCase().includes(q)
   );
   return r;
 });
@@ -1519,7 +1609,7 @@ async function load() {
   try {
     const [rows, balances, credits, lastInvs] = await Promise.all([
       apiList("Customer", {
-        fields: ["name","customer_name","customer_type","email_id","mobile_no",
+        fields: ["name","customer_name","customer_type","customer_group","territory","email_id","mobile_no",
           "tax_id","city","state","disabled","default_currency","credit_limit","salutation","gst_treatment"],
         order: "customer_name asc", limit: 300,
       }),
@@ -1529,6 +1619,34 @@ async function load() {
     ]);
     lastInvoiceByCust.value = lastInvs || {};
     list.value = (rows || []).map(c => ({ ...c, outstanding: balances[c.name] || 0, unused_credits: credits[c.name] || 0 }));
+
+    // Load customer groups
+    try {
+      const grps = await apiList("Customer Group", { fields: ["name"], order: "name asc", limit: 200 }).catch(() => null);
+      if (grps && grps.length) {
+        customerGroups.value = grps.map(g => g.name);
+      } else {
+        // Fallback seed list for Ayurvedic distributor/dealer channels
+        customerGroups.value = [
+          "Distributor - State", "Distributor - Zone", "Distributor - National",
+          "Dealer - Local", "Dealer - Regional", "Dealer - National",
+          "Wholesale", "Retail", "Institutional", "Government", "Walk-in", "Online",
+        ];
+      }
+    } catch { customerGroups.value = []; }
+
+    // Load territories
+    try {
+      const terrs = await apiList("Territory", { fields: ["name"], order: "name asc", limit: 200 }).catch(() => null);
+      if (terrs && terrs.length) {
+        territories.value = terrs.map(t => t.name);
+      } else {
+        territories.value = [
+          "Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh", "Telangana",
+          "Maharashtra", "Gujarat", "Rajasthan", "Delhi", "Punjab", "All India",
+        ];
+      }
+    } catch { territories.value = []; }
   } catch (e) {
     toast("Failed to load customers: " + (e.message || e), "error");
   } finally { loading.value = false; }
@@ -1542,6 +1660,7 @@ function resetForm() {
   Object.assign(form, {
     name: "", customer_name: "", customer_type: "Company", salutation: "",
     first_name: "", last_name: "", company_name: "",
+    customer_group: "", territory: "",
     gst_treatment: "Registered Business",
     tax_id: "", default_currency: "INR", credit_limit: 0,
     email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
@@ -1575,6 +1694,8 @@ async function openEdit(name) {
       first_name: doc.first_name || "",
       last_name: doc.last_name || "",
       company_name: doc.company_name || "",
+      customer_group: doc.customer_group || "",
+      territory: doc.territory || "",
       gst_treatment: doc.gst_treatment || "Registered Business",
       tax_id: doc.tax_id || "",
       default_currency: doc.default_currency || "INR",
@@ -1649,6 +1770,8 @@ async function saveCustomer() {
       books_company: booksCompany,
       customer_name: form.customer_name.trim(),
       customer_type: form.customer_type,
+      customer_group: form.customer_group,
+      territory: form.territory,
       salutation: form.salutation,
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),

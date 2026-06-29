@@ -61,12 +61,14 @@ export const NAV = [
   { path: "/inventory/valuation",           label: "Valuation",        icon: "chart",      module: "inventory"  },
   { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },
   { path: "/inventory/price-lists",         label: "Price Lists",      icon: "rupee",      module: "inventory"  },
+  { path: "/inventory/settings",            label: "Settings",         icon: "gear",       module: "inventory"  },
 
   { section: "GST/Taxes" },
   { path: "/gst/gstr1",                     label: "GSTR-1",           icon: "gstfile",    module: "accounts"   },
   { path: "/gst/gstr3b",                    label: "GSTR-3B",          icon: "gstfile",    module: "accounts"   },
   { path: "/gst/einvoice",                  label: "e-Invoice",        icon: "qr",         module: "accounts"   },
   { path: "/gst/tds",                       label: "TDS",              icon: "percent",    module: "accounts"   },
+  { path: "/gst/tax",                       label: "TAX",              icon: "percent",    module: "accounts"   },
 
   { section: "Reports" },
   { path: "/reports",                       label: "All Reports",      icon: "chart",      module: "reports"    },

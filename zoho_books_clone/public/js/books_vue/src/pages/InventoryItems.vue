@@ -81,12 +81,37 @@
     </div>
   </div>
 
-  <!-- ── Secondary stats ── -->
-  <div class="bk-stat-grid">
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Added This Month</div><div class="bk-stat-value">{{ itemsThisMonth }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg Selling Rate</div><div class="bk-stat-value" style="font-size:16px">{{ fmt(avgRate) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/></svg></div></div></div>
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Avg GST Rate</div><div class="bk-stat-value" style="font-size:16px">{{ avgGst }}%</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div></div></div>
-    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Item Groups</div><div class="bk-stat-value" style="font-size:16px">{{ groupCount }}</div></div><div class="bk-stat-icon" style="background:#e5e7eb;color:#6b7280"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div></div></div>
+  <!-- ── Material Type breakdown ── -->
+  <div class="bk-mat-strip">
+    <div class="bk-mat-item clickable" @click="filterTab='rm'">
+      <span class="bk-mat-dot" style="background:#15803d"></span>
+      <span class="bk-mat-label">🌿 Raw Materials</span>
+      <span class="bk-mat-count" style="color:#15803d">{{ counts.rm }}</span>
+    </div>
+    <div class="bk-mat-sep">|</div>
+    <div class="bk-mat-item clickable" @click="filterTab='wip'">
+      <span class="bk-mat-dot" style="background:#a16207"></span>
+      <span class="bk-mat-label">⚙️ WIP</span>
+      <span class="bk-mat-count" style="color:#a16207">{{ counts.wip }}</span>
+    </div>
+    <div class="bk-mat-sep">|</div>
+    <div class="bk-mat-item clickable" @click="filterTab='fg'">
+      <span class="bk-mat-dot" style="background:#1d4ed8"></span>
+      <span class="bk-mat-label">✅ Finished Goods</span>
+      <span class="bk-mat-count" style="color:#1d4ed8">{{ counts.fg }}</span>
+    </div>
+    <div class="bk-mat-sep">|</div>
+    <div class="bk-mat-item clickable" @click="filterTab='pm'">
+      <span class="bk-mat-dot" style="background:#6d28d9"></span>
+      <span class="bk-mat-label">📦 Packing Materials</span>
+      <span class="bk-mat-count" style="color:#6d28d9">{{ counts.pm }}</span>
+    </div>
+    <div class="bk-mat-actions">
+      <button class="bk-mat-add-btn" @click="openAdd('Raw Material')">+ RM</button>
+      <button class="bk-mat-add-btn bk-mat-add-wip" @click="openAdd('Work In Progress')">+ WIP</button>
+      <button class="bk-mat-add-btn bk-mat-add-fg" @click="openAdd('Finished Good')">+ FG</button>
+      <button class="bk-mat-add-btn bk-mat-add-pm" @click="openAdd('Packing Material')">+ PM</button>
+    </div>
   </div>
 
   <!-- ── Bulk action bar ── -->
@@ -131,7 +156,12 @@
           <td @click="openView(row)" data-label="Code"><span class="inv-link">{{row.item_code||row.name}}</span></td>
           <td @click="openView(row)" class="fw-600" data-label="Name">{{row.item_name}}</td>
           <td @click="openView(row)" class="col-hide-tablet" data-label="Group"><span v-if="row.item_group" class="it-group-badge">{{row.item_group}}</span><span v-else class="text-muted">—</span></td>
-          <td @click="openView(row)" data-label="Type"><span class="b-badge b-badge-muted" style="font-size:11px">{{row.item_type||'—'}}</span></td>
+          <td @click="openView(row)" data-label="Type">
+            <span class="b-badge" style="font-size:11px"
+              :style="row.item_type && ITEM_TYPE_COLOR[row.item_type] ? { background: ITEM_TYPE_COLOR[row.item_type].bg, color: ITEM_TYPE_COLOR[row.item_type].text } : {}">
+              {{ ITEM_TYPE_ICONS[row.item_type] || '' }} {{row.item_type||'—'}}
+            </span>
+          </td>
           <td @click="openView(row)" class="text-muted col-hide-tablet mono-sm" data-label="UOM">{{row.stock_uom||'Nos'}}</td>
           <td @click="openView(row)" class="ta-r fw-600 mono-sm" data-label="Rate">{{fmt(row.standard_rate)}}</td>
           <td @click="openView(row)" class="ta-r text-muted col-hide-tablet mono-sm" data-label="GST">{{row.gst_rate||0}}%</td>
@@ -279,6 +309,10 @@
               <div class="vd-row">
                 <span class="vd-row-label">Default UOM</span>
                 <span class="vd-row-val">{{ viewDoc.stock_uom || 'Nos' }}</span>
+              </div>
+              <div class="vd-row" v-if="viewDoc.brand">
+                <span class="vd-row-label">Brand</span>
+                <span class="vd-row-val">{{ viewDoc.brand }}</span>
               </div>
               <div class="vd-row" v-if="viewDoc.hsn_code">
                 <span class="vd-row-label">HSN / SAC</span>
@@ -441,14 +475,22 @@
           </div>
 
           <div class="ad-section">
-            <div class="ad-section-title">Item Type</div>
+            <div class="ad-section-title">Item Type <span class="ad-hint" style="font-size:11px;font-weight:400">(sets stock & valuation defaults)</span></div>
             <div class="ad-type-grid">
               <button v-for="t in ITEM_TYPES" :key="t" type="button"
                 class="ad-type-btn" :class="{ 'ad-type-btn--active': form.item_type === t }"
-                @click="form.item_type = t">
+                @click="form.item_type = t; applyTypeDefaults(t)">
                 <span class="ad-type-icon">{{ ITEM_TYPE_ICONS[t] }}</span>
-                <span class="ad-type-label">{{ t }}</span>
+                <span class="ad-type-label">{{ ITEM_TYPE_LABEL[t] || t }}</span>
               </button>
+            </div>
+            <div v-if="form.item_type" class="ad-type-info-strip" :style="{ background: ITEM_TYPE_COLOR[form.item_type]?.bg || '#f1f5f9', color: ITEM_TYPE_COLOR[form.item_type]?.text || '#475569' }">
+              <span v-if="form.item_type==='Raw Material'">🌿 Raw herbs, minerals, and base ingredients used in manufacturing</span>
+              <span v-else-if="form.item_type==='Work In Progress'">⚙️ Intermediate semi-finished goods in the production pipeline</span>
+              <span v-else-if="form.item_type==='Finished Good'">✅ Final products ready for sale — capsules, tablets, oils, churnam, etc.</span>
+              <span v-else-if="form.item_type==='Packing Material'">📦 Bottles, labels, cartons, foil, and other packaging components</span>
+              <span v-else-if="form.item_type==='Service'">🛠️ Non-stock service — no inventory tracked</span>
+              <span v-else>🛒 General sellable product</span>
             </div>
           </div>
 
@@ -462,6 +504,15 @@
                   <option v-for="u in uomList" :key="u" :value="u">{{u}}</option>
                 </select>
               </div>
+              <div class="ad-field">
+                <label class="ad-label">Brand</label>
+                <select class="ad-input" v-model="form.brand">
+                  <option value="">— None —</option>
+                  <option v-for="b in brandList" :key="b" :value="b">{{b}}</option>
+                </select>
+              </div>
+            </div>
+            <div class="ad-grid-2">
               <div class="ad-field">
                 <label class="ad-label">HSN / SAC Code</label>
                 <input class="ad-input" v-model="form.hsn_code" placeholder="e.g. 847130"/>
@@ -624,11 +675,15 @@ import BulkActionBar from "../components/BulkActionBar.vue";
 const { toast } = useToast();
 
 const tabs = [
-  { key: "all",      label: "All" },
-  { key: "active",   label: "Active" },
-  { key: "inactive", label: "Inactive" },
-  { key: "stock",    label: "Stock Items" },
-  { key: "services", label: "Services" },
+  { key: "all",       label: "All" },
+  { key: "active",    label: "Active" },
+  { key: "inactive",  label: "Inactive" },
+  { key: "rm",        label: "Raw Materials" },
+  { key: "wip",       label: "WIP" },
+  { key: "fg",        label: "Finished Goods" },
+  { key: "pm",        label: "Packing Materials" },
+  { key: "stock",     label: "Stock Items" },
+  { key: "services",  label: "Services" },
 ];
 
 const list       = ref([]);
@@ -651,20 +706,54 @@ const filterGroup   = ref("");
 const warehouses    = ref([]);
 const taxTemplates  = ref([]);
 const uomList       = ref([]);
+const brandList     = ref([]);
 const defaultAccounts = ref({ income: "", expense: "" });
 const accountsList    = ref([]);
 
 const form = reactive({
   name: "", item_code: "", item_name: "", item_group: "", item_type: "Product",
-  stock_uom: "Nos", hsn_code: "", description: "", disabled: 0,
+  stock_uom: "Nos", hsn_code: "", description: "", disabled: 0, brand: "",
   standard_rate: 0, standard_buying_rate: 0, gst_rate: 18, tax_code: "",
   income_account: "", expense_account: "",
   is_stock_item: 1, valuation_method: "FIFO", default_warehouse: "",
   reorder_level: 0, reorder_qty: 0, opening_stock: 0,
 });
 
-const ITEM_TYPES      = ["Product", "Service", "Raw Material", "Finished Good"];
-const ITEM_TYPE_ICONS = { Product: "📦", Service: "🛠️", "Raw Material": "⚙️", "Finished Good": "✅" };
+const ITEM_TYPES      = ["Raw Material", "Work In Progress", "Finished Good", "Packing Material", "Product", "Service"];
+const ITEM_TYPE_ICONS = {
+  "Raw Material":     "🌿",
+  "Work In Progress": "⚙️",
+  "Finished Good":    "✅",
+  "Packing Material": "📦",
+  "Product":          "🛒",
+  "Service":          "🛠️",
+};
+const ITEM_TYPE_LABEL = {
+  "Raw Material":     "Raw Material",
+  "Work In Progress": "WIP",
+  "Finished Good":    "Finished Good",
+  "Packing Material": "Packing Material",
+  "Product":          "Product",
+  "Service":          "Service",
+};
+// Badge colours per material type
+const ITEM_TYPE_COLOR = {
+  "Raw Material":     { bg: "#dcfce7", text: "#15803d" },
+  "Work In Progress": { bg: "#fef9c3", text: "#a16207" },
+  "Finished Good":    { bg: "#dbeafe", text: "#1d4ed8" },
+  "Packing Material": { bg: "#ede9fe", text: "#6d28d9" },
+  "Product":          { bg: "#f1f5f9", text: "#475569" },
+  "Service":          { bg: "#fee2e2", text: "#b91c1c" },
+};
+// Smart defaults: warehouse type and valuation per item type
+const ITEM_TYPE_DEFAULTS = {
+  "Raw Material":     { warehouse_type: "Raw Material Store", valuation: "FIFO",          is_stock: 1 },
+  "Work In Progress": { warehouse_type: "WIP",                valuation: "Moving Average", is_stock: 1 },
+  "Finished Good":    { warehouse_type: "Finished Goods",     valuation: "FIFO",           is_stock: 1 },
+  "Packing Material": { warehouse_type: "Raw Material Store", valuation: "FIFO",           is_stock: 1 },
+  "Product":          { warehouse_type: "",                   valuation: "FIFO",           is_stock: 1 },
+  "Service":          { warehouse_type: "",                   valuation: "FIFO",           is_stock: 0 },
+};
 const VAL_METHODS     = ["FIFO", "Moving Average", "LIFO"];
 
 const leafGroupOptions = computed(() =>
@@ -684,7 +773,7 @@ async function load() {
     const g = await apiList("Item Group", { fields: ["name", "is_group"], order: "name asc", limit: 200 });
     itemGroupsFull.value = g || [];
     itemGroups.value = (g || []).map((r) => r.name);
-  } catch { itemGroups.value = ["All Item Groups", "Products", "Services", "Raw Materials", "Finished Goods", "Furniture"]; }
+  } catch { itemGroups.value = ["Raw Materials", "Herbs & Botanicals", "Minerals & Bhasmas", "Oils & Fats", "WIP - Semi Finished", "Finished Goods - Capsules", "Finished Goods - Tablets", "Finished Goods - Oils", "Finished Goods - Churnam", "Finished Goods - Kashayam", "Finished Goods - Lehyam", "Packing Materials - Primary", "Packing Materials - Secondary", "Services"]; }
   try {
     const wh = await apiList("Warehouse", {
       fields: ["name", "warehouse_name", "warehouse_type"],
@@ -707,6 +796,10 @@ async function load() {
     const uoms = await apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 });
     uomList.value = (uoms || []).map((r) => r.name);
   } catch { uomList.value = ["Nos", "Kg", "Ltr", "Mtr", "Box", "Pcs", "Set", "Dozen"]; }
+  try {
+    const brands = await apiList("Brand", { fields: ["name"], filters: [["disabled", "=", 0]], order: "name asc", limit: 200 });
+    brandList.value = (brands || []).map((r) => r.name);
+  } catch { brandList.value = []; }
   try {
     const company = await resolveCompany();
     // Load full account list for dropdowns
@@ -764,9 +857,13 @@ const filtered = computed(() => {
   if (filterTab.value === "inactive") r = r.filter((i) =>  i.disabled);
   if (filterTab.value === "services") r = r.filter((i) => !i.is_stock_item);
   if (filterTab.value === "stock")    r = r.filter((i) =>  i.is_stock_item);
+  if (filterTab.value === "rm")       r = r.filter((i) => i.item_type === "Raw Material");
+  if (filterTab.value === "wip")      r = r.filter((i) => i.item_type === "Work In Progress");
+  if (filterTab.value === "fg")       r = r.filter((i) => i.item_type === "Finished Good");
+  if (filterTab.value === "pm")       r = r.filter((i) => i.item_type === "Packing Material");
   if (filterGroup.value) r = r.filter((i) => i.item_group === filterGroup.value);
   const q = search.value.toLowerCase().trim();
-  if (q) r = r.filter((i) => ((i.item_name || "") + (i.item_code || "") + (i.item_group || "")).toLowerCase().includes(q));
+  if (q) r = r.filter((i) => ((i.item_name || "") + (i.item_code || "") + (i.item_group || "") + (i.item_type || "")).toLowerCase().includes(q));
   return r;
 });
 
@@ -776,6 +873,10 @@ const counts = computed(() => ({
   inactive: list.value.filter(i =>  i.disabled).length,
   stock:    list.value.filter(i =>  i.is_stock_item).length,
   services: list.value.filter(i => !i.is_stock_item).length,
+  rm:       list.value.filter(i => i.item_type === "Raw Material").length,
+  wip:      list.value.filter(i => i.item_type === "Work In Progress").length,
+  fg:       list.value.filter(i => i.item_type === "Finished Good").length,
+  pm:       list.value.filter(i => i.item_type === "Packing Material").length,
 }));
 
 // ── Secondary stats ──
@@ -890,17 +991,39 @@ async function openView(row) {
   } catch {}
 }
 
-function openAdd() {
+function applyTypeDefaults(type) {
+  const d = ITEM_TYPE_DEFAULTS[type] || {};
+  // Set is_stock_item
+  form.is_stock_item = d.is_stock !== undefined ? d.is_stock : 1;
+  // Set valuation method
+  if (d.valuation) form.valuation_method = d.valuation;
+  // Auto-select first matching warehouse if warehouse_type hint given
+  if (d.warehouse_type && warehouses.value.length) {
+    const match = warehouses.value.find(w => (w.label || "").toLowerCase().includes(d.warehouse_type.toLowerCase()));
+    if (match) form.default_warehouse = match.name;
+  }
+}
+
+function openAdd(presetType) {
   drawerMode.value = "add"; drawerTab.value = "basic";
+  const defaultType = presetType || "Raw Material";
+  const d = ITEM_TYPE_DEFAULTS[defaultType] || {};
   Object.assign(form, {
-    name: "", item_code: "", item_name: "", item_group: "", item_type: "Product",
-    stock_uom: "Nos", hsn_code: "", description: "", disabled: 0,
+    name: "", item_code: "", item_name: "", item_group: "", item_type: defaultType,
+    stock_uom: "Nos", hsn_code: "", description: "", disabled: 0, brand: "",
     standard_rate: 0, standard_buying_rate: 0, gst_rate: 18, tax_code: "",
     income_account:  defaultAccounts.value.income,
     expense_account: defaultAccounts.value.expense,
-    is_stock_item: 1, valuation_method: "FIFO", default_warehouse: "",
+    is_stock_item: d.is_stock !== undefined ? d.is_stock : 1,
+    valuation_method: d.valuation || "FIFO",
+    default_warehouse: "",
     reorder_level: 0, reorder_qty: 0, opening_stock: 0,
   });
+  // Auto-select warehouse matching type
+  if (d.warehouse_type && warehouses.value.length) {
+    const match = warehouses.value.find(w => (w.label || "").toLowerCase().includes(d.warehouse_type.toLowerCase()));
+    if (match) form.default_warehouse = match.name;
+  }
   showDrawer.value = true;
 }
 
@@ -908,7 +1031,7 @@ async function openEdit(row) {
   drawerMode.value = "edit"; drawerTab.value = "basic";
   Object.assign(form, {
     ...row,
-    hsn_code: "", description: "", standard_buying_rate: 0,
+    hsn_code: "", description: "", standard_buying_rate: 0, brand: "",
     tax_code: "", income_account: "", expense_account: "",
     valuation_method: "FIFO", default_warehouse: "",
     reorder_level: 0, reorder_qty: 0, opening_stock: 0,
@@ -932,6 +1055,7 @@ async function openEdit(row) {
       reorder_qty:          flt(full.reorder_qty),
       opening_stock:        flt(full.opening_stock),
       disabled:             full.disabled ? 1 : 0,
+      brand:                full.brand                || "",
     });
   } catch (e) { toast("Could not load full item details: " + e.message, "error"); }
 }
@@ -948,7 +1072,7 @@ async function saveItem() {
     const doc = {
       doctype: "Item", item_name: form.item_name, item_code: itemCode,
       item_group: form.item_group || "Products", item_type: form.item_type, stock_uom: form.stock_uom,
-      hsn_code: form.hsn_code, description: form.description, disabled: form.disabled ? 1 : 0,
+      hsn_code: form.hsn_code, description: form.description, disabled: form.disabled ? 1 : 0, brand: form.brand || "",
       standard_rate: flt(form.standard_rate), standard_buying_rate: flt(form.standard_buying_rate),
       gst_rate: flt(form.gst_rate), tax_code: form.tax_code,
       income_account: form.income_account, expense_account: form.expense_account,
@@ -1497,7 +1621,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", onHashChange); });
 
 /* Item type selector */
 .ad-type-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px;
 }
 .ad-type-btn {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -1512,6 +1636,36 @@ onUnmounted(() => { window.removeEventListener("hashchange", onHashChange); });
 .ad-type-icon { font-size: 20px; line-height: 1; }
 .ad-type-label { font-size: 12px; font-weight: 600; color: #374151; }
 .ad-type-btn--active .ad-type-label { color: #1d4ed8; }
+
+/* Type info strip */
+.ad-type-info-strip {
+  margin-top: 10px; padding: 8px 12px; border-radius: 8px;
+  font-size: 12px; font-weight: 500; line-height: 1.4;
+}
+
+/* Material type breakdown strip */
+.bk-mat-strip {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  background: #fff; border: 1px solid #e9edf2; border-radius: 10px;
+  padding: 10px 16px; margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(15,23,42,.04);
+}
+.bk-mat-item { display: flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 6px; cursor: pointer; }
+.bk-mat-item:hover { background: #f1f5f9; }
+.bk-mat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.bk-mat-label { font-size: 12px; color: #374151; font-weight: 500; }
+.bk-mat-count { font-size: 13px; font-weight: 700; min-width: 18px; text-align: right; }
+.bk-mat-sep { color: #e2e8f0; font-size: 16px; }
+.bk-mat-actions { margin-left: auto; display: flex; gap: 6px; }
+.bk-mat-add-btn {
+  padding: 4px 10px; border-radius: 6px; border: 1.5px solid #e2e8f0;
+  font-size: 11px; font-weight: 700; cursor: pointer; background: #dcfce7; color: #15803d;
+  transition: all .14s;
+}
+.bk-mat-add-btn:hover { opacity: 0.8; }
+.bk-mat-add-wip  { background: #fef9c3; color: #a16207; }
+.bk-mat-add-fg   { background: #dbeafe; color: #1d4ed8; }
+.bk-mat-add-pm   { background: #ede9fe; color: #6d28d9; }
 
 /* Toggle row */
 .ad-toggle-row {

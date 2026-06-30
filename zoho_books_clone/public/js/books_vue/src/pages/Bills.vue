@@ -628,6 +628,10 @@
                   <span style="color:#6b7280;font-weight:600">Cost Center:</span>
                   <span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:5px;padding:2px 10px;font-weight:600">{{ viewDoc.cost_center }}</span>
                 </div>
+                <div v-if="viewDoc.set_warehouse" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
+                  <span style="color:#6b7280;font-weight:600">Receiving Warehouse:</span>
+                  <span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:5px;padding:2px 10px;font-weight:600;display:inline-flex;align-items:center;gap:5px"><span v-html="icon('warehouse',12)"></span>{{ viewDoc.set_warehouse }}</span>
+                </div>
                 <!-- Internal Remark -->
                 <div v-if="viewDoc.remark" style="margin-top:12px">
                   <div class="inv-dmeta-icon-row" style="margin-bottom:6px">
@@ -1173,7 +1177,7 @@ async function openView(b) {
       docstatus: doc.docstatus ?? viewDoc.value.docstatus,
       status: doc.status ?? viewDoc.value.status,
       due_date: doc.due_date || viewDoc.value.due_date,
-      cost_center: doc.cost_center, billing_address: doc.billing_address,
+      cost_center: doc.cost_center, set_warehouse: doc.set_warehouse, billing_address: doc.billing_address,
       billing_address_name: doc.billing_address_name, remark: doc.remark || "" };
     // Resolve billing address object for card display
     if (doc?.billing_address_name && !viewAddressCache.value[doc.billing_address_name]) {

@@ -713,6 +713,11 @@
                   </div>
                 </div>
 
+                <div v-if="viewDoc.set_warehouse" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
+                  <span style="color:#6b7280;font-weight:600">Dispatch Warehouse:</span>
+                  <span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:5px;padding:2px 10px;font-weight:600;display:inline-flex;align-items:center;gap:5px"><span v-html="icon('warehouse',12)"></span>{{ viewDoc.set_warehouse }}</span>
+                </div>
+
                 <div v-if="viewLoading" style="padding:24px;text-align:center;color:#9ca3af">Loading details…</div>
 
                 <template v-else>

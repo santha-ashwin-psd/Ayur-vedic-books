@@ -48,6 +48,28 @@ COA = [
 ]
 
 
+# Default Indian GST tax templates, seeded once per company.
+# (template_name, [ (tax_type, description, rate, account_name), ... ])
+# account_name is resolved to the company's full account name at seed time.
+TAX_TEMPLATES = [
+    ("GST 18% (Intra-State)", [("CGST", "CGST @ 9%", 9, "CGST Payable"), ("SGST", "SGST @ 9%", 9, "SGST Payable")]),
+    ("GST 12% (Intra-State)", [("CGST", "CGST @ 6%", 6, "CGST Payable"), ("SGST", "SGST @ 6%", 6, "SGST Payable")]),
+    ("GST 5% (Intra-State)",  [("CGST", "CGST @ 2.5%", 2.5, "CGST Payable"), ("SGST", "SGST @ 2.5%", 2.5, "SGST Payable")]),
+    ("GST 28% (Intra-State)", [("CGST", "CGST @ 14%", 14, "CGST Payable"), ("SGST", "SGST @ 14%", 14, "SGST Payable")]),
+    ("IGST 18% (Inter-State)", [("IGST", "IGST @ 18%", 18, "IGST Payable")]),
+    ("IGST 12% (Inter-State)", [("IGST", "IGST @ 12%", 12, "IGST Payable")]),
+    ("IGST 5% (Inter-State)",  [("IGST", "IGST @ 5%", 5, "IGST Payable")]),
+    ("IGST 28% (Inter-State)", [("IGST", "IGST @ 28%", 28, "IGST Payable")]),
+    ("GST Exempt", []),
+    ("Input GST 18% (Intra-State)", [("CGST", "CGST ITC @ 9%", 9, "CGST Input"), ("SGST", "SGST ITC @ 9%", 9, "SGST Input")]),
+    ("Input IGST 18% (Inter-State)", [("IGST", "IGST ITC @ 18%", 18, "IGST Input")]),
+]
+
+# Template names known to be app defaults — used by the back-fill patch to
+# distinguish seeded defaults from user-created templates (which are left alone).
+DEFAULT_TAX_TEMPLATE_NAMES = frozenset(name for name, _ in TAX_TEMPLATES)
+
+
 def _acc_name(account_name: str, company: str) -> str:
     """Return the full document name for an account."""
     return f"{account_name} - {company}"
@@ -59,6 +81,42 @@ def bootstrap_company_data(company: str, fy_start: str = "04-01") -> None:
         return
     _seed_coa(company)
     _seed_fiscal_year(company, fy_start)
+    _seed_tax_templates(company)
+
+
+def _seed_tax_templates(company: str) -> None:
+    """Create the default GST tax templates for `company` if absent.
+
+    Idempotent: the document name is "{template_name} - {company}" (autoname
+    format:{template_name} - {company}), so we skip any that already exist.
+    Never deletes — only fills in missing defaults.
+    """
+    if not company or not frappe.db.exists("DocType", "Tax Template"):
+        return
+
+    def _acct(name):
+        # Resolve a tax account_name to this company's full account name.
+        return frappe.db.get_value(
+            "Account", {"account_name": name, "company": company, "is_group": 0}, "name"
+        ) or _acc_name(name, company)
+
+    for template_name, rows in TAX_TEMPLATES:
+        doc_name = f"{template_name} - {company}"
+        if frappe.db.exists("Tax Template", doc_name):
+            continue
+        try:
+            frappe.get_doc({
+                "doctype": "Tax Template",
+                "template_name": template_name,
+                "company": company,
+                "tax_type": "GST",
+                "taxes": [
+                    {"tax_type": t[0], "description": t[1], "rate": t[2], "account_head": _acct(t[3])}
+                    for t in rows
+                ],
+            }).insert(ignore_permissions=True)
+        except Exception as exc:
+            frappe.log_error(f"Bootstrap Tax Template — {company}/{template_name}: {exc}", "Books Bootstrap")
 
 
 def _seed_coa(company: str) -> None:

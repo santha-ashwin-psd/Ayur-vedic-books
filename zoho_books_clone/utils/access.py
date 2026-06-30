@@ -48,8 +48,8 @@ DOCTYPE_MODULE = {
     # Contacts
     "Customer": "customers", "Supplier": "customers", "Contact": "customers", "Address": "customers",
     # Taxes / GST
-    "Sales Taxes and Charges Template": "taxes",
-    "Purchase Taxes and Charges Template": "taxes",
+    "Tax Template": "taxes",
+    "Tax Template Detail": "taxes",
     # Admin / settings
     "Books Company": "admin", "Books Company Member": "admin",
     "Books Settings": "admin", "Books Number Series": "admin",

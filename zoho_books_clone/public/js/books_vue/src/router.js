@@ -3,7 +3,7 @@
 // in books.html. New phases append routes to this table and to
 // window.BOOKS_VUE_ROUTES.
 
-import { createRouter, createWebHashHistory } from "vue-router";
+import { createRouter, createWebHistory } from "vue-router";
 import PhaseAHome           from "./pages/PhaseAHome.vue";
 import Dashboard            from "./pages/Dashboard.vue";
 import Customers            from "./pages/Customers.vue";
@@ -77,6 +77,10 @@ const routes = [
     name: "dashboard",
     component: Dashboard,
     meta: { module: null },
+  },
+  {
+    path: "/books",
+    redirect: "/",
   },
   {
     path: "/home",
@@ -225,7 +229,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory(),
   routes,
 });
 

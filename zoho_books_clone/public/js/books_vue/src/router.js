@@ -14,6 +14,7 @@ import InventoryItemView    from "./pages/InventoryItemView.vue";
 import InventoryItemGroups  from "./pages/InventoryItemGroups.vue";
 import InventoryWarehouses  from "./pages/InventoryWarehouses.vue";
 import InventorySettings    from "./pages/InventorySettings.vue";
+import OpeningStockBatchEntry from "./pages/OpeningStockBatchEntry.vue";
 import SettingsProfile       from "./pages/SettingsProfile.vue";
 import SettingsCompany       from "./pages/SettingsCompany.vue";
 import SettingsNumberSeries  from "./pages/SettingsNumberSeries.vue";
@@ -207,6 +208,7 @@ const routes = [
   { path: "/banking/cheques",        name: "banking-cheques",        component: BankCheques,        meta: { module: "accounts" } },
   { path: "/banking/cash",           name: "banking-cash",           component: BankCash,           meta: { module: "accounts" } },
   { path: "/inventory/stock-entries",  name: "stock-entries",   component: StockEntries,   meta: { module: "inventory" } },
+  { path: "/inventory/opening-stock",  name: "opening-stock",   component: OpeningStockBatchEntry, meta: { module: "inventory" } },
   { path: "/inventory/adjustments",    name: "inventory-adjustments", component: InventoryAdjustments, meta: { module: "inventory" } },
   { path: "/inventory/stock-ledger",   name: "stock-ledger",    component: StockLedger,    meta: { module: "inventory" } },
   { path: "/inventory/valuation",      name: "stock-valuation", component: StockValuation, meta: { module: "inventory" } },

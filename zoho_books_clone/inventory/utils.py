@@ -5,6 +5,7 @@ All business logic lives here; controllers are kept thin.
 """
 
 import frappe
+from frappe import _
 from frappe.utils import flt, getdate, today
 
 
@@ -41,6 +42,74 @@ def get_fifo_cost(item_code: str, warehouse: str, qty: float) -> float:
         remaining  -= layer_qty
 
     return total_cost / qty if qty else 0.0
+
+
+# ── Batch Selection (valuation-method-driven consumption order) ───────────────
+
+def get_batches_for_outgoing(item_code: str, warehouse: str, qty: float,
+                              valuation_method: str | None = None) -> list[dict]:
+    """
+    Return an ordered list of {"batch_no", "qty"} dicts covering `qty` units
+    of `item_code` drawn from `warehouse`, consuming batches in the order
+    dictated by the item's valuation method:
+
+      FIFO            — oldest manufacturing_date first (first in, first out)
+      LIFO            — newest manufacturing_date first (last in, first out)
+      Moving Average  — no costing opinion on *which* batch to draw from, but
+                         outgoing stock still has to come from somewhere, so
+                         default to the same oldest-first order as FIFO. This
+                         matters most in a pharma/Ayurvedic context: drawing
+                         down older stock first reduces the chance of batches
+                         expiring unused on the shelf.
+
+    Only batches with batch_qty > 0 are considered. Batches are consumed in
+    order until `qty` is satisfied; a single call may return several batches
+    if no one batch can cover the full requested qty. Raises if the combined
+    available batch_qty across all batches is insufficient — callers should
+    catch and surface this as a user-facing error rather than silently
+    under-allocating stock.
+    """
+    qty = flt(qty)
+    if qty <= 0:
+        return []
+
+    if not valuation_method:
+        valuation_method = frappe.db.get_value("Item", item_code, "valuation_method") or "Moving Average"
+
+    order = "ASC" if valuation_method != "LIFO" else "DESC"
+    # FIFO and Moving Average both consume oldest-first; LIFO reverses it.
+    # Ties on manufacturing_date are left to natural row order (not disambiguated
+    # further per product decision).
+
+    batches = frappe.db.sql(f"""
+        SELECT name AS batch_no, batch_qty
+        FROM `tabBatch`
+        WHERE item = %(item_code)s
+          AND warehouse = %(warehouse)s
+          AND batch_qty > 0
+          AND (disabled IS NULL OR disabled = 0)
+        ORDER BY manufacturing_date {order}, creation {order}
+    """, {"item_code": item_code, "warehouse": warehouse}, as_dict=True)
+
+    allocations: list[dict] = []
+    remaining = qty
+    for b in batches:
+        if remaining <= 0:
+            break
+        take = min(flt(b.batch_qty), remaining)
+        if take <= 0:
+            continue
+        allocations.append({"batch_no": b.batch_no, "qty": take})
+        remaining -= take
+
+    if remaining > 0.0001:
+        available = qty - remaining
+        frappe.throw(_(
+            "Insufficient batch-tracked stock for item <b>{0}</b> in warehouse <b>{1}</b>. "
+            "Available across all batches: {2}, Required: {3}."
+        ).format(item_code, warehouse, frappe.bold(available), frappe.bold(qty)))
+
+    return allocations
 
 
 # ── Reorder Check ─────────────────────────────────────────────────────────────

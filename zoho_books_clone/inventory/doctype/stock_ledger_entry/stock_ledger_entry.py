@@ -80,13 +80,41 @@ class StockLedgerEntry(Document):
                 )
                 bin_doc = frappe.get_doc("Bin", bin_name)
 
-        # Apply the delta (now holding the exclusive lock)
-        new_qty = flt(bin_doc.actual_qty) + flt(self.actual_qty)
-        total_value = flt(new_qty) * flt(self.valuation_rate) if new_qty > 0 else 0
+        # Apply the delta (now holding the exclusive lock).
+        #
+        # Moving-average valuation: an incoming SLE blends its rate into the
+        # existing stock value; an outgoing SLE draws down value at the
+        # *current* moving-average rate (never at the rate carried on the
+        # outgoing SLE itself, which may be 0 or a FIFO estimate and must
+        # not be allowed to overwrite the valuation of stock that's staying
+        # put). This mirrors zoho_books_clone.inventory.utils.update_bin —
+        # the two must never diverge.
+        old_qty   = flt(bin_doc.actual_qty)
+        old_value = flt(bin_doc.stock_value)
+        delta_qty = flt(self.actual_qty)
+        new_qty   = old_qty + delta_qty
+
+        if delta_qty > 0:
+            # Incoming: blend the new layer's cost into the running value.
+            # incoming_rate is what this stock actually cost; fall back to
+            # valuation_rate only if incoming_rate wasn't supplied.
+            in_rate = flt(self.incoming_rate) or flt(self.valuation_rate)
+            new_value = old_value + (delta_qty * in_rate)
+        elif delta_qty < 0:
+            # Outgoing: draw down at the bin's own existing average rate,
+            # not the SLE's valuation_rate (which can be 0/FIFO/stale and
+            # would otherwise corrupt the value of the remaining stock).
+            existing_rate = (old_value / old_qty) if old_qty else 0.0
+            new_value = old_value + (delta_qty * existing_rate)  # delta_qty is negative
+        else:
+            new_value = old_value
+
+        new_value = max(0.0, new_value)
+        new_rate = (new_value / new_qty) if new_qty > 0 else 0.0
 
         bin_doc.actual_qty = new_qty
-        bin_doc.valuation_rate = flt(self.valuation_rate) if new_qty > 0 else flt(bin_doc.valuation_rate)
-        bin_doc.stock_value = total_value
+        bin_doc.valuation_rate = new_rate if new_qty > 0 else flt(bin_doc.valuation_rate)
+        bin_doc.stock_value = new_value
         bin_doc.projected_qty = flt(new_qty) + flt(bin_doc.ordered_qty) - flt(bin_doc.reserved_qty)
         bin_doc.flags.ignore_links = True
         bin_doc.flags.ignore_mandatory = True

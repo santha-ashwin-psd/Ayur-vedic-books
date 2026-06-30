@@ -23,7 +23,7 @@
       <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
       <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV" :disabled="!filtered.length"><span v-html="icon('download',14)"></span> CSV</button>
-      <button class="sales-btn-primary" @click="openAdd" :disabled="!$canWrite('inventory')" :title="!$canWrite('inventory') ? 'Read-only access' : ''"><span v-html="icon('plus',13)"></span> New Item</button>
+      <button class="sales-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Item</button>
     </div>
   </div>
 
@@ -603,6 +603,17 @@
             </label>
           </div>
 
+          <div class="ad-toggle-row" style="margin-bottom:20px" v-if="form.is_stock_item">
+            <div class="ad-toggle-left">
+              <div class="ad-toggle-title">Track by Batch</div>
+              <div class="ad-toggle-sub">Require a Batch No, mfg & expiry date on every stock entry</div>
+            </div>
+            <label class="ad-switch">
+              <input type="checkbox" :checked="!!form.has_batch_no" @change="form.has_batch_no=($event.target.checked?1:0)"/>
+              <span class="ad-switch-track ad-switch-track--green"></span>
+            </label>
+          </div>
+
           <div class="ad-section">
             <div class="ad-section-title">Stock Settings</div>
             <div class="ad-grid-2">
@@ -715,7 +726,7 @@ const form = reactive({
   stock_uom: "Nos", hsn_code: "", description: "", disabled: 0, brand: "",
   standard_rate: 0, standard_buying_rate: 0, gst_rate: 18, tax_code: "",
   income_account: "", expense_account: "",
-  is_stock_item: 1, valuation_method: "FIFO", default_warehouse: "",
+  is_stock_item: 1, has_batch_no: 0, valuation_method: "FIFO", default_warehouse: "",
   reorder_level: 0, reorder_qty: 0, opening_stock: 0,
 });
 
@@ -1015,6 +1026,7 @@ function openAdd(presetType) {
     income_account:  defaultAccounts.value.income,
     expense_account: defaultAccounts.value.expense,
     is_stock_item: d.is_stock !== undefined ? d.is_stock : 1,
+    has_batch_no: 0,
     valuation_method: d.valuation || "FIFO",
     default_warehouse: "",
     reorder_level: 0, reorder_qty: 0, opening_stock: 0,
@@ -1049,6 +1061,7 @@ async function openEdit(row) {
       income_account:       full.income_account       || defaultAccounts.value.income,
       expense_account:      full.expense_account      || defaultAccounts.value.expense,
       is_stock_item:        full.is_stock_item ? 1 : 0,
+      has_batch_no:         full.has_batch_no ? 1 : 0,
       valuation_method:     full.valuation_method     || "FIFO",
       default_warehouse:    full.default_warehouse    || "",
       reorder_level:        flt(full.reorder_level),
@@ -1076,7 +1089,8 @@ async function saveItem() {
       standard_rate: flt(form.standard_rate), standard_buying_rate: flt(form.standard_buying_rate),
       gst_rate: flt(form.gst_rate), tax_code: form.tax_code,
       income_account: form.income_account, expense_account: form.expense_account,
-      is_stock_item: form.is_stock_item ? 1 : 0, valuation_method: form.valuation_method,
+      is_stock_item: form.is_stock_item ? 1 : 0, has_batch_no: form.is_stock_item ? (form.has_batch_no ? 1 : 0) : 0,
+      valuation_method: form.valuation_method,
       default_warehouse: form.default_warehouse, reorder_level: flt(form.reorder_level),
       reorder_qty: flt(form.reorder_qty), opening_stock: openingQty,
     };

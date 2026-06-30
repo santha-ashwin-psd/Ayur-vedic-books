@@ -55,6 +55,7 @@ export const NAV = [
   { path: "/inventory/items",               label: "Items",            icon: "box",        module: "inventory"  },
   { path: "/inventory/item-groups",         label: "Item Groups",      icon: "folder",     module: "inventory"  },
   { path: "/inventory/warehouses",          label: "Warehouses",       icon: "warehouse",  module: "inventory"  },
+  { path: "/inventory/opening-stock",       label: "Opening Stock",    icon: "opening",    module: "inventory"  },
   { path: "/inventory/stock-entries",       label: "Stock Entries",    icon: "stack",      module: "inventory"  },
   { path: "/inventory/adjustments",         label: "Stock Adjustments", icon: "repeat",    module: "inventory"  },
   { path: "/inventory/stock-ledger",        label: "Stock Ledger",     icon: "ledger",     module: "inventory"  },
@@ -69,7 +70,6 @@ export const NAV = [
   { path: "/gst/gstr3b",                    label: "GSTR-3B",          icon: "gstfile",    module: "accounts"   },
   { path: "/gst/einvoice",                  label: "e-Invoice",        icon: "qr",         module: "accounts"   },
   { path: "/gst/tds",                       label: "TDS",              icon: "percent",    module: "accounts"   },
-  { path: "/gst/tax",                       label: "TAX",              icon: "percent",    module: "accounts"   },
 
   { section: "Reports" },
   { path: "/reports",                       label: "All Reports",      icon: "chart",      module: "reports"    },

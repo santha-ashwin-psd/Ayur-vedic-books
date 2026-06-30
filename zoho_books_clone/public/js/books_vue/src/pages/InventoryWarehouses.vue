@@ -381,9 +381,26 @@
             <div class="wh-smc-footer">
               <span v-if="r.item_group" class="wh-smc-tag">{{ r.item_group }}</span>
               <span v-if="r.uom" class="wh-smc-tag">{{ r.uom }}</span>
+              <button v-if="r.has_batch_no" class="wh-smc-batch-toggle" @click="toggleBatches(r.item_code)">
+                {{ batchesFor(r.item_code).length }} batch{{ batchesFor(r.item_code).length===1?'':'es' }} {{ expandedRows[r.item_code] ? '▲' : '▼' }}
+              </button>
               <button v-if="selectedChild && !selectedChild.is_group" class="wh-adj-btn wh-smc-adj" @click="openAdjustment(r)">
                 <span v-html="icon('edit', 12)"></span> Adjust
               </button>
+            </div>
+            <div v-if="r.has_batch_no && expandedRows[r.item_code]" class="wh-smc-batch-list">
+              <div v-if="!batchesFor(r.item_code).length" class="wh-batch-empty">No batch-wise ledger entries yet</div>
+              <div v-for="b in batchesFor(r.item_code)" :key="b.batch_no" class="wh-smc-batch-row">
+                <div>
+                  <div class="wh-batch-no">{{ b.batch_no }}</div>
+                  <div class="wh-batch-date" style="margin-top:2px">{{ fmtBatchDate(b.manufacturing_date) }} → {{ fmtBatchDate(b.expiry_date) }}</div>
+                </div>
+                <div style="text-align:right">
+                  <div class="wh-batch-qty">{{ flt(b.qty).toFixed(2) }}</div>
+                  <span v-if="b.is_expired" class="wh-batch-flag wh-batch-flag--expired">Expired</span>
+                  <span v-else-if="b.expires_soon" class="wh-batch-flag wh-batch-flag--soon">Soon</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -393,6 +410,7 @@
           <table class="wh-tbl">
             <thead>
               <tr>
+                <th class="wh-th" style="width:24px"></th>
                 <th class="wh-th">Item</th>
                 <th class="wh-th wh-th-hide-sm">Group</th>
                 <th class="wh-th wh-th-hide-sm">UOM</th>
@@ -406,7 +424,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="r in stockItems" :key="r.item_code" class="wh-tr">
+              <template v-for="r in stockItems" :key="r.item_code">
+              <tr class="wh-tr" :class="{ 'wh-tr-clickable': r.has_batch_no }" @click="r.has_batch_no && toggleBatches(r.item_code)">
+                <td class="wh-td wh-td-c">
+                  <span v-if="r.has_batch_no" class="wh-expand-chevron" :class="{ 'wh-expand-chevron--open': expandedRows[r.item_code] }">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                </td>
                 <td class="wh-td">
                   <div class="wh-item-name">{{ r.item_name }}</div>
                   <div class="wh-item-code">{{ r.item_code }}</div>
@@ -422,12 +446,37 @@
                   <span v-if="r.below_reorder" class="wh-status-low">⚠ Low</span>
                   <span v-else class="wh-status-ok">✓ OK</span>
                 </td>
-                <td v-if="selectedChild && !selectedChild.is_group" class="wh-td wh-td-c">
+                <td v-if="selectedChild && !selectedChild.is_group" class="wh-td wh-td-c" @click.stop>
                   <button class="wh-adj-btn" @click="openAdjustment(r)">
                     <span v-html="icon('edit', 12)"></span> Adjust
                   </button>
                 </td>
               </tr>
+              <tr v-if="r.has_batch_no && expandedRows[r.item_code]" class="wh-batch-row">
+                <td :colspan="selectedChild && !selectedChild.is_group ? 10 : 9" style="padding:0">
+                  <div class="wh-batch-panel">
+                    <div v-if="!batchesFor(r.item_code).length" class="wh-batch-empty">No batch-wise ledger entries for this item yet</div>
+                    <table v-else class="wh-batch-tbl">
+                      <thead><tr>
+                        <th>Batch No</th><th>Mfg Date</th><th>Expiry Date</th><th class="ta-r">Qty</th><th></th>
+                      </tr></thead>
+                      <tbody>
+                        <tr v-for="b in batchesFor(r.item_code)" :key="b.batch_no">
+                          <td class="wh-batch-no">{{ b.batch_no }}</td>
+                          <td class="wh-batch-date">{{ fmtBatchDate(b.manufacturing_date) }}</td>
+                          <td class="wh-batch-date">{{ fmtBatchDate(b.expiry_date) }}</td>
+                          <td class="ta-r wh-batch-qty">{{ flt(b.qty).toFixed(2) }}</td>
+                          <td>
+                            <span v-if="b.is_expired" class="wh-batch-flag wh-batch-flag--expired">Expired</span>
+                            <span v-else-if="b.expires_soon" class="wh-batch-flag wh-batch-flag--soon">Expires soon</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -679,6 +728,8 @@ const selectedWH     = ref(null);    // currently selected warehouse GROUP
 const selectedChild  = ref(null);    // currently selected child warehouse
 const stockItems     = ref([]);
 const stockLoading   = ref(false);
+const warehouseBatches = ref({});
+const expandedRows     = ref({});
 const search         = ref("");
 const filterType     = ref("All");
 const filterDDOpen   = ref(false);
@@ -780,10 +831,29 @@ async function load() {
 async function loadStockForWarehouse(name) {
   stockLoading.value = true;
   stockItems.value = [];
+  warehouseBatches.value = {};
+  expandedRows.value = {};
   try {
-    stockItems.value = await apiGET("zoho_books_clone.api.inventory.get_stock_summary", { warehouse: name }) || [];
+    const [stock, batches] = await Promise.all([
+      apiGET("zoho_books_clone.api.inventory.get_stock_summary", { warehouse: name }),
+      apiGET("zoho_books_clone.api.inventory.get_warehouse_batches", { warehouse: name }).catch(() => ({})),
+    ]);
+    stockItems.value = stock || [];
+    warehouseBatches.value = batches || {};
   } catch { stockItems.value = []; }
   stockLoading.value = false;
+}
+
+function toggleBatches(itemCode) {
+  expandedRows.value = { ...expandedRows.value, [itemCode]: !expandedRows.value[itemCode] };
+}
+function batchesFor(itemCode) {
+  return warehouseBatches.value[itemCode] || [];
+}
+function fmtBatchDate(d) {
+  if (!d) return "—";
+  try { return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
+  catch { return d; }
 }
 
 async function loadItems() {
@@ -1536,6 +1606,42 @@ onMounted(() => { load(); loadItems(); });
   padding: 2px 8px; border-radius: 10px;
   white-space: nowrap;
 }
+
+/* ── Batch breakdown ── */
+.wh-tr-clickable { cursor: pointer; }
+.wh-expand-chevron {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; color: #94a3b8;
+  transition: transform .15s ease;
+}
+.wh-expand-chevron--open { transform: rotate(180deg); color: #2563eb; }
+.wh-batch-row td { border-bottom: 1px solid #f3f4f6; }
+.wh-batch-panel { background: #f8fafc; padding: 10px 14px 10px 46px; }
+.wh-batch-empty { font-size: 12px; color: #9ca3af; padding: 6px 0; }
+.wh-batch-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wh-batch-tbl th {
+  text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: #9ca3af; padding: 4px 8px;
+}
+.wh-batch-tbl td { padding: 6px 8px; border-top: 1px solid #e5e7eb; }
+.wh-batch-no { font-weight: 600; color: #0f172a; }
+.wh-batch-date { color: #6b7280; }
+.wh-batch-qty { font-weight: 600; color: #0f172a; }
+.wh-batch-flag {
+  font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 9px; white-space: nowrap;
+}
+.wh-batch-flag--expired { background: #fee2e2; color: #b91c1c; }
+.wh-batch-flag--soon { background: #fff7ed; color: #c2410c; }
+
+.wh-smc-batch-toggle {
+  background: #eff6ff; color: #2563eb; border: none; border-radius: 6px;
+  font-size: 11px; font-weight: 600; padding: 3px 8px; cursor: pointer;
+}
+.wh-smc-batch-list {
+  margin-top: 8px; border-top: 1px dashed #e5e7eb; padding-top: 8px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.wh-smc-batch-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 
 /* ── Adjust button ── */
 .wh-adj-btn {

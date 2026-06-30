@@ -35,6 +35,66 @@ def _get_child_warehouses(warehouse_name):
 
 
 @frappe.whitelist(allow_guest=False)
+def get_warehouse_batches(warehouse):
+    """
+    Return batch-wise stock breakdown for every batch-tracked item in a warehouse.
+    Response: { item_code: [ {batch_no, qty, manufacturing_date, expiry_date,
+                               is_expired, expires_soon}, ... ], ... }
+    Aggregates Stock Ledger Entry.actual_qty by item_code + batch_no so it always
+    reflects the live ledger (not just the most recent Batch master values).
+    For group warehouses, all child warehouse leaves are included.
+    """
+    if not warehouse:
+        return {}
+
+    warehouses = [warehouse]
+    wh_doc = frappe.db.get_value("Warehouse", warehouse, "is_group")
+    if wh_doc:
+        children = _get_child_warehouses(warehouse)
+        if not children:
+            return {}
+        warehouses = children
+
+    rows = frappe.db.sql("""
+        SELECT sle.item_code, sle.batch_no, SUM(sle.actual_qty) AS qty
+        FROM `tabStock Ledger Entry` sle
+        WHERE sle.warehouse IN %(warehouses)s
+          AND sle.batch_no IS NOT NULL AND sle.batch_no != ''
+          AND sle.is_cancelled = 0
+        GROUP BY sle.item_code, sle.batch_no
+        HAVING qty != 0
+        ORDER BY sle.item_code, sle.batch_no
+    """, {"warehouses": warehouses}, as_dict=True)
+
+    if not rows:
+        return {}
+
+    batch_nos = list({r.batch_no for r in rows})
+    batch_meta = {
+        b.name: b for b in frappe.get_all(
+            "Batch", filters={"name": ["in", batch_nos]},
+            fields=["name", "manufacturing_date", "expiry_date"],
+        )
+    }
+
+    today_date = getdate(today())
+    out = {}
+    for r in rows:
+        meta = batch_meta.get(r.batch_no) or {}
+        expiry = meta.get("expiry_date")
+        days_to_expiry = (getdate(expiry) - today_date).days if expiry else None
+        out.setdefault(r.item_code, []).append({
+            "batch_no":            r.batch_no,
+            "qty":                 flt(r.qty),
+            "manufacturing_date":  meta.get("manufacturing_date"),
+            "expiry_date":         expiry,
+            "is_expired":          bool(expiry and days_to_expiry < 0),
+            "expires_soon":        bool(expiry and 0 <= days_to_expiry <= 30),
+        })
+    return out
+
+
+@frappe.whitelist(allow_guest=False)
 def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
     """
     Return current stock levels (from Bin) with item details.
@@ -73,7 +133,7 @@ def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
         items = frappe.get_all(
             "Item",
             filters={"name": ["in", item_codes]},
-            fields=["name", "item_name", "item_group", "stock_uom", "disabled"],
+            fields=["name", "item_name", "item_group", "stock_uom", "disabled", "has_batch_no"],
         )
         for it in items:
             item_map[it.name] = it
@@ -97,6 +157,7 @@ def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
                     "valuation_rate": flt(b.valuation_rate),
                     "reorder_level": flt(b.reorder_level),
                     "reorder_qty":   flt(b.reorder_qty),
+                    "has_batch_no":  1 if item.get("has_batch_no") else 0,
                 }
             agg[b.item_code]["actual_qty"]    += flt(b.actual_qty)
             agg[b.item_code]["reserved_qty"]  += flt(b.reserved_qty)
@@ -129,6 +190,7 @@ def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
             "reorder_level":   flt(b.reorder_level),
             "reorder_qty":     flt(b.reorder_qty),
             "below_reorder":   flt(b.actual_qty) < flt(b.reorder_level) if b.reorder_level else False,
+            "has_batch_no":    1 if item.get("has_batch_no") else 0,
         })
 
     # Also show items that have this warehouse as default_warehouse but no Bin yet (0 stock)
@@ -175,8 +237,6 @@ def create_opening_stock():
     replace_existing=1 → always creates a Material Receipt regardless of prior SLEs.
     Returns the Stock Entry name.
     """
-    from zoho_books_clone.utils.access import require_module
-    require_module("inventory", write=True)
     from frappe.utils import today as frappe_today
     # Read from form_dict directly to avoid Frappe's argument-filtering stripping params
     fd = frappe.form_dict
@@ -281,8 +341,6 @@ def create_inventory_adjustment():
     the current valuation rate. The Stock Entry controller handles the SLE/Bin
     update and the GL (DR Inventory / CR adjustment account).
     """
-    from zoho_books_clone.utils.access import require_module
-    require_module("inventory", write=True)
     from frappe.utils import today as frappe_today
     fd = frappe.form_dict
     item_code = (fd.get("item_code") or "").strip()
@@ -467,8 +525,6 @@ def save_item_reorder_config(item_code, supplier="", warehouse_override="",
                               reorder_qty=None, reorder_level=None,
                               auto_po_enabled=0, notes=""):
     """Save reorder config fields directly on the Item document."""
-    from zoho_books_clone.utils.access import require_module
-    require_module("inventory", write=True)
     if not frappe.db.exists("Item", item_code):
         frappe.throw(f"Item {item_code} not found")
 
@@ -671,8 +727,6 @@ def create_stock_entry():
     Optional:
       posting_date, remarks, from_warehouse, to_warehouse
     """
-    from zoho_books_clone.utils.access import require_module
-    require_module("inventory", write=True)
     import json
     fd = frappe.form_dict
 
@@ -778,8 +832,6 @@ def create_po_from_reorder(items=None, supplier=None, company=None):
     `items` is a JSON list of {item_code, qty, warehouse} dicts.
     Returns the new PO name.
     """
-    from zoho_books_clone.utils.access import require_module
-    require_module("bills", write=True)
     import json
     from frappe.utils import flt, today
 

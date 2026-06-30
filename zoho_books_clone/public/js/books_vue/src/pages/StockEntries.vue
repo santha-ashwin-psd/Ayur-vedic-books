@@ -220,13 +220,38 @@
             <div class="ta-r">Rate (₹)</div>
             <div></div>
           </div>
-          <div v-for="line in lines" :key="line.id" class="se-items-row">
-            <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="opt=>onItemSelect(line,opt)" /></div>
-            <div><SearchableSelect v-model="line.s_warehouse" :options="warehouses" placeholder="From…" @search="fetchWarehouses" :compact="true"/></div>
-            <div><SearchableSelect v-model="line.t_warehouse" :options="warehouses" placeholder="To…" @search="fetchWarehouses" :compact="true"/></div>
-            <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="se-input ta-r" /></div>
-            <div><input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" /></div>
-            <div><button @click="removeLine(line.id)" class="se-rm-line"><span v-html="icon('x',12)"></span></button></div>
+          <div v-for="line in lines" :key="line.id" class="se-items-line">
+            <div class="se-items-row">
+              <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="opt=>onItemSelect(line,opt)" /></div>
+              <div><SearchableSelect v-model="line.s_warehouse" :options="warehouses" placeholder="From…" @search="fetchWarehouses" :compact="true"/></div>
+              <div><SearchableSelect v-model="line.t_warehouse" :options="warehouses" placeholder="To…" @search="fetchWarehouses" :compact="true"/></div>
+              <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="se-input ta-r" /></div>
+              <div><input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" /></div>
+              <div><button @click="removeLine(line.id)" class="se-rm-line"><span v-html="icon('x',12)"></span></button></div>
+            </div>
+            <div v-if="line.has_batch_no" class="se-batch-row">
+              <div class="se-batch-field" style="flex:1.6">
+                <label class="se-label">Batch No <span v-if="batchRequired(line)" class="req">*</span></label>
+                <SearchableSelect
+                  v-model="line.batch_no"
+                  :options="line.batchOptions"
+                  :placeholder="batchPlaceholder(line)"
+                  createable
+                  @search="q=>fetchBatches(line,q)"
+                  @select="opt=>onBatchSelect(line,opt)"
+                  @create="val=>onBatchCreate(line,val)"
+                  :compact="true"
+                />
+              </div>
+              <div class="se-batch-field" style="flex:1">
+                <label class="se-label">Mfg date</label>
+                <input v-model="line.manufacturing_date" type="date" class="se-input" />
+              </div>
+              <div class="se-batch-field" style="flex:1">
+                <label class="se-label">Expiry date</label>
+                <input v-model="line.expiry_date" type="date" class="se-input" />
+              </div>
+            </div>
           </div>
           <div class="se-items-total" v-if="lines.length">
             <div style="grid-column:1/5;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Total</div>
@@ -267,6 +292,30 @@
                 <input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" />
               </div>
             </div>
+            <template v-if="line.has_batch_no">
+              <div class="se-aic-field">
+                <label class="se-label">Batch No <span v-if="batchRequired(line)" class="req">*</span></label>
+                <SearchableSelect
+                  v-model="line.batch_no"
+                  :options="line.batchOptions"
+                  :placeholder="batchPlaceholder(line)"
+                  createable
+                  @search="q=>fetchBatches(line,q)"
+                  @select="opt=>onBatchSelect(line,opt)"
+                  @create="val=>onBatchCreate(line,val)"
+                />
+              </div>
+              <div class="se-aic-row2">
+                <div class="se-aic-field" style="flex:1">
+                  <label class="se-label">Mfg Date</label>
+                  <input v-model="line.manufacturing_date" type="date" class="se-input" />
+                </div>
+                <div class="se-aic-field" style="flex:1">
+                  <label class="se-label">Expiry Date</label>
+                  <input v-model="line.expiry_date" type="date" class="se-input" />
+                </div>
+              </div>
+            </template>
             <div class="se-aic-amount">Amount: <strong>{{ fmtCur(flt(line.qty) * flt(line.basic_rate)) }}</strong></div>
           </div>
           <div v-if="lines.length" class="se-aic-total">
@@ -353,6 +402,7 @@
               <thead>
                 <tr>
                   <th>Item</th>
+                  <th>Batch</th>
                   <th>From WH</th>
                   <th>To WH</th>
                   <th class="ta-r">Qty</th>
@@ -366,6 +416,7 @@
                     <div style="font-weight:600;font-size:12.5px">{{ it.item_code }}</div>
                     <div v-if="it.item_name && it.item_name!==it.item_code" style="font-size:11px;color:#9ca3af">{{ it.item_name }}</div>
                   </td>
+                  <td class="text-muted" style="font-size:12px">{{ it.batch_no||'—' }}</td>
                   <td class="text-muted" style="font-size:12px">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</td>
                   <td class="text-muted" style="font-size:12px">{{ it.t_warehouse||viewDoc.to_warehouse||'—' }}</td>
                   <td class="ta-r">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></td>
@@ -386,6 +437,10 @@
                   <div class="se-vic-amount">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</div>
                 </div>
                 <div class="se-vic-grid">
+                  <div class="se-vic-cell" v-if="it.batch_no">
+                    <span class="se-vic-lbl">Batch</span>
+                    <span class="se-vic-val">{{ it.batch_no }}</span>
+                  </div>
                   <div class="se-vic-cell">
                     <span class="se-vic-lbl">Qty</span>
                     <span class="se-vic-val">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></span>
@@ -489,7 +544,10 @@ const lines       = ref([]);
 const sortCol     = ref("posting_date");
 const sortDir     = ref("desc");
 let _id = 1;
-const blankLine = () => ({ id: _id++, item_code: "", qty: 1, basic_rate: 0, s_warehouse: "", t_warehouse: "" });
+const blankLine = () => ({
+  id: _id++, item_code: "", qty: 1, basic_rate: 0, s_warehouse: "", t_warehouse: "",
+  has_batch_no: 0, batch_no: "", manufacturing_date: "", expiry_date: "", batchOptions: [],
+});
 
 const form = reactive({
   stock_entry_type: "Material Receipt",
@@ -505,6 +563,31 @@ const TYPE_META = {
   "Manufacture":       { color: "#7c3aed", grad: "linear-gradient(135deg,#3b0764,#7c3aed)" },
   "Repack":            { color: "#d97706", grad: "linear-gradient(135deg,#78350f,#d97706)" },
 };
+
+// Mirrors SE_TYPE_DIRECTION in stock_entry.py. Used to know which entry
+// types have a source-warehouse leg — the backend auto-assigns batch_no
+// FIFO/LIFO for those when left blank, so the UI doesn't need to force a
+// value. Types without an "s" leg (Material Receipt, Repack) bring stock
+// in fresh, so a Batch No must be supplied (new or existing) up front.
+const TYPE_DIRECTION = {
+  "Material Receipt":  { s: false, t: true },
+  "Material Issue":    { s: true,  t: false },
+  "Material Transfer": { s: true,  t: true },
+  "Manufacture":       { s: true,  t: true },
+  "Repack":            { s: false, t: false },
+};
+function batchRequired(line) {
+  // Batch No is mandatory whenever the backend won't auto-assign one for
+  // this line: incoming-only rows (no source leg), and Manufacture/Transfer
+  // rows where the user hasn't given a source warehouse for this specific
+  // line (so there's nothing for FIFO auto-assignment to draw from).
+  const dir = TYPE_DIRECTION[form.stock_entry_type] || {};
+  if (!dir.s) return true;
+  return !(line.s_warehouse || form.from_warehouse);
+}
+function batchPlaceholder(line) {
+  return batchRequired(line) ? "Select existing batch or type to create new" : "Leave blank to auto-assign (FIFO)";
+}
 
 const tabs = computed(() => [
   { key: "all",               label: "All",       color: "#6b7280", cnt: list.value.length },
@@ -678,13 +761,60 @@ async function fetchItems(q = "") {
     items.value = r.map(x => ({ label: x.name, value: x.name }));
   } catch { items.value = []; }
 }
+async function fetchBatches(line, q = "") {
+  if (!line.item_code) { line.batchOptions = []; return; }
+  const forItem = line.item_code;
+  try {
+    const filters = [["item", "=", forItem]];
+    if (q) filters.push(["name", "like", `%${q}%`]);
+    const r = await apiList("Batch", {
+      fields: ["name", "manufacturing_date", "expiry_date", "batch_qty"],
+      filters, limit: 20,
+    });
+    // Item may have changed while this request was in flight — don't let a
+    // stale response overwrite the options for whatever item is selected now.
+    if (line.item_code !== forItem) return;
+    line.batchOptions = r.map(b => ({
+      value: b.name,
+      label: (b.batch_qty !== undefined && b.batch_qty !== null) ? `${b.name} (Qty: ${b.batch_qty})` : b.name,
+      manufacturing_date: b.manufacturing_date || "",
+      expiry_date: b.expiry_date || "",
+    }));
+  } catch { if (line.item_code === forItem) line.batchOptions = []; }
+}
+function onBatchSelect(line, opt) {
+  line.batch_no = opt?.value ?? opt;
+  // Existing batch picked — inherit its dates so a fresh save doesn't
+  // overwrite them with blanks.
+  if (opt && opt.manufacturing_date) line.manufacturing_date = opt.manufacturing_date;
+  if (opt && opt.expiry_date) line.expiry_date = opt.expiry_date;
+}
+function onBatchCreate(line, typed) {
+  // User typed a Batch No that doesn't exist yet — treat as a new batch
+  // entry; mfg/expiry stay editable below and the batch is created on save.
+  line.batch_no = typed;
+}
 async function onItemSelect(line, opt) {
   line.item_code = opt?.value ?? opt;
   if (!line.item_code) return;
   try {
-    const r = await apiList("Item", { fields: ["name", "standard_buying_rate", "standard_rate"], filters: [["name", "=", line.item_code]], limit: 1 });
+    const r = await apiList("Item", { fields: ["name", "standard_buying_rate", "standard_rate", "has_batch_no"], filters: [["name", "=", line.item_code]], limit: 1 });
     const it = r && r[0];
-    if (it && !flt(line.basic_rate)) line.basic_rate = flt(it.standard_buying_rate) || flt(it.standard_rate) || 0;
+    if (it) {
+      if (!flt(line.basic_rate)) line.basic_rate = flt(it.standard_buying_rate) || flt(it.standard_rate) || 0;
+      line.has_batch_no = it.has_batch_no ? 1 : 0;
+      if (line.has_batch_no) {
+        line.batch_no = "";
+        line.batchOptions = [];
+        await fetchBatches(line, "");
+      } else {
+        // Not batch-tracked — never let a stale batch number ride along to save.
+        line.batch_no = "";
+        line.manufacturing_date = "";
+        line.expiry_date = "";
+        line.batchOptions = [];
+      }
+    }
   } catch {}
 }
 function addLine() { lines.value.push(blankLine()); }
@@ -702,10 +832,37 @@ function openNew() {
 }
 
 async function saveEntry(submit) {
-  if (!lines.value.some(l => l.item_code)) return toast.error("At least one item is required");
+  const usable = lines.value.filter(l => l.item_code);
+  if (!usable.length) return toast.error("At least one item is required");
+  for (const [idx, l] of usable.entries()) {
+    if (l.has_batch_no && batchRequired(l) && !l.batch_no)
+      return toast.error(`Row ${idx + 1}: ${l.item_code} is batch-tracked — Batch No is required`);
+  }
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
+
+    // Pre-create Batch records for any batch-tracked line carrying a Batch No
+    // that doesn't exist yet, so the Stock Entry submit can resolve it as a
+    // valid Link. Existing batches (e.g. typed in for an outgoing line) are
+    // left untouched. batch_qty is intentionally left at 0 — Stock Entry's
+    // on_submit -> _adjust_batch_qty is the single authoritative writer.
+    for (const l of usable) {
+      if (!l.has_batch_no || !l.batch_no) continue;
+      const exists = await apiList("Batch", { fields: ["name"], filters: [["name", "=", l.batch_no]], limit: 1 });
+      if (!exists.length) {
+        await apiSave({
+          doctype: "Batch",
+          batch_no: l.batch_no,
+          item: l.item_code,
+          warehouse: l.t_warehouse || form.to_warehouse || l.s_warehouse || form.from_warehouse,
+          manufacturing_date: l.manufacturing_date || null,
+          expiry_date: l.expiry_date || null,
+          batch_qty: 0,
+        });
+      }
+    }
+
     const doc = {
       doctype: "Stock Entry", company,
       stock_entry_type: form.stock_entry_type,
@@ -714,13 +871,14 @@ async function saveEntry(submit) {
       to_warehouse: form.to_warehouse || null,
       adjustment_reason: form.adjustment_reason || "",
       remarks: form.remarks || "",
-      items: lines.value.filter(l => l.item_code).map(l => ({
+      items: usable.map(l => ({
         doctype: "Stock Entry Detail",
         item_code: l.item_code,
         qty: flt(l.qty),
         basic_rate: flt(l.basic_rate),
         s_warehouse: l.s_warehouse || form.from_warehouse || null,
         t_warehouse: l.t_warehouse || form.to_warehouse || null,
+        batch_no: l.has_batch_no ? (l.batch_no || null) : null,
       })),
     };
     const saved = await apiSave(doc);
@@ -857,14 +1015,22 @@ textarea.se-input { resize:vertical; }
 .se-select { border:1px solid #e2e8f0; border-radius:8px; padding:8px 11px; font:inherit; font-size:13px; outline:none; background:#fff; color:#0f172a; cursor:pointer; }
 .se-select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 .se-section-title { font-size:11.5px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
-.se-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px;}
-.se-items-head { display:grid; grid-template-columns:2.5fr 1fr 1fr 70px 90px 28px; gap:6px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
-.se-items-row { display:grid; grid-template-columns:2.5fr 1fr 1fr 70px 90px 28px; gap:6px; padding:8px 10px; border-top:1px solid #f3f4f6; align-items:center; }
-.se-items-total { display:grid; grid-template-columns:2.5fr 1fr 1fr 70px 90px 28px; gap:6px; padding:8px 10px; border-top:2px solid #e5e7eb; background:#f8fafc; }
+.se-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px; max-width:100%; overflow:hidden; }
+.se-items-head { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(0,1fr) minmax(0,1fr) 60px 76px 24px; gap:4px; background:#f9fafb; padding:8px 8px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
+.se-items-row { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(0,1fr) minmax(0,1fr) 60px 76px 24px; gap:4px; padding:8px 8px; border-top:1px solid #f3f4f6; align-items:center; }
+.se-items-total { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(0,1fr) minmax(0,1fr) 60px 76px 24px; gap:4px; padding:8px 8px; border-top:2px solid #e5e7eb; background:#f8fafc; }
+.se-items-row > div, .se-items-head > div { min-width:0; }
+.se-items-row input.se-input { min-width:0; padding-left:6px; padding-right:6px; }
 .se-add-line { background:transparent; border:none; color:#2563eb; font-size:12.5px; font-weight:600; cursor:pointer; padding:8px 10px; display:inline-flex; align-items:center; gap:6px; }
 .se-add-line:hover { background:#eff6ff; }
-.se-rm-line { background:transparent; border:1px solid #e5e7eb; border-radius:4px; width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#9ca3af; }
+.se-rm-line { background:transparent; border:1px solid #e5e7eb; border-radius:4px; width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#9ca3af; flex-shrink:0; }
 .se-rm-line:hover { background:#fee2e2; color:#dc2626; border-color:#fca5a5; }
+.se-items-line { border-top:1px solid #f3f4f6; }
+.se-items-line:first-child { border-top:none; }
+.se-items-line .se-items-row { border-top:none; }
+.se-batch-row { display:flex; flex-wrap:wrap; gap:8px; padding:0 10px 10px; background:#fafbfc; }
+.se-batch-field { display:flex; flex-direction:column; gap:3px; min-width:120px; }
+.se-input-req { border-color:#fca5a5 !important; background:#fff7f7; }
 
 /* View panel */
 .se-source-card { border:1.5px solid #e5e7eb; border-radius:10px; padding:12px 14px; }
@@ -919,7 +1085,10 @@ textarea.se-input { resize:vertical; }
   /* View drawer items: hide table, show cards */
   .se-view-items-desktop { display: none !important; }
   .se-view-items-mobile  { display: flex !important; flex-direction: column; }
-  /* Add drawer items: hide table, show cards */
+}
+/* Add-drawer items: switch to cards earlier (900px) since the table needs more
+   room than the drawer has well before the page-level 768px breakpoint */
+@media (max-width: 900px) {
   .se-add-items-desktop  { display: none !important; }
   .se-add-items-mobile   { display: flex !important; flex-direction: column; }
 }
@@ -927,10 +1096,6 @@ textarea.se-input { resize:vertical; }
   .se-page { padding: 12px; gap: 10px; }
   .se-fields-grid { grid-template-columns: 1fr !important; }
   .se-val-strip   { grid-template-columns: 1fr !important; }
-  .se-add-items-desktop { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .se-add-items-desktop .se-items-head,
-  .se-add-items-desktop .se-items-row,
-  .se-add-items-desktop .se-items-total { min-width: 480px; }
 }
 /* ── Add-drawer item cards (mobile) ── */
 .se-add-items-mobile { display: none; flex-direction: column; gap: 10px; }
@@ -938,7 +1103,7 @@ textarea.se-input { resize:vertical; }
 .se-aic-header { display: flex; align-items: center; justify-content: space-between; }
 .se-aic-num { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
 .se-aic-field { display: flex; flex-direction: column; gap: 4px; }
-.se-aic-row2 { display: content; gap: 8px; }
+.se-aic-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .se-aic-amount { font-size: 12px; color: #6b7280; text-align: right; border-top: 1px solid #f3f4f6; padding-top: 8px; }
 .se-aic-total { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; color: #374151; }
 .se-aic-total strong { font-size: 14px; color: #0f172a; }

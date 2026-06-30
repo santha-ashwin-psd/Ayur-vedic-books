@@ -857,7 +857,7 @@ textarea.se-input { resize:vertical; }
 .se-select { border:1px solid #e2e8f0; border-radius:8px; padding:8px 11px; font:inherit; font-size:13px; outline:none; background:#fff; color:#0f172a; cursor:pointer; }
 .se-select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 .se-section-title { font-size:11.5px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
-.se-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
+.se-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px;}
 .se-items-head { display:grid; grid-template-columns:2.5fr 1fr 1fr 70px 90px 28px; gap:6px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
 .se-items-row { display:grid; grid-template-columns:2.5fr 1fr 1fr 70px 90px 28px; gap:6px; padding:8px 10px; border-top:1px solid #f3f4f6; align-items:center; }
 .se-items-total { display:grid; grid-template-columns:2.5fr 1fr 1fr 70px 90px 28px; gap:6px; padding:8px 10px; border-top:2px solid #e5e7eb; background:#f8fafc; }

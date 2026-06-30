@@ -280,7 +280,7 @@
         <div v-else-if="!sorted.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
           <div style="font-size:32px;margin-bottom:8px">💬</div>
           <div>{{ search ? 'No quotations match your filters' : 'No quotations yet' }}</div>
-          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openNew"><span v-html="icon('plus',13)"></span> New Quotation</button>
+          <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!$canWrite('invoices')" :title="!$canWrite('invoices') ? 'Read-only access' : ''" style="margin-top:14px" @click="openNew"><span v-html="icon('plus',13)"></span> New Quotation</button>
         </div>
         <template v-else>
           <div v-for="q in paged" :key="q.name"

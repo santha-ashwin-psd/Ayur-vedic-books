@@ -4,7 +4,7 @@
       <div class="cash-search-wrap"><span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span><input v-model="search" placeholder="Search cash transactions…" class="cash-search-input" /></div>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="cash-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
-        <button class="cash-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Cash Entry</button>
+        <button class="cash-btn-primary" :disabled="!$canWrite('banking')" :title="!$canWrite('banking') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Cash Entry</button>
       </div>
     </div>
 

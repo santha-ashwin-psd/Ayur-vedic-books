@@ -5,7 +5,7 @@
       <span style="font-size:18px;font-weight:700;color:#1a1a2e">Email Templates</span>
       <span style="background:#F3F0FF;color:#2563eb;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{list.length}}</span>
     </div>
-    <button class="nim-btn nim-btn-primary" @click="openAdd"><span v-html="icon('plus',13)" style="vertical-align:-2px;margin-right:4px"/>New Template</button>
+    <button class="nim-btn nim-btn-primary" :disabled="!$canWrite('admin')" :title="!$canWrite('admin') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',13)" style="vertical-align:-2px;margin-right:4px"/>New Template</button>
   </div>
 
   <div style="background:linear-gradient(135deg,#E7F5FF,#D0EBFF);border:1px solid #a5d8ff;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;align-items:center">
@@ -26,7 +26,7 @@
     <div style="font-size:36px;margin-bottom:10px">📭</div>
     <div style="font-size:14px;font-weight:600;margin-bottom:4px">No templates yet</div>
     <div style="font-size:12.5px">Create your first email template to automate customer communications</div>
-    <button class="nim-btn nim-btn-primary" @click="openAdd" style="margin-top:16px">Create Template</button>
+    <button class="nim-btn nim-btn-primary" :disabled="!$canWrite('admin')" :title="!$canWrite('admin') ? 'Read-only access' : ''" @click="openAdd" style="margin-top:16px">Create Template</button>
   </div>
 
   <div v-else class="et-grid">

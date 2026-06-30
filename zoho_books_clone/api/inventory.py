@@ -175,6 +175,8 @@ def create_opening_stock():
     replace_existing=1 → always creates a Material Receipt regardless of prior SLEs.
     Returns the Stock Entry name.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("inventory", write=True)
     from frappe.utils import today as frappe_today
     # Read from form_dict directly to avoid Frappe's argument-filtering stripping params
     fd = frappe.form_dict
@@ -279,6 +281,8 @@ def create_inventory_adjustment():
     the current valuation rate. The Stock Entry controller handles the SLE/Bin
     update and the GL (DR Inventory / CR adjustment account).
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("inventory", write=True)
     from frappe.utils import today as frappe_today
     fd = frappe.form_dict
     item_code = (fd.get("item_code") or "").strip()
@@ -463,6 +467,8 @@ def save_item_reorder_config(item_code, supplier="", warehouse_override="",
                               reorder_qty=None, reorder_level=None,
                               auto_po_enabled=0, notes=""):
     """Save reorder config fields directly on the Item document."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("inventory", write=True)
     if not frappe.db.exists("Item", item_code):
         frappe.throw(f"Item {item_code} not found")
 
@@ -665,6 +671,8 @@ def create_stock_entry():
     Optional:
       posting_date, remarks, from_warehouse, to_warehouse
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("inventory", write=True)
     import json
     fd = frappe.form_dict
 
@@ -770,6 +778,8 @@ def create_po_from_reorder(items=None, supplier=None, company=None):
     `items` is a JSON list of {item_code, qty, warehouse} dicts.
     Returns the new PO name.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     import json
     from frappe.utils import flt, today
 

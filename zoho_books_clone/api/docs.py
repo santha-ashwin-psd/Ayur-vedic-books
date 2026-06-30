@@ -271,6 +271,8 @@ def save_fiscal_year(year_label, start_date, end_date, doc_name=None):
     doc_name    – existing document name to update; omit to create new
     Returns the saved document as a dict.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("accounts", write=True)
     from zoho_books_clone.api.admin import _resolve_company_for
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
@@ -2437,6 +2439,8 @@ def _set_quote_status(quotation_name, status):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def mark_quote_sent(quotation_name):
     """Mark a quote as sent (sets status='Sent'). Auto-fired by Send Email too."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     return {"name": quotation_name, "status": _set_quote_status(quotation_name, "Sent")}
@@ -2444,6 +2448,8 @@ def mark_quote_sent(quotation_name):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def mark_quote_accepted(quotation_name):
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     return {"name": quotation_name, "status": _set_quote_status(quotation_name, "Accepted")}
@@ -2451,6 +2457,8 @@ def mark_quote_accepted(quotation_name):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def mark_quote_declined(quotation_name, reason=""):
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     _set_quote_status(quotation_name, "Declined")
@@ -2466,6 +2474,8 @@ def mark_quote_declined(quotation_name, reason=""):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def mark_quote_expired_bulk(quotation_names):
     """Bulk-set status='Expired' for the given quotations."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(quotation_names, str):
@@ -2737,6 +2747,8 @@ def get_sales_order_fulfillment(sales_order):
 def mark_so_delivered(sales_order, line_qtys=None):
     """Mark selected SO lines as delivered. line_qtys is {item_row_name: qty_to_add}
     or null/empty to mark ALL remaining qty delivered on every line."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(line_qtys, str):
@@ -2898,6 +2910,8 @@ def get_sales_order_links(sales_order):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def submit_sales_order(sales_order):
     """Submit a draft Sales Order — mirrors save_doc(docstatus=1) used by the add drawer."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     # Sales Order is not a submittable doctype (is_submittable=0).
@@ -2916,6 +2930,8 @@ def submit_sales_order(sales_order):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def cancel_sales_order_safe(sales_order):
     """Cancel an SO only if it has no submitted downstream invoices."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     submitted_sis = frappe.get_all("Sales Invoice",
@@ -3053,6 +3069,8 @@ def get_purchase_order_fulfillment(purchase_order):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def mark_po_received(purchase_order, line_qtys=None):
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(line_qtys, str):
@@ -3208,6 +3226,8 @@ def get_purchase_order_links(purchase_order):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def submit_purchase_order(purchase_order):
     """Submit a draft Purchase Order — mirrors save_doc(docstatus=1) used by the add drawer."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     # Purchase Order is a submittable doctype (is_submittable=1).
@@ -3227,6 +3247,8 @@ def submit_purchase_order(purchase_order):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def cancel_purchase_order_safe(purchase_order):
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     submitted_bills = frappe.get_all("Purchase Invoice",
@@ -3523,6 +3545,8 @@ def send_vendor_statement_email(vendor, to, subject, body, cc=None):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def bulk_set_vendor_disabled(vendor_names, disabled):
     """Bulk enable/disable. vendor_names = list/json list. disabled = 0|1."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("customers", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(vendor_names, str):
@@ -3942,6 +3966,8 @@ def get_bank_reconciliation(bank_account, from_date, to_date):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def reconcile_bank_transaction(bank_transaction_name, payment_entry_name=None):
     """Mark a Bank Transaction as reconciled, optionally linking a Payment Entry."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     updates = {"status": "Reconciled"}
@@ -4007,6 +4033,8 @@ def get_cheque_list(company=None, status=None):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def update_cheque_status(payment_entry_name, new_status, cleared_date=None, bounce_reason=None):
     """Transition a cheque between Issued → Cleared / Bounced / Cancelled."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if new_status not in ("Issued", "Cleared", "Bounced", "Cancelled"):
@@ -4174,6 +4202,8 @@ def import_bank_statement_csv(bank_account, csv_data):
     CSV columns expected (case-insensitive, lenient): date, description, debit, credit
     (or amount + type=DR/CR). Returns count + list of created names.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if not bank_account or not frappe.db.exists("Bank Account", bank_account):
@@ -4235,6 +4265,8 @@ def create_delivery_note_from_so(sales_order, line_qtys=None, lr_no="", transpor
     """Create + submit a Delivery Note from a Sales Order.
     line_qtys = {sales_order_item_row_name: qty_to_deliver}; null → all remaining.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(line_qtys, str):
@@ -4301,6 +4333,8 @@ def create_delivery_note_from_so(sales_order, line_qtys=None, lr_no="", transpor
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_delivery_note="", remarks=""):
     """Create + submit a Purchase Receipt from a Purchase Order."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(line_qtys, str):
@@ -4539,6 +4573,8 @@ def get_purchase_receipt_lines(purchase_order):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def bulk_set_customer_disabled(customer_names, disabled):
+    from zoho_books_clone.utils.access import require_module
+    require_module("customers", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(customer_names, str):
@@ -4610,6 +4646,8 @@ def get_accounts():
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def write_off_credit_note(credit_note_name, write_off_account=None):
     """Write off the remaining balance on a Credit Note via Journal Entry."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     company = _get_company(frappe.session.user)
     cn = frappe.get_doc("Sales Invoice", credit_note_name)
     if cn.docstatus != 1:

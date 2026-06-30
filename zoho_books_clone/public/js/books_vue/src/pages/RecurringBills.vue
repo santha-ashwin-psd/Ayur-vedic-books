@@ -17,7 +17,7 @@
         <button class="rec-btn-ghost" @click="load" :disabled="loading">
           <span v-html="icon('refresh',14)"></span>
         </button>
-        <button class="rec-btn-primary" @click="openNew">
+        <button class="rec-btn-primary" :disabled="!$canWrite('bills')" :title="!$canWrite('bills') ? 'Read-only access' : ''" @click="openNew">
           <span v-html="icon('plus',13)"></span> New Recurring Bill
         </button>
       </div>
@@ -84,7 +84,7 @@
                   <div class="rec-empty-icon" v-html="icon('repeat',32)"></div>
                   <div class="rec-empty-title">No recurring bills found</div>
                   <div class="rec-empty-sub">Create a recurring bill to auto-generate purchase orders on a schedule.</div>
-                  <button class="rec-btn-primary" @click="openNew" style="margin-top:12px">
+                  <button class="rec-btn-primary" :disabled="!$canWrite('bills')" :title="!$canWrite('bills') ? 'Read-only access' : ''" @click="openNew" style="margin-top:12px">
                     <span v-html="icon('plus',13)"></span> Create your first recurring bill
                   </button>
                 </div>

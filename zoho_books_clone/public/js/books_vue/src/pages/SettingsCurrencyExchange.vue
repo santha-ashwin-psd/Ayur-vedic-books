@@ -12,7 +12,7 @@
       <button class="nim-btn nim-btn-ghost" style="color:#fff;border-color:rgba(255,255,255,.35)" @click="refreshRates" :disabled="refreshing">
         <span v-if="refreshing">⟳</span><span v-else>↺</span> Refresh Rates
       </button>
-      <button class="nim-btn nim-btn-primary" style="background:#fff;color:#1A237E;border-color:#fff" @click="openAddCurrency">+ Add Currency</button>
+      <button class="nim-btn nim-btn-primary" :disabled="!$canWrite('admin')" :title="!$canWrite('admin') ? 'Read-only access' : ''" style="background:#fff;color:#1A237E;border-color:#fff" @click="openAddCurrency">+ Add Currency</button>
     </div>
   </div>
 
@@ -94,7 +94,7 @@
           <input type="date" v-model="histFilter.to" style="border:1px solid #dee2e6;border-radius:8px;padding:7px 12px;font-size:13px">
           <div style="margin-left:auto;display:flex;gap:8px">
             <button class="nim-btn nim-btn-ghost" style="font-size:12px" @click="exportHistoryCSV">⬇ Export CSV</button>
-            <button class="nim-btn nim-btn-primary" style="font-size:13px" @click="openAddRate('')">+ Add Rate</button>
+            <button class="nim-btn nim-btn-primary" :disabled="!$canWrite('admin')" :title="!$canWrite('admin') ? 'Read-only access' : ''" style="font-size:13px" @click="openAddRate('')">+ Add Rate</button>
           </div>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px">

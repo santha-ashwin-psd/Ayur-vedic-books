@@ -121,7 +121,7 @@
             <div style="font-size:32px;margin-bottom:8px">📄</div>
             <div style="font-weight:600;margin-bottom:4px">{{searchQ?'No entries match':'No journal entries yet'}}</div>
             <div style="font-size:13px;color:#868e96;margin-bottom:12px">{{searchQ?'Try a different search':'Record adjustments, depreciation, accruals and more'}}</div>
-            <button v-if="!searchQ" class="b-btn b-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Entry</button>
+            <button v-if="!searchQ" class="b-btn b-btn-primary" :disabled="!$canWrite('accounts')" :title="!$canWrite('accounts') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> New Entry</button>
           </td></tr>
         </template>
         <template v-else>
@@ -163,7 +163,7 @@
         <div class="jen-mc-empty-icon">📄</div>
         <div class="jen-mc-empty-title">{{searchQ?'No entries match':'No journal entries yet'}}</div>
         <div class="jen-mc-empty-sub">{{searchQ?'Try a different search':'Record adjustments, depreciation, accruals and more'}}</div>
-        <button v-if="!searchQ" class="b-btn b-btn-primary" style="margin-top:10px" @click="openAdd">
+        <button v-if="!searchQ" class="b-btn b-btn-primary" :disabled="!$canWrite('accounts')" :title="!$canWrite('accounts') ? 'Read-only access' : ''" style="margin-top:10px" @click="openAdd">
           <span v-html="icon('plus',13)"></span> New Entry
         </button>
       </div>

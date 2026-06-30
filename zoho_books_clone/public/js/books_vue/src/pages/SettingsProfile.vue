@@ -56,7 +56,7 @@
               <div class="sp-hero-stat-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </div>
-              <div class="sp-hero-stat-val">Admin</div>
+              <div class="sp-hero-stat-val">{{ role || 'Member' }}</div>
               <div class="sp-hero-stat-lbl">ROLE</div>
             </div>
             <div class="sp-hero-stat-sep"></div>
@@ -370,8 +370,10 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 
 const { toast } = useToast();
+const { role } = usePermissions();
 
 const TABS = [
   { k: "profile",  l: "Profile",  icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },

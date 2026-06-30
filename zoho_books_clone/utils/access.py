@@ -160,6 +160,27 @@ def require_module(module: str, write: bool = False, user: str | None = None):
                      frappe.PermissionError)
 
 
+def require_write(user: str | None = None):
+    """Block read-only roles (and non-members) from any write/action, without
+    requiring a specific module. Use for endpoints whose module is ambiguous
+    (e.g. recurring/subscriptions, bulk operations). Admins/bypass pass."""
+    user = user or frappe.session.user
+    if user == "Guest":
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    m = _membership(user)
+    if m["admin"]:
+        return
+    if m["no_member"] or m["readonly"]:
+        frappe.throw(_("Your role is read-only — you can't perform this action."),
+                     frappe.PermissionError)
+
+
+def is_readonly(user: str | None = None) -> bool:
+    """True when the user is a read-only role (Books Viewer) — not admin/bypass."""
+    m = _membership(user or frappe.session.user)
+    return bool(m["readonly"] and not m["admin"])
+
+
 def assert_company(company: str | None, user: str | None = None):
     """Reject a user-supplied `company` that isn't the caller's own company.
     Closes cross-company write/read holes on endpoints that take a company arg."""

@@ -20,7 +20,7 @@
         <button class="sales-btn-ghost" @click="triggerImport" title="Import vendors from CSV"><span v-html="icon('upload',13)"></span> Import</button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> Export</button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
-        <button class="sales-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
+        <button class="sales-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
         <input ref="importInput" type="file" accept=".csv,text/csv" style="display:none" @change="importCSV" />
       </div>
     </div>
@@ -88,7 +88,7 @@
                 </div>
                 <div class="vt-empty-title">{{search ? 'No results found' : 'No vendors yet'}}</div>
                 <div class="vt-empty-sub">{{search ? 'Try adjusting your search or filter' : 'Add your first vendor to get started'}}</div>
-                <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
+                <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
               </td>
             </tr>
             <tr v-else v-for="v in filtered" :key="v.name"
@@ -190,7 +190,7 @@
         <div v-else-if="!filtered.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
           <div style="font-size:32px;margin-bottom:8px">🏢</div>
           <div>{{ search ? 'No results found' : 'No vendors yet' }}</div>
-          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
+          <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Vendor</button>
         </div>
         <template v-else>
           <div v-for="v in filtered" :key="v.name"
@@ -239,7 +239,7 @@
       <div style="padding:16px 16px 10px;border-bottom:1px solid #f0f2f5;flex-shrink:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <span style="font-size:14px;font-weight:700;color:#111827">Vendors</span>
-          <button class="nim-btn nim-btn-primary" style="padding:5px 10px;font-size:12px" @click="openAdd">
+          <button class="nim-btn nim-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" style="padding:5px 10px;font-size:12px" @click="openAdd">
             <span v-html="icon('plus',12)"></span> New Vendor
           </button>
         </div>
@@ -265,7 +265,7 @@
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 10px;display:block"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:4px">{{search?'No matches':'No vendors yet'}}</div>
           <div style="font-size:12px;color:#9ca3af">{{search?'Try different keywords':'Add your first vendor'}}</div>
-          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:12px;font-size:12px" @click="openAdd">New Vendor</button>
+          <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" style="margin-top:12px;font-size:12px" @click="openAdd">New Vendor</button>
         </div>
         <div v-else v-for="v in filtered" :key="v.name"
           @click="selectVendor(v)"
@@ -326,7 +326,7 @@
             <button class="nim-btn" style="background:#fff;color:#374151;border:1px solid #E5E7EB;font-size:13px" @click="openEdit(selectedVendor.name)">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
-            <!-- <button class="nim-btn nim-btn-primary" style="font-size:13px;background:#E67700;border-color:#E67700" @click="openAdd">
+            <!-- <button class="nim-btn nim-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" style="font-size:13px;background:#E67700;border-color:#E67700" @click="openAdd">
               <span v-html="icon('plus',13)"></span> New Transaction
             </button> -->
             <button class="nim-btn" style="background:#fff;color:#374151;border:1px solid #E5E7EB;width:32px;height:32px;padding:0;display:grid;place-items:center" @click="closeVendor" title="Close">

@@ -199,6 +199,8 @@ def generate_eway_bill(invoice_no, transporter, vehicle_no, distance_km=0,
     Creates an `E Way Bill` record with a mock 12-digit number and a validity
     period computed from distance_km (1 day per 200 km, or 1 day per 20 km for ODC).
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("taxes", write=True)
     if not (invoice_no and transporter and vehicle_no):
         frappe.throw(_("Invoice, transporter and vehicle number are required"))
     if not frappe.db.exists("Sales Invoice", invoice_no):
@@ -261,6 +263,8 @@ def generate_eway_bill(invoice_no, transporter, vehicle_no, distance_km=0,
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def cancel_eway_bill(name, reason=""):
+    from zoho_books_clone.utils.access import require_module
+    require_module("taxes", write=True)
     doc = _get_ewb(name)
     if doc.status == "Cancelled":
         return {"ok": True, "message": "Already cancelled"}
@@ -278,6 +282,8 @@ def cancel_eway_bill(name, reason=""):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def update_vehicle(name, vehicle_no, transporter=None):
+    from zoho_books_clone.utils.access import require_module
+    require_module("taxes", write=True)
     doc = _get_ewb(name)
     if doc.status != "Generated":
         frappe.throw(_("Cannot update — E-Way Bill is {0}").format(doc.status))
@@ -292,6 +298,8 @@ def update_vehicle(name, vehicle_no, transporter=None):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def extend_validity(name, extra_days=1):
     """Extend the EWB validity by N days (NIC permits one extension per EWB)."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("taxes", write=True)
     doc = _get_ewb(name)
     if doc.status != "Generated":
         frappe.throw(_("Cannot extend — E-Way Bill is {0}").format(doc.status))

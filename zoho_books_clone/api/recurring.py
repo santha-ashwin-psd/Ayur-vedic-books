@@ -203,6 +203,8 @@ def cancel_subscription(name):
     end_date == start_date, so we bypass validation with a direct db update
     after disabling via save().
     """
+    from zoho_books_clone.utils.access import require_write
+    require_write()
     from frappe.utils import add_days
     doc = _get_ar(name)
     doc.disabled = 1
@@ -219,6 +221,8 @@ def cancel_subscription(name):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def delete_subscription(name):
+    from zoho_books_clone.utils.access import require_write
+    require_write()
     _get_ar(name)
     frappe.delete_doc("Auto Repeat", name, ignore_permissions=False)
     frappe.db.commit()
@@ -228,6 +232,8 @@ def delete_subscription(name):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def run_subscription_now(name):
     """Force-generate the next document immediately, ignoring schedule."""
+    from zoho_books_clone.utils.access import require_write
+    require_write()
     doc = _get_ar(name)
     if doc.disabled:
         frappe.throw(_("Cannot run a paused subscription. Resume first."))
@@ -267,6 +273,8 @@ def run_subscription_now(name):
 def update_subscription(name, frequency=None, end_date=None, notify_by_email=None,
                        submit_on_creation=None, recipients=None, subject=None, message=None,
                        subscription_name=None):
+    from zoho_books_clone.utils.access import require_write
+    require_write()
     doc = _get_ar(name)
     if subscription_name is not None:
         doc.subscription_name = subscription_name
@@ -295,6 +303,8 @@ def update_subscription(name, frequency=None, end_date=None, notify_by_email=Non
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def bulk_action(names, action):
     """action ∈ {pause, resume, cancel, delete}. names = list[str] or JSON."""
+    from zoho_books_clone.utils.access import require_write
+    require_write()
     if isinstance(names, str):
         import json
         try:
@@ -365,6 +375,8 @@ def make_recurring_from_doc(reference_doctype, reference_document, frequency,
                             subscription_name=""):
     """Create an Auto Repeat attached to an existing document.
     Used by 'Make Recurring' button on Invoice/PO/etc. drawers."""
+    from zoho_books_clone.utils.access import require_write
+    require_write()
     if not frappe.db.exists(reference_doctype, reference_document):
         frappe.throw(_("Reference document does not exist"))
 

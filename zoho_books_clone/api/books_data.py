@@ -1711,6 +1711,8 @@ def save_account(op, name=None, account_name=None, account_number=None,
     op = 'create' | 'update' | 'delete'
     (named 'op' instead of 'action' — Frappe v15 strips 'action' from form_dict)
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("accounts", write=True)
     if not company:
         company = _get_company(frappe.session.user)
 
@@ -2007,6 +2009,8 @@ def get_price_list_detail(price_list_name):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def duplicate_price_list(source_name, new_name):
     """Creates a copy of source_name price list with all its item prices."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("inventory", write=True)
     new_name = (new_name or "").strip()
     if not new_name:
         frappe.throw("New name is required")
@@ -2048,6 +2052,8 @@ def duplicate_price_list(source_name, new_name):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def bulk_create_item_prices(price_list, rows_json):
     """Bulk-creates Item Price docs from a parsed CSV rows array."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("inventory", write=True)
     import json as _json
     rows = _json.loads(rows_json) if isinstance(rows_json, str) else rows_json
     created, errors = 0, []

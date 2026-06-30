@@ -7,7 +7,7 @@
       </div>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="btr-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
-        <button class="btr-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Transfer</button>
+        <button class="btr-btn-primary" :disabled="!$canWrite('banking')" :title="!$canWrite('banking') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Transfer</button>
       </div>
     </div>
 

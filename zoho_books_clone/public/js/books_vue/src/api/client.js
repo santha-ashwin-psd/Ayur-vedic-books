@@ -1,4 +1,25 @@
 import { useConfirm } from "../composables/useConfirm.js";
+import { session } from "./session.js";
+
+// ── Global read-only guard ──────────────────────────────────────────────────
+// A "Books Viewer" (session.permissions.read_only) may view but never mutate.
+// Every SPA write goes through apiPOST (incl. apiSave/apiSubmit/apiDelete/
+// apiCancel which call it), so blocking mutating methods here makes the whole
+// app read-only — no matter which page/button triggered it.
+const _FRAPPE_WRITE = new Set([
+  "frappe.client.insert", "frappe.client.set_value", "frappe.client.delete",
+  "frappe.client.rename_doc", "frappe.client.cancel", "frappe.client.submit",
+]);
+const _WRITE_VERB = /(^|\.)(create|save|update|delete|submit|cancel|record|apply|convert|refund|mark|bulk|set_|pay|post|generate|remove|add|toggle|disable|enable|import|reconcile|close|run|duplicate|make|extend|reset|change|invite|connect|send|write_off|seed)[a-z_0-9]*$/;
+function _isWriteMethod(m) {
+  if (!m) return false;
+  return _FRAPPE_WRITE.has(m) || _WRITE_VERB.test(m) || m.endsWith("ai_execute_pro_action");
+}
+function _assertWritable(method) {
+  if (session.permissions && session.permissions.read_only && _isWriteMethod(method)) {
+    throw new Error("Read-only access — your role can view but not make changes.");
+  }
+}
 
 function _parseServerMessage(msg) {
   if (!msg) return "";
@@ -120,6 +141,7 @@ export async function refreshCsrfToken() {
 }
 
 export async function apiPOST(method, args) {
+  _assertWritable(method);
   const csrfToken = await refreshCsrfToken();
   const body = new URLSearchParams();
   for (const [k, v] of Object.entries(args || {})) {

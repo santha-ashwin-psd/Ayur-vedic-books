@@ -8,7 +8,7 @@
     </div>
     <div style="display:flex;gap:6px;margin-left:auto">
       <button class="b-btn b-btn-ghost" @click="load"><span v-html="icon('refresh',13)"></span></button>
-      <button class="b-btn b-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Proforma</button>
+      <button class="b-btn b-btn-primary" :disabled="!$canWrite('invoices')" :title="!$canWrite('invoices') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Proforma</button>
     </div>
   </div>
 

@@ -7,6 +7,10 @@
     <Sidebar :collapsed="collapsed" :mobile-open="mobileOpen" @toggle="collapsed = !collapsed" @close-mobile="mobileOpen = false" />
     <div class="bv-app-main">
       <Topbar @toggle-ai="aiOpen = !aiOpen" :alert-count="alertCount" @toggle-mobile="mobileOpen = !mobileOpen" />
+      <div v-if="isReadonly" class="bv-readonly-bar">
+        <span class="bv-readonly-icon">👁</span>
+        Read-only access — you can view data but cannot make changes.
+      </div>
       <main class="bv-app-content">
         <router-view />
       </main>
@@ -44,6 +48,9 @@ import ReturnNoteDialog     from "../components/ReturnNoteDialog.vue";
 import MakeRecurringDialog   from "../components/MakeRecurringDialog.vue";
 import { useAiActions } from "../composables/useAiActions.js";
 import { apiGET }       from "../api/client.js";
+import { usePermissions } from "../composables/usePermissions.js";
+
+const { isReadonly } = usePermissions();
 
 const COLLAPSE_KEY = "books_sidebar_collapsed";
 
@@ -96,3 +103,19 @@ watch(collapsed, (v) => {
   try { localStorage.setItem(COLLAPSE_KEY, v ? "1" : "0"); } catch {}
 });
 </script>
+
+<style scoped>
+.bv-readonly-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  background: #fffbeb;
+  border-bottom: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 12.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.bv-readonly-icon { font-size: 13px; }
+</style>

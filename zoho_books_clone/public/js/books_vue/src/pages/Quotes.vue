@@ -811,7 +811,7 @@
                     <div class="inv-totals-inner">
                       <div class="inv-total-line">
                         <span class="t-lbl">Subtotal</span>
-                        <span class="t-amt">{{ fmtDocCur((viewDoc.grand_total||0)-(viewDoc.total_taxes_and_charges||0), viewDoc) }}</span>
+                        <span class="t-amt">{{ fmtDocCur(viewDoc.net_total != null ? viewDoc.net_total : (viewDoc.grand_total||0)-(viewDoc.total_tax||0), viewDoc) }}</span>
                       </div>
                       <template v-if="viewDoc.taxes&&viewDoc.taxes.length">
                         <div v-for="(tx,i) in viewDoc.taxes" :key="i" class="inv-total-line">
@@ -2177,8 +2177,8 @@ async function downloadQuotePdf(mode = 'pdf') {
     transaction_date: doc.transaction_date, valid_till: doc.valid_till,
     title: doc.title || "", billing_address: doc.billing_address || doc.address_display || "",
     currency: doc.currency || "INR", items: doc.items || [], taxes: doc.taxes || [],
-    subtotal: flt(doc.grand_total) - flt(doc.total_taxes_and_charges),
-    totalTax: flt(doc.total_taxes_and_charges), grandTotal: flt(doc.grand_total),
+    subtotal: doc.net_total != null ? flt(doc.net_total) : flt(doc.grand_total) - flt(doc.total_tax),
+    totalTax: flt(doc.total_tax), grandTotal: flt(doc.grand_total),
     terms: doc.terms || "", company: doc.company || window.__booksCompany || "",
   };
   const html = renderDocument(_toPrintDoc(data), _qtCfg(data));
@@ -2213,8 +2213,8 @@ async function printQuote(data) {
       transaction_date: doc.transaction_date, valid_till: doc.valid_till,
       title: doc.title || "", billing_address: doc.billing_address || doc.address_display || "",
       currency: doc.currency || "INR", items: doc.items || [], taxes: doc.taxes || [],
-      subtotal: flt(doc.grand_total) - flt(doc.total_taxes_and_charges),
-      totalTax: flt(doc.total_taxes_and_charges), grandTotal: flt(doc.grand_total),
+      subtotal: doc.net_total != null ? flt(doc.net_total) : flt(doc.grand_total) - flt(doc.total_tax),
+      totalTax: flt(doc.total_tax), grandTotal: flt(doc.grand_total),
       terms: doc.terms || "", company: doc.company || window.__booksCompany || "",
     };
   }

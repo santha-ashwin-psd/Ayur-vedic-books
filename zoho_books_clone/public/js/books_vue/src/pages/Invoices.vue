@@ -897,7 +897,7 @@
                   <div class="inv-totals-inner">
                     <div class="inv-total-line">
                       <span class="t-lbl">Subtotal</span>
-                      <span class="t-amt">{{ fmtAmt((viewInv.grand_total||0)-(viewInv.total_taxes_and_charges||0), viewInv.currency) }}</span>
+                      <span class="t-amt">{{ fmtAmt(viewInv.net_total != null ? viewInv.net_total : (viewInv.grand_total||0)-(viewInv.total_tax||0), viewInv.currency) }}</span>
                     </div>
                     <div class="inv-total-line">
                       <span class="t-lbl">Discount</span>
@@ -1745,8 +1745,8 @@ async function downloadInvoicePdf(mode = 'pdf') {
     billing_address: inv.billing_address_display || '',
     items: inv.items || [],
     taxes: inv.taxes || [],
-    subtotal: flt(inv.grand_total) - flt(inv.total_taxes_and_charges),
-    totalTax: flt(inv.total_taxes_and_charges),
+    subtotal: inv.net_total != null ? flt(inv.net_total) : flt(inv.grand_total) - flt(inv.total_tax),
+    totalTax: flt(inv.total_tax),
     grandTotal: flt(inv.grand_total),
     terms: inv.terms || '',
     company: inv.company || window.__booksCompany || '',
@@ -2506,8 +2506,8 @@ function printViewInvoice() {
     posting_date:inv.posting_date, due_date:inv.due_date, po_no:inv.po_no,
     place_of_supply:inv.place_of_supply, billing_address:inv.billing_address_display||"",
     items:inv.items||[], taxes:inv.taxes||[],
-    subtotal:(flt(inv.grand_total)-flt(inv.total_taxes_and_charges)),
-    totalTax:flt(inv.total_taxes_and_charges), grandTotal:flt(inv.grand_total),
+    subtotal:(inv.net_total != null ? flt(inv.net_total) : flt(inv.grand_total)-flt(inv.total_tax)),
+    totalTax:flt(inv.total_tax), grandTotal:flt(inv.grand_total),
     terms:inv.terms||"", company:inv.company||window.__booksCompany||"",
     logo:logoSrc(inv.logo||""),
   });

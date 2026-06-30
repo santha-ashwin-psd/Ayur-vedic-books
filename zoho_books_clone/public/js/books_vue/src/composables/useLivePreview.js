@@ -55,7 +55,7 @@ function _renderClassic(doc, cfg) {
   const logo     = _logoSrc(_state.logo);
   const currency = doc.currency || "INR";
   const netTotal = doc.net_total != null ? doc.net_total
-    : (doc.grand_total || 0) - (doc.total_taxes_and_charges || 0);
+    : (doc.grand_total || 0) - (doc.total_taxes_and_charges ?? doc.total_tax ?? (doc.taxes || []).reduce((s, t) => s + (t.tax_amount || 0), 0));
   const party    = doc[cfg.partyField] || doc.customer || doc.supplier || "";
   const docDate  = doc.posting_date || doc.transaction_date || "";
 
@@ -176,7 +176,7 @@ function _renderModern(doc, cfg) {
   const logo     = _logoSrc(_state.logo);
   const currency = doc.currency || "INR";
   const netTotal = doc.net_total != null ? doc.net_total
-    : (doc.grand_total || 0) - (doc.total_taxes_and_charges || 0);
+    : (doc.grand_total || 0) - (doc.total_taxes_and_charges ?? doc.total_tax ?? (doc.taxes || []).reduce((s, t) => s + (t.tax_amount || 0), 0));
   const party    = doc[cfg.partyField] || doc.customer || doc.supplier || "";
   const docDate  = doc.posting_date || doc.transaction_date || "";
 
@@ -292,7 +292,7 @@ function _renderMinimal(doc, cfg) {
   const logo     = _logoSrc(_state.logo);
   const currency = doc.currency || "INR";
   const netTotal = doc.net_total != null ? doc.net_total
-    : (doc.grand_total || 0) - (doc.total_taxes_and_charges || 0);
+    : (doc.grand_total || 0) - (doc.total_taxes_and_charges ?? doc.total_tax ?? (doc.taxes || []).reduce((s, t) => s + (t.tax_amount || 0), 0));
   const party    = doc[cfg.partyField] || doc.customer || doc.supplier || "";
   const docDate  = doc.posting_date || doc.transaction_date || "";
 

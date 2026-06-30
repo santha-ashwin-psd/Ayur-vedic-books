@@ -1317,6 +1317,7 @@ import { useRoute, useRouter } from "vue-router";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { usePaymentDialog } from "../composables/usePaymentDialog.js";
 import { useMakeRecurring } from "../composables/useMakeRecurring.js";
@@ -1333,6 +1334,7 @@ import IrnQrCode from "../components/IrnQrCode.vue";
 import { useLivePreview } from "../composables/useLivePreview.js";
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 const route = useRoute();
 const router = useRouter();
 
@@ -2181,6 +2183,7 @@ async function saveInvoice(docstatus, andNew = false) {
 // Phase 0.9 — delegates to the globally mounted PaymentDialog. Same UX as Bills
 // (vendor payments) but `direction:"receive"` for customer side.
 async function openPayment(inv) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const { openPayment: openShared } = usePaymentDialog();
   const paymentName = await openShared({
     direction: "receive",
@@ -2285,6 +2288,7 @@ async function submitInv(inv) {
   });
 }
 async function confirmAction(action, inv) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   if (action==="cancel") {
     const isPaid = inv.outstanding_amount <= 0 && inv.docstatus === 1;
     if (isPaid) {
@@ -2365,12 +2369,14 @@ async function makeRecurring(inv) {
 
 // ── Bulk actions ───────────────────────────────────────────────────────
 async function bulkDelete() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const drafts=sorted.value.filter(i=>selectedRows.value.has(i.name)&&i.docstatus===0);
   if (!drafts.length) { toast("No draft invoices selected","info"); return; }
   for (const inv of drafts) { try { await apiDelete("Sales Invoice",inv.name); } catch {} }
   selectedRows.value=new Set(); toast(`Deleted ${drafts.length} draft invoice(s)`); await load();
 }
 async function bulkCancel() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const submitted=sorted.value.filter(i=>selectedRows.value.has(i.name)&&i.docstatus===1);
   if (!submitted.length) { toast("No submitted invoices selected","info"); return; }
   let done=0, failed=0;
@@ -2390,6 +2396,7 @@ async function bulkCancel() {
   await load();
 }
 async function bulkEmail() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const sel=sorted.value.filter(i=>selectedRows.value.has(i.name));
   if (!sel.length) return;
   if (sel.length===1) { openEmail(sel[0]); return; }

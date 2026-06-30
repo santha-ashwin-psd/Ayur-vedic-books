@@ -1028,6 +1028,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { useRoute } from "vue-router";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
@@ -1041,6 +1042,7 @@ import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 const route = useRoute();
 const { confirm } = useConfirm();
 const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
@@ -1692,6 +1694,7 @@ async function submitInvoice() {
 }
 
 async function markAllDelivered() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   actionRunning.value = true;
   try {
     const r = await apiPOST("zoho_books_clone.api.docs.mark_so_delivered", { sales_order: viewDoc.value.name });
@@ -1712,6 +1715,7 @@ async function submitSO(o) {
   } catch (e) { toast.error(e.message || "Submit failed"); }
 }
 async function cancelSO(o) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Cancel Sales Order", body: `Cancel ${o.name}? Linked invoices must be cancelled separately.`, okLabel: "Cancel SO" })) return;
   try {
     await apiPOST("zoho_books_clone.api.docs.cancel_sales_order_safe", { sales_order: o.name });
@@ -1720,6 +1724,7 @@ async function cancelSO(o) {
   } catch (e) { toast.error(e.message || "Cancel failed"); }
 }
 async function deleteSO(o) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Delete Sales Order", body: `Permanently delete ${o.name}?`, okLabel: "Delete" })) return;
   try {
     await apiDelete("Sales Order", o.name);
@@ -1730,6 +1735,7 @@ async function deleteSO(o) {
 
 // ── Bulk actions ──────────────────────────────────────────────────────────
 async function bulkDelete() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const drafts = sorted.value.filter(o => selected.value.has(o.name) && (!o.status || o.status === "Draft"));
   if (!drafts.length) { toast.info("Select drafts to delete"); return; }
   if (!await confirm({ title: "Delete Drafts", body: `Delete ${drafts.length} draft order(s)?`, okLabel: "Delete" })) return;
@@ -1739,6 +1745,7 @@ async function bulkDelete() {
   await load();
 }
 async function bulkEmail() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const subs = sorted.value.filter(o => selected.value.has(o.name));
   if (!subs.length) { toast.info("No orders selected"); return; }
   let sent = 0;

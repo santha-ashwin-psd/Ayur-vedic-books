@@ -229,6 +229,8 @@ def save_tds_entry(data: str) -> dict:
     Save a TDS Entry document to Frappe DB.
     If expense_account is provided, also posts GL entries via create_tds_entry().
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("accounts", write=True)
     import json
     d = json.loads(data) if isinstance(data, str) else data
 
@@ -297,6 +299,8 @@ def update_tds_entry_status(
     challan_date: str = "",
 ) -> dict:
     """Mark a TDS Entry as Deposited or Filed and store challan details."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("accounts", write=True)
     frappe.db.set_value("TDS Entry", entry_name, {
         "status": status,
         "challan_no": challan_no,
@@ -314,6 +318,8 @@ def save_irn(
     ack_date: str = "",
 ) -> dict:
     """Persist e-Invoice IRN directly to the Sales Invoice irn/ack fields."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if not invoice_name or not irn:
         frappe.throw(_("Invoice name and IRN are required."))
 
@@ -333,6 +339,8 @@ def generate_irn(invoice_name: str) -> dict:
     Generate an offline IRN (SHA-256 of company_gstin|fin_year|INV|invoice_name).
     Suitable for sandbox / demo use. Format matches the 64-char hex the NIC portal produces.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     import hashlib
     import random
     from datetime import datetime as _dt
@@ -378,6 +386,8 @@ def generate_irn(invoice_name: str) -> dict:
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def cancel_irn(invoice_name: str) -> dict:
     """Mark an e-Invoice IRN as Cancelled (does not delete the IRN, preserves audit trail)."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if not invoice_name:
         frappe.throw(_("Invoice name is required."))
 
@@ -402,6 +412,8 @@ def save_irn_manual(
     ack_date: str = "",
 ) -> dict:
     """Save a manually entered IRN (obtained directly from the NIC/IRP portal)."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if not invoice_name or not irn:
         frappe.throw(_("Invoice name and IRN are required."))
     if len(irn) != 64:

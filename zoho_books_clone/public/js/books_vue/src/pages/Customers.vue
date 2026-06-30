@@ -1204,6 +1204,7 @@
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiGET, apiSave, apiDelete, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import AddressManager from "../components/AddressManager.vue";
 import { fmt, fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
@@ -1214,6 +1215,7 @@ import {
 } from "../composables/useValidation.js";
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 
 // ── Static option lists, factored out of inline template arrays in legacy ──
 // COUNTRIES and statesFor() imported from useCountryState.js
@@ -1844,6 +1846,7 @@ watch(activeCustomerTab, (t) => {
 
 // ── Bulk actions ────────────────────────────────────────────────────────────
 async function bulkSetDisabled(disable) {
+  if (!canWrite("customers")) { toast("Read-only access", "error"); return; }
   const names = [...selectedRows.value];
   if (!names.length) { toast("No customers selected", "info"); return; }
   bulkBusy.value = true;
@@ -2029,6 +2032,7 @@ async function runImport() {
 }
 
 function bulkEmail() {
+  if (!canWrite("customers")) { toast("Read-only access", "error"); return; }
   const rows = [...selectedRows.value]
     .map(n => list.value.find(c => c.name === n))
     .filter(c => c && c.email_id);

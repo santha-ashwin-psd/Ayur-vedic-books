@@ -102,7 +102,8 @@
           <button class="rnd-btn rnd-btn-ghost" @click="onCancel" :disabled="saving">Cancel</button>
           <button
             class="rnd-btn rnd-btn-danger"
-            :disabled="saving || grandTotal <= 0 || exceedsInvoice"
+            :disabled="saving || grandTotal <= 0 || exceedsInvoice || (!$canWrite('invoices') && !$canWrite('bills'))"
+            :title="(!$canWrite('invoices') && !$canWrite('bills')) ? 'Read-only access' : ''"
             @click="onSave"
           >
             {{ saving ? "Creating…" : `Issue ${state.kind === "debit" ? "Debit" : "Credit"} Note  ${fmt(grandTotal)}` }}

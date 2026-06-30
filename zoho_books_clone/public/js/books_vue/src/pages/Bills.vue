@@ -813,6 +813,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiSubmit, apiDelete, apiPOST, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { usePaymentDialog } from "../composables/usePaymentDialog.js";
@@ -833,6 +834,7 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "192": 0, "195": 20, "Other": 10 };
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 const { confirm } = useConfirm();
 const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
 async function printBILL(d) { try { await refreshBranding(); } catch {} printDoc({ ...d, items: viewItems.value, taxes: viewTaxes.value }, { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
@@ -1377,6 +1379,7 @@ async function emailBill(b) {
   });
 }
 async function payBill(b) {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const paid = await openPayment({
     direction: "pay", doctype: "Purchase Invoice", name: b.name,
     party: b.supplier, partyLabel: b.supplier_name || b.supplier,
@@ -1454,6 +1457,7 @@ async function cancelBill(b) {
   }
 }
 async function deleteBill(b) {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Delete Bill", body: `Permanently delete ${b.name}? This cannot be undone.`, okLabel: "Delete" })) return;
   try {
     await apiDelete("Purchase Invoice", b.name);
@@ -1464,6 +1468,7 @@ async function deleteBill(b) {
 
 // ── Bulk actions ──────────────────────────────────────────────────────────
 async function bulkDelete() {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const drafts = sorted.value.filter(b => selected.value.has(b.name) && b.docstatus === 0);
   if (!drafts.length) { toast.info("No draft bills selected"); return; }
   if (!await confirm({ title: "Delete Drafts", body: `Delete ${drafts.length} draft bill(s)?`, okLabel: "Delete" })) return;
@@ -1473,6 +1478,7 @@ async function bulkDelete() {
   await load();
 }
 async function bulkCancel() {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const submitted = sorted.value.filter(b => selected.value.has(b.name) && b.docstatus === 1);
   if (!submitted.length) { toast.info("No submitted bills selected"); return; }
   let done = 0, failed = 0;
@@ -1485,6 +1491,7 @@ async function bulkCancel() {
   await load();
 }
 async function bulkEmail() {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const subs = sorted.value.filter(b => selected.value.has(b.name) && b.docstatus === 1);
   if (!subs.length) { toast.info("No submitted bills selected"); return; }
   let sent = 0;

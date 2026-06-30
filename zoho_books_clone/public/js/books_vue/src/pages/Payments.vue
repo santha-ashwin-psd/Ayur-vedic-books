@@ -488,6 +488,7 @@ import SummaryStrip from "../components/SummaryStrip.vue";
 const { confirm } = useConfirm();
 
 async function cancelPmt(p) {
+  if (!canWrite("payments")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Cancel Payment", body: `Cancel ${p.name}? Linked invoices/bills will reflect the reversal.`, okLabel: "Cancel Payment" })) return;
   try {
     await apiPOST("zoho_books_clone.api.docs.cancel_payment_entry_safe",
@@ -498,6 +499,7 @@ async function cancelPmt(p) {
   } catch (e) { toast.error(e.message || "Cancel failed"); }
 }
 async function deletePmt(p) {
+  if (!canWrite("payments")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Delete Payment", body: `Permanently delete ${p.name}? This cannot be undone.`, okLabel: "Delete" })) return;
   try {
     await apiDelete("Payment Entry", p.name);
@@ -513,6 +515,7 @@ function selectedRows() {
   return sorted.value.filter(p => selected.value.has(p.name));
 }
 async function bulkCancel() {
+  if (!canWrite("payments")) { toast("Read-only access", "error"); return; }
   const rows = selectedRows().filter(p => p.docstatus === 1);
   if (!rows.length) { toast.info?.("No submitted payments selected") || toast.error("No submitted payments selected"); return; }
   if (!await confirm({ title: `Cancel ${rows.length} payment(s)?`, body: "Linked invoices/bills will reflect the reversal.", okLabel: "Cancel All", okStyle: "danger" })) return;
@@ -528,6 +531,7 @@ async function bulkCancel() {
   await load();
 }
 async function bulkDelete() {
+  if (!canWrite("payments")) { toast("Read-only access", "error"); return; }
   const rows = selectedRows().filter(p => p.docstatus === 0 || p.docstatus === 2);
   if (!rows.length) { toast.error("No draft/cancelled payments selected"); return; }
   if (!await confirm({ title: `Delete ${rows.length} payment(s)?`, body: "Only drafts and cancelled records can be deleted. This cannot be undone.", okLabel: "Delete All", okStyle: "danger" })) return;
@@ -565,11 +569,13 @@ function bulkExport() {
   toast.success(`${rows.length} row(s) exported`);
 }
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 const route = useRoute();
 const defaultTab = computed(() => route.path === "/payments-received" ? "Receive" : "Pay");
 const activeTab = ref(defaultTab.value);

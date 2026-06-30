@@ -694,6 +694,7 @@
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useConfirm } from "../composables/useConfirm.js";
@@ -709,6 +710,7 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 import DocLink from "../components/DocLink.vue";
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 const { confirm } = useConfirm();
 const { printDoc, refreshBranding } = useLivePreview();
 async function printDN(d) { try { await refreshBranding(); } catch {} printDoc(d, { title: "DEBIT NOTE", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
@@ -1159,6 +1161,7 @@ async function emailDN(d) {
   });
 }
 async function applyDN(d) {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   try {
     const [r, balData] = await Promise.all([
       apiList("Purchase Invoice", {
@@ -1226,6 +1229,7 @@ async function submitDraftDN(d) {
   } catch (e) { toast.error(e.message || "Submit failed"); }
 }
 async function cancelDN(d) {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Cancel Debit Note", body: `Cancel ${d.name}? Any applications must be cancelled separately.`, okLabel: "Cancel DN" })) return;
   try {
     await apiPOST("zoho_books_clone.api.docs.cancel_doc", { doctype: "Purchase Invoice", name: d.name });
@@ -1293,6 +1297,7 @@ async function submitRefundDN() {
   refundModal.saving = false;
 }
 async function deleteDN(d) {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Delete Debit Note", body: `Permanently delete ${d.name}? This cannot be undone.`, okLabel: "Delete" })) return;
   try {
     await apiDelete("Purchase Invoice", d.name);
@@ -1303,6 +1308,7 @@ async function deleteDN(d) {
 
 // ── Bulk ──────────────────────────────────────────────────────────────────
 async function bulkDelete() {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const drafts = sorted.value.filter(d => selected.value.has(d.name) && d.docstatus === 0);
   if (!drafts.length) { toast.info("No draft debit notes selected"); return; }
   if (!await confirm({ title: "Delete Drafts", body: `Delete ${drafts.length} draft debit note(s)?`, okLabel: "Delete" })) return;
@@ -1312,6 +1318,7 @@ async function bulkDelete() {
   await load();
 }
 async function bulkEmail() {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const subs = sorted.value.filter(d => selected.value.has(d.name) && d.docstatus === 1);
   if (!subs.length) { toast.info("No submitted debit notes selected"); return; }
   let sent = 0;

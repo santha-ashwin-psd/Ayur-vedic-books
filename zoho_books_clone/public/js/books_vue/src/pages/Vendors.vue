@@ -967,6 +967,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiGET, apiSave, apiDelete, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { usePrompt } from "../composables/usePrompt.js";
 import AddressManager from "../components/AddressManager.vue";
 import { fmt, fmtDate } from "../utils/format.js";
@@ -979,6 +980,7 @@ import {
 
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 const { prompt } = usePrompt();
 
 const list          = ref([]);
@@ -1434,6 +1436,7 @@ async function emailVendorStatement() {
 }
 
 async function bulkSetDisabled(disable) {
+  if (!canWrite("customers")) { toast("Read-only access", "error"); return; }
   const names = [...selectedRows.value];
   if (!names.length) { toast("No vendors selected", "info"); return; }
   bulkBusy.value = true;

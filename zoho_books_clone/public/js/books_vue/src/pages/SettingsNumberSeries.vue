@@ -5,7 +5,7 @@
       <span style="font-size:18px;font-weight:700;color:#1a1a2e">Number Series</span>
       <span style="background:#EBFBEE;color:#2F9E44;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600">{{series.length}} series</span>
     </div>
-    <button class="nim-btn nim-btn-primary" @click="openAdd"><span v-html="icon('plus',13)" style="vertical-align:-2px;margin-right:4px"/>Add Series</button>
+    <button class="nim-btn nim-btn-primary" :disabled="!$canWrite('admin')" :title="!$canWrite('admin') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',13)" style="vertical-align:-2px;margin-right:4px"/>Add Series</button>
   </div>
 
   <div style="background:linear-gradient(135deg,#EBFBEE,#D3F9D8);border:1px solid #8CE99A;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;align-items:center">

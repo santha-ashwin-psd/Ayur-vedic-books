@@ -8,8 +8,11 @@ export function usePermissions() {
   const flags      = computed(() => session.permissions || {});
   const role       = computed(() => session.permissions?.books_role || "");
   const isAdmin    = computed(() => !!session.permissions?.is_company_admin);
-  // "Books Viewer" is read-only everywhere (mirrors the backend).
-  const isReadonly = computed(() => session.permissions?.books_role === "Books Viewer");
+  // Read-only everywhere (mirrors the backend). Prefer the server-provided
+  // read_only flag; fall back to the role name for older sessions.
+  const isReadonly = computed(() =>
+    session.permissions?.read_only === true ||
+    session.permissions?.books_role === "Books Viewer");
 
   function can(module) {
     if (!module) return true;       // routes without a module gate (e.g. dashboard) pass through.

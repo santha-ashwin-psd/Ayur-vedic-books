@@ -18,7 +18,7 @@
         <button class="sales-btn-ghost" @click="load" :disabled="loading">
           <span v-html="icon('refresh',14)"></span>
         </button>
-        <button class="sales-btn-primary" @click="openNew">
+        <button class="sales-btn-primary" :disabled="!$canWrite('invoices')" :title="!$canWrite('invoices') ? 'Read-only access' : ''" @click="openNew">
           <span v-html="icon('plus',13)"></span> New Subscription
         </button>
       </div>
@@ -104,7 +104,7 @@
                 <div class="rec-empty-icon" v-html="icon('repeat',32)"></div>
                 <div class="rec-empty-title">No subscriptions yet</div>
                 <div class="rec-empty-sub">Create a recurring subscription to auto-generate invoices, bills, or journals on a schedule.</div>
-                <button class="sales-btn-primary" @click="openNew" style="margin-top:12px"><span v-html="icon('plus',13)"></span> Create your first subscription</button>
+                <button class="sales-btn-primary" :disabled="!$canWrite('invoices')" :title="!$canWrite('invoices') ? 'Read-only access' : ''" @click="openNew" style="margin-top:12px"><span v-html="icon('plus',13)"></span> Create your first subscription</button>
               </div>
             </td></tr>
           </template>
@@ -124,7 +124,7 @@
           <div class="rec-empty-icon" v-html="icon('repeat',32)"></div>
           <div class="rec-empty-title">No subscriptions yet</div>
           <div class="rec-empty-sub">Create a recurring subscription to auto-generate invoices, bills, or journals on a schedule.</div>
-          <button class="sales-btn-primary" @click="openNew" style="margin-top:12px"><span v-html="icon('plus',13)"></span> Create your first subscription</button>
+          <button class="sales-btn-primary" :disabled="!$canWrite('invoices')" :title="!$canWrite('invoices') ? 'Read-only access' : ''" @click="openNew" style="margin-top:12px"><span v-html="icon('plus',13)"></span> Create your first subscription</button>
         </div>
         <div v-for="r in paged" :key="r.name" class="rec-mob-card" @click="openView(r)">
           <div class="rec-mob-card-top">

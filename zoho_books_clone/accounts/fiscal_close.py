@@ -28,6 +28,8 @@ def close_fiscal_year(fiscal_year: str, retained_earnings_account: str = None) -
 
     Returns: {journal_entry, net_profit, fiscal_year}
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("accounts", write=True)
     fy = frappe.get_doc("Fiscal Year", fiscal_year)
 
     if getattr(fy, "is_closed", 0):

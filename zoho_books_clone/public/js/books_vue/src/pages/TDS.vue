@@ -13,7 +13,7 @@
           </select>
           <button class="tds-btn-ghost" @click="load" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
           <button v-if="list.length" class="tds-btn-ghost" @click="exportCSV"><span v-html="icon('download',13)"></span> CSV</button>
-          <button class="tds-btn-primary" @click="openNewEntry"><span v-html="icon('plus',13)"></span> New TDS Entry</button>
+          <button class="tds-btn-primary" :disabled="!$canWrite('taxes')" :title="!$canWrite('taxes') ? 'Read-only access' : ''" @click="openNewEntry"><span v-html="icon('plus',13)"></span> New TDS Entry</button>
         </div>
       </div>
       <div class="tds-search-wrap">

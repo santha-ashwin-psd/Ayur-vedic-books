@@ -13,6 +13,7 @@ export const session = reactive({
   permissions: {
     books_role:       "",
     is_company_admin: false,
+    read_only:        false,
     mod_invoices:     false,
     mod_bills:        false,
     mod_payments:     false,

@@ -63,6 +63,7 @@ def _get_membership(user: str) -> dict:
         return {
             "books_role":       "Books Admin",
             "is_company_admin": True,
+            "read_only":        False,
             **{f: True for f in _MODULE_FIELDS},
         }
 
@@ -73,7 +74,7 @@ def _get_membership(user: str) -> dict:
         as_dict=True,
     )
     if not row:
-        return {"books_role": "", "is_company_admin": False, **flags}
+        return {"books_role": "", "is_company_admin": False, "read_only": True, **flags}
 
     # Company admins implicitly get every module.
     if row.get("is_company_admin"):
@@ -81,9 +82,12 @@ def _get_membership(user: str) -> dict:
             row[f] = 1
 
     # Normalise int/None → bool for the JSON payload.
+    is_admin = bool(row.get("is_company_admin"))
     return {
         "books_role":       row.get("books_role") or "",
-        "is_company_admin": bool(row.get("is_company_admin")),
+        "is_company_admin": is_admin,
+        # Read-only when the role is Books Viewer and not a company admin.
+        "read_only":        (row.get("books_role") == "Books Viewer") and not is_admin,
         **{f: bool(row.get(f)) for f in _MODULE_FIELDS},
     }
 

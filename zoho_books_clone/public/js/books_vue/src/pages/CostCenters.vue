@@ -141,7 +141,7 @@
         <div class="cc-detail-empty-icon">🏢</div>
         <div class="cc-detail-empty-title">Select a cost center</div>
         <div class="cc-detail-empty-sub">Pick a cost center to see its budget, spend, and the transactions behind it.</div>
-        <button class="b-btn b-btn-primary" @click="openAdd()"><span v-html="icon('plus',13)"></span> Add Cost Center</button>
+        <button class="b-btn b-btn-primary" :disabled="!$canWrite('accounts')" :title="!$canWrite('accounts') ? 'Read-only access' : ''" @click="openAdd()"><span v-html="icon('plus',13)"></span> Add Cost Center</button>
       </div>
 
       <template v-else>

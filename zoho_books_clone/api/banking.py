@@ -534,6 +534,8 @@ def delete_bank_transfer(reference: str = "", from_transaction: str = "") -> dic
     GL entries. Identifies the legs by shared reference_number when available,
     otherwise just the single transaction passed in.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
     names = []
     if reference:
         names = frappe.get_all("Bank Transaction",
@@ -587,6 +589,8 @@ def create_bank_gl_entry(
       DR  bank_gl      (bank increases)
       CR  gl_account   (income)
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
     amount_f = flt(amount)
     date = date or today()
     bank_gl  = _bank_gl(bank_account)
@@ -638,6 +642,8 @@ def reconcile_transactions(bank_account: str, transaction_names: str, clearance_
     Mark a list of Bank Transactions as Reconciled.
     transaction_names: JSON-encoded list of Bank Transaction names.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
     import json
     names = json.loads(transaction_names or "[]")
     if not names:
@@ -667,6 +673,8 @@ def mark_transaction_reconciled(bank_transaction: str, clearance_date: str = Non
     """
     Mark a single Bank Transaction as Reconciled.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
     date = clearance_date or today()
     row = frappe.db.get_value("Bank Transaction", bank_transaction,
                               ["docstatus", "bank_account"], as_dict=True)
@@ -696,6 +704,8 @@ def delete_bank_account(name: str) -> dict:
     Uses ignore_permissions=True throughout so the Books Manager role
     can perform the deletion without a native Frappe delete permission.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
     if frappe.session.user == "Guest":
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
@@ -751,6 +761,8 @@ def save_cheque(data):
     Accepts simple parameters from the frontend and resolves the complex GL
     account requirements (paid_from, paid_to) automatically.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
     import json
     if isinstance(data, str):
         data = json.loads(data)

@@ -15,7 +15,7 @@
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
-      <button class="sales-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Challan</button>
+      <button class="sales-btn-primary" :disabled="!$canWrite('invoices')" :title="!$canWrite('invoices') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Challan</button>
     </div>
   </div>
 

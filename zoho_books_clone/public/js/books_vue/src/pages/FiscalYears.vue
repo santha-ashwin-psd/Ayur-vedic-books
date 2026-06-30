@@ -120,7 +120,7 @@
         <div style="font-size:40px;margin-bottom:14px">📅</div>
         <div style="font-weight:600;font-size:15px;color:#1A1D23;margin-bottom:6px">Select a fiscal year</div>
         <div style="font-size:13px;line-height:1.6">Click any year on the left to view and manage its accounting periods, lock past periods, and run year-end close.</div>
-        <button class="b-btn b-btn-primary" @click="openAdd" style="margin-top:18px">+ Add First Fiscal Year</button>
+        <button class="b-btn b-btn-primary" :disabled="!$canWrite('accounts')" :title="!$canWrite('accounts') ? 'Read-only access' : ''" @click="openAdd" style="margin-top:18px">+ Add First Fiscal Year</button>
       </div>
 
       <template v-else>

@@ -90,7 +90,7 @@
         <div style="font-weight:600;color:#374151;margin-bottom:4px">{{ hasFilters ? 'No matching accounts' : 'No bank accounts yet' }}</div>
         <div style="color:#9ca3af;font-size:12.5px;margin-bottom:16px">{{ hasFilters ? 'Try a different filter or search term' : 'Add your first bank account to get started' }}</div>
         <button v-if="hasFilters" class="ba-btn-ghost" @click="clearFilters">Clear filters</button>
-        <button v-else class="ba-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> Add Account</button>
+        <button v-else class="ba-btn-primary" :disabled="!$canWrite('banking')" :title="!$canWrite('banking') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> Add Account</button>
       </div>
     </div>
 

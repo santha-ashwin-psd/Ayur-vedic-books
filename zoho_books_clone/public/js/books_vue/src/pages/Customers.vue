@@ -31,7 +31,7 @@
         <button class="sales-btn-ghost" @click="triggerImport" title="Import customers from CSV"><span v-html="icon('upload',13)"></span> Import</button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> Export</button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
-        <button class="sales-btn-primary" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
+        <button class="sales-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
         <input ref="importInput" type="file" accept=".csv,text/csv" style="display:none" @change="importCSV" />
       </div>
     </div>
@@ -103,7 +103,7 @@
                 </div>
                 <div class="vt-empty-title">{{search ? 'No results found' : 'No customers yet'}}</div>
                 <div class="vt-empty-sub">{{search ? 'Try adjusting your search or filter' : 'Add your first customer to get started'}}</div>
-                <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
+                <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
               </td>
             </tr>
             <tr v-else v-for="c in filtered" :key="c.name"
@@ -220,7 +220,7 @@
         <div v-else-if="!filtered.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
           <div style="font-size:32px;margin-bottom:8px">👤</div>
           <div>{{ search ? 'No results found' : 'No customers yet' }}</div>
-          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
+          <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" style="margin-top:14px" @click="openAdd"><span v-html="icon('plus',13)"></span> New Customer</button>
         </div>
         <template v-else>
           <div v-for="c in filtered" :key="c.name"
@@ -267,7 +267,7 @@
       <div style="padding:16px 16px 10px;border-bottom:1px solid #f0f2f5;flex-shrink:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <span style="font-size:14px;font-weight:700;color:#111827">Customers</span>
-          <button class="nim-btn nim-btn-primary" style="padding:5px 10px;font-size:12px" @click="openAdd">
+          <button class="nim-btn nim-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" style="padding:5px 10px;font-size:12px" @click="openAdd">
             <span v-html="icon('plus',12)"></span> New Customer
           </button>
         </div>
@@ -292,7 +292,7 @@
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" style="margin:0 auto 10px;display:block"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:4px">{{search?'No matches':'No customers yet'}}</div>
           <div style="font-size:12px;color:#9ca3af">{{search?'Try different keywords':'Add your first customer'}}</div>
-          <button v-if="!search" class="nim-btn nim-btn-primary" style="margin-top:12px;font-size:12px" @click="openAdd">New Customer</button>
+          <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!$canWrite('customers')" :title="!$canWrite('customers') ? 'Read-only access' : ''" style="margin-top:12px;font-size:12px" @click="openAdd">New Customer</button>
         </div>
         <div v-else v-for="c in filtered" :key="c.name"
           @click="selectCustomer(c)"
@@ -846,7 +846,8 @@
                     :style="formErrors.tax_id?'border-color:#dc2626;background:#fff5f5':''"
                     :placeholder="activeRule.gstinPlaceholder||'27AAPFU0939F1ZV'"
                     style="font-family:var(--mono);letter-spacing:.04em"
-                    @input="form.tax_id=form.tax_id.toUpperCase();delete formErrors.tax_id"/>
+                    @input="form.tax_id=form.tax_id.toUpperCase();delete formErrors.tax_id"
+                    @blur="validateField('tax_id')"/>
                   <div v-if="formErrors.tax_id" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
                     {{formErrors.tax_id}}

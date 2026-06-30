@@ -77,6 +77,16 @@ def has_permission(doc, ptype: str = "read", user: str | None = None) -> bool | 
     if _is_bypass(user):
         return None
 
+    # Read-only roles (Books Viewer) may view but never write/create/delete/
+    # submit/cancel — blocks any permission-checked path (e.g. frappe.client.*).
+    if ptype in ("write", "create", "delete", "submit", "cancel"):
+        try:
+            from zoho_books_clone.utils.access import is_readonly
+            if is_readonly(user):
+                return False
+        except Exception:
+            pass
+
     company = get_user_company(user)
     if not company:
         return False

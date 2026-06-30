@@ -1100,6 +1100,7 @@ def get_sso_providers():
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def save_sso_provider(provider, client_id, client_secret="", enabled=1):
     """Create or update a Social Login Key for Google or Microsoft."""
+    _require_admin()
     if provider not in ("Google", "Office 365"):
         frappe.throw("Only Google and Office 365 are supported")
 
@@ -1131,6 +1132,7 @@ def save_sso_provider(provider, client_id, client_secret="", enabled=1):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def disable_sso_provider(provider):
     """Disable a Social Login Key without deleting it."""
+    _require_admin()
     if provider not in ("Google", "Office 365"):
         frappe.throw("Only Google and Office 365 are supported")
     key_name = frappe.scrub(provider)

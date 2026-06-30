@@ -347,6 +347,7 @@ import { apiPOST, apiGET } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { usePagination } from "../composables/usePagination.js";
 import { icon } from "../utils/icons.js";
+import { GSTIN_REGEX } from "../composables/useValidation.js";
 import Pagination from "../components/Pagination.vue";
 
 const { toast } = useToast();
@@ -371,7 +372,7 @@ const TYPES = [
     { key: "email_id",      label: "Email",          required: false, type: "email" },
     { key: "mobile_no",     label: "Mobile",         required: false, type: "text" },
     { key: "phone",         label: "Phone",          required: false, type: "text" },
-    { key: "tax_id",        label: "Tax ID / GSTIN", required: false, type: "text" },
+    { key: "tax_id",        label: "Tax ID / GSTIN", required: false, type: "gstin" },
     { key: "city",          label: "City",           required: false, type: "text" },
     { key: "state",         label: "State",          required: false, type: "text" },
     { key: "country",       label: "Country",        required: false, type: "text" },
@@ -383,7 +384,7 @@ const TYPES = [
     { key: "email_id",      label: "Email",          required: false, type: "email" },
     { key: "mobile_no",     label: "Mobile",         required: false, type: "text" },
     { key: "phone",         label: "Phone",          required: false, type: "text" },
-    { key: "tax_id",        label: "Tax ID / GSTIN", required: false, type: "text" },
+    { key: "tax_id",        label: "Tax ID / GSTIN", required: false, type: "gstin" },
     { key: "city",          label: "City",           required: false, type: "text" },
     { key: "state",         label: "State",          required: false, type: "text" },
     { key: "country",       label: "Country",        required: false, type: "text" },
@@ -746,7 +747,7 @@ function isNumericStr(v) {
 
 function validateRow(data, fields) {
   const issues = [];
-  let missing = false, badDate = false, badNumber = false;
+  let missing = false, badDate = false, badNumber = false, badGstin = false;
   for (const f of fields) {
     const val = (data[f.key] ?? "").toString().trim();
     if (f.required && !val) {
@@ -761,11 +762,15 @@ function validateRow(data, fields) {
       badNumber = true;
       issues.push({ field: f.key, kind: "number", message: `${f.label} "${val}" isn't numeric — will be treated as 0` });
     }
+    if (f.type === "gstin" && val && !GSTIN_REGEX.test(val.toUpperCase())) {
+      badGstin = true;
+      issues.push({ field: f.key, kind: "gstin", message: `${f.label} "${val}" isn't a valid GSTIN (e.g. 27AAPFU0939F1ZV)` });
+    }
   }
   let status = "ready";
   if (badDate) status = "fail";
   else if (missing) status = "skip";
-  else if (badNumber) status = "notice";
+  else if (badNumber || badGstin) status = "notice";
   return { issues, status };
 }
 

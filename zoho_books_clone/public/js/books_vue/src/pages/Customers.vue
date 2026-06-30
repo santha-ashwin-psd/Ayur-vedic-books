@@ -790,7 +790,8 @@
                     :style="formErrors.tax_id?'border-color:#dc2626;background:#fff5f5':''"
                     :placeholder="activeRule.gstinPlaceholder||'27AAPFU0939F1ZV'"
                     style="font-family:var(--mono);letter-spacing:.04em"
-                    @input="form.tax_id=form.tax_id.toUpperCase();delete formErrors.tax_id"/>
+                    @input="form.tax_id=form.tax_id.toUpperCase();delete formErrors.tax_id"
+                    @blur="validateField('tax_id')"/>
                   <div v-if="formErrors.tax_id" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
                     {{formErrors.tax_id}}

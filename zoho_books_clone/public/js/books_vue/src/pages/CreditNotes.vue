@@ -707,6 +707,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
 import { useRoute } from "vue-router";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
@@ -724,6 +725,7 @@ import BulkActionBar from "../components/BulkActionBar.vue";
 import TimelineStepper from "../components/TimelineStepper.vue";
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 const route = useRoute();
 const { confirm } = useConfirm();
 const { printDoc, refreshBranding } = useLivePreview();
@@ -1231,6 +1233,7 @@ async function emailCN(c) {
   });
 }
 async function applyCN(c) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   try {
     // Fetch both invoices and fresh CN balance in parallel
     const [r, balData] = await Promise.all([
@@ -1330,6 +1333,7 @@ async function submitRefund() {
   refundModal.saving = false;
 }
 async function cancelCN(c) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Cancel Credit Note", body: `Cancel ${c.name}? The against invoice's outstanding will be restored.`, okLabel: "Cancel CN" })) return;
   try {
     await apiPOST("zoho_books_clone.api.docs.cancel_credit_note", { name: c.name });
@@ -1342,6 +1346,7 @@ async function cancelCN(c) {
   } catch (e) { toast.error(e.message || "Cancel failed"); }
 }
 async function deleteCN(c) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Delete Credit Note", body: `Permanently delete ${c.name}?`, okLabel: "Delete" })) return;
   try {
     await apiDelete("Sales Invoice", c.name);
@@ -1352,6 +1357,7 @@ async function deleteCN(c) {
 
 // ── Bulk ──────────────────────────────────────────────────────────────────
 async function bulkDelete() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const drafts = sorted.value.filter(c => selected.value.has(c.name) && c.docstatus === 0);
   if (!drafts.length) { toast.info("No draft credit notes selected"); return; }
   if (!await confirm({ title: "Delete Drafts", body: `Delete ${drafts.length} draft credit note(s)?`, okLabel: "Delete" })) return;
@@ -1361,6 +1367,7 @@ async function bulkDelete() {
   await load();
 }
 async function bulkEmail() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const subs = sorted.value.filter(c => selected.value.has(c.name) && c.docstatus === 1);
   if (!subs.length) { toast.info("No submitted credit notes selected"); return; }
   let sent = 0;

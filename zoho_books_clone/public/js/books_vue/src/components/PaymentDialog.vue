@@ -82,7 +82,8 @@
           <button class="pmd-btn pmd-btn-ghost" @click="onCancel" :disabled="saving">Cancel</button>
           <button
             class="pmd-btn pmd-btn-primary"
-            :disabled="saving || !form.amount || form.amount <= 0"
+            :disabled="saving || !form.amount || form.amount <= 0 || !$canWrite('payments')"
+            :title="!$canWrite('payments') ? 'Read-only access' : ''"
             @click="onSave"
           >
             {{ saving ? "Recording…" : (state.direction === "pay" ? "Record Payment" : "Receive Payment") }}

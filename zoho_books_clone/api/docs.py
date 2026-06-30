@@ -815,6 +815,8 @@ def get_invoice_payments(invoice_name):
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def cancel_invoice_with_payments(invoice_name):
     """Cancel all linked Payment Entries, then cancel the Sales Invoice."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     refs = frappe.get_all(
@@ -1024,6 +1026,8 @@ def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
                           # accept identical keys the receive-side dialog uses, for symmetry
                           amount_received=None, deposit_to=""):
     """Create a Payment Entry against a Purchase Invoice (vendor payment)."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("payments", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
 
@@ -1087,6 +1091,8 @@ def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def cancel_bill_with_payments(bill_name):
     """Cancel linked Payment Entries first, then cancel the Bill (mirror of invoice cascade)."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     refs = frappe.get_all(
@@ -1180,6 +1186,8 @@ def apply_debit_note_to_bill(debit_note, bill, amount):
     each allocate the full amount (sum_allocated > paid_amount), which is why we
     use a JE here.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     amount = abs(flt(amount))
@@ -1371,6 +1379,8 @@ def create_debit_note():
     Material Issue Stock Entry to physically reduce inventory.
     Reads all params from frappe.form_dict to handle nested items JSON.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     fd = frappe.form_dict
     vendor       = fd.get("vendor") or ""
     against_bill = fd.get("against_bill") or None
@@ -1573,6 +1583,8 @@ def get_credit_note_balance(credit_note_name):
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def apply_credit_note_to_invoice(credit_note, invoice, amount):
     """Apply CN credit to a customer invoice via Journal Entry (contra entry on AR)."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     amount = abs(flt(amount))
@@ -1737,6 +1749,8 @@ def cancel_credit_note(name):
       2. Cancel the credit note itself (reverse GL entries).
       3. Add back the CN's grand_total to the parent invoice's outstanding_amount.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
 
@@ -1941,6 +1955,8 @@ def get_bill_debit_applications(bill_name):
 def refund_credit_note(credit_note_name, amount, refund_mode="Bank Transfer",
                       paid_to="", reference_no=""):
     """Refund the available CN balance back to the customer as a Payment Entry (pay-out)."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     amount = abs(flt(amount))
@@ -2154,6 +2170,8 @@ def create_credit_note():
     If reason is 'Goods Returned' and a warehouse is given, also creates a
     Material Receipt Stock Entry to bring goods back into stock.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     fd = frappe.form_dict
     customer     = fd.get("customer") or ""
     against_inv  = fd.get("against_invoice") or None
@@ -2304,6 +2322,8 @@ def create_credit_note():
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def save_credit_note_draft():
     """Create or update a Credit Note draft with sequential CN- naming."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     fd = frappe.form_dict
     name        = fd.get("name") or ""
     customer    = fd.get("customer") or ""
@@ -2519,6 +2539,8 @@ def convert_quote_to_sales_order(quotation_name, delivery_date=""):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def convert_quote_to_invoice(quotation_name, due_date=""):
     """Create a Sales Invoice directly from a Quotation."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     qd = frappe.get_doc("Quotation", quotation_name)
@@ -2765,6 +2787,8 @@ def mark_so_delivered(sales_order, line_qtys=None):
 def convert_sales_order_to_invoice(sales_order, line_qtys=None, due_date=""):
     """Create a Sales Invoice from an SO (partial or full).
     line_qtys = {sales_order_item_name: qty_to_invoice}; null → invoice remaining."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(line_qtys, str):
@@ -3078,6 +3102,8 @@ def mark_po_received(purchase_order, line_qtys=None):
 def convert_purchase_order_to_bill(purchase_order, line_qtys=None, bill_no="",
                                    bill_date="", due_date=""):
     """Create a Bill (Purchase Invoice) from a PO (partial or full)."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(line_qtys, str):
@@ -3752,6 +3778,8 @@ def get_payment_applications(payment_entry_name):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def cancel_payment_entry_safe(payment_entry_name):
     """Cancel a Payment Entry; outstanding on linked invoices/bills will recompute via GL hooks."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("payments", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     pe = frappe.get_doc("Payment Entry", payment_entry_name)
@@ -4634,6 +4662,8 @@ def write_off_credit_note(credit_note_name, write_off_account=None):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def refund_debit_note(debit_note_name, amount, refund_mode="Bank Transfer", reference_no=""):
     """Receive a cash refund from the vendor against a Debit Note balance."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("bills", write=True)
     company = _get_company(frappe.session.user)
     dn = frappe.get_doc("Purchase Invoice", debit_note_name)
     if dn.docstatus != 1:

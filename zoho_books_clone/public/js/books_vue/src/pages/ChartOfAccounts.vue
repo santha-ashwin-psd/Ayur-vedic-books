@@ -13,6 +13,19 @@
     </div>
   </div>
 
+  <!-- Trial-balance / balancing card -->
+  <div class="coa-balance-row">
+    <div class="coa-balance-card" :class="trialBalance.balanced ? 'is-ok' : 'is-off'">
+      <span class="coa-bal-title">Trial Balance</span>
+      <span class="coa-bal-kv"><i>Dr</i><b>{{ fmtINR(trialBalance.dr) }}</b></span>
+      <span class="coa-bal-sep">=</span>
+      <span class="coa-bal-kv"><i>Cr</i><b>{{ fmtINR(trialBalance.cr) }}</b></span>
+      <span v-if="balancesLoading" class="coa-bal-chip pending">Calculating…</span>
+      <span v-else-if="trialBalance.balanced" class="coa-bal-chip ok"><span v-html="icon('check',11)"></span> Balanced</span>
+      <span v-else class="coa-bal-chip off"><span v-html="icon('alert',11)"></span> Off by {{ fmtINR(Math.abs(trialBalance.diff)) }}</span>
+    </div>
+  </div>
+
   <div class="b-action-bar" style="margin-bottom:14px">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <div class="b-search" style="border-radius:20px;padding:6px 12px">
@@ -578,11 +591,33 @@ async function load() {
         if (t === "equity" || t === "retained earnings") return "Equity";
         return "Asset";
       };
+      // Most reliable signal: the account's ROOT ancestor group. This DB's
+      // Account table has no root_type column, so we derive the type by walking
+      // up parent_account to the root and mapping its name. Falls back to the
+      // account_type guess above only when the root isn't a recognised group
+      // (fixes e.g. "Stock Adjustment" under Expenses being mislabelled Asset).
+      const byName = new Map(frappeAccts.map((x) => [x.name, x]));
+      const ROOT_NAME_MAP = {
+        assets: "Asset", asset: "Asset",
+        liabilities: "Liability", liability: "Liability",
+        equity: "Equity",
+        income: "Income", revenue: "Income",
+        expenses: "Expense", expense: "Expense",
+      };
+      const rootType = (a) => {
+        let cur = a, guard = 0;
+        while (cur && cur.parent_account && guard++ < 50) {
+          const p = byName.get(cur.parent_account);
+          if (!p) break;
+          cur = p;
+        }
+        return ROOT_NAME_MAP[(cur.account_name || cur.name || "").toLowerCase().trim()] || guessRootType(a);
+      };
       allAccounts.value = frappeAccts.map((a) => ({
         name: a.name,
         account_name: a.account_name || a.name,
         code: a.account_number || "",
-        root_type: guessRootType(a),
+        root_type: rootType(a),
         account_type: a.account_type || "",
         is_group: a.is_group ? 1 : 0,
         parent: a.parent_account || "",
@@ -693,8 +728,20 @@ async function doDelete() {
 }
 
 // ── Live account balances (from GL) ───────────────────────────────────────
-const balances = ref({});  // { account_name: number }
+const balances = ref({});  // { account_name: number } — signed: >0 Dr, <0 Cr
 const balancesLoading = ref(false);
+
+// Trial balance: sum of leaf-account debit vs credit balances. In a balanced
+// ledger the two totals are equal (difference ≈ 0).
+const trialBalance = computed(() => {
+  let dr = 0, cr = 0;
+  for (const v of Object.values(balances.value)) {
+    const n = Number(v) || 0;
+    if (n > 0) dr += n; else if (n < 0) cr += -n;
+  }
+  const diff = Math.round((dr - cr) * 100) / 100;
+  return { dr, cr, diff, balanced: Math.abs(diff) < 0.01 };
+});
 function fmtBal(v) {
   const n = Number(v || 0);
   if (Math.abs(n) < 0.005) return "—";
@@ -1263,4 +1310,28 @@ onUnmounted(() => window.removeEventListener("resize", onResize));
   }
 
 } /* end @media 375px–425px */
+/* ── Trial-balance / balancing card ── */
+.coa-balance-row { display:flex; justify-content:flex-end; margin:12px 0 14px; }
+.coa-balance-card {
+  display:inline-flex; align-items:center; gap:14px;
+  background:#fff; border:1px solid #E2E8F0; border-left:3px solid #94a3b8;
+  border-radius:10px; padding:9px 16px; font-size:13px;
+  box-shadow:0 1px 2px rgba(16,24,40,.04);
+}
+.coa-balance-card.is-ok  { border-left-color:#16a34a; }
+.coa-balance-card.is-off { border-left-color:#dc2626; }
+.coa-bal-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b; }
+.coa-bal-kv { display:inline-flex; align-items:center; gap:6px; }
+.coa-bal-kv i { font-style:normal; font-size:11px; font-weight:700; color:#94a3b8; }
+.coa-bal-kv b { font-weight:700; color:#1a1a2e; font-variant-numeric:tabular-nums; }
+.coa-bal-sep { color:#cbd5e1; font-weight:700; }
+.coa-bal-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11.5px; font-weight:700; }
+.coa-bal-chip.ok      { background:#dcfce7; color:#15803d; }
+.coa-bal-chip.off     { background:#fee2e2; color:#b91c1c; }
+.coa-bal-chip.pending { background:#f1f5f9; color:#64748b; }
+@media (max-width: 600px) {
+  .coa-balance-row  { justify-content:stretch; }
+  .coa-balance-card { width:100%; flex-wrap:wrap; gap:10px; }
+  .coa-bal-sep      { display:none; }
+}
 </style>

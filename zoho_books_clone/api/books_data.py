@@ -269,6 +269,8 @@ def save_doc(doc):
     # which rejects the Books Manager custom role on core Frappe doctypes.
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "write")
     name = doc.get("name")
     if name and frappe.db.exists(doctype, name):
         d = frappe.get_doc(doctype, name)
@@ -285,6 +287,8 @@ def save_doc(doc):
 def submit_doc(doctype, name, ignore_budget_warning=0):
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "submit")
     d = frappe.get_doc(doctype, name)
     d.flags.ignore_permissions = True
     if int(ignore_budget_warning or 0) == 1:
@@ -398,6 +402,8 @@ def record_payment(
     payment_mode="Cash", deposit_to=None, bank_charges=0,
     reference_no=None, notes=None, tds_deducted=0, tds_amount=0, save_as_draft=False,
 ):
+    from zoho_books_clone.utils.access import require_module
+    require_module("payments", write=True)
     if not invoice_name:
         frappe.throw("invoice_name is required to record a payment.")
     if amount_received is None:

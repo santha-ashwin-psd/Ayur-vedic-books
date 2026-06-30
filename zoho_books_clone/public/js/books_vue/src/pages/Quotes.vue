@@ -1059,6 +1059,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiPOST, apiDelete, apiSubmit, apiCancel, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { useRoute, useRouter } from "vue-router";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
@@ -1073,6 +1074,7 @@ import { flt, fmtDate } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 const route = useRoute();
 const router = useRouter();
 
@@ -1970,6 +1972,7 @@ async function emailQT(q) {
 }
 
 async function markStatus(q, status) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const epMap = { Sent: "mark_quote_sent", Accepted: "mark_quote_accepted", Declined: "mark_quote_declined" };
   const ep = epMap[status];
   if (!ep) return;
@@ -2008,6 +2011,7 @@ async function submitConvert() {
 }
 
 async function deleteQT(q) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Delete Quotation", body: `Permanently delete ${q.name}?`, okLabel: "Delete" })) return;
   try {
     await apiDelete("Quotation", q.name);
@@ -2034,6 +2038,7 @@ async function submitFromView(q) {
 }
 
 async function cancelQT(q) {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   if (!q?.name) return;
   if (!await confirm({ title: 'Cancel Quotation', body: `Cancel ${q.name}? This will reverse the submission.`, okLabel: 'Cancel Quotation', okStyle: 'danger' })) return;
   viewCancelling.value = true;
@@ -2051,6 +2056,7 @@ async function cancelQT(q) {
 
 // ── Bulk actions ──────────────────────────────────────────────────────
 async function bulkDelete() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const drafts = sorted.value.filter(q => selected.value.has(q.name) && (q.status === "Draft" || !q.status));
   if (!drafts.length) { toast.info("No draft quotations selected"); return; }
   if (!await confirm({ title: "Delete Drafts", body: `Delete ${drafts.length} draft quotation(s)?`, okLabel: "Delete" })) return;
@@ -2060,6 +2066,7 @@ async function bulkDelete() {
   await load();
 }
 async function bulkMarkSent() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const targets = sorted.value.filter(q => selected.value.has(q.name) && effectiveStatus(q) === "Draft");
   if (!targets.length) { toast.info("Select drafts to mark as sent"); return; }
   let done = 0;
@@ -2071,6 +2078,7 @@ async function bulkMarkSent() {
   await load();
 }
 async function bulkMarkExpired() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const targets = sorted.value.filter(q => selected.value.has(q.name));
   if (!targets.length) { toast.info("No quotes selected"); return; }
   try {
@@ -2082,6 +2090,7 @@ async function bulkMarkExpired() {
   } catch (e) { toast.error(e.message || "Bulk expire failed"); }
 }
 async function bulkEmail() {
+  if (!canWrite("invoices")) { toast("Read-only access", "error"); return; }
   const subs = sorted.value.filter(q => selected.value.has(q.name));
   if (!subs.length) { toast.info("No quotes selected"); return; }
   let sent = 0;

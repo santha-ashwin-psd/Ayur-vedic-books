@@ -628,6 +628,10 @@
                   <span style="color:#6b7280;font-weight:600">Cost Center:</span>
                   <span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:5px;padding:2px 10px;font-weight:600">{{ viewDoc.cost_center }}</span>
                 </div>
+                <div v-if="viewDoc.set_warehouse" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
+                  <span style="color:#6b7280;font-weight:600">Receiving Warehouse:</span>
+                  <span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:5px;padding:2px 10px;font-weight:600;display:inline-flex;align-items:center;gap:5px"><span v-html="icon('warehouse',12)"></span>{{ viewDoc.set_warehouse }}</span>
+                </div>
                 <!-- Internal Remark -->
                 <div v-if="viewDoc.remark" style="margin-top:12px">
                   <div class="inv-dmeta-icon-row" style="margin-bottom:6px">
@@ -809,6 +813,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { apiList, apiSave, apiGet, apiGET, apiSubmit, apiDelete, apiPOST, resolveCompany, refreshCsrfToken } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { useDocStatus } from "../composables/useDocStatus.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { usePaymentDialog } from "../composables/usePaymentDialog.js";
@@ -829,6 +834,7 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "192": 0, "195": 20, "Other": 10 };
 
 const { toast } = useToast();
+const { canWrite } = usePermissions();
 const { confirm } = useConfirm();
 const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
 async function printBILL(d) { try { await refreshBranding(); } catch {} printDoc({ ...d, items: viewItems.value, taxes: viewTaxes.value }, { title: "BILL", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
@@ -1173,7 +1179,7 @@ async function openView(b) {
       docstatus: doc.docstatus ?? viewDoc.value.docstatus,
       status: doc.status ?? viewDoc.value.status,
       due_date: doc.due_date || viewDoc.value.due_date,
-      cost_center: doc.cost_center, billing_address: doc.billing_address,
+      cost_center: doc.cost_center, set_warehouse: doc.set_warehouse, billing_address: doc.billing_address,
       billing_address_name: doc.billing_address_name, remark: doc.remark || "" };
     // Resolve billing address object for card display
     if (doc?.billing_address_name && !viewAddressCache.value[doc.billing_address_name]) {
@@ -1373,6 +1379,7 @@ async function emailBill(b) {
   });
 }
 async function payBill(b) {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const paid = await openPayment({
     direction: "pay", doctype: "Purchase Invoice", name: b.name,
     party: b.supplier, partyLabel: b.supplier_name || b.supplier,
@@ -1450,6 +1457,7 @@ async function cancelBill(b) {
   }
 }
 async function deleteBill(b) {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   if (!await confirm({ title: "Delete Bill", body: `Permanently delete ${b.name}? This cannot be undone.`, okLabel: "Delete" })) return;
   try {
     await apiDelete("Purchase Invoice", b.name);
@@ -1460,6 +1468,7 @@ async function deleteBill(b) {
 
 // ── Bulk actions ──────────────────────────────────────────────────────────
 async function bulkDelete() {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const drafts = sorted.value.filter(b => selected.value.has(b.name) && b.docstatus === 0);
   if (!drafts.length) { toast.info("No draft bills selected"); return; }
   if (!await confirm({ title: "Delete Drafts", body: `Delete ${drafts.length} draft bill(s)?`, okLabel: "Delete" })) return;
@@ -1469,6 +1478,7 @@ async function bulkDelete() {
   await load();
 }
 async function bulkCancel() {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const submitted = sorted.value.filter(b => selected.value.has(b.name) && b.docstatus === 1);
   if (!submitted.length) { toast.info("No submitted bills selected"); return; }
   let done = 0, failed = 0;
@@ -1481,6 +1491,7 @@ async function bulkCancel() {
   await load();
 }
 async function bulkEmail() {
+  if (!canWrite("bills")) { toast("Read-only access", "error"); return; }
   const subs = sorted.value.filter(b => selected.value.has(b.name) && b.docstatus === 1);
   if (!subs.length) { toast.info("No submitted bills selected"); return; }
   let sent = 0;

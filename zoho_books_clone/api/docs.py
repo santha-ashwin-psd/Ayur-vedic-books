@@ -159,6 +159,8 @@ def get_doc(doctype, name):
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "read")
     # Set ignore_permissions BEFORE fetching so frappe.get_doc doesn't run
     # Frappe's internal role-permission check (which blocks the Books Manager role).
     frappe.flags.ignore_permissions = True
@@ -184,6 +186,12 @@ def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+
+    # Module read gating — a user without the module flag gets an empty list
+    # rather than another tenant's or another module's data.
+    from zoho_books_clone.utils.access import can_read
+    if not can_read(doctype):
+        return []
 
     if isinstance(fields, str):
         try:
@@ -369,35 +377,17 @@ def _email_attachment(doctype, name, print_format, pdf_html=None, filename=None)
 
 def _send_business_email(recipients, cc_list, subject, body, reference_doctype,
                          reference_name, attachments=None, company=None):
-    """Send a customer/vendor-facing email through the company's own SMTP
-    (configured under Settings → Email).
+    """Send a customer/vendor-facing email.
 
-    Falls back to Frappe's configured mailer when the company hasn't set up
-    SMTP — mirrors the payment-reminder behaviour in utils/scheduler.py so
-    nothing breaks for companies that haven't configured it yet. A configured-
-    but-failing SMTP is logged and also falls back, so a manual send never
-    hard-errors on a transient SMTP problem.
-    """
-    try:
-        from zoho_books_clone.utils.email_company import (
-            send_company_email, CompanySmtpNotConfigured,
-        )
-        send_company_email(
-            to=recipients, subject=subject, html=body, company=company,
-            cc=cc_list or None, attachments=attachments or None,
-        )
-        return
-    except CompanySmtpNotConfigured:
-        pass
-    except Exception:
-        frappe.log_error(
-            frappe.get_traceback(),
-            f"Company SMTP send failed for {reference_doctype} {reference_name}; using system mailer",
-        )
-    frappe.sendmail(
-        recipients=recipients, cc=cc_list, subject=subject, message=body,
-        attachments=attachments, reference_doctype=reference_doctype,
-        reference_name=reference_name, now=True,
+    Routing is centralised in utils/email_company.send_business_email:
+    the company's own SMTP is used when it's enabled & configured under
+    Settings → Email, otherwise the platform (wecode) SMTP — which always works
+    out of the box — is used by default. `reference_doctype`/`reference_name`
+    are accepted for call-site clarity (and future logging)."""
+    from zoho_books_clone.utils.email_company import send_business_email
+    send_business_email(
+        to=recipients, subject=subject, html=body, company=company,
+        cc=cc_list or None, attachments=attachments or None,
     )
 
 
@@ -473,6 +463,11 @@ def save_doc(doc):
     # Block unauthenticated requests (belt-and-suspenders; whitelist already does this)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+
+    # Custom role/module authorization (on top of tenancy): read-only roles and
+    # users without the relevant module flag cannot create or edit.
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "write")
 
     # Strip stale child-row identity fields so Frappe replaces rows cleanly
     # instead of trying to look up rows by old hash names that may no longer exist.
@@ -590,6 +585,9 @@ def submit_doc(doctype, name, ignore_budget_warning=0):
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
 
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "submit")
+
     d = frappe.get_doc(doctype, name)
     d.flags.ignore_permissions = True
     if int(ignore_budget_warning or 0) == 1:
@@ -647,6 +645,8 @@ def cancel_doc(doctype, name):
     """Cancel a submitted document."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "cancel")
     d = frappe.get_doc(doctype, name)
     d.flags.ignore_permissions = True
     d.cancel()
@@ -662,6 +662,9 @@ def delete_doc(doctype, name):
     # don't prevent deletion after we've confirmed the session is valid.
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
+
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "delete")
 
     # force=True bypasses before_delete hooks, so we run the lock check explicitly
     # before handing off to Frappe's delete path.

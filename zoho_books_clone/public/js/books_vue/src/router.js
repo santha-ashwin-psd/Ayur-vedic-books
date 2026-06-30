@@ -59,7 +59,7 @@ import GSTReturn1             from "./pages/GSTReturn1.vue";
 import GSTReturn3B            from "./pages/GSTReturn3B.vue";
 import EInvoice               from "./pages/EInvoice.vue";
 import TDS                    from "./pages/TDS.vue";
-import Tax                    from "./pages/TaxTemplate.vue"
+import TaxTemplates           from "./pages/TaxTemplates.vue";
 import Reports                from "./pages/Reports.vue";
 import PriceLists             from "./pages/PriceLists.vue";
 import RecurringBills         from "./pages/RecurringBills.vue";
@@ -216,7 +216,7 @@ const routes = [
   { path: "/gst/gstr3b",   name: "gstr3b",   component: GSTReturn3B, meta: { module: "accounts" } },
   { path: "/gst/einvoice", name: "einvoice", component: EInvoice,    meta: { module: "invoices" } },
   { path: "/gst/tds",      name: "tds",      component: TDS,         meta: { module: "accounts" } },
-  { path: "/gst/tax",      name: "tax",      component: Tax,         meta: { module: "accounts" } },
+  { path: "/gst/tax-templates", name: "tax-templates", component: TaxTemplates, meta: { module: "taxes" } },
   { path: "/reports",      name: "reports",  component: Reports,     meta: { module: null       } },
   { path: "/bulk-import",        name: "bulk-import",       component: BulkImport,       meta: { module: "admin"    } },
   { path: "/delivery-challans",   name: "delivery-challans",   component: DeliveryChallans,   meta: { module: "invoices" } },

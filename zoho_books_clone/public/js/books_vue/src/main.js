@@ -2,6 +2,7 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 import { bootstrapSession } from "./api/session.js";
+import { usePermissions } from "./composables/usePermissions.js";
 import "./shell.css";
 import "./legacy-extras.css";
 import "./styles/list.css";
@@ -17,6 +18,11 @@ import "./styles/add.css";
 bootstrapSession().then((ok) => {
   if (ok === false) return;   // redirecting to login — do not mount
   const app = createApp(App);
+  // Global template helpers for role/module gating (backend enforces the same).
+  // Usage in any template: :disabled="!$canWrite('invoices')"
+  const { canWrite, can } = usePermissions();
+  app.config.globalProperties.$canWrite = canWrite;
+  app.config.globalProperties.$can      = can;
   app.use(router);
   app.mount("#books-app");
 });

@@ -167,12 +167,11 @@ def save_bank_account(
     if frappe.session.user == "Guest":
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
-    # Bank accounts are sensitive — restrict writes to finance roles instead of
-    # relying solely on ignore_permissions=True below.
-    from zoho_books_clone.utils.tenancy import get_user_company, _is_bypass
-    _allowed_roles = {"Books Admin", "Accountant", "System Manager", "Administrator"}
-    if not _is_bypass(frappe.session.user) and not (_allowed_roles & set(frappe.get_roles(frappe.session.user))):
-        frappe.throw(_("You do not have permission to manage bank accounts."), frappe.PermissionError)
+    # Bank accounts are sensitive — require Banking-module write access (and not
+    # a read-only role) instead of relying solely on ignore_permissions=True below.
+    from zoho_books_clone.utils.tenancy import get_user_company
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
 
     if not account_name.strip():
         frappe.throw(_("Account name is required"))
@@ -322,6 +321,9 @@ def bounce_cheque(payment_entry: str) -> dict:
     The original Payment Entry GL (DR Bank / CR Payable or DR Receivable / CR Bank)
     is unwound by creating reversing GL entries.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
+
     from zoho_books_clone.accounts.accounting_engine import reverse_voucher
 
     doc = frappe.get_doc("Payment Entry", payment_entry)
@@ -355,6 +357,9 @@ def post_bank_transfer(
     Creates a Bank Transaction record on each account for reconciliation.
     No income/expense impact — pure asset swap.
     """
+    from zoho_books_clone.utils.access import require_module
+    require_module("banking", write=True)
+
     amount_f = flt(amount)
     if amount_f <= 0:
         frappe.throw(_("Transfer amount must be positive."))

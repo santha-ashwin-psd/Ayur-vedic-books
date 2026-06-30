@@ -104,24 +104,9 @@ def _send_reminder(inv, kind, sent):
         )
 
     try:
-        from zoho_books_clone.utils.email_company import (
-            send_company_email, CompanySmtpNotConfigured,
-        )
-        send_company_email(to=email, subject=subject, html=body, company=company)
-        return
-    except CompanySmtpNotConfigured:
-        pass
-    except Exception as e:
-        frappe.log_error(str(e), f"Company SMTP reminder send failed: {name}, falling back")
-
-    try:
-        frappe.sendmail(
-            recipients=[email],
-            subject=subject,
-            message=body,
-            reference_doctype="Sales Invoice",
-            reference_name=name,
-        )
+        from zoho_books_clone.utils.email_company import send_business_email
+        # Company SMTP when configured, otherwise the platform (wecode) SMTP.
+        send_business_email(to=email, subject=subject, html=body, company=company)
     except Exception as e:
         frappe.log_error(str(e), f"Payment reminder failed: {name}")
 

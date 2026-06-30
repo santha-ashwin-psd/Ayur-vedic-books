@@ -278,91 +278,53 @@ def create_default_accounts():
 # ─── Tax Templates (GST) ─────────────────────────────────────────────────────
 def seed_tax_templates():
     """
-    Create standard Indian GST tax templates so users have ready-to-use
-    tax configurations out of the box — mirrors Zoho Books' auto-tax setup.
+    Create the standard Indian GST tax templates for EVERY company, so users
+    have ready-to-use tax configurations out of the box.
+
+    Per-company seeding lives in books_setup.bootstrap._seed_tax_templates
+    (the single source of truth, also used on company creation and by the
+    back-fill patch). Idempotent and non-destructive.
     """
     if not frappe.db.exists("DocType", "Tax Template"):
         return
+    from zoho_books_clone.books_setup.bootstrap import _seed_tax_templates
+    for company in _all_company_names():
+        _seed_tax_templates(company)
 
-    company = frappe.db.get_single_value("Books Settings", "default_company")
-    if not company:
+
+def _all_company_names():
+    """Collect every known company from Books Settings / Global defaults,
+    per-user company defaults, and any company already stamped on Accounts."""
+    companies = set()
+    for doctype in ("Books Settings", "Global Defaults"):
         try:
-            company = frappe.db.get_single_value("Global Defaults", "default_company")
+            c = frappe.db.get_single_value(doctype, "default_company")
+            if c:
+                companies.add(c)
         except Exception:
-            company = None
-
-    # Helper to resolve account name → full account name for this company
-    def _acct(name):
-        return frappe.db.get_value(
-            "Account",
-            {"account_name": name, "company": company, "is_group": 0},
-            "name",
-        ) or name
-
-    templates = [
-        # (template_name, is_selling, is_buying, taxes: [(tax_type, description, rate, account)])
-        ("GST 18% (Intra-State)", 1, 1, [
-            ("CGST", "CGST @ 9%", 9, "CGST Payable"),
-            ("SGST", "SGST @ 9%", 9, "SGST Payable"),
-        ]),
-        ("GST 12% (Intra-State)", 1, 1, [
-            ("CGST", "CGST @ 6%", 6, "CGST Payable"),
-            ("SGST", "SGST @ 6%", 6, "SGST Payable"),
-        ]),
-        ("GST 5% (Intra-State)", 1, 1, [
-            ("CGST", "CGST @ 2.5%", 2.5, "CGST Payable"),
-            ("SGST", "SGST @ 2.5%", 2.5, "SGST Payable"),
-        ]),
-        ("IGST 18% (Inter-State)", 1, 1, [
-            ("IGST", "IGST @ 18%", 18, "IGST Payable"),
-        ]),
-        ("IGST 12% (Inter-State)", 1, 1, [
-            ("IGST", "IGST @ 12%", 12, "IGST Payable"),
-        ]),
-        ("IGST 5% (Inter-State)", 1, 1, [
-            ("IGST", "IGST @ 5%", 5, "IGST Payable"),
-        ]),
-        ("GST 28% (Intra-State)", 1, 1, [
-            ("CGST", "CGST @ 14%", 14, "CGST Payable"),
-            ("SGST", "SGST @ 14%", 14, "SGST Payable"),
-        ]),
-        ("IGST 28% (Inter-State)", 1, 1, [
-            ("IGST", "IGST @ 28%", 28, "IGST Payable"),
-        ]),
-        ("GST Exempt", 1, 1, []),
-        # Purchase-side ITC templates
-        ("Input GST 18% (Intra-State)", 0, 1, [
-            ("CGST", "CGST ITC @ 9%", 9, "CGST Input"),
-            ("SGST", "SGST ITC @ 9%", 9, "SGST Input"),
-        ]),
-        ("Input IGST 18% (Inter-State)", 0, 1, [
-            ("IGST", "IGST ITC @ 18%", 18, "IGST Input"),
-        ]),
-    ]
-
-    for tpl_name, selling, buying, taxes in templates:
-        if frappe.db.exists("Tax Template", tpl_name):
-            continue
-        try:
-            doc = frappe.get_doc({
-                "doctype": "Tax Template",
-                "template_name": tpl_name,
-                "company": company or "",
-                "is_selling": selling,
-                "is_buying": buying,
-                "taxes": [
-                    {
-                        "tax_type": t[0],
-                        "description": t[1],
-                        "rate": t[2],
-                        "account_head": _acct(t[3]) if company else t[3],
-                    }
-                    for t in taxes
-                ],
-            })
-            doc.insert(ignore_permissions=True)
-        except Exception as e:
-            frappe.log_error(str(e), f"Tax Template seed: {tpl_name}")
+            pass
+    try:
+        for (c,) in frappe.db.sql(
+            "SELECT DISTINCT defvalue FROM `tabDefaultValue` WHERE defkey='company' AND defvalue IS NOT NULL AND defvalue != ''"
+        ):
+            if c:
+                companies.add(c)
+    except Exception:
+        pass
+    try:
+        for (c,) in frappe.db.sql(
+            "SELECT DISTINCT company FROM `tabAccount` WHERE company IS NOT NULL AND company != ''"
+        ):
+            if c:
+                companies.add(c)
+    except Exception:
+        pass
+    try:
+        for row in frappe.get_all("Books Company", fields=["name"], ignore_permissions=True):
+            companies.add(row["name"])
+    except Exception:
+        pass
+    return companies
 
 
 # ─── Cost Centers ────────────────────────────────────────────────────────────

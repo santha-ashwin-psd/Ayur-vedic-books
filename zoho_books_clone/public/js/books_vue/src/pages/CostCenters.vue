@@ -23,7 +23,7 @@
       </div>
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-      <button class="sales-btn-primary" @click="openAdd()"><span v-html="icon('plus',13)"></span> New</button>
+      <button class="sales-btn-primary" @click="openAdd()" :disabled="!$canWrite('accounts')" :title="!$canWrite('accounts') ? 'Read-only access' : ''"><span v-html="icon('plus',13)"></span> New</button>
     </div>
   </div>
 

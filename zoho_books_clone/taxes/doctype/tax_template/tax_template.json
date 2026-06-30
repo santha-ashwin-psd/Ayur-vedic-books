@@ -120,7 +120,7 @@
    "read_only": 0,
    "remember_last_selected_value": 0,
    "report_hide": 0,
-   "reqd": 0,
+   "reqd": 1,
    "search_index": 0,
    "set_only_once": 0,
    "show_days": 1,
@@ -359,7 +359,7 @@
    "if_owner": 0
   }
  ],
- "autoname": "field:template_name",
+ "autoname": "format:{template_name} - {company}",
  "creation": "2026-03-16 04:22:11.189548",
  "modified": "2026-03-16 04:22:11.189548",
  "modified_by": "Administrator",
@@ -383,7 +383,7 @@
  "engine": "InnoDB",
  "max_attachments": 0,
  "migration_hash": "",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

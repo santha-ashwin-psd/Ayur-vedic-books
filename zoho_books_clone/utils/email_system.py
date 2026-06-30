@@ -48,6 +48,13 @@ def _conf() -> dict:
     }
 
 
+def get_system_smtp_config() -> dict:
+    """Public accessor for the platform (wecode18@gmail.com) SMTP config dict.
+    Same shape as the per-company SMTP config, so it can be passed to the shared
+    low-level sender in utils/email_company._smtp_send."""
+    return _conf()
+
+
 def send_system_email(to: str, subject: str, html: str, text_fallback: str = "") -> bool:
     """Send a single email via the system SMTP. Returns True on success.
     Never raises — logs errors and returns False so callers can degrade gracefully."""

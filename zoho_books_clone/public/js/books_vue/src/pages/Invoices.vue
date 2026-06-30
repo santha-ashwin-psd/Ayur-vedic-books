@@ -23,7 +23,7 @@
       <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
       <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
-      <button class="sales-btn-primary" @click="openAdd">
+      <button class="sales-btn-primary" @click="openAdd" :disabled="!$canWrite('invoices')" :title="!$canWrite('invoices') ? 'Read-only access' : ''">
         <span v-html="icon('plus',13)"></span> New Invoice
       </button>
     </div>
@@ -543,7 +543,7 @@
                           <label>Tax Template</label>
                           <select v-model="line.tax_code" class="inv-fi">
                             <option value="">— No Tax —</option>
-                            <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.name }}</option>
+                            <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.template_name || t.name }}</option>
                           </select>
                         </div>
                       </div>
@@ -1844,14 +1844,14 @@ async function loadTaxAccount() {
     taxAccountHead.value=r[0]?.name||"";
   } catch {}
   try {
-    const templates=await apiList("Tax Template",{fields:["name"],filters:[["disabled","=",0]],limit:100,order:"name asc"});
+    const templates=await apiList("Tax Template",{fields:["name","template_name"],filters:[["disabled","=",0]],limit:100,order:"template_name asc"});
     const withRates=await Promise.all((templates||[]).map(async t=>{
       try{
         const doc=await apiGet("Tax Template",t.name);
         const rate=doc?.taxes?.[0]?.tax_rate??doc?.taxes?.[0]?.rate??0;
         const account=doc?.taxes?.[0]?.account_head||taxAccountHead.value;
-        return{name:t.name,rate:Number(rate),account};
-      }catch{return{name:t.name,rate:0,account:taxAccountHead.value};}
+        return{name:t.name,template_name:t.template_name,rate:Number(rate),account};
+      }catch{return{name:t.name,template_name:t.template_name,rate:0,account:taxAccountHead.value};}
     }));
     taxTemplates.value=withRates;
   }catch{taxTemplates.value=[];}

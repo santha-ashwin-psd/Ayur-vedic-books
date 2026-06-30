@@ -64,6 +64,7 @@ export const NAV = [
   { path: "/inventory/settings",            label: "Settings",         icon: "gear",       module: "inventory"  },
 
   { section: "GST/Taxes" },
+  { path: "/gst/tax-templates",             label: "Tax Templates",    icon: "percent",    module: "taxes"      },
   { path: "/gst/gstr1",                     label: "GSTR-1",           icon: "gstfile",    module: "accounts"   },
   { path: "/gst/gstr3b",                    label: "GSTR-3B",          icon: "gstfile",    module: "accounts"   },
   { path: "/gst/einvoice",                  label: "e-Invoice",        icon: "qr",         module: "accounts"   },

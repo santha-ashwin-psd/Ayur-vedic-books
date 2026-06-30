@@ -116,6 +116,11 @@ def bulk_import(doctype, rows_json):
     if doctype not in allowed:
         frappe.throw(_("Unsupported doctype for import: {}").format(doctype))
 
+    # Custom role/module authorization — only members who may create this doctype
+    # (right module flag, not read-only) can bulk import it.
+    from zoho_books_clone.utils.access import assert_can
+    assert_can(doctype, "create")
+
     rows = json.loads(rows_json)
     if not isinstance(rows, list):
         frappe.throw(_("rows_json must be a JSON array"))

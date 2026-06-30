@@ -622,7 +622,7 @@
   <!-- Drawer -->
   <Teleport to="body">
     <div v-if="showDrawer" class="inv-drawer-bg" @click.self="showDrawer=false">
-      <div class="inv-drawer-panel" :class="{open:showDrawer}" style="width:min(600px,96vw)">
+      <div class="inv-drawer-panel" :class="{open:showDrawer}" style="width:680px;max-width:98vw">
 
         <div class="inv-dh" style="background:linear-gradient(135deg,#E67700,#C96200);padding:18px 24px">
           <div class="cust-drawer-header-left">
@@ -646,13 +646,35 @@
     transition: .15s;" class="inv-dclose" @click="showDrawer=false" v-html="icon('x',15)"></button>
         </div>
 
-        <div v-if="drawerLoading" style="flex:1;display:grid;place-items:center;color:#9ca3af;font-size:13px">
+        <div class="inv-view-tabs">
+          <button v-for="t in [{k:'overview',l:'Overview'},{k:'address',l:'Address'},{k:'other',l:'Other Details'}]"
+            :key="t.k" @click="drawerTab=t.k"
+            class="inv-vtab" :class="{active: drawerTab===t.k}">
+            {{t.l}}
+          </button>
+        </div>
+
+        <div v-if="drawerLoading" style="flex:1;display:grid;place-items:center;color:#9ca3af;font-size:13px;padding:40px">
           <div>Loading vendor…</div>
         </div>
 
         <div v-else class="inv-dbody" style="padding:24px;overflow-y:auto;flex:1">
 
-          <div class="inv-sec-lbl">Basic Information</div>
+          <!-- Overview Tab -->
+          <template v-if="drawerTab==='overview'">
+
+          <div style="margin-bottom:20px">
+            <label class="inv-lbl" style="margin-bottom:8px;display:block">Vendor Type</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <button v-for="opt in SUPPLIER_TYPES" :key="opt" type="button"
+                @click="form.supplier_type=opt"
+                :style="'padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;border:1.5px solid '+(form.supplier_type===opt?'#E67700':'#e2e8f0')+';background:'+(form.supplier_type===opt?'#fff7ed':'#fff')+';color:'+(form.supplier_type===opt?'#C96200':'#6b7280')">
+                {{opt}}
+              </button>
+            </div>
+          </div>
+
+          <div class="inv-sec-lbl" style="margin-top:0">Basic Information</div>
           <div class="inv-fg inv-fg2">
             <div class="inv-field" style="grid-column:span 2">
               <label class="inv-lbl">Vendor Name <span class="nim-req">*</span></label>
@@ -665,12 +687,6 @@
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
                 {{formErrors.supplier_name}}
               </div>
-            </div>
-            <div class="inv-field">
-              <label class="inv-lbl">Vendor Type</label>
-              <select v-model="form.supplier_type" class="inv-fi">
-                <option>Company</option><option>Individual</option>
-              </select>
             </div>
             <div class="inv-field">
               <label class="inv-lbl">GSTIN / Tax ID</label>
@@ -775,16 +791,27 @@
             </div>
           </div>
 
-          <div class="inv-sec-lbl">Address</div>
-          <AddressManager
-            partyDoctype="Supplier"
-            :partyName="drawerMode==='edit' ? form.name : ''"
-            v-model="pendingAddresses"
-            @addressSaved="load"
-            @addressDeleted="load"
-          />
+          <div v-if="drawerMode==='edit'" class="cust-disable-box" @click="form.disabled=form.disabled?0:1" style="margin-top:4px">
+            <input type="checkbox" :checked="!!form.disabled" @click.stop="form.disabled=form.disabled?0:1" style="width:16px;height:16px;accent-color:#dc2626;cursor:pointer"/>
+            <label style="font-size:13px;color:#dc2626;cursor:pointer">Disable this vendor (won't appear in bill dropdowns)</label>
+          </div>
 
-          <div class="inv-sec-lbl">TDS / Withholding Tax</div>
+          </template>
+
+          <!-- Address Tab -->
+          <template v-else-if="drawerTab==='address'">
+            <AddressManager
+              partyDoctype="Supplier"
+              :partyName="drawerMode==='edit' ? form.name : ''"
+              v-model="pendingAddresses"
+              @addressSaved="load"
+              @addressDeleted="load"
+            />
+          </template>
+
+          <!-- Other Details Tab -->
+          <template v-else-if="drawerTab==='other'">
+          <div class="inv-sec-lbl" style="margin-top:0">TDS / Withholding Tax</div>
           <div class="inv-fg inv-fg2">
             <div class="inv-field" style="grid-column:span 2;display:flex;align-items:center;gap:10px">
               <input type="checkbox" id="tds_applicable" :checked="!!form.tds_applicable"
@@ -811,35 +838,48 @@
               </div>
               <div class="inv-field">
                 <label class="inv-lbl">PAN Number</label>
-                <input v-model="form.pan" class="inv-fi" placeholder="ABCDE1234F"
-                  @input="form.pan = form.pan.toUpperCase()"/>
+                <input v-model="form.pan" class="inv-fi" placeholder="ABCDE1234F" maxlength="10"
+                  style="font-family:var(--mono);letter-spacing:.04em"
+                  :style="form.pan&&!PAN_REGEX.test(form.pan)?'border-color:#dc2626;background:#fff5f5':form.pan&&PAN_REGEX.test(form.pan)?'border-color:#2f9e44':''"
+                  @input="form.pan = form.pan.toUpperCase().replace(/[^A-Z0-9]/g,'')"/>
+                <div v-if="form.pan&&PAN_REGEX.test(form.pan)" style="margin-top:4px;font-size:12px;color:#2f9e44;display:flex;align-items:center;gap:4px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  Valid PAN
+                </div>
               </div>
             </template>
           </div>
 
           <div class="inv-sec-lbl">Account Settings</div>
-          <div class="inv-fg">
-            <div class="inv-field">
+          <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
               <label class="inv-lbl">Default Payable Account</label>
-              <select v-model="form.default_payable_account" class="inv-fi">
+              <select v-model="form.default_payable_account" class="inv-fi" style="cursor:pointer">
                 <option value="">Select</option>
                 <option v-for="a in accounts" :key="a.name" :value="a.name">{{a.name}}</option>
               </select>
             </div>
+            <div>
+              <label class="inv-lbl">Default Currency</label>
+              <select v-model="form.default_currency" class="inv-fi" style="cursor:pointer">
+                <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option>
+              </select>
+            </div>
           </div>
 
-          <div v-if="drawerMode==='edit'" class="cust-disable-box" @click="form.disabled=form.disabled?0:1">
-            <input type="checkbox" :checked="!!form.disabled" @click.stop="form.disabled=form.disabled?0:1" style="width:16px;height:16px;accent-color:#dc2626;cursor:pointer"/>
-            <label style="font-size:13px;color:#dc2626;cursor:pointer">Disable this vendor (won't appear in bill dropdowns)</label>
-          </div>
+          </template>
 
         </div>
 
-        <div class="inv-dfooter">
+        <div class="inv-dfooter" style="border-top:1px solid #e8ecf0;padding:14px 24px;background:#fafbfd">
           <button class="form-btn form-btn-outline" @click="showDrawer=false">Cancel</button>
-          <button class="form-btn form-btn-primary" @click="saveVendor" :disabled="saving">
+          <button class="form-btn form-btn-primary" @click="saveVendor" :disabled="saving" style="background:#E67700;border-color:#E67700;min-width:140px;position:relative">
             <span v-if="saving" v-html="icon('refresh',13)" style="animation:spin 1s linear infinite"></span>
             {{saving ? 'Saving…' : (drawerMode==='add' ? 'Create Vendor' : 'Save Changes')}}
+            <span v-if="Object.keys(formErrors).length && !saving"
+              style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center;line-height:16px">
+              {{Object.keys(formErrors).length}}
+            </span>
           </button>
         </div>
 
@@ -974,7 +1014,7 @@ import { fmt, fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import {
-  EMAIL_REGEX, GSTIN_REGEX, URL_REGEX,
+  EMAIL_REGEX, GSTIN_REGEX, URL_REGEX, PAN_REGEX,
   validateMobile, validatePhone, validatePincode, sanitizePincode, pincodePlaceholder, pincodeHint,
 } from "../composables/useValidation.js";
 
@@ -990,6 +1030,7 @@ const activeFilter  = ref("all");
 const viewMode      = ref("table"); // "table" | "grid"
 const showDrawer    = ref(false);
 const drawerMode    = ref("add");
+const drawerTab     = ref("overview");
 const drawerLoading = ref(false);
 const saving        = ref(false);
 const showDelete    = ref(false);
@@ -1102,12 +1143,14 @@ function onShipSameChange() {
 function openAdd() {
   resetForm();
   drawerMode.value = "add";
+  drawerTab.value = "overview";
   showDrawer.value = true;
 }
 
 async function openEdit(name) {
   resetForm();
   drawerMode.value = "edit";
+  drawerTab.value = "overview";
   drawerLoading.value = true;
   showDrawer.value = true;
   try {
@@ -1199,6 +1242,7 @@ function validateVendorForm() {
 async function saveVendor() {
   if (!validateVendorForm()) {
     const firstErr = Object.values(formErrors)[0];
+    drawerTab.value = "overview";
     toast(firstErr || "Please fix the errors before saving", "error");
     return;
   }

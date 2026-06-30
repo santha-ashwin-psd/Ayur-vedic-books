@@ -57,6 +57,9 @@ import IconSvg from "../components/IconSvg.vue";
 import { titleFor } from "./nav.js";
 import { session } from "../api/session.js";
 import { usePermissions } from "../composables/usePermissions.js";
+import { useConfirm } from "../composables/useConfirm.js";
+
+const { confirm } = useConfirm();
 
 defineEmits(["toggle-ai", "toggle-mobile"])
 defineProps({ alertCount: { type: Number, default: 0 } });
@@ -78,6 +81,14 @@ const initials = computed(() => {
 
 async function doLogout() {
   userOpen.value = false;
+  const ok = await confirm({
+    title: "Sign out?",
+    body: "Are you sure you want to sign out of your account?",
+    okLabel: "Sign Out",
+    cancelLabel: "Cancel",
+    okStyle: "danger",
+  });
+  if (!ok) return;
   try {
     const csrf = window.frappe?.csrf_token ||
       document.cookie.match(/csrf_token=([^;]+)/)?.[1] || "";

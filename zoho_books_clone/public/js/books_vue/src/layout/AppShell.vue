@@ -89,11 +89,11 @@ onMounted(async () => {
     }
     router.push("/invoices?" + q.toString());
   });
-  register("show_outstanding",     () => router.push("/"));
+  register("show_outstanding",     () => router.push("/dashboard"));
   register("show_bills",           () => router.push("/bills"));
   register("show_quotes",          () => router.push("/quotes"));
   register("show_customers",       () => router.push("/customers"));
-  register("show_dashboard",       () => router.push("/"));
+  register("show_dashboard",       () => router.push("/dashboard"));
   register("show_sales_orders",    () => router.push("/sales-orders"));
   register("show_purchase_orders", () => router.push("/purchase-orders"));
   register("navigate",             (p) => { if (p.path) router.push(p.path); });

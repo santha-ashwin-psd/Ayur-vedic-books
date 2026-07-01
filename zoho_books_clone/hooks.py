@@ -167,6 +167,7 @@ has_permission = {
 
 website_route_rules = [
     {"from_route": "/home", "to_route": "books"},
+    {"from_route": "/dashboard", "to_route": "books"},
     {"from_route": "/customers", "to_route": "books"},
     {"from_route": "/customers/<path:path>", "to_route": "books"},
     {"from_route": "/vendors", "to_route": "books"},

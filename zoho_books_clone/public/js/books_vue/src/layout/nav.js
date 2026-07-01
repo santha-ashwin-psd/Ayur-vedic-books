@@ -62,6 +62,7 @@ export const NAV = [
   { path: "/inventory/valuation",           label: "Valuation",        icon: "chart",      module: "inventory"  },
   { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },
   { path: "/inventory/price-lists",         label: "Price Lists",      icon: "rupee",      module: "inventory"  },
+  { path: "/inventory/batches",             label: "Batch Tracking",   icon: "qr",         module: "inventory"  },
   { path: "/inventory/settings",            label: "Settings",         icon: "gear",       module: "inventory"  },
 
   { section: "GST/Taxes" },

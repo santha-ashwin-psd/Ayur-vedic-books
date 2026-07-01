@@ -461,6 +461,8 @@ def create_batch_adjustment():
     batch_item = frappe.db.get_value("Batch", batch_no, "item")
     if batch_item and batch_item != item_code:
         frappe.throw(_("Batch {0} belongs to item {1}, not {2}").format(batch_no, batch_item, item_code))
+    if frappe.db.get_value("Batch", batch_no, "disabled"):
+        frappe.throw(_("Batch {0} is disabled and cannot be adjusted").format(batch_no))
 
     company = _get_company(frappe.session.user)
 

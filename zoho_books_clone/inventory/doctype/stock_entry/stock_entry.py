@@ -189,6 +189,10 @@ class StockEntry(Document):
                     frappe.throw(_(
                         "Row {0}: Batch <b>{1}</b> does not exist."
                     ).format(i, row.batch_no))
+                if frappe.db.get_value("Batch", row.batch_no, "disabled"):
+                    frappe.throw(_(
+                        "Row {0}: Batch <b>{1}</b> is disabled and cannot be used."
+                    ).format(i, row.batch_no))
                 batch_item = frappe.db.get_value("Batch", row.batch_no, "item")
                 if batch_item and batch_item != row.item_code:
                     frappe.throw(_(

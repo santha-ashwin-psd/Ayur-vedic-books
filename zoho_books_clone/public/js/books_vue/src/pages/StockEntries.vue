@@ -226,8 +226,6 @@
           <div v-for="line in lines" :key="line.id" class="se-items-line">
             <div class="se-items-row">
               <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="opt=>onItemSelect(line,opt)" /></div>
-              <div><SearchableSelect v-model="line.s_warehouse" :options="warehouses" placeholder="From…" @search="fetchWarehouses" :compact="true"/></div>
-              <div><SearchableSelect v-model="line.t_warehouse" :options="warehouses" placeholder="To…" @search="fetchWarehouses" :compact="true"/></div>
               <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="se-input ta-r" /></div>
               <div><input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" /></div>
               <div><button @click="removeLine(line.id)" class="se-rm-line"><span v-html="icon('x',12)"></span></button></div>
@@ -586,6 +584,13 @@ function batchPlaceholder(line) {
   return batchRequired(line) ? "Select existing batch or type to create new" : "Leave blank to auto-assign (FIFO)";
 }
 
+// Warehouse fields shown per entry type: a Receipt has no source, an Issue has
+// no destination; a Transfer/Manufacture uses both.
+const showFromWh     = computed(() => form.stock_entry_type !== "Material Receipt");
+const showToWh       = computed(() => form.stock_entry_type !== "Material Issue");
+const fromWhRequired = computed(() => ["Material Issue", "Material Transfer", "Manufacture"].includes(form.stock_entry_type));
+const toWhRequired   = computed(() => ["Material Receipt", "Material Transfer", "Manufacture"].includes(form.stock_entry_type));
+
 const tabs = computed(() => [
   { key: "all",               label: "All",       color: "#6b7280", cnt: list.value.length },
   { key: "Material Receipt",  label: "Receipts",  color: "#16a34a", cnt: list.value.filter(e => e.stock_entry_type === "Material Receipt").length },
@@ -761,7 +766,7 @@ async function fetchBatches(line, q = "") {
   if (!line.item_code) { line.batchOptions = []; return; }
   const forItem = line.item_code;
   try {
-    const filters = [["item", "=", forItem]];
+    const filters = [["item", "=", forItem], ["disabled", "=", 0]];
     if (q) filters.push(["name", "like", `%${q}%`]);
     const r = await apiList("Batch", {
       fields: ["name", "manufacturing_date", "expiry_date", "batch_qty"],
@@ -880,12 +885,50 @@ async function openEdit(e) {
   }
 }
 
+// Sum the requested qty per item, then verify the source warehouse holds enough.
+// Returns an error string if short, or "" when everything is available.
+async function checkAvailability(sourceWh) {
+  const need = {};
+  for (const l of lines.value) {
+    if (!l.item_code) continue;
+    need[l.item_code] = (need[l.item_code] || 0) + flt(l.qty);
+  }
+  for (const [item, qty] of Object.entries(need)) {
+    if (qty <= 0) continue;
+    try {
+      const d = await apiGET("zoho_books_clone.api.inventory.get_item_stock_detail", { item_code: item, warehouse: sourceWh });
+      const avail = flt(d?.warehouses?.[0]?.actual_qty);
+      if (qty > avail) return `Not enough stock of "${item}" in ${sourceWh} — need ${qty}, available ${avail}.`;
+    } catch { /* balance lookup failed — don't block the save */ }
+  }
+  return "";
+}
+
 async function saveEntry(submit) {
   const usable = lines.value.filter(l => l.item_code);
   if (!usable.length) return toast.error("At least one item is required");
+  const type = form.stock_entry_type;
+  if (fromWhRequired.value && !form.from_warehouse) return toast.error("From Warehouse is required");
+  if (toWhRequired.value && !form.to_warehouse) return toast.error("To Warehouse is required");
+  if (type === "Material Transfer" && form.from_warehouse && form.from_warehouse === form.to_warehouse)
+    return toast.error("Source and destination warehouses must be different");
   for (const [idx, l] of usable.entries()) {
     if (l.has_batch_no && batchRequired(l) && !l.batch_no)
       return toast.error(`Row ${idx + 1}: ${l.item_code} is batch-tracked — Batch No is required`);
+  }
+  // Block disabled batches even if typed in manually (dropdown already
+  // excludes them, but a typed-in exact match can bypass that).
+  for (const [idx, l] of usable.entries()) {
+    if (!l.has_batch_no || !l.batch_no) continue;
+    const existing = await apiList("Batch", { fields: ["name", "disabled"], filters: [["name", "=", l.batch_no]], limit: 1 }).catch(() => []);
+    if (existing.length && existing[0].disabled) {
+      return toast.error(`Row ${idx + 1}: Batch "${l.batch_no}" is disabled and can't be used.`);
+    }
+  }
+  // Verify stock exists before actually posting an outgoing/transfer movement.
+  if (submit && (type === "Material Issue" || type === "Material Transfer") && form.from_warehouse) {
+    const err = await checkAvailability(form.from_warehouse);
+    if (err) return toast.error(err);
   }
   drawerSaving.value = true;
   try {
@@ -1067,9 +1110,9 @@ textarea.se-input { resize:vertical; }
 .se-select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 .se-section-title { font-size:11.5px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
 .se-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px; max-width:100%;}
-.se-items-head { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(0,1fr) minmax(0,1fr) 60px 76px 24px; gap:4px; background:#f9fafb; padding:8px 8px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
-.se-items-row { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(0,1fr) minmax(0,1fr) 60px 76px 24px; gap:4px; padding:8px 8px; border-top:1px solid #f3f4f6; align-items:center; }
-.se-items-total { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(0,1fr) minmax(0,1fr) 60px 76px 24px; gap:4px; padding:8px 8px; border-top:2px solid #e5e7eb; background:#f8fafc; }
+.se-items-head { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
+.se-items-row { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; padding:8px 10px; border-top:1px solid #f3f4f6; align-items:center; }
+.se-items-total { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; padding:8px 10px; border-top:2px solid #e5e7eb; background:#f8fafc; }
 .se-items-row > div, .se-items-head > div { min-width:0; }
 .se-items-row input.se-input { min-width:0; padding-left:6px; padding-right:6px; }
 .se-add-line { background:transparent; border:none; color:#2563eb; font-size:12.5px; font-weight:600; cursor:pointer; padding:8px 10px; display:inline-flex; align-items:center; gap:6px; }

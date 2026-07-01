@@ -112,6 +112,44 @@ def get_batches_for_outgoing(item_code: str, warehouse: str, qty: float,
     return allocations
 
 
+def assert_batch_deletable(batch_no: str) -> None:
+    """
+    Block deleting a Batch master that still represents real stock or has
+    ledger history.
+
+    Why this matters: `batch_qty` is only a cache — the real stock lives in
+    Bin (item+warehouse totals) and Stock Ledger Entry rows, neither of which
+    is touched when a Batch document is deleted. Deleting the Batch anyway
+    would:
+      1. Leave existing Stock Ledger Entries pointing at a `batch_no` Link
+         whose target no longer exists (orphaned reference).
+      2. Make that quantity permanently unpickable by
+         get_batches_for_outgoing() above, since it only ever looks at rows
+         in `tabBatch` — so Bin still reports the stock as available, but no
+         future Stock Entry could ever actually issue it. That mismatch is a
+         silent, hard-to-diagnose stock discrepancy.
+
+    Callers should disable the batch instead (`disabled = 1`) once its stock
+    is fully consumed, or issue a Stock Entry to zero it out first.
+    """
+    batch_qty = flt(frappe.db.get_value("Batch", batch_no, "batch_qty") or 0)
+    if abs(batch_qty) > 0.0001:
+        frappe.throw(_(
+            "Batch <b>{0}</b> still holds <b>{1}</b> unit(s) of stock. "
+            "Disable it instead, or issue a Stock Entry to move/consume its "
+            "stock before deleting — deleting it now would leave that stock "
+            "stranded in the warehouse total with no batch to draw it from."
+        ).format(batch_no, frappe.bold(batch_qty)))
+
+    if frappe.db.exists("Stock Ledger Entry", {"batch_no": batch_no}):
+        frappe.throw(_(
+            "Batch <b>{0}</b> has stock ledger history and cannot be deleted, "
+            "as that would leave those transactions pointing at a batch that "
+            "no longer exists. Disable it instead to keep it out of new "
+            "transactions."
+        ).format(batch_no))
+
+
 # ── Reorder Check ─────────────────────────────────────────────────────────────
 
 def check_reorder(item_code: str, warehouse: str) -> bool:

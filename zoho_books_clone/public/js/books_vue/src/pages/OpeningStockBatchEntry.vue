@@ -452,7 +452,7 @@ async function fetchBatches(line, q = "") {
   if (!line.item_code) { line.batchOptions = []; return; }
   const forItem = line.item_code;
   try {
-    const filters = [["item", "=", forItem]];
+    const filters = [["item", "=", forItem], ["disabled", "=", 0]];
     if (q) filters.push(["name", "like", `%${q}%`]);
     const r = await apiList("Batch", {
       fields: ["name", "manufacturing_date", "expiry_date", "batch_qty"],
@@ -581,6 +581,15 @@ async function saveEntry(submit) {
       return toast.error(`Row ${idx + 1}: warehouse is required`);
     if (l.has_batch_no && !l.batch_no)
       return toast.error(`Row ${idx + 1}: ${l.item_code} is batch-tracked — Batch No is required`);
+  }
+  // Block disabled batches even if typed in manually (dropdown already
+  // excludes them, but a typed-in exact match can bypass that).
+  for (const [idx, l] of usable.entries()) {
+    if (!l.has_batch_no || !l.batch_no) continue;
+    const existing = await apiList("Batch", { fields: ["name", "disabled"], filters: [["name", "=", l.batch_no]], limit: 1 }).catch(() => []);
+    if (existing.length && existing[0].disabled) {
+      return toast.error(`Row ${idx + 1}: Batch "${l.batch_no}" is disabled and can't be used.`);
+    }
   }
 
   drawerSaving.value = true;

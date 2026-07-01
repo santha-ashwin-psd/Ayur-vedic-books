@@ -673,6 +673,16 @@ def delete_doc(doctype, name):
     from zoho_books_clone.accounts.central_validator import assert_not_locked
     assert_not_locked(doctype, name)
 
+    # force=True also bypasses Frappe's normal "linked document" check, which
+    # would otherwise stop a Batch with live Stock Ledger Entries from being
+    # deleted. Batch.batch_qty and Stock Ledger Entry rows aren't touched by
+    # deleting the Batch master, so without this guard the batch's stock stays
+    # in the warehouse's Bin total but becomes unpickable by future Stock
+    # Entries (get_batches_for_outgoing only sees rows still in `tabBatch`).
+    if doctype == "Batch":
+        from zoho_books_clone.inventory.utils import assert_batch_deletable
+        assert_batch_deletable(name)
+
     frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
     frappe.db.commit()
     return {"message": "deleted"}

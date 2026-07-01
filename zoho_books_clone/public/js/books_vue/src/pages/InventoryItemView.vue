@@ -92,7 +92,6 @@
             <div class="iv-kv"><span class="iv-k">Type</span><span class="iv-v">{{ item.item_type || 'Product' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Unit of Measure</span><span class="iv-v">{{ item.stock_uom || 'Nos' }}</span></div>
             <div class="iv-kv"><span class="iv-k">HSN / SAC Code</span><span class="iv-v iv-mono">{{ item.hsn_code || '—' }}</span></div>
-            <div class="iv-kv"><span class="iv-k">GST Rate</span><span class="iv-v">{{ item.gst_rate || 0 }}%</span></div>
             <div class="iv-kv"><span class="iv-k">Tax Template</span><span class="iv-v">{{ item.tax_code || '—' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Income Account</span><span class="iv-v">{{ item.income_account || '—' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Expense Account</span><span class="iv-v">{{ item.expense_account || '—' }}</span></div>
@@ -299,7 +298,7 @@
             <template v-if="drawerTab === 'basic'">
               <div class="iv-fg2">
                 <div class="iv-field"><label class="nim-label">Item Name <span class="req">*</span></label><input class="nim-input" v-model="form.item_name"/></div>
-                <div class="iv-field"><label class="nim-label">Item Code</label><input class="nim-input" v-model="form.item_code"/></div>
+                <div class="iv-field"><label class="nim-label">Item Code <span class="req">*</span></label><input class="nim-input" v-model="form.item_code"/></div>
               </div>
               <div class="iv-field">
                 <label class="nim-label">Item Group</label>
@@ -320,7 +319,7 @@
               </div>
               <div class="iv-fg2">
                 <div class="iv-field">
-                  <label class="nim-label">UOM</label>
+                  <label class="nim-label">UOM <span class="req">*</span></label>
                   <select class="nim-input" v-model="form.stock_uom">
                     <option v-for="u in UOM_LIST" :key="u" :value="u">{{ u }}</option>
                   </select>
@@ -340,30 +339,23 @@
                 <div class="iv-field"><label class="nim-label">Selling Rate (₹)</label><input type="number" class="nim-input" v-model.number="form.standard_rate" min="0"/></div>
                 <div class="iv-field"><label class="nim-label">Buying Rate (₹)</label><input type="number" class="nim-input" v-model.number="form.standard_buying_rate" min="0"/></div>
               </div>
-              <div class="iv-fg2">
-                <div class="iv-field">
-                  <label class="nim-label">GST Rate (%)</label>
-                  <select class="nim-input" v-model.number="form.gst_rate">
-                    <option v-for="r in [0,5,12,18,28]" :key="r" :value="r">{{ r }}%</option>
-                  </select>
-                </div>
-                <div class="iv-field"><label class="nim-label">Tax Template</label>
-                  <select class="nim-input" v-model="form.tax_code">
-                    <option value="">— None —</option>
-                    <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.label }}</option>
-                  </select>
-                </div>
+              <div class="iv-field"><label class="nim-label">Tax Template <span style="color:#dc2626">*</span></label>
+                <select class="nim-input" v-model="form.tax_code">
+                  <option value="">— Select —</option>
+                  <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.label }}</option>
+                </select>
+                <div class="text-muted" style="font-size:11.5px;margin-top:5px">Tax on transactions is determined by the selected Tax Template.</div>
               </div>
-              <div class="iv-field"><label class="nim-label">Income Account</label>
+              <div class="iv-field"><label class="nim-label">Income Account <span style="color:#dc2626">*</span></label>
                 <select class="nim-input" v-model="form.income_account">
                   <option value="">— Select —</option>
-                  <option v-for="a in accounts" :key="a" :value="a">{{ a }}</option>
+                  <option v-for="a in incomeAccounts" :key="a" :value="a">{{ a }}</option>
                 </select>
               </div>
-              <div class="iv-field"><label class="nim-label">Expense Account</label>
+              <div class="iv-field"><label class="nim-label">Expense Account <span style="color:#dc2626">*</span></label>
                 <select class="nim-input" v-model="form.expense_account">
                   <option value="">— Select —</option>
-                  <option v-for="a in accounts" :key="a" :value="a">{{ a }}</option>
+                  <option v-for="a in expenseAccounts" :key="a" :value="a">{{ a }}</option>
                 </select>
               </div>
             </template>
@@ -382,7 +374,7 @@
                   </select>
                 </div>
                 <div class="iv-field">
-                  <label class="nim-label">Default Warehouse</label>
+                  <label class="nim-label">Default Warehouse <span v-if="form.is_stock_item" class="req">*</span></label>
                   <select class="nim-input" v-model="form.default_warehouse">
                     <option value="">— Select —</option>
                     <option v-for="w in warehouses" :key="w.name" :value="w.name">{{ w.label }}</option>
@@ -436,12 +428,13 @@ const saving      = ref(false);
 const itemGroups  = ref([]);
 const warehouses  = ref([]);
 const taxTemplates = ref([]);
-const accounts    = ref([]);
+const incomeAccounts  = ref([]);
+const expenseAccounts = ref([]);
 
 const form = reactive({
   name: "", item_code: "", item_name: "", item_group: "", item_type: "Product",
   stock_uom: "Nos", hsn_code: "", description: "", disabled: 0,
-  standard_rate: 0, standard_buying_rate: 0, gst_rate: 18, tax_code: "",
+  standard_rate: 0, standard_buying_rate: 0, tax_code: "",
   income_account: "", expense_account: "",
   is_stock_item: 1, valuation_method: "FIFO", default_warehouse: "",
   reorder_level: 0, reorder_qty: 0,
@@ -490,7 +483,6 @@ async function openEdit() {
     disabled: item.value.disabled ? 1 : 0,
     standard_rate: flt(item.value.standard_rate),
     standard_buying_rate: flt(item.value.standard_buying_rate),
-    gst_rate: flt(item.value.gst_rate) || 18,
     tax_code: item.value.tax_code || "",
     income_account: item.value.income_account || "",
     expense_account: item.value.expense_account || "",
@@ -517,16 +509,31 @@ async function loadDrawerOptions() {
     itemGroups.value = (grps || []).filter(g => !g.is_group).map(g => g.name);
     warehouses.value = (whs || []).map(w => ({ name: w.name, label: w.warehouse_name || w.name }));
     taxTemplates.value = (tt || []).map(t => ({ name: t.name, label: t.template_name || t.name }));
-    const accts = await apiList("Account", {
-      fields: ["name"], filters: [["is_group","=",0],["company","=",company]], limit: 500,
-    });
-    accounts.value = (accts || []).map(a => a.name);
+    // Income- and expense-class leaf accounts, filtered by root_type
+    // (Expense root covers Cost of Goods Sold); fall back to account_type.
+    const base = [["is_group","=",0],["company","=",company]];
+    let inc = await apiList("Account", { fields:["name"], filters:[...base,["root_type","=","Income"]], limit:500 });
+    if (!inc?.length) inc = await apiList("Account", { fields:["name"], filters:[...base,["account_type","=","Income"]], limit:500 });
+    let exp = await apiList("Account", { fields:["name"], filters:[...base,["root_type","=","Expense"]], limit:500 });
+    if (!exp?.length) exp = await apiList("Account", { fields:["name"], filters:[...base,["account_type","in",["Expense","Cost of Goods Sold"]]], limit:500 });
+    incomeAccounts.value  = (inc || []).map(a => a.name);
+    expenseAccounts.value = (exp || []).map(a => a.name);
   } catch {}
 }
 
 // ── Save ───────────────────────────────────────────────────────────────────
 async function saveItem() {
-  if (!form.item_name.trim()) { toast("Item name is required", "error"); return; }
+  const checks = [
+    [!form.item_name.trim(),                          "Item name is required",       "basic"],
+    [!form.stock_uom,                                 "Default UOM is required",     "basic"],
+    [!form.tax_code,                                  "Tax Template is required",    "pricing"],
+    [!form.income_account,                            "Income account is required",  "pricing"],
+    [!form.expense_account,                           "Expense account is required", "pricing"],
+    [!!form.is_stock_item && !form.default_warehouse, "Default Warehouse is required when Track Inventory is on", "inventory"],
+  ];
+  for (const [bad, msg, tab] of checks) {
+    if (bad) { drawerTab.value = tab; toast(msg, "error"); return; }
+  }
   saving.value = true;
   try {
     const doc = {
@@ -536,7 +543,7 @@ async function saveItem() {
       stock_uom: form.stock_uom, hsn_code: form.hsn_code,
       description: form.description, disabled: form.disabled,
       standard_rate: flt(form.standard_rate), standard_buying_rate: flt(form.standard_buying_rate),
-      gst_rate: flt(form.gst_rate), tax_code: form.tax_code,
+      tax_code: form.tax_code,
       income_account: form.income_account, expense_account: form.expense_account,
       is_stock_item: form.is_stock_item, valuation_method: form.valuation_method,
       default_warehouse: form.default_warehouse,

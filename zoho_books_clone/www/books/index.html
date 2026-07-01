@@ -2299,7 +2299,7 @@ html,body{height:100%;overflow:hidden;background:#f0f2f5}
 
 window.BOOKS_VUE_ROUTES = ["/"]; // kept for isVueOwned() in nav.js — "/" prefix matches everything
 window.frappe = { session: {}, boot: { sysdefaults: { company: "" } } };
-window.__booksCompany = "";
+window["__booksCompany"] = "";  // bracket form: dot + double-underscore is rejected by Frappe's safe template renderer
 
 (function () {
   var forceLegacy = /[?&]legacy=1\b/.test(window.location.search);

@@ -198,12 +198,12 @@
             <label class="se-label">Adjustment Reason</label>
             <input v-model="form.adjustment_reason" class="se-input" placeholder="e.g. Annual count, damage…"/>
           </div>
-          <div class="se-field">
-            <label class="se-label">From Warehouse <span v-if="form.stock_entry_type==='Material Issue'||form.stock_entry_type==='Material Transfer'" class="req">*</span></label>
+          <div class="se-field" v-if="showFromWh">
+            <label class="se-label">From Warehouse <span v-if="fromWhRequired" class="req">*</span></label>
             <SearchableSelect v-model="form.from_warehouse" :options="warehouses" placeholder="Source warehouse…" @search="fetchWarehouses" />
           </div>
-          <div class="se-field">
-            <label class="se-label">To Warehouse <span v-if="form.stock_entry_type==='Material Receipt'||form.stock_entry_type==='Material Transfer'" class="req">*</span></label>
+          <div class="se-field" v-if="showToWh">
+            <label class="se-label">To Warehouse <span v-if="toWhRequired" class="req">*</span></label>
             <SearchableSelect v-model="form.to_warehouse" :options="warehouses" placeholder="Destination warehouse…" @search="fetchWarehouses" />
           </div>
         </div>
@@ -214,22 +214,18 @@
         <div class="se-items-table se-add-items-desktop">
           <div class="se-items-head">
             <div>Item</div>
-            <div>Source WH</div>
-            <div>Target WH</div>
             <div class="ta-r">Qty</div>
             <div class="ta-r">Rate (₹)</div>
             <div></div>
           </div>
           <div v-for="line in lines" :key="line.id" class="se-items-row">
             <div><SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="opt=>onItemSelect(line,opt)" /></div>
-            <div><SearchableSelect v-model="line.s_warehouse" :options="warehouses" placeholder="From…" @search="fetchWarehouses" :compact="true"/></div>
-            <div><SearchableSelect v-model="line.t_warehouse" :options="warehouses" placeholder="To…" @search="fetchWarehouses" :compact="true"/></div>
             <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="se-input ta-r" /></div>
             <div><input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" /></div>
             <div><button @click="removeLine(line.id)" class="se-rm-line"><span v-html="icon('x',12)"></span></button></div>
           </div>
           <div class="se-items-total" v-if="lines.length">
-            <div style="grid-column:1/5;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Total</div>
+            <div style="grid-column:1/3;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Total</div>
             <div class="ta-r" style="font-weight:700;color:#0f172a">{{ fmtCur(lineTotal) }}</div>
             <div></div>
           </div>
@@ -246,16 +242,6 @@
             <div class="se-aic-field">
               <label class="se-label">Item</label>
               <SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="opt=>onItemSelect(line,opt)" />
-            </div>
-            <div class="se-aic-row2">
-              <div class="se-aic-field">
-                <label class="se-label">Source WH</label>
-                <SearchableSelect v-model="line.s_warehouse" :options="warehouses" placeholder="From…" @search="fetchWarehouses" :compact="true"/>
-              </div>
-              <div class="se-aic-field">
-                <label class="se-label">Target WH</label>
-                <SearchableSelect v-model="line.t_warehouse" :options="warehouses" placeholder="To…" @search="fetchWarehouses" :compact="true"/>
-              </div>
             </div>
             <div class="se-aic-row2">
               <div class="se-aic-field">
@@ -459,7 +445,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -505,6 +491,13 @@ const TYPE_META = {
   "Manufacture":       { color: "#7c3aed", grad: "linear-gradient(135deg,#3b0764,#7c3aed)" },
   "Repack":            { color: "#d97706", grad: "linear-gradient(135deg,#78350f,#d97706)" },
 };
+
+// Warehouse fields shown per entry type: a Receipt has no source, an Issue has
+// no destination; Transfer/Manufacture/Repack use both.
+const showFromWh     = computed(() => form.stock_entry_type !== "Material Receipt");
+const showToWh       = computed(() => form.stock_entry_type !== "Material Issue");
+const fromWhRequired = computed(() => ["Material Issue", "Material Transfer"].includes(form.stock_entry_type));
+const toWhRequired   = computed(() => ["Material Receipt", "Material Transfer"].includes(form.stock_entry_type));
 
 const tabs = computed(() => [
   { key: "all",               label: "All",       color: "#6b7280", cnt: list.value.length },
@@ -701,8 +694,37 @@ function openNew() {
   drawerOpen.value = true;
 }
 
+// Sum the requested qty per item, then verify the source warehouse holds enough.
+// Returns an error string if short, or "" when everything is available.
+async function checkAvailability(sourceWh) {
+  const need = {};
+  for (const l of lines.value) {
+    if (!l.item_code) continue;
+    need[l.item_code] = (need[l.item_code] || 0) + flt(l.qty);
+  }
+  for (const [item, qty] of Object.entries(need)) {
+    if (qty <= 0) continue;
+    try {
+      const d = await apiGET("zoho_books_clone.api.inventory.get_item_stock_detail", { item_code: item, warehouse: sourceWh });
+      const avail = flt(d?.warehouses?.[0]?.actual_qty);
+      if (qty > avail) return `Not enough stock of "${item}" in ${sourceWh} — need ${qty}, available ${avail}.`;
+    } catch { /* balance lookup failed — don't block the save */ }
+  }
+  return "";
+}
+
 async function saveEntry(submit) {
   if (!lines.value.some(l => l.item_code)) return toast.error("At least one item is required");
+  const type = form.stock_entry_type;
+  if (fromWhRequired.value && !form.from_warehouse) return toast.error("From Warehouse is required");
+  if (toWhRequired.value && !form.to_warehouse) return toast.error("To Warehouse is required");
+  if (type === "Material Transfer" && form.from_warehouse && form.from_warehouse === form.to_warehouse)
+    return toast.error("Source and destination warehouses must be different");
+  // Verify stock exists before actually posting an outgoing/transfer movement.
+  if (submit && (type === "Material Issue" || type === "Material Transfer") && form.from_warehouse) {
+    const err = await checkAvailability(form.from_warehouse);
+    if (err) return toast.error(err);
+  }
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
@@ -858,9 +880,9 @@ textarea.se-input { resize:vertical; }
 .se-select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 .se-section-title { font-size:11.5px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
 .se-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px;}
-.se-items-head { display:grid; grid-template-columns:2.5fr 1fr 1fr 70px 90px 28px; gap:6px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
-.se-items-row { display:grid; grid-template-columns:2.5fr 1fr 1fr 70px 90px 28px; gap:6px; padding:8px 10px; border-top:1px solid #f3f4f6; align-items:center; }
-.se-items-total { display:grid; grid-template-columns:2.5fr 1fr 1fr 70px 90px 28px; gap:6px; padding:8px 10px; border-top:2px solid #e5e7eb; background:#f8fafc; }
+.se-items-head { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
+.se-items-row { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; padding:8px 10px; border-top:1px solid #f3f4f6; align-items:center; }
+.se-items-total { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; padding:8px 10px; border-top:2px solid #e5e7eb; background:#f8fafc; }
 .se-add-line { background:transparent; border:none; color:#2563eb; font-size:12.5px; font-weight:600; cursor:pointer; padding:8px 10px; display:inline-flex; align-items:center; gap:6px; }
 .se-add-line:hover { background:#eff6ff; }
 .se-rm-line { background:transparent; border:1px solid #e5e7eb; border-radius:4px; width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:#9ca3af; }

@@ -165,16 +165,6 @@
                 <label class="qcd-lbl">HSN / SAC Code</label>
                 <input v-model="form.hsn_code" class="qcd-input" placeholder="HSN or SAC code" />
               </div>
-              <div class="qcd-field">
-                <label class="qcd-lbl">GST Rate %</label>
-                <select v-model.number="form.gst_rate" class="qcd-input">
-                  <option :value="0">0%</option>
-                  <option :value="5">5%</option>
-                  <option :value="12">12%</option>
-                  <option :value="18">18%</option>
-                  <option :value="28">28%</option>
-                </select>
-              </div>
             </div>
           </template>
 
@@ -352,7 +342,7 @@ watch(() => state.open, (open) => {
     Object.assign(form, {
       item_name: state.prefill, item_code: "",
       item_group: "All Item Groups", item_type: "Product",
-      standard_rate: 0, stock_uom: "Nos", hsn_code: "", gst_rate: 0,
+      standard_rate: 0, stock_uom: "Nos", hsn_code: "",
     });
   } else if (state.doctype === "Warehouse") {
     Object.assign(form, {

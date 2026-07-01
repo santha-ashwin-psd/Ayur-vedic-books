@@ -667,7 +667,6 @@ onMounted(load);
 .et-preview-chrome {
   border: 1.5px solid #e4e8f0;
   border-radius: 12px;
-  overflow: hidden;
   background: #fff;
   flex: 1;
   display: flex; flex-direction: column;

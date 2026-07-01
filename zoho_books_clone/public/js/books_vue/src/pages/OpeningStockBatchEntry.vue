@@ -362,12 +362,18 @@ const filtered = computed(() => {
   );
 });
 
-const kpi = computed(() => ({
-  total:       list.value.length,
-  itemCount:   list.value.reduce((s, e) => s + (e._itemCount || 0), 0),
-  batchCount:  list.value.reduce((s, e) => s + (e._batchCount || 0), 0),
-  value:       list.value.filter(e => e.docstatus === 1).reduce((s, e) => s + flt(e.total_incoming_value), 0),
-}));
+const kpi = computed(() => {
+  // Cancelled entries no longer represent real opening balances — exclude
+  // them here the same way "value" already does, so the KPI strip can't show
+  // e.g. "Batches Created: 6" next to "Opening Value: ₹0.00".
+  const active = list.value.filter(e => e.docstatus !== 2);
+  return {
+    total:      list.value.length,
+    itemCount:  active.reduce((s, e) => s + (e._itemCount || 0), 0),
+    batchCount: active.reduce((s, e) => s + (e._batchCount || 0), 0),
+    value:      list.value.filter(e => e.docstatus === 1).reduce((s, e) => s + flt(e.total_incoming_value), 0),
+  };
+});
 
 function statusClass(e) {
   if (e.docstatus === 1) return "badge-green";
@@ -471,10 +477,12 @@ async function fetchBatches(line, q = "") {
 }
 function onBatchSelect(line, opt) {
   line.batch_no = opt?.value ?? opt;
-  // Existing batch picked — inherit its dates so a fresh save doesn't
-  // overwrite them with blanks.
-  if (opt && opt.manufacturing_date) line.manufacturing_date = opt.manufacturing_date;
-  if (opt && opt.expiry_date) line.expiry_date = opt.expiry_date;
+  // Existing batch picked — mirror its dates exactly (including clearing them
+  // if the batch has none) so the form never shows leftover dates from a
+  // previously-typed "create new batch" attempt as if they belonged to this
+  // batch.
+  line.manufacturing_date = (opt && opt.manufacturing_date) || "";
+  line.expiry_date = (opt && opt.expiry_date) || "";
 }
 function onBatchCreate(line, typed) {
   // User typed a Batch No that doesn't exist yet — treat as a new batch
@@ -494,16 +502,15 @@ async function onItemSelect(line, opt) {
       line.item_name = it.item_name || line.item_code;
       line.has_batch_no = it.has_batch_no ? 1 : 0;
       if (!flt(line.basic_rate)) line.basic_rate = flt(it.standard_buying_rate) || flt(it.standard_rate) || 0;
+      // Item changed — whatever batch/dates were on the line belonged to the
+      // previous item and must not ride along, whether the new item is
+      // batch-tracked or not.
+      line.batch_no = "";
+      line.manufacturing_date = "";
+      line.expiry_date = "";
+      line.batchOptions = [];
       if (line.has_batch_no) {
-        line.batch_no = "";
-        line.batchOptions = [];
         await fetchBatches(line, "");
-      } else {
-        // Not batch-tracked — never let a stale batch number ride along to save.
-        line.batch_no = "";
-        line.manufacturing_date = "";
-        line.expiry_date = "";
-        line.batchOptions = [];
       }
     }
   } catch {}
@@ -545,7 +552,15 @@ async function openEdit(e) {
         try {
           const r = await apiList("Item", { fields: ["name", "has_batch_no"], filters: [["name", "=", line.item_code]], limit: 1 });
           line.has_batch_no = r?.[0]?.has_batch_no ? 1 : 0;
-        } catch {}
+        } catch {
+          // Lookup failed (e.g. network blip) — don't default to "not
+          // batch-tracked" here, since saveEntry() nulls batch_no for any
+          // line where has_batch_no is falsy. The row already carries a
+          // batch_no from the saved doc, which is strong evidence the item
+          // is in fact batch-tracked, so preserve it rather than silently
+          // stripping it on the next save.
+          line.has_batch_no = line.batch_no ? 1 : 0;
+        }
         if (line.has_batch_no && line.batch_no) {
           try {
             const b = await apiList("Batch", {
@@ -583,12 +598,25 @@ async function saveEntry(submit) {
       return toast.error(`Row ${idx + 1}: ${l.item_code} is batch-tracked — Batch No is required`);
   }
   // Block disabled batches even if typed in manually (dropdown already
-  // excludes them, but a typed-in exact match can bypass that).
+  // excludes them, but a typed-in exact match can bypass that). Also block a
+  // typed batch_no that already exists for a *different* item — the pre-create
+  // step below only checks whether the name exists, not who it belongs to, so
+  // without this check a colliding name would silently reuse the wrong item's
+  // batch and fail later at server-side submit, after we've already created
+  // Batch records for the earlier rows (leaving them behind as orphans).
+  const batchOwners = new Map(); // batch_no -> item_code, scoped to this save
   for (const [idx, l] of usable.entries()) {
     if (!l.has_batch_no || !l.batch_no) continue;
-    const existing = await apiList("Batch", { fields: ["name", "disabled"], filters: [["name", "=", l.batch_no]], limit: 1 }).catch(() => []);
+    if (batchOwners.has(l.batch_no) && batchOwners.get(l.batch_no) !== l.item_code) {
+      return toast.error(`Row ${idx + 1}: Batch "${l.batch_no}" is already used for a different item in this entry.`);
+    }
+    batchOwners.set(l.batch_no, l.item_code);
+    const existing = await apiList("Batch", { fields: ["name", "disabled", "item"], filters: [["name", "=", l.batch_no]], limit: 1 }).catch(() => []);
     if (existing.length && existing[0].disabled) {
       return toast.error(`Row ${idx + 1}: Batch "${l.batch_no}" is disabled and can't be used.`);
+    }
+    if (existing.length && existing[0].item && existing[0].item !== l.item_code) {
+      return toast.error(`Row ${idx + 1}: Batch "${l.batch_no}" already exists for item "${existing[0].item}", not "${l.item_code}".`);
     }
   }
 

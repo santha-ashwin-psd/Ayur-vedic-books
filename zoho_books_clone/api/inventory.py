@@ -541,7 +541,7 @@ def get_inventory_adjustments(company=None):
         SELECT se.name, se.posting_date, se.docstatus, se.value_difference,
                se.adjustment_reason, se.remarks,
                sed.item_code, sed.item_name, sed.t_warehouse AS warehouse,
-               sed.qty, sed.basic_rate
+               sed.batch_no, sed.qty, sed.basic_rate
         FROM `tabStock Entry` se
         LEFT JOIN `tabStock Entry Detail` sed ON sed.parent = se.name
         WHERE se.stock_entry_type = 'Stock Adjustment' AND se.company = %s

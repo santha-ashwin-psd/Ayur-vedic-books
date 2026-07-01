@@ -32,7 +32,7 @@
           <template v-else>
             <tr v-for="a in sorted" :key="a.name" class="ia-row" @click="openView(a)">
               <td class="mono-sm text-muted">{{ fmtDate(a.posting_date) }}</td>
-              <td class="font-medium">{{ a.item_name||a.item_code }}</td>
+              <td class="font-medium">{{ a.item_name||a.item_code }}<span v-if="a.batch_no" class="ia-batch-pill">{{ a.batch_no }}</span></td>
               <td class="text-muted">{{ a.warehouse||'—' }}</td>
               <td><span v-if="a.adjustment_reason" class="ia-reason">{{ a.adjustment_reason }}</span><span v-else class="text-muted">—</span></td>
               <td class="ta-r mono-sm" :class="flt(a.qty)>=0?'green':'red'">{{ flt(a.qty)>0?'+':'' }}{{ fmtQty(a.qty) }}</td>
@@ -63,7 +63,7 @@
               <span class="ia-mc-docno">{{ a.name }}</span>
               <span class="ia-badge" :class="a.docstatus===1?'badge-green':a.docstatus===2?'badge-grey':'badge-orange'">{{ a.docstatus===1?'Submitted':a.docstatus===2?'Cancelled':'Draft' }}</span>
             </div>
-            <div class="ia-mc-mid">{{ a.item_name||a.item_code }}</div>
+            <div class="ia-mc-mid">{{ a.item_name||a.item_code }}<span v-if="a.batch_no" class="ia-batch-pill">{{ a.batch_no }}</span></div>
             <div class="ia-mc-meta">
               <span>{{ fmtDate(a.posting_date) }} · {{ a.warehouse||'—' }}</span>
               <span :class="flt(a.qty)>=0?'ia-mc-pos':'ia-mc-neg'">{{ flt(a.qty)>0?'+':'' }}{{ fmtQty(a.qty) }}</span>
@@ -97,24 +97,29 @@
             <label class="ia-label">Item <span class="req">*</span></label>
             <SearchableSelect v-model="form.item_code" :options="items" placeholder="Select item…" @search="fetchItems" @select="onItemPick" />
           </div>
+          <div class="ia-field" style="grid-column:1/-1" v-if="form.item_has_batch_no">
+            <label class="ia-label">Batch No <span class="req">*</span></label>
+            <SearchableSelect v-model="form.batch_no" :options="batchOptions" placeholder="Select batch…" @select="onBatchSelect" />
+            <div class="ia-hint" v-if="form.item_code && form.warehouse && !batchesLoading && !batchOptions.length">No batch-wise stock found for this item in this warehouse.</div>
+          </div>
         </div>
 
         <div class="ia-section-hdr"><span v-html="icon('balance',13)"></span> Quantity</div>
         <div class="ia-qty-grid">
           <div class="ia-stat">
-            <div class="ia-stat-lbl">Current on hand</div>
-            <div class="ia-stat-val">{{ stockLoading ? '…' : fmtQty(currentQty) }}</div>
+            <div class="ia-stat-lbl">{{ form.item_has_batch_no ? 'Current Batch Qty' : 'Current on hand' }}</div>
+            <div class="ia-stat-val">{{ (stockLoading||batchesLoading) ? '…' : fmtQty(currentQty) }}</div>
           </div>
           <div class="ia-field">
             <label class="ia-label">New counted qty <span class="req">*</span></label>
-            <input v-model.number="form.new_qty" type="number" min="0" step="0.001" class="ia-input ta-r" :disabled="!form.item_code||!form.warehouse" />
+            <input v-model.number="form.new_qty" type="number" min="0" step="0.001" class="ia-input ta-r" :disabled="!form.item_code||!form.warehouse||(form.item_has_batch_no && !form.batch_no)" />
           </div>
           <div class="ia-stat" :class="diff>0?'pos':diff<0?'neg':''">
             <div class="ia-stat-lbl">Difference</div>
             <div class="ia-stat-val">{{ diff>0?'+':'' }}{{ fmtQty(diff) }}</div>
           </div>
         </div>
-        <div class="ia-hint">Value impact ≈ {{ fmtCur(diff * currentRate) }} at the current rate of {{ fmtCur(currentRate) }}/unit.</div>
+        <div class="ia-hint">{{ form.item_has_batch_no && !form.batch_no ? 'Select a batch above to see its current quantity.' : `Value impact ≈ ${fmtCur(diff * currentRate)} at the current rate of ${fmtCur(currentRate)}/unit.` }}</div>
 
         <div class="ia-section-hdr"><span v-html="icon('file',13)"></span> Reason</div>
         <div class="ia-fields-grid">
@@ -152,7 +157,7 @@
             <div class="ia-dh-ico"><span v-html="icon('repeat',20)"></span></div>
             <div>
               <div class="ia-dh-title">{{ viewDoc.item_name||viewDoc.item_code }}</div>
-              <div class="ia-dh-sub">{{ viewDoc.warehouse }} · {{ fmtDate(viewDoc.posting_date) }}</div>
+              <div class="ia-dh-sub">{{ viewDoc.warehouse }} · {{ fmtDate(viewDoc.posting_date) }}<span v-if="viewDoc.batch_no"> · Batch {{ viewDoc.batch_no }}</span></div>
             </div>
             <span class="ia-badge" :class="viewDoc.docstatus===1?'badge-green':viewDoc.docstatus===2?'badge-grey':'badge-orange'">{{ viewDoc.docstatus===1?'Submitted':viewDoc.docstatus===2?'Cancelled':'Draft' }}</span>
           </div>
@@ -165,6 +170,7 @@
           <div class="ia-section-hdr"><span v-html="icon('info',13)"></span> Details</div>
           <div class="ia-meta-grid">
             <div><div class="ia-meta-lbl">Entry #</div><div class="mono-sm" style="color:#2563eb">{{ viewDoc.name }}</div></div>
+            <div v-if="viewDoc.batch_no"><div class="ia-meta-lbl">Batch</div><div class="mono-sm" style="color:#6b21a8">{{ viewDoc.batch_no }}</div></div>
             <div><div class="ia-meta-lbl">Reason</div><div>{{ viewDoc.adjustment_reason||'—' }}</div></div>
             <div><div class="ia-meta-lbl">Value Impact</div><div class="mono-sm" :class="flt(viewDoc.value)>=0?'green':'red'">{{ fmtCur(viewDoc.value) }}</div></div>
             <div><div class="ia-meta-lbl">Rate / unit</div><div class="mono-sm">{{ fmtCur(viewDoc.basic_rate) }}</div></div>
@@ -184,9 +190,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
-import { apiGET, apiPOST, apiList, apiLinkValues, apiCancel, resolveCompany } from "../api/client.js";
+import { apiGET, apiPOST, apiList, apiCancel, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
@@ -203,9 +209,10 @@ const drawerOpen = ref(false), saving = ref(false), actionBusy = ref(false);
 const viewOpen = ref(false), viewDoc = ref(null);
 const warehouses = ref([]), items = ref([]), accounts = ref([]);
 const currentQty = ref(0), currentRate = ref(0), stockLoading = ref(false);
+const batchOptions = ref([]), batchesLoading = ref(false);
 const sortCol = ref("posting_date"), sortDir = ref("desc");
 const reasons = ["Stock count discrepancy", "Damaged", "Expired", "Theft / Loss", "Found / Surplus", "Other"];
-const form = reactive({ warehouse: "", item_code: "", new_qty: null, reason: "", notes: "", adjustment_account: "" });
+const form = reactive({ warehouse: "", item_code: "", new_qty: null, reason: "", notes: "", adjustment_account: "", batch_no: "", item_has_batch_no: 0 });
 
 async function load() {
   loading.value = true;
@@ -230,13 +237,13 @@ const increases = computed(()=>list.value.filter(a=>flt(a.qty)>0).length);
 const decreases = computed(()=>list.value.filter(a=>flt(a.qty)<0).length);
 const netValue = computed(()=>list.value.filter(a=>a.docstatus===1).reduce((s,a)=>s+flt(a.value),0));
 const diff = computed(()=> (form.new_qty===null||form.new_qty==="") ? 0 : flt(form.new_qty) - flt(currentQty.value));
-const canSave = computed(()=> form.warehouse && form.item_code && form.reason && form.new_qty!==null && form.new_qty!=="" && flt(form.new_qty)>=0 && Math.abs(diff.value)>0.0000001);
+const canSave = computed(()=> form.warehouse && form.item_code && form.reason && form.new_qty!==null && form.new_qty!=="" && flt(form.new_qty)>=0 && Math.abs(diff.value)>0.0000001 && (!form.item_has_batch_no || !!form.batch_no));
 
 function fmtCur(v){ return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v)); }
 function fmtQty(v){ return Number(flt(v)).toLocaleString("en-IN",{maximumFractionDigits:3}); }
 
 async function fetchWarehouses(q=""){ try{ const co=await resolveCompany(); const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30}); warehouses.value=r.map(x=>({label:x.name,value:x.name})); }catch{warehouses.value=[];} }
-async function fetchItems(q=""){ try{ const r=await apiLinkValues("Item",q); items.value=r.map(x=>({label:x.name,value:x.name})); }catch{items.value=[];} }
+async function fetchItems(q=""){ try{ const r=await apiList("Item",{fields:["name","item_name","has_batch_no"],filters:[["disabled","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:30}); items.value=r.map(x=>({label:x.name,value:x.name,has_batch_no:x.has_batch_no?1:0})); }catch{items.value=[];} }
 async function fetchAccounts(q=""){ try{ const co=await resolveCompany(); const r=await apiList("Account",{fields:["name"],filters:[["company","=",co],["is_group","=",0],["account_type","in",["Stock Adjustment","Expense","Temporary"]],...(q?[["name","like",`%${q}%`]]:[])],limit:30}); accounts.value=r.map(x=>({label:x.name,value:x.name})); }catch{accounts.value=[];} }
 
 async function loadCurrentStock(){
@@ -250,13 +257,74 @@ async function loadCurrentStock(){
   }catch{ currentQty.value=0; currentRate.value=0; }
   finally{ stockLoading.value=false; }
 }
-function onItemPick(opt){ form.item_code = opt?.value ?? opt; loadCurrentStock(); }
+
+// Batch-tracked items can't be adjusted as one lump qty — the backend requires
+// a Batch No on every movement for these items. Instead of showing item-wide
+// on-hand qty, list the batches actually present in this warehouse (from the
+// live ledger, same source InventoryWarehouses uses) so the person can pick
+// the specific batch whose counted qty differs.
+async function fetchBatchesForItem(){
+  if(!form.item_code||!form.warehouse){ batchOptions.value=[]; return; }
+  batchesLoading.value=true;
+  try{
+    const raw = await apiGET("zoho_books_clone.api.inventory.get_warehouse_batches", { warehouse: form.warehouse });
+    const map = raw?.message || raw || {};
+    const list = map[form.item_code] || [];
+    batchOptions.value = list.map(b => ({
+      label: `${b.batch_no} — ${fmtQty(b.qty)} on hand${b.is_expired ? ' · Expired' : (b.expires_soon ? ' · Expires soon' : '')}`,
+      value: b.batch_no,
+      qty: flt(b.qty),
+    }));
+  }catch{ batchOptions.value=[]; }
+  finally{ batchesLoading.value=false; }
+}
+
+async function refreshStockAndBatches(){
+  form.batch_no = "";
+  batchOptions.value = [];
+  currentQty.value = 0; currentRate.value = 0;
+  if(!form.item_code||!form.warehouse) return;
+  if(form.item_has_batch_no){
+    await fetchBatchesForItem();
+    // Still pull the item's valuation rate (for the value-impact hint) even
+    // though the on-hand qty itself comes from the chosen batch, not here.
+    try{
+      const r = await apiGET("zoho_books_clone.api.inventory.get_item_stock_detail", { item_code: form.item_code, warehouse: form.warehouse });
+      const wh = (r?.warehouses||r?.message?.warehouses||[]).find(w=>w.warehouse===form.warehouse);
+      currentRate.value = flt(wh?.valuation_rate);
+    }catch{}
+  } else {
+    await loadCurrentStock();
+  }
+}
+
+function onBatchSelect(opt){
+  form.batch_no = opt?.value ?? opt;
+  const found = batchOptions.value.find(b=>b.value===form.batch_no);
+  currentQty.value = found ? found.qty : 0;
+}
+
+function onItemPick(opt){
+  form.item_code = opt?.value ?? opt;
+  form.item_has_batch_no = opt?.has_batch_no ? 1 : 0;
+  refreshStockAndBatches();
+}
+
+watch(() => form.warehouse, () => { if(form.item_code) refreshStockAndBatches(); });
 
 async function openNew(prefill){
-  Object.assign(form, { warehouse:"", item_code:"", new_qty:null, reason:"", notes:"", adjustment_account:"" });
-  currentQty.value=0; currentRate.value=0;
+  Object.assign(form, { warehouse:"", item_code:"", new_qty:null, reason:"", notes:"", adjustment_account:"", batch_no:"", item_has_batch_no:0 });
+  currentQty.value=0; currentRate.value=0; batchOptions.value=[];
   await Promise.all([fetchWarehouses(""), fetchItems(""), fetchAccounts(""), loadDefaultAccount()]);
-  if(prefill){ form.warehouse=prefill.warehouse||""; form.item_code=prefill.item||""; if(form.item_code&&form.warehouse) await loadCurrentStock(); }
+  if(prefill){
+    form.warehouse=prefill.warehouse||"";
+    form.item_code=prefill.item||"";
+    if(form.item_code){
+      const found = items.value.find(i=>i.value===form.item_code);
+      form.item_has_batch_no = found?.has_batch_no ? 1 : 0;
+    }
+    if(form.item_code&&form.warehouse) await refreshStockAndBatches();
+  }
   drawerOpen.value=true;
 }
 function openView(a){ viewDoc.value=a; viewOpen.value=true; }
@@ -269,12 +337,17 @@ async function saveAdjustment(){
   if(!canSave.value) return;
   saving.value=true;
   try{
-    const res = await apiPOST("zoho_books_clone.api.inventory.create_inventory_adjustment", {
+    const endpoint = form.item_has_batch_no
+      ? "zoho_books_clone.api.inventory.create_batch_adjustment"
+      : "zoho_books_clone.api.inventory.create_inventory_adjustment";
+    const payload = {
       item_code: form.item_code, warehouse: form.warehouse, new_qty: flt(form.new_qty),
       reason: form.reason, notes: form.notes||"", adjustment_account: form.adjustment_account||"",
-    });
+    };
+    if(form.item_has_batch_no) payload.batch_no = form.batch_no;
+    const res = await apiPOST(endpoint, payload);
     const d = res?.message?.delta ?? res?.delta;
-    toast.success(`Adjustment posted (${d>0?'+':''}${fmtQty(d)})`);
+    toast.success(`Adjustment posted (${d>0?'+':''}${fmtQty(d)})${form.batch_no?` — Batch ${form.batch_no}`:''}`);
     drawerOpen.value=false;
     await load();
   }catch(e){ toast.error(e.message||"Failed to post adjustment"); }
@@ -294,8 +367,8 @@ function exportCSV(){
   const rows=sorted.value; if(!rows.length)return;
   const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
   const statusOf=d=>d===1?"Submitted":d===2?"Cancelled":"Draft";
-  const lines=[["Entry #","Date","Item","Warehouse","Reason","Qty Change","Value","Status"].join(",")];
-  for(const a of rows) lines.push([a.name,fmtDate(a.posting_date),a.item_name||a.item_code,a.warehouse||"",a.adjustment_reason||"",flt(a.qty),flt(a.value),statusOf(a.docstatus)].map(esc).join(","));
+  const lines=[["Entry #","Date","Item","Batch","Warehouse","Reason","Qty Change","Value","Status"].join(",")];
+  for(const a of rows) lines.push([a.name,fmtDate(a.posting_date),a.item_name||a.item_code,a.batch_no||"",a.warehouse||"",a.adjustment_reason||"",flt(a.qty),flt(a.value),statusOf(a.docstatus)].map(esc).join(","));
   const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob); const el=document.createElement("a");
   el.href=url; el.download=`stock_adjustments_${new Date().toISOString().slice(0,10)}.csv`; el.click(); URL.revokeObjectURL(url);
@@ -332,6 +405,7 @@ onMounted(async()=>{
 .font-medium{font-weight:600;}.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
 .green{color:#16a34a!important;}.red{color:#dc2626!important;}
 .ia-reason{display:inline-flex;padding:2px 8px;border-radius:10px;background:#f1f5f9;color:#475569;font-size:11.5px;font-weight:600;}
+.ia-batch-pill{display:inline-flex;margin-left:6px;padding:1px 7px;border-radius:8px;background:#faf5ff;border:1px solid #ede9fe;color:#6b21a8;font-size:10.5px;font-weight:700;vertical-align:middle;}
 .ia-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
 .badge-green{background:#dcfce7;color:#16a34a;}.badge-orange{background:#fff7ed;color:#ea580c;}.badge-grey{background:#f3f4f6;color:#6b7280;}
 .ia-empty{text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important;}

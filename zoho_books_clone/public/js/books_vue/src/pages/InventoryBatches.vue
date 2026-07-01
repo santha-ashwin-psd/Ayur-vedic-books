@@ -144,7 +144,7 @@
 
         <div class="bt-form-fld">
           <label class="bt-form-lbl">Item <span class="req">*</span></label>
-          <SearchableSelect v-model="form.item" :options="formItemOptions" placeholder="Select item" @search="fetchFormItems" />
+          <SearchableSelect v-model="form.item" :options="formItemOptions" placeholder="Select item" :disabled="!!editingName" @search="fetchFormItems" />
         </div>
 
         <div class="bt-form-row">
@@ -160,7 +160,8 @@
 
         <div class="bt-form-fld">
           <label class="bt-form-lbl">Warehouse <span class="req">*</span></label>
-          <SearchableSelect v-model="form.warehouse" :options="warehouseOptions" placeholder="Select warehouse" @search="fetchWarehouses" />
+          <SearchableSelect v-model="form.warehouse" :options="warehouseOptions" placeholder="Select warehouse" :disabled="!!editingName" @search="fetchWarehouses" />
+          <span v-if="editingName" class="bt-hint">Locked after creation — like Qty, it's kept in sync by stock entries (receipts/transfers), not edited directly.</span>
         </div>
 
         <div class="bt-form-fld">
@@ -200,7 +201,7 @@
 </template>
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiSave, apiSubmit, apiLinkValues, resolveCompany } from "../api/client.js";
+import { apiList, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate, today } from "../utils/format.js";
@@ -451,8 +452,13 @@ async function fetchWarehouses(q = "") {
 }
 async function fetchSuppliers(q = "") {
   try {
-    const r = await apiLinkValues("Supplier", q);
-    supplierOptions.value = r.map(x => ({ label: x.name, value: x.name }));
+    // Supplier is autonamed off a naming series (e.g. "SUPP-2026-00001"), not
+    // off supplier_name, so apiLinkValues (name-only) surfaced the raw ID as
+    // the label. Fetch supplier_name explicitly and use it for the label —
+    // same fix already applied to the batch list's supplier column (see load()).
+    const f = q ? [["supplier_name", "like", `%${q}%`]] : [];
+    const r = await apiList("Supplier", { fields: ["name", "supplier_name"], filters: f, limit: 20 });
+    supplierOptions.value = r.map(x => ({ label: x.supplier_name || x.name, value: x.name }));
   } catch { supplierOptions.value = []; }
 }
 

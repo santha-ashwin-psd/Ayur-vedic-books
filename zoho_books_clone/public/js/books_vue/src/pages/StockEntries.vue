@@ -186,8 +186,6 @@
               <option value="Material Receipt">Material Receipt — Stock coming IN</option>
               <option value="Material Issue">Material Issue — Stock going OUT</option>
               <option value="Material Transfer">Material Transfer — Move between warehouses</option>
-              <option value="Manufacture">Manufacture — Production output</option>
-              <option value="Repack">Repack — Change packaging</option>
             </select>
           </div>
           <div class="se-field">
@@ -493,7 +491,7 @@ const TYPE_META = {
 };
 
 // Warehouse fields shown per entry type: a Receipt has no source, an Issue has
-// no destination; Transfer/Manufacture/Repack use both.
+// no destination; a Transfer uses both.
 const showFromWh     = computed(() => form.stock_entry_type !== "Material Receipt");
 const showToWh       = computed(() => form.stock_entry_type !== "Material Issue");
 const fromWhRequired = computed(() => ["Material Issue", "Material Transfer"].includes(form.stock_entry_type));
@@ -504,7 +502,6 @@ const tabs = computed(() => [
   { key: "Material Receipt",  label: "Receipts",  color: "#16a34a", cnt: list.value.filter(e => e.stock_entry_type === "Material Receipt").length },
   { key: "Material Issue",    label: "Issues",    color: "#ea580c", cnt: list.value.filter(e => e.stock_entry_type === "Material Issue").length },
   { key: "Material Transfer", label: "Transfers", color: "#0284c7", cnt: list.value.filter(e => e.stock_entry_type === "Material Transfer").length },
-  { key: "Manufacture",       label: "Manufacture", color: "#7c3aed", cnt: list.value.filter(e => e.stock_entry_type === "Manufacture").length },
 ]);
 
 const kpi = computed(() => ({
@@ -677,7 +674,8 @@ async function onItemSelect(line, opt) {
   try {
     const r = await apiList("Item", { fields: ["name", "standard_buying_rate", "standard_rate"], filters: [["name", "=", line.item_code]], limit: 1 });
     const it = r && r[0];
-    if (it && !flt(line.basic_rate)) line.basic_rate = flt(it.standard_buying_rate) || flt(it.standard_rate) || 0;
+    // Refresh the rate on every item change (buying rate for stock, falling back to selling).
+    if (it) line.basic_rate = flt(it.standard_buying_rate) || flt(it.standard_rate) || 0;
   } catch {}
 }
 function addLine() { lines.value.push(blankLine()); }

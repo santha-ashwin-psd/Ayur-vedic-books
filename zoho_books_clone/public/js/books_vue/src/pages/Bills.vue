@@ -810,7 +810,9 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import { apiList, apiSave, apiGet, apiGET, apiSubmit, apiDelete, apiPOST, resolveCompany, refreshCsrfToken } from "../api/client.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { usePermissions } from "../composables/usePermissions.js";
@@ -834,6 +836,7 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "192": 0, "195": 20, "Other": 10 };
 
 const { toast } = useToast();
+const route = useRoute();
 const { canWrite } = usePermissions();
 const { confirm } = useConfirm();
 const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
@@ -1529,7 +1532,14 @@ function exportCSV() {
   toast.success(`CSV exported — ${rows.length} bill(s)`);
 }
 
-onMounted(() => { setCompany(window.__booksCompany || ""); document.addEventListener('click', onDocClickForDownloadMenu); load(); loadTaxAccount(); fetchCostCenters(); });
+onMounted(async () => {
+  setCompany(window.__booksCompany || "");
+  document.addEventListener('click', onDocClickForDownloadMenu);
+  await load();
+  loadTaxAccount(); fetchCostCenters();
+  // Cross-document deep link: /purchases?open=PINV-...
+  useOpenFromQuery({ route, openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }) });
+});
 onUnmounted(() => document.removeEventListener('click', onDocClickForDownloadMenu));
 </script>
 

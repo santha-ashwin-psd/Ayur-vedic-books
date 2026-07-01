@@ -203,3 +203,11 @@ website_route_rules = [
     {"from_route": "/proforma-invoices", "to_route": "books"},
     {"from_route": "/purchase-receipts", "to_route": "books"},
 ]
+
+# Frappe's built-in account pages are not used by Books — bounce them to the
+# app host (/books). Logged-in users land on the dashboard; guests are sent to
+# /login by the www/books auth guard.
+website_redirects = [
+    {"source": "/me", "target": "/books"},
+    {"source": r"/me/(.*)", "target": "/books"},
+]

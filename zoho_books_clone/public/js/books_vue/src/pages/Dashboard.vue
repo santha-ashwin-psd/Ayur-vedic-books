@@ -23,12 +23,8 @@
             {{ kpi.format === "currency" ? fmt(kpis?.[kpi.key]) : (kpis?.[kpi.key] ?? "0") }}
           </template>
         </div>
-        <!-- sparkline -->
-        <svg class="kpi-spark" viewBox="0 0 80 28" preserveAspectRatio="none">
-          <polyline :points="kpi.spark" fill="none" :stroke="kpi.sparkColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <div class="kpi-trend" :class="kpi.trendClass">
-          <span v-html="kpi.trendIcon"></span> 0% vs last month
+        <div v-if="!kpiLoading && trends[kpi.key]" class="kpi-trend" :class="trends[kpi.key].up ? 'trend-up' : 'trend-down'">
+          <span v-html="trends[kpi.key].up ? iconUp : iconDown"></span> {{ trends[kpi.key].pct }}% vs last month
         </div>
       </div>
     </div>
@@ -84,10 +80,11 @@
         <div class="db-card-header">
           <span class="db-card-title">Revenue Trend</span>
           <div class="db-header-right">
-            <span class="db-badge db-badge-ghost">
-              <span v-html="iconCal"></span> Last 6 months
-              <span class="badge-caret">▾</span>
-            </span>
+            <select class="db-period-select" v-model.number="trendMonths" @change="loadTrend({ months: trendMonths })">
+              <option :value="3">Last 3 months</option>
+              <option :value="6">Last 6 months</option>
+              <option :value="12">Last 12 months</option>
+            </select>
             <button class="db-link-btn" @click="navTo('/reports')">Full Report</button>
           </div>
         </div>
@@ -210,7 +207,7 @@
               <th class="ta-r">Revenue</th>
             </tr></thead>
             <tbody>
-              <tr v-for="c in dash.top_customers" :key="c.customer">
+              <tr v-for="c in dash.top_customers" :key="c.customer" class="db-row-link" @click="navTo('/customers/' + encodeURIComponent(c.customer))">
                 <td>
                   <div class="tc-name">{{ c.customer_name || c.customer }}</div>
                   <div class="tc-sub">{{ c.customer }}</div>
@@ -254,7 +251,7 @@
               <th class="ta-r">Outstanding</th>
             </tr></thead>
             <tbody>
-              <tr v-for="inv in dash.overdue_invoices.slice(0,5)" :key="inv.name">
+              <tr v-for="inv in dash.overdue_invoices.slice(0,5)" :key="inv.name" class="db-row-link" @click="navTo({ path: '/invoices', query: { open: inv.name } })">
                 <td><span class="db-link">{{ inv.name }}</span></td>
                 <td class="tc-sub">{{ inv.customer_name || inv.customer }}</td>
                 <td class="ta-l mono tc-red">{{ fmtDate(inv.due_date) }}</td>
@@ -282,7 +279,7 @@
         <template v-else-if="activity?.length">
           <table class="db-table">
             <tbody>
-              <tr v-for="row in activity" :key="row.name">
+              <tr v-for="row in activity" :key="row.name" class="db-row-link" @click="openActivity(row)">
                 <td style="width:38px;padding-right:0">
                   <div class="act-dot" :class="actDotClass(row.doctype)"></div>
                 </td>
@@ -319,6 +316,13 @@ const router  = useRouter();
 const fmt     = (v) => formatCurrency(v);
 const fmtDate = formatDate;
 const navTo   = (p) => router.push(p);
+const trendMonths = ref(6);   // Revenue Trend period selector
+
+// Open a recent-activity row in its source module's list (via ?open= deep link).
+function openActivity(row) {
+  const path = { "Sales Invoice": "/invoices", "Purchase Invoice": "/purchases", "Payment Entry": "/payments" }[row.doctype];
+  if (path) navTo({ path, query: { open: row.name } });
+}
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function monthLabel(m) {
@@ -353,14 +357,7 @@ const iconQaMore     = `<svg width="15" height="15" viewBox="0 0 24 24" fill="no
 const iconCal        = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
 const iconPlus       = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
 const iconUp         = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>`;
-
-// ── KPI spark paths (static placeholder curves) ──
-const SPARKS = {
-  blue:  "4,22 16,16 28,18 42,10 56,14 68,8 80,6",
-  green: "4,20 16,14 28,16 42,8  56,12 68,6  80,4",
-  red:   "4,8  16,14 28,10 42,18 56,12 68,16 80,20",
-  amber: "4,18 16,12 28,15 42,9  56,13 68,10 80,8",
-};
+const iconDown       = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>`;
 
 // ── KPI icons ──
 const iconRevenue  = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
@@ -371,13 +368,30 @@ const iconAssets   = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none
 const iconAlert    = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
 
 const kpiCards = [
-  { key: "month_revenue",     label: "Month Revenue",  format: "currency", icon: iconRevenue,  iconBg: "#eff6ff", iconColor: "#2563eb", valueClass: "kv-blue",  route: "/invoices", spark: SPARKS.blue,  sparkColor: "#2563eb", trendClass: "trend-up",   trendIcon: iconUp },
-  { key: "month_collected",   label: "Collected",      format: "currency", icon: iconCollect,  iconBg: "#f0fdf4", iconColor: "#16a34a", valueClass: "kv-green", route: "/payments", spark: SPARKS.green, sparkColor: "#16a34a", trendClass: "trend-up",   trendIcon: iconUp },
-  { key: "month_outstanding", label: "Outstanding",    format: "currency", icon: iconOutstand, iconBg: "#fff7ed", iconColor: "#ea580c", valueClass: "kv-amber", route: "/invoices", spark: SPARKS.red,   sparkColor: "#ea580c", trendClass: "trend-down", trendIcon: iconUp },
-  { key: "net_profit_mtd",    label: "Net Profit MTD", format: "currency", icon: iconProfit,   iconBg: "#f0fdfa", iconColor: "#0d9488", valueClass: "kv-teal",  route: "/reports",  spark: SPARKS.green, sparkColor: "#0d9488", trendClass: "trend-up",   trendIcon: iconUp },
-  { key: "total_assets",      label: "Total Assets",   format: "currency", icon: iconAssets,   iconBg: "#eff6ff", iconColor: "#2563eb", valueClass: "",         route: null,        spark: SPARKS.blue,  sparkColor: "#2563eb", trendClass: "trend-up",   trendIcon: iconUp },
-  { key: "overdue_count",     label: "Overdue",        format: "number",   icon: iconAlert,    iconBg: "#fff1f2", iconColor: "#e11d48", valueClass: "kv-red",   route: "/invoices", spark: SPARKS.red,   sparkColor: "#e11d48", trendClass: "trend-down", trendIcon: iconUp },
+  { key: "month_revenue",     label: "Month Revenue",  format: "currency", icon: iconRevenue,  iconBg: "#eff6ff", iconColor: "#2563eb", valueClass: "kv-blue",  route: "/invoices", prevKey: "prev_month_revenue" },
+  { key: "month_collected",   label: "Collected",      format: "currency", icon: iconCollect,  iconBg: "#f0fdf4", iconColor: "#16a34a", valueClass: "kv-green", route: "/payments", prevKey: "prev_month_collected" },
+  { key: "month_outstanding", label: "Outstanding",    format: "currency", icon: iconOutstand, iconBg: "#fff7ed", iconColor: "#ea580c", valueClass: "kv-amber", route: "/invoices" },
+  { key: "net_profit_mtd",    label: "Net Profit MTD", format: "currency", icon: iconProfit,   iconBg: "#f0fdfa", iconColor: "#0d9488", valueClass: "kv-teal",  route: "/reports",  prevKey: "prev_net_profit_mtd" },
+  { key: "total_assets",      label: "Total Assets",   format: "currency", icon: iconAssets,   iconBg: "#eff6ff", iconColor: "#2563eb", valueClass: "",         route: null,        prevKey: "prev_total_assets" },
+  { key: "overdue_count",     label: "Overdue",        format: "number",   icon: iconAlert,    iconBg: "#fff1f2", iconColor: "#e11d48", valueClass: "kv-red",   route: "/invoices" },
 ];
+
+// Real "vs last month" delta per KPI. Only computed when a previous-period
+// value exists and is positive (otherwise a % is meaningless → no trend shown).
+const num = (v) => Number(v) || 0;
+const trends = computed(() => {
+  const out = {};
+  const k = kpis.value;
+  if (!k) return out;
+  for (const c of kpiCards) {
+    if (!c.prevKey) continue;
+    const prev = num(k[c.prevKey]);
+    if (prev <= 0) continue;
+    const pct = ((num(k[c.key]) - prev) / prev) * 100;
+    out[c.key] = { pct: Math.abs(pct).toFixed(0), up: pct >= 0 };
+  }
+  return out;
+});
 
 // ── Revenue chart ──
 const svgW = 580, svgH = 200, padL = 52, padR = 10, padT = 16, padB = 24;
@@ -620,6 +634,22 @@ function actDotClass(dt) {
 .db-link-btn:hover { text-decoration: underline; }
 .db-link { color: #2563eb; font-weight: 600; font-size: 13px; cursor: pointer; }
 .db-link:hover { text-decoration: underline; }
+
+/* Period selector on the Revenue Trend card */
+.db-period-select {
+  background: #f1f5f9; color: #475569;
+  border: 1px solid #e2e8f0; border-radius: 20px;
+  padding: 4px 26px 4px 12px; font-size: 11.5px; font-weight: 600;
+  font-family: inherit; cursor: pointer; outline: none;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.db-period-select:hover { border-color: #cbd5e1; }
+
+/* Clickable table rows */
+.db-row-link { cursor: pointer; }
+.db-row-link:hover { background: #f8fafc; }
 
 /* ── Middle grid ───────────────────────────────────────────────────── */
 .mid-grid {

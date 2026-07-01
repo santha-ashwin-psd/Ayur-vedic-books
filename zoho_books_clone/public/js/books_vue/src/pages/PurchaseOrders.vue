@@ -1430,7 +1430,7 @@ async function fetchItems(q = "") {
 }
 async function onItemSelect(line, opt) {
   line.item_code = opt?.value ?? opt;
-  if (opt?.rate)        { line.rate        = Number(opt.rate) || 0; }
+  if (opt?.rate !== undefined) { line.rate = Number(opt.rate) || 0; }
   if (opt?.item_name)   { line.item_name   = opt.item_name; }
   if (opt?.tax_code !== undefined) { line.tax_code = opt.tax_code || ""; }
   if (opt?.description) { line.description = opt.description; }

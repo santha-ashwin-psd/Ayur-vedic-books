@@ -810,7 +810,9 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import { apiList, apiSave, apiGet, apiGET, apiSubmit, apiDelete, apiPOST, resolveCompany, refreshCsrfToken } from "../api/client.js";
+import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { usePermissions } from "../composables/usePermissions.js";
@@ -834,6 +836,7 @@ import TimelineStepper from "../components/TimelineStepper.vue";
 const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "192": 0, "195": 20, "Other": 10 };
 
 const { toast } = useToast();
+const route = useRoute();
 const { canWrite } = usePermissions();
 const { confirm } = useConfirm();
 const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
@@ -1201,8 +1204,8 @@ async function fetchItems(q = "") {
   try {
     const f = [["disabled", "=", 0]];
     if (q) f.push(["item_name", "like", "%" + q + "%"]);
-    const r = await apiList("Item", { fields: ["name", "item_name", "description", "standard_rate", "stock_uom", "tax_code"], filters: f, limit: 30, order: "item_name asc" });
-    items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_rate || 0, description: x.description || "", tax_code: x.tax_code || "" }));
+    const r = await apiList("Item", { fields: ["name", "item_name", "description", "standard_rate", "standard_buying_rate", "stock_uom", "tax_code"], filters: f, limit: 30, order: "item_name asc" });
+    items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_buying_rate || x.standard_rate || 0, description: x.description || "", tax_code: x.tax_code || "" }));
   } catch { items.value = []; }
 }
 watch(() => form.supplier, async (name) => {
@@ -1529,7 +1532,14 @@ function exportCSV() {
   toast.success(`CSV exported — ${rows.length} bill(s)`);
 }
 
-onMounted(() => { setCompany(window.__booksCompany || ""); document.addEventListener('click', onDocClickForDownloadMenu); load(); loadTaxAccount(); fetchCostCenters(); });
+onMounted(async () => {
+  setCompany(window.__booksCompany || "");
+  document.addEventListener('click', onDocClickForDownloadMenu);
+  await load();
+  loadTaxAccount(); fetchCostCenters();
+  // Cross-document deep link: /purchases?open=PINV-...
+  useOpenFromQuery({ route, openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }) });
+});
 onUnmounted(() => document.removeEventListener('click', onDocClickForDownloadMenu));
 </script>
 

@@ -193,8 +193,6 @@
               <option value="Material Receipt">Material Receipt — Stock coming IN</option>
               <option value="Material Issue">Material Issue — Stock going OUT</option>
               <option value="Material Transfer">Material Transfer — Move between warehouses</option>
-              <option value="Manufacture">Manufacture — Production output</option>
-              <option value="Repack">Repack — Change packaging</option>
             </select>
           </div>
           <div class="se-field">
@@ -205,12 +203,12 @@
             <label class="se-label">Adjustment Reason</label>
             <input v-model="form.adjustment_reason" class="se-input" placeholder="e.g. Annual count, damage…"/>
           </div>
-          <div class="se-field">
-            <label class="se-label">From Warehouse <span v-if="form.stock_entry_type==='Material Issue'||form.stock_entry_type==='Material Transfer'" class="req">*</span></label>
+          <div class="se-field" v-if="showFromWh">
+            <label class="se-label">From Warehouse <span v-if="fromWhRequired" class="req">*</span></label>
             <SearchableSelect v-model="form.from_warehouse" :options="warehouses" placeholder="Source warehouse…" @search="fetchWarehouses" />
           </div>
-          <div class="se-field">
-            <label class="se-label">To Warehouse <span v-if="form.stock_entry_type==='Material Receipt'||form.stock_entry_type==='Material Transfer'" class="req">*</span></label>
+          <div class="se-field" v-if="showToWh">
+            <label class="se-label">To Warehouse <span v-if="toWhRequired" class="req">*</span></label>
             <SearchableSelect v-model="form.to_warehouse" :options="warehouses" placeholder="Destination warehouse…" @search="fetchWarehouses" />
           </div>
         </div>
@@ -221,8 +219,6 @@
         <div class="se-items-table se-add-items-desktop">
           <div class="se-items-head">
             <div>Item</div>
-            <div>Source WH</div>
-            <div>Target WH</div>
             <div class="ta-r">Qty</div>
             <div class="ta-r">Rate (₹)</div>
             <div></div>
@@ -261,7 +257,7 @@
             </div>
           </div>
           <div class="se-items-total" v-if="lines.length">
-            <div style="grid-column:1/5;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Total</div>
+            <div style="grid-column:1/3;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Total</div>
             <div class="ta-r" style="font-weight:700;color:#0f172a">{{ fmtCur(lineTotal) }}</div>
             <div></div>
           </div>
@@ -278,16 +274,6 @@
             <div class="se-aic-field">
               <label class="se-label">Item</label>
               <SearchableSelect v-model="line.item_code" :options="items" placeholder="Item…" @search="fetchItems" @select="opt=>onItemSelect(line,opt)" />
-            </div>
-            <div class="se-aic-row2">
-              <div class="se-aic-field">
-                <label class="se-label">Source WH</label>
-                <SearchableSelect v-model="line.s_warehouse" :options="warehouses" placeholder="From…" @search="fetchWarehouses" :compact="true"/>
-              </div>
-              <div class="se-aic-field">
-                <label class="se-label">Target WH</label>
-                <SearchableSelect v-model="line.t_warehouse" :options="warehouses" placeholder="To…" @search="fetchWarehouses" :compact="true"/>
-              </div>
             </div>
             <div class="se-aic-row2">
               <div class="se-aic-field">
@@ -524,7 +510,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { apiList, apiGet, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiSave, apiSubmit, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -605,7 +591,6 @@ const tabs = computed(() => [
   { key: "Material Receipt",  label: "Receipts",  color: "#16a34a", cnt: list.value.filter(e => e.stock_entry_type === "Material Receipt").length },
   { key: "Material Issue",    label: "Issues",    color: "#ea580c", cnt: list.value.filter(e => e.stock_entry_type === "Material Issue").length },
   { key: "Material Transfer", label: "Transfers", color: "#0284c7", cnt: list.value.filter(e => e.stock_entry_type === "Material Transfer").length },
-  { key: "Manufacture",       label: "Manufacture", color: "#7c3aed", cnt: list.value.filter(e => e.stock_entry_type === "Manufacture").length },
 ]);
 
 const kpi = computed(() => ({

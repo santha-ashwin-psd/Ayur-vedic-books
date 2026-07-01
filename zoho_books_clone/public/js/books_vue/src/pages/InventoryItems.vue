@@ -134,7 +134,6 @@
         <th class="sortable" @click="sortBy('item_type')">Type <span v-html="sortArrow('item_type')"></span></th>
         <th class="col-hide-tablet">UOM</th>
         <th class="ta-r sortable" @click="sortBy('standard_rate')">Rate (₹) <span v-html="sortArrow('standard_rate')"></span></th>
-        <th class="ta-r sortable col-hide-tablet" @click="sortBy('gst_rate')">GST % <span v-html="sortArrow('gst_rate')"></span></th>
         <th>Status</th>
         <th style="width:90px;text-align:center">Actions</th>
       </tr></thead>
@@ -164,7 +163,6 @@
           </td>
           <td @click="openView(row)" class="text-muted col-hide-tablet mono-sm" data-label="UOM">{{row.stock_uom||'Nos'}}</td>
           <td @click="openView(row)" class="ta-r fw-600 mono-sm" data-label="Rate">{{fmt(row.standard_rate)}}</td>
-          <td @click="openView(row)" class="ta-r text-muted col-hide-tablet mono-sm" data-label="GST">{{row.gst_rate||0}}%</td>
           <td @click="openView(row)" data-label="Status"><span class="inv-status-badge" :class="row.disabled?'status-inactive':'status-active'">{{row.disabled?'Inactive':'Active'}}</span></td>
           <td style="text-align:center;white-space:nowrap" @click.stop>
             <button class="inv-act-btn" @click="openEdit(row)" title="Quick Edit"><span v-html="icon('edit',13)"></span></button>
@@ -195,7 +193,7 @@
         </div>
         <div class="ii-mob-card-right">
           <div class="fw-700" style="font-size:14px;color:#2F9E44">₹{{fmt(row.standard_rate)}}</div>
-          <div class="text-muted" style="font-size:11px">GST {{row.gst_rate||0}}%</div>
+          <div class="text-muted" style="font-size:11px">{{row.stock_uom||'Nos'}}</div>
         </div>
         <div class="ii-mob-card-actions">
           <button @click.stop="openEdit(row)" class="ii-qa-btn ii-qa-edit" title="Edit" v-html="icon('edit',13)"></button>
@@ -271,8 +269,8 @@
           </div>
           <div class="vd-metric-divider"></div>
           <div class="vd-metric">
-            <div class="vd-metric-value">{{ viewDoc.gst_rate || 0 }}%</div>
-            <div class="vd-metric-label">GST Rate</div>
+            <div class="vd-metric-value">{{ fmt(viewDoc.standard_buying_rate || 0) }}</div>
+            <div class="vd-metric-label">Buying Rate</div>
           </div>
           <div class="vd-metric-divider"></div>
           <div class="vd-metric">
@@ -341,14 +339,11 @@
             </div>
             <div class="vd-rows" style="margin-top:10px">
               <div class="vd-row">
-                <span class="vd-row-label">GST Rate</span>
-                <span class="vd-row-val">
-                  <span class="vd-gst-chip">{{ viewDoc.gst_rate || 0 }}%</span>
-                </span>
-              </div>
-              <div class="vd-row" v-if="viewDoc.tax_code">
                 <span class="vd-row-label">Tax Template</span>
-                <span class="vd-row-val">{{ viewDoc.tax_code }}</span>
+                <span class="vd-row-val">
+                  <span v-if="viewDoc.tax_code" class="vd-gst-chip">{{ viewDoc.tax_code }}</span>
+                  <span v-else class="vd-row-val--muted">—</span>
+                </span>
               </div>
             </div>
           </div>
@@ -464,8 +459,8 @@
                 <input class="ad-input" v-model="form.item_name" placeholder="e.g. Laptop 15-inch"/>
               </div>
               <div class="ad-field">
-                <label class="ad-label">Item Code <span class="ad-hint">optional</span></label>
-                <input class="ad-input" v-model="form.item_code" placeholder="Auto-generated if blank"/>
+                <label class="ad-label">Item Code <span class="ad-required">*</span></label>
+                <input class="ad-input" v-model="form.item_code" placeholder="Auto-filled from name if blank"/>
               </div>
             </div>
             <div class="ad-field">
@@ -498,7 +493,7 @@
             <div class="ad-section-title">Additional Info</div>
             <div class="ad-grid-2">
               <div class="ad-field">
-                <label class="ad-label">Default UOM</label>
+                <label class="ad-label">Default UOM <span class="ad-required">*</span></label>
                 <select class="ad-input" v-model="form.stock_uom">
                   <option value="">— Select UOM —</option>
                   <option v-for="u in uomList" :key="u" :value="u">{{u}}</option>
@@ -560,32 +555,25 @@
 
           <div class="ad-section">
             <div class="ad-section-title">Tax</div>
-            <div class="ad-grid-2">
-              <div class="ad-field">
-                <label class="ad-label">GST Rate</label>
-                <select class="ad-input" v-model.number="form.gst_rate">
-                  <option v-for="r in [0,5,12,18,28]" :key="r" :value="r">{{r}}%</option>
-                </select>
-              </div>
-              <div class="ad-field">
-                <label class="ad-label">Tax Template</label>
-                <select class="ad-input" v-model="form.tax_code">
-                  <option value="">— Select —</option>
-                  <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.label }}</option>
-                </select>
-              </div>
+            <div class="ad-field">
+              <label class="ad-label">Tax Template <span class="ad-required">*</span></label>
+              <select class="ad-input" v-model="form.tax_code">
+                <option value="">— Select —</option>
+                <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.label }}</option>
+              </select>
+              <div class="ad-hint" style="margin-top:6px">Tax on transactions is determined by the selected Tax Template.</div>
             </div>
           </div>
 
           <div class="ad-section">
             <div class="ad-section-title">Accounts</div>
             <div class="ad-field">
-              <label class="ad-label">Income Account</label>
-              <SearchableSelect v-model="form.income_account" :options="accountsList" placeholder="Select income account…" :createable="true" createDoctype="Account" @create="reloadAccounts"/>
+              <label class="ad-label">Income Account <span class="ad-required">*</span></label>
+              <SearchableSelect v-model="form.income_account" :options="incomeAccounts" placeholder="Select income account…" :createable="true" createDoctype="Account" @create="reloadAccounts"/>
             </div>
             <div class="ad-field" style="margin-top:12px">
-              <label class="ad-label">Expense Account</label>
-              <SearchableSelect v-model="form.expense_account" :options="accountsList" placeholder="Select expense account…" :createable="true" createDoctype="Account" @create="reloadAccounts"/>
+              <label class="ad-label">Expense Account <span class="ad-required">*</span></label>
+              <SearchableSelect v-model="form.expense_account" :options="expenseAccounts" placeholder="Select expense account…" :createable="true" createDoctype="Account" @create="reloadAccounts"/>
             </div>
           </div>
         </template>
@@ -624,7 +612,7 @@
                 </select>
               </div>
               <div class="ad-field">
-                <label class="ad-label">Default Warehouse</label>
+                <label class="ad-label">Default Warehouse <span v-if="form.is_stock_item" class="ad-required">*</span></label>
                 <SearchableSelect v-model="form.default_warehouse" :options="warehouses" value-key="name" label-key="label" placeholder="Select warehouse…"/>
               </div>
             </div>
@@ -719,7 +707,8 @@ const taxTemplates  = ref([]);
 const uomList       = ref([]);
 const brandList     = ref([]);
 const defaultAccounts = ref({ income: "", expense: "" });
-const accountsList    = ref([]);
+const incomeAccounts  = ref([]);
+const expenseAccounts = ref([]);
 
 const form = reactive({
   name: "", item_code: "", item_name: "", item_group: "", item_type: "Product",
@@ -775,7 +764,7 @@ async function load() {
   loading.value = true;
   try {
     const rows = await apiList("Item", {
-      fields: ["name","item_code","item_name","item_group","item_type","stock_uom","standard_rate","gst_rate","disabled","is_stock_item","creation"],
+      fields: ["name","item_code","item_name","item_group","item_type","stock_uom","standard_rate","standard_buying_rate","disabled","is_stock_item","creation"],
       order: "item_name asc", limit: 500,
     });
     list.value = rows || [];
@@ -813,24 +802,13 @@ async function load() {
   } catch { brandList.value = []; }
   try {
     const company = await resolveCompany();
-    // Load full account list for dropdowns
-    const allAccts = await apiList("Account", {
-      fields: ["name"], filters: [["is_group","=",0],["company","=",company]], order: "name asc", limit: 500,
-    });
-    accountsList.value = (allAccts || []).map((a) => ({ value: a.name, label: a.name }));
-    // Determine defaults
-    try {
-      const accts = await apiGET("zoho_books_clone.api.docs.get_accounts", { company });
-      const incomeAcc = (accts.income || [])[0]?.name || "";
-      const expenseAccs = await apiList("Account", {
-        fields: ["name"],
-        filters: [["account_type", "in", ["Expense", "Cost of Goods Sold"]], ["is_group", "=", 0], ["company", "=", company]],
-        order: "name asc", limit: 10,
-      });
-      const expenseAcc = (expenseAccs || [])[0]?.name || "";
-      defaultAccounts.value = { income: incomeAcc, expense: expenseAcc };
-    } catch { defaultAccounts.value = { income: "", expense: "" }; }
-  } catch { defaultAccounts.value = { income: "", expense: "" }; accountsList.value = []; }
+    await loadAccountLists(company);
+    // First income / expense account becomes the default for new items
+    defaultAccounts.value = {
+      income:  incomeAccounts.value[0]?.value  || "",
+      expense: expenseAccounts.value[0]?.value || "",
+    };
+  } catch { defaultAccounts.value = { income: "", expense: "" }; incomeAccounts.value = []; expenseAccounts.value = []; }
   loading.value = false;
 }
 
@@ -852,14 +830,27 @@ async function createItemGroup(name) {
   } catch (e) { toast("Could not create group: " + e.message, "error"); }
 }
 
+// Load income- and expense-class leaf accounts into separate dropdown lists.
+// Filter by root_type (Income / Expense — the latter covers Cost of Goods Sold),
+// falling back to account_type when a chart has no root_type populated.
+async function loadAccountLists(company) {
+  const toOpts = (rows) => (rows || []).map((a) => ({ value: a.name, label: a.name }));
+  const base = [["is_group", "=", 0], ["company", "=", company]];
+
+  let income = await apiList("Account", { fields: ["name"], filters: [...base, ["root_type", "=", "Income"]], order: "name asc", limit: 500 });
+  if (!income?.length)
+    income = await apiList("Account", { fields: ["name"], filters: [...base, ["account_type", "=", "Income"]], order: "name asc", limit: 500 });
+
+  let expense = await apiList("Account", { fields: ["name"], filters: [...base, ["root_type", "=", "Expense"]], order: "name asc", limit: 500 });
+  if (!expense?.length)
+    expense = await apiList("Account", { fields: ["name"], filters: [...base, ["account_type", "in", ["Expense", "Cost of Goods Sold"]]], order: "name asc", limit: 500 });
+
+  incomeAccounts.value  = toOpts(income);
+  expenseAccounts.value = toOpts(expense);
+}
+
 async function reloadAccounts() {
-  try {
-    const company = await resolveCompany();
-    const allAccts = await apiList("Account", {
-      fields: ["name"], filters: [["is_group","=",0],["company","=",company]], order: "name asc", limit: 500,
-    });
-    accountsList.value = (allAccts || []).map((a) => ({ value: a.name, label: a.name }));
-  } catch {}
+  try { await loadAccountLists(await resolveCompany()); } catch {}
 }
 
 const filtered = computed(() => {
@@ -902,9 +893,9 @@ const avgRate = computed(() => {
   const p = list.value.filter(i => flt(i.standard_rate) > 0);
   return p.length ? p.reduce((s,i) => s + flt(i.standard_rate), 0) / p.length : 0;
 });
-const avgGst = computed(() => {
-  const p = list.value.filter(i => i.gst_rate != null);
-  return p.length ? Math.round((p.reduce((s,i) => s + flt(i.gst_rate), 0) / p.length) * 10) / 10 : 0;
+const avgBuyingRate = computed(() => {
+  const p = list.value.filter(i => flt(i.standard_buying_rate) > 0);
+  return p.length ? p.reduce((s,i) => s + flt(i.standard_buying_rate), 0) / p.length : 0;
 });
 const groupCount = computed(() => new Set(list.value.filter(i => i.item_group).map(i => i.item_group)).size);
 
@@ -964,9 +955,9 @@ function exportSelectedCSV() {
   const rows = list.value.filter(i => selected.value.has(i.name));
   if (!rows.length) return;
   const esc = v => { const s = v==null?"":String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const lines = [["Item Code","Item Name","Group","Type","UOM","Sales Rate","GST %","Stock Item","Status"].join(",")];
+  const lines = [["Item Code","Item Name","Group","Type","UOM","Selling Rate","Buying Rate","Stock Item","Status"].join(",")];
   for (const i of rows) {
-    lines.push([i.item_code||"",i.item_name||"",i.item_group||"",i.item_type||"",i.stock_uom||"",flt(i.standard_rate),flt(i.gst_rate),i.is_stock_item?"Yes":"No",i.disabled?"Inactive":"Active"].map(esc).join(","));
+    lines.push([i.item_code||"",i.item_name||"",i.item_group||"",i.item_type||"",i.stock_uom||"",flt(i.standard_rate),flt(i.standard_buying_rate),i.is_stock_item?"Yes":"No",i.disabled?"Inactive":"Active"].map(esc).join(","));
   }
   const blob = new Blob(["﻿"+lines.join("\r\n")], {type:"text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
@@ -980,9 +971,9 @@ function exportCSV() {
   const rows = filtered.value;
   if (!rows.length) return;
   const esc = v => { const s = v==null?"":String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const lines = [["Item Code","Item Name","Group","Type","UOM","Sales Rate","GST %","Stock Item","Status"].join(",")];
+  const lines = [["Item Code","Item Name","Group","Type","UOM","Selling Rate","Buying Rate","Stock Item","Status"].join(",")];
   for (const i of rows) {
-    lines.push([i.item_code||"",i.item_name||"",i.item_group||"",i.item_type||"",i.stock_uom||"",flt(i.standard_rate),flt(i.gst_rate),i.is_stock_item?"Yes":"No",i.disabled?"Inactive":"Active"].map(esc).join(","));
+    lines.push([i.item_code||"",i.item_name||"",i.item_group||"",i.item_type||"",i.stock_uom||"",flt(i.standard_rate),flt(i.standard_buying_rate),i.is_stock_item?"Yes":"No",i.disabled?"Inactive":"Active"].map(esc).join(","));
   }
   const blob = new Blob(["﻿"+lines.join("\r\n")], {type:"text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
@@ -1056,7 +1047,6 @@ async function openEdit(row) {
       description:          full.description          || "",
       standard_rate:        flt(full.standard_rate),
       standard_buying_rate: flt(full.standard_buying_rate),
-      gst_rate:             flt(full.gst_rate) || 18,
       tax_code:             full.tax_code             || "",
       income_account:       full.income_account       || defaultAccounts.value.income,
       expense_account:      full.expense_account      || defaultAccounts.value.expense,
@@ -1073,8 +1063,24 @@ async function openEdit(row) {
   } catch (e) { toast("Could not load full item details: " + e.message, "error"); }
 }
 
+// Required-field guard. Each entry: [is-invalid, message, tab to reveal].
+function validateItem() {
+  const checks = [
+    [!form.item_name.trim(),                         "Item name is required",        "basic"],
+    [!form.stock_uom,                                "Default UOM is required",      "basic"],
+    [!form.tax_code,                                 "Tax Template is required",     "pricing"],
+    [!form.income_account,                           "Income account is required",   "pricing"],
+    [!form.expense_account,                          "Expense account is required",  "pricing"],
+    [!!form.is_stock_item && !form.default_warehouse, "Default Warehouse is required when Track Inventory is on", "inventory"],
+  ];
+  for (const [bad, msg, tab] of checks) {
+    if (bad) { drawerTab.value = tab; toast(msg, "error"); return false; }
+  }
+  return true;
+}
+
 async function saveItem() {
-  if (!form.item_name.trim()) { toast("Item name is required", "error"); return; }
+  if (!validateItem()) return;
   saving.value = true;
   try {
     const isEdit = drawerMode.value === "edit";
@@ -1087,7 +1093,7 @@ async function saveItem() {
       item_group: form.item_group || "Products", item_type: form.item_type, stock_uom: form.stock_uom,
       hsn_code: form.hsn_code, description: form.description, disabled: form.disabled ? 1 : 0, brand: form.brand || "",
       standard_rate: flt(form.standard_rate), standard_buying_rate: flt(form.standard_buying_rate),
-      gst_rate: flt(form.gst_rate), tax_code: form.tax_code,
+      tax_code: form.tax_code,
       income_account: form.income_account, expense_account: form.expense_account,
       is_stock_item: form.is_stock_item ? 1 : 0, has_batch_no: form.is_stock_item ? (form.has_batch_no ? 1 : 0) : 0,
       valuation_method: form.valuation_method,

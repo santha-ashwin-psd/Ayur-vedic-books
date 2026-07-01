@@ -257,6 +257,9 @@
             >
               <span v-html="icon('plus', 11)"></span> Add Stock
             </button>
+            <button v-if="!child.is_group" class="wh-action-btn" style="padding:5px 10px" @click="openTransfer(child)" title="Transfer stock to another warehouse">
+              <span v-html="icon('truck', 13)"></span>
+            </button>
             <button class="wh-action-btn" style="padding:5px 10px" @click="openEdit(child)">
               <span v-html="icon('edit', 13)"></span>
             </button>
@@ -1092,19 +1095,32 @@ async function saveWarehouse() {
   saving.value = false;
 }
 
-function openTransfer() {
-  Object.assign(transferForm, { from_warehouse: "", to_warehouse: "", item_code: "", qty: 1 });
+function openTransfer(wh) {
+  Object.assign(transferForm, {
+    from_warehouse: (wh && !wh.is_group) ? wh.name : "",
+    to_warehouse: "", item_code: "", qty: 1,
+  });
   showTransfer.value = true;
 }
 
 async function doTransfer() {
-  if (!transferForm.to_warehouse || !transferForm.item_code) {
-    toast("Target warehouse and item are required", "error"); return;
+  if (!transferForm.from_warehouse || !transferForm.to_warehouse || !transferForm.item_code) {
+    toast("Source warehouse, target warehouse and item are required", "error"); return;
   }
   if (flt(transferForm.qty) <= 0) { toast("Transfer quantity must be greater than 0", "error"); return; }
   if (transferForm.from_warehouse === transferForm.to_warehouse) {
     toast("Source and target must be different", "error"); return;
   }
+  // Ensure the source warehouse actually holds enough of the item.
+  try {
+    const d = await apiGET("zoho_books_clone.api.inventory.get_item_stock_detail",
+      { item_code: transferForm.item_code, warehouse: transferForm.from_warehouse });
+    const avail = flt(d?.warehouses?.[0]?.actual_qty);
+    if (flt(transferForm.qty) > avail) {
+      toast(`Not enough stock in ${transferForm.from_warehouse} — need ${flt(transferForm.qty)}, available ${avail}.`, "error");
+      return;
+    }
+  } catch { /* balance lookup failed — don't block the transfer */ }
   transferSaving.value = true;
   try {
     const company = await resolveCompany();

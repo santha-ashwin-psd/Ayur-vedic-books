@@ -59,7 +59,7 @@ CUSTOMER_FIELDS = [
 
 ITEM_FIELDS = [
     "item_code", "item_name", "item_group", "item_type",
-    "stock_uom", "standard_rate", "gst_rate", "hsn_code",
+    "stock_uom", "standard_rate", "standard_buying_rate", "tax_code", "gst_rate", "hsn_code",
     "description", "is_sales_item", "is_purchase_item",
 ]
 
@@ -208,6 +208,8 @@ def _build_doc(doctype, row, company):
             "item_type": row.get("item_type") or "Service",
             "stock_uom": row.get("stock_uom") or "Nos",
             "standard_rate": flt(row.get("standard_rate") or 0),
+            "standard_buying_rate": flt(row.get("standard_buying_rate") or 0),
+            "tax_code": row.get("tax_code") or "",
             "gst_rate": flt(row.get("gst_rate") or 0),
             "hsn_code": row.get("hsn_code") or "",
             "description": row.get("description") or iname,
@@ -508,8 +510,8 @@ def get_sample_csv(doctype):
             "sample":  [["Global Supplies","Company","supplier@example.com","9876543210","","27AAACR5055K1Z5","Delhi","Delhi","India",""]],
         },
         "Item": {
-            "headers": ["item_code","item_name","item_group","item_type","stock_uom","standard_rate","gst_rate","hsn_code","description","is_sales_item","is_purchase_item"],
-            "sample":  [["ITEM-001","Widget A","All Item Groups","Product","Nos","100","18","8471","Standard Widget","1","1"]],
+            "headers": ["item_code","item_name","item_group","item_type","stock_uom","standard_rate","standard_buying_rate","tax_code","hsn_code","description","is_sales_item","is_purchase_item"],
+            "sample":  [["ITEM-001","Widget A","All Item Groups","Product","Nos","100","60","GST 18%","8471","Standard Widget","1","1"]],
         },
         "Sales Invoice": {
             "headers": ["customer","posting_date","due_date","item_code","qty","rate","tax_type","tax_rate","currency","remarks"],

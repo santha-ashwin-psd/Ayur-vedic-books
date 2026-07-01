@@ -1,11 +1,11 @@
 import frappe
+from urllib.parse import quote_plus
 
 no_cache = 1
 no_sitemap = 1
 
 def get_context(context):
     if not frappe.session.user or frappe.session.user == "Guest":
-        frappe.local.flags.redirect_location = "/login?redirect-to=/books"
+        redirect_to = frappe.request.path if hasattr(frappe, "request") and frappe.request else "/books"
+        frappe.local.flags.redirect_location = f"/login?redirect-to={quote_plus(redirect_to)}"
         raise frappe.Redirect
-    frappe.local.flags.redirect_location = "/assets/zoho_books_clone/books.html"
-    raise frappe.Redirect

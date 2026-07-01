@@ -110,7 +110,10 @@
                 </span>
               </td>
               <td><span class="se-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span></td>
-              <td @click.stop><button class="se-act-btn" @click="openView(e)"><span v-html="icon('eye',13)"></span></button></td>
+              <td @click.stop style="display:flex;gap:4px">
+                <button class="se-act-btn" @click="openView(e)" title="View"><span v-html="icon('eye',13)"></span></button>
+                <button v-if="e.docstatus===0 && $canWrite('inventory')" class="se-act-btn" @click="openEdit(e)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+              </td>
             </tr>
             <tr v-if="!sorted.length">
               <td colspan="9" class="se-empty">
@@ -141,7 +144,10 @@
           <div v-for="e in paginated" :key="e.name" class="se-mobile-card" @click="openView(e)">
             <div class="se-mc-top">
               <span class="se-mc-docno">{{ e.name }}</span>
-              <span class="se-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span>
+              <span style="display:flex;gap:6px;align-items:center">
+                <span class="se-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span>
+                <button v-if="e.docstatus===0 && $canWrite('inventory')" class="se-act-btn" @click.stop="openEdit(e)" title="Edit"><span v-html="icon('edit',12)"></span></button>
+              </span>
             </div>
             <div class="se-mc-mid">
               <span class="se-type-badge" :style="typeStyle(e.stock_entry_type)">{{ e.stock_entry_type||'—' }}</span>
@@ -173,9 +179,10 @@
         <div class="se-dh-top">
           <div class="se-dh-ico"><span v-html="icon('stack',20)" style="color:#fff"></span></div>
           <div>
-            <div class="se-dh-title" style="color:#fff">New Stock Entry</div>
-            <div class="se-dh-sub" style="color:rgba(255,255,255,.75)">Record a stock movement</div>
+            <div class="se-dh-title" style="color:#fff">{{ editingName ? 'Edit Stock Entry — ' + editingName : 'New Stock Entry' }}</div>
+            <div class="se-dh-sub" style="color:rgba(255,255,255,.75)">{{ editingName ? 'Editing draft entry' : 'Record a stock movement' }}</div>
           </div>
+
         </div>
       </div>
       <div class="se-dbody">
@@ -501,6 +508,9 @@
         </div>
         <div class="se-dfooter">
           <button class="se-btn-ghost" @click="viewOpen=false">Close</button>
+          <button v-if="viewDoc.docstatus===0 && $canWrite('inventory')" class="se-btn-ghost" @click="openEdit(viewDoc); viewOpen=false">
+            <span v-html="icon('edit',13)"></span> Edit
+          </button>
           <button v-if="viewDoc.docstatus===0" class="se-btn-primary" @click="submitEntry(viewDoc.name)">
             <span v-html="icon('check',13)"></span> Submit
           </button>
@@ -535,6 +545,7 @@ const list        = ref([]);
 const loading     = ref(false);
 const drawerOpen  = ref(false);
 const drawerSaving = ref(false);
+const editingName = ref("");
 const viewOpen    = ref(false);
 const viewDoc     = ref(null);
 const viewLoading = ref(false);
@@ -821,6 +832,7 @@ function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
 
 function openNew() {
+  editingName.value = "";
   Object.assign(form, {
     stock_entry_type: "Material Receipt",
     posting_date: new Date().toISOString().slice(0, 10),
@@ -829,6 +841,58 @@ function openNew() {
   lines.value = [blankLine()];
   fetchWarehouses(""); fetchItems("");
   drawerOpen.value = true;
+}
+
+async function openEdit(e) {
+  if (e.docstatus !== 0) return;
+  editingName.value = e.name;
+  Object.assign(form, {
+    stock_entry_type: e.stock_entry_type || "Material Receipt",
+    posting_date: e.posting_date || new Date().toISOString().slice(0, 10),
+    from_warehouse: e.from_warehouse || "", to_warehouse: e.to_warehouse || "",
+    adjustment_reason: e.adjustment_reason || "", remarks: e.remarks || "",
+  });
+  lines.value = [blankLine()];
+  fetchWarehouses(""); fetchItems("");
+  drawerOpen.value = true;
+  try {
+    const doc = await apiGet("Stock Entry", e.name);
+    if (doc?.items?.length) {
+      const built = await Promise.all(doc.items.map(async (it) => {
+        const line = {
+          id: _id++, item_code: it.item_code || "", qty: flt(it.qty) || 1, basic_rate: flt(it.basic_rate) || 0,
+          s_warehouse: it.s_warehouse || "", t_warehouse: it.t_warehouse || "",
+          has_batch_no: 0, batch_no: it.batch_no || "", manufacturing_date: "", expiry_date: "", batchOptions: [],
+        };
+        try {
+          const r = await apiList("Item", { fields: ["name", "has_batch_no"], filters: [["name", "=", line.item_code]], limit: 1 });
+          line.has_batch_no = r?.[0]?.has_batch_no ? 1 : 0;
+        } catch {}
+        if (line.has_batch_no && line.batch_no) {
+          try {
+            const b = await apiList("Batch", {
+              fields: ["name", "manufacturing_date", "expiry_date", "batch_qty"],
+              filters: [["name", "=", line.batch_no]], limit: 1,
+            });
+            const bd = b && b[0];
+            if (bd) {
+              line.manufacturing_date = bd.manufacturing_date || "";
+              line.expiry_date = bd.expiry_date || "";
+              line.batchOptions = [{
+                value: bd.name,
+                label: (bd.batch_qty !== undefined && bd.batch_qty !== null) ? `${bd.name} (Qty: ${bd.batch_qty})` : bd.name,
+                manufacturing_date: bd.manufacturing_date || "", expiry_date: bd.expiry_date || "",
+              }];
+            }
+          } catch {}
+        }
+        return line;
+      }));
+      lines.value = built.length ? built : [blankLine()];
+    }
+  } catch {
+    toast.error("Failed to load entry for editing");
+  }
 }
 
 async function saveEntry(submit) {
@@ -881,10 +945,12 @@ async function saveEntry(submit) {
         batch_no: l.has_batch_no ? (l.batch_no || null) : null,
       })),
     };
+    if (editingName.value) doc.name = editingName.value;
     const saved = await apiSave(doc);
     if (submit) await apiSubmit("Stock Entry", saved.name);
     toast.success(`Stock Entry ${saved?.name || ""} ${submit ? "submitted" : "saved as draft"}`);
     drawerOpen.value = false;
+    editingName.value = "";
     await load();
   } catch (e) {
     toast.error(e.message || "Failed to save stock entry");
@@ -1009,13 +1075,13 @@ onMounted(async () => {
 .se-fields-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 .se-field { display:flex; flex-direction:column; gap:4px; }
 .se-label { font-size:12px; font-weight:600; color:#374151; } .req { color:#dc2626; }
-.se-input { border:1px solid #e2e8f0; border-radius:8px; padding:8px 11px; font:inherit; font-size:13px; outline:none; background:#fff; color:#0f172a; transition:border-color .15s; }
+.se-input { width:100%; box-sizing:border-box; border:1px solid #e2e8f0; border-radius:8px; padding:8px 11px; font:inherit; font-size:13px; outline:none; background:#fff; color:#0f172a; transition:border-color .15s; }
 .se-input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 textarea.se-input { resize:vertical; }
 .se-select { border:1px solid #e2e8f0; border-radius:8px; padding:8px 11px; font:inherit; font-size:13px; outline:none; background:#fff; color:#0f172a; cursor:pointer; }
 .se-select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
 .se-section-title { font-size:11.5px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
-.se-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px; max-width:100%; overflow:hidden; }
+.se-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px; max-width:100%;}
 .se-items-head { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(0,1fr) minmax(0,1fr) 60px 76px 24px; gap:4px; background:#f9fafb; padding:8px 8px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
 .se-items-row { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(0,1fr) minmax(0,1fr) 60px 76px 24px; gap:4px; padding:8px 8px; border-top:1px solid #f3f4f6; align-items:center; }
 .se-items-total { display:grid; grid-template-columns:minmax(0,2.5fr) minmax(0,1fr) minmax(0,1fr) 60px 76px 24px; gap:4px; padding:8px 8px; border-top:2px solid #e5e7eb; background:#f8fafc; }
@@ -1029,7 +1095,8 @@ textarea.se-input { resize:vertical; }
 .se-items-line:first-child { border-top:none; }
 .se-items-line .se-items-row { border-top:none; }
 .se-batch-row { display:flex; flex-wrap:wrap; gap:8px; padding:0 10px 10px; background:#fafbfc; }
-.se-batch-field { display:flex; flex-direction:column; gap:3px; min-width:120px; }
+.se-batch-field { display:flex; flex-direction:column; gap:3px; flex:1 1 120px; min-width:120px; max-width:100%; }
+.se-batch-field input.se-input[type="date"] { min-width:0; padding-left:8px; padding-right:4px; }
 .se-input-req { border-color:#fca5a5 !important; background:#fff7f7; }
 
 /* View panel */

@@ -65,7 +65,10 @@
               <td class="ta-r">{{ e._batchCount ?? '—' }}</td>
               <td class="ta-r" style="font-weight:600">{{ fmtCur(e.total_incoming_value) }}</td>
               <td><span class="ob-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span></td>
-              <td @click.stop><button class="ob-act-btn" @click="openView(e)"><span v-html="icon('eye',13)"></span></button></td>
+              <td @click.stop style="display:flex;gap:4px">
+                <button class="ob-act-btn" @click="openView(e)" title="View"><span v-html="icon('eye',13)"></span></button>
+                <button v-if="e.docstatus===0" class="ob-act-btn" @click="openEdit(e)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+              </td>
             </tr>
             <tr v-if="!filtered.length">
               <td colspan="8" class="ob-empty">
@@ -92,7 +95,10 @@
           <div v-for="e in filtered" :key="e.name" class="ob-mobile-card" @click="openView(e)">
             <div class="ob-mc-top">
               <span class="ob-mc-docno">{{ e.name }}</span>
-              <span class="ob-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span>
+              <span style="display:flex;gap:6px;align-items:center">
+                <span class="ob-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span>
+                <button v-if="e.docstatus===0" class="ob-act-btn" @click.stop="openEdit(e)" title="Edit"><span v-html="icon('edit',12)"></span></button>
+              </span>
             </div>
             <div class="ob-mc-meta">
               <span>{{ fmtDate(e.posting_date) }}</span>
@@ -111,8 +117,8 @@
         <div class="ob-dh-top">
           <div class="ob-dh-ico"><span v-html="icon('opening',20)" style="color:#fff"></span></div>
           <div>
-            <div class="ob-dh-title" style="color:#fff">Opening Stock & Batch Entry</div>
-            <div class="ob-dh-sub" style="color:rgba(255,255,255,.75)">Set starting balances and batch numbers</div>
+            <div class="ob-dh-title" style="color:#fff">{{ editingName ? 'Edit Opening Stock Entry — ' + editingName : 'Opening Stock & Batch Entry' }}</div>
+            <div class="ob-dh-sub" style="color:rgba(255,255,255,.75)">{{ editingName ? 'Editing draft entry' : 'Set starting balances and batch numbers' }}</div>
           </div>
         </div>
       </div>
@@ -298,7 +304,8 @@
               <div class="ob-val-num">{{ fmtCur(viewDoc.total_incoming_value||0) }}</div>
             </div>
           </div>
-          <div v-if="viewDoc.docstatus===0" style="display:flex;justify-content:flex-end">
+          <div v-if="viewDoc.docstatus===0" style="display:flex;justify-content:flex-end;gap:8px">
+            <button class="ob-btn-cancel" @click="openEdit(viewDoc); viewOpen=false"><span v-html="icon('edit',13)"></span> Edit</button>
             <button class="ob-btn-primary" @click="submitEntry(viewDoc.name)"><span v-html="icon('check',13)"></span> Submit</button>
           </div>
         </div>
@@ -323,6 +330,7 @@ const list         = ref([]);
 const loading      = ref(false);
 const drawerOpen   = ref(false);
 const drawerSaving = ref(false);
+const editingName  = ref("");
 const viewOpen     = ref(false);
 const viewDoc      = ref(null);
 const viewLoading  = ref(false);
@@ -504,6 +512,7 @@ function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
 
 function openNew() {
+  editingName.value = "";
   Object.assign(form, {
     posting_date: new Date().toISOString().slice(0, 10),
     to_warehouse: "", remarks: "",
@@ -511,6 +520,57 @@ function openNew() {
   lines.value = [blankLine()];
   fetchWarehouses(""); fetchItems("");
   drawerOpen.value = true;
+}
+
+async function openEdit(e) {
+  if (e.docstatus !== 0) return;
+  editingName.value = e.name;
+  Object.assign(form, {
+    posting_date: e.posting_date || new Date().toISOString().slice(0, 10),
+    to_warehouse: e.to_warehouse || "", remarks: e.remarks || "",
+  });
+  lines.value = [blankLine()];
+  fetchWarehouses(""); fetchItems("");
+  drawerOpen.value = true;
+  try {
+    const doc = await apiGet("Stock Entry", e.name);
+    if (doc?.items?.length) {
+      const built = await Promise.all(doc.items.map(async (it) => {
+        const line = {
+          id: _id++, item_code: it.item_code || "", item_name: it.item_name || it.item_code || "",
+          qty: flt(it.qty) || 1, basic_rate: flt(it.basic_rate) || 0,
+          t_warehouse: it.t_warehouse || "", batch_no: it.batch_no || "",
+          manufacturing_date: "", expiry_date: "", has_batch_no: 0, batchOptions: [],
+        };
+        try {
+          const r = await apiList("Item", { fields: ["name", "has_batch_no"], filters: [["name", "=", line.item_code]], limit: 1 });
+          line.has_batch_no = r?.[0]?.has_batch_no ? 1 : 0;
+        } catch {}
+        if (line.has_batch_no && line.batch_no) {
+          try {
+            const b = await apiList("Batch", {
+              fields: ["name", "manufacturing_date", "expiry_date", "batch_qty"],
+              filters: [["name", "=", line.batch_no]], limit: 1,
+            });
+            const bd = b && b[0];
+            if (bd) {
+              line.manufacturing_date = bd.manufacturing_date || "";
+              line.expiry_date = bd.expiry_date || "";
+              line.batchOptions = [{
+                value: bd.name,
+                label: (bd.batch_qty !== undefined && bd.batch_qty !== null) ? `${bd.name} (Qty: ${bd.batch_qty})` : bd.name,
+                manufacturing_date: bd.manufacturing_date || "", expiry_date: bd.expiry_date || "",
+              }];
+            }
+          } catch {}
+        }
+        return line;
+      }));
+      lines.value = built.length ? built : [blankLine()];
+    }
+  } catch {
+    toast.error("Failed to load entry for editing");
+  }
 }
 
 async function saveEntry(submit) {
@@ -566,10 +626,12 @@ async function saveEntry(submit) {
         batch_no: l.has_batch_no ? (l.batch_no || null) : null,
       })),
     };
+    if (editingName.value) doc.name = editingName.value;
     const saved = await apiSave(doc);
     if (submit) await apiSubmit("Stock Entry", saved.name);
     toast.success(`Opening Stock Entry ${saved?.name || ""} ${submit ? "submitted" : "saved as draft"}`);
     drawerOpen.value = false;
+    editingName.value = "";
     await load();
   } catch (e) {
     toast.error(e.message || "Failed to save opening stock entry");

@@ -384,8 +384,8 @@
               <button v-if="r.has_batch_no" class="wh-smc-batch-toggle" @click="toggleBatches(r.item_code)">
                 {{ batchesFor(r.item_code).length }} batch{{ batchesFor(r.item_code).length===1?'':'es' }} {{ expandedRows[r.item_code] ? '▲' : '▼' }}
               </button>
-              <button v-if="selectedChild && !selectedChild.is_group" class="wh-adj-btn wh-smc-adj" @click="openAdjustment(r)">
-                <span v-html="icon('edit', 12)"></span> Adjust
+              <button v-if="adjustTargetWH" class="wh-adj-btn wh-smc-adj" @click="openAdjustment(r)">
+                <span v-html="icon('edit', 12)"></span> {{ r.has_batch_no ? 'Adjust Batches' : 'Adjust' }}
               </button>
             </div>
             <div v-if="r.has_batch_no && expandedRows[r.item_code]" class="wh-smc-batch-list">
@@ -399,6 +399,9 @@
                   <div class="wh-batch-qty">{{ flt(b.qty).toFixed(2) }}</div>
                   <span v-if="b.is_expired" class="wh-batch-flag wh-batch-flag--expired">Expired</span>
                   <span v-else-if="b.expires_soon" class="wh-batch-flag wh-batch-flag--soon">Soon</span>
+                  <button v-if="adjustTargetWH" class="wh-adj-btn wh-smc-adj" style="margin-top:6px" @click.stop="openBatchAdjustment(r, b)">
+                    <span v-html="icon('edit', 12)"></span> Adjust
+                  </button>
                 </div>
               </div>
             </div>
@@ -420,7 +423,7 @@
                 <th class="wh-th wh-th-r wh-th-hide-md">Val. Rate</th>
                 <th class="wh-th wh-th-r">Stock Value</th>
                 <th class="wh-th wh-th-c">Status</th>
-                <th v-if="selectedChild && !selectedChild.is_group" class="wh-th wh-th-c">Adjust</th>
+                <th v-if="adjustTargetWH" class="wh-th wh-th-c">Adjust</th>
               </tr>
             </thead>
             <tbody>
@@ -446,19 +449,20 @@
                   <span v-if="r.below_reorder" class="wh-status-low">⚠ Low</span>
                   <span v-else class="wh-status-ok">✓ OK</span>
                 </td>
-                <td v-if="selectedChild && !selectedChild.is_group" class="wh-td wh-td-c" @click.stop>
+                <td v-if="adjustTargetWH" class="wh-td wh-td-c" @click.stop>
                   <button class="wh-adj-btn" @click="openAdjustment(r)">
-                    <span v-html="icon('edit', 12)"></span> Adjust
+                    <span v-html="icon('edit', 12)"></span> {{ r.has_batch_no ? 'Adjust Batches' : 'Adjust' }}
                   </button>
                 </td>
               </tr>
               <tr v-if="r.has_batch_no && expandedRows[r.item_code]" class="wh-batch-row">
-                <td :colspan="selectedChild && !selectedChild.is_group ? 10 : 9" style="padding:0">
+                <td :colspan="adjustTargetWH ? 10 : 9" style="padding:0">
                   <div class="wh-batch-panel">
                     <div v-if="!batchesFor(r.item_code).length" class="wh-batch-empty">No batch-wise ledger entries for this item yet</div>
                     <table v-else class="wh-batch-tbl">
                       <thead><tr>
                         <th>Batch No</th><th>Mfg Date</th><th>Expiry Date</th><th class="ta-r">Qty</th><th></th>
+                        <th v-if="adjustTargetWH"></th>
                       </tr></thead>
                       <tbody>
                         <tr v-for="b in batchesFor(r.item_code)" :key="b.batch_no">
@@ -469,6 +473,11 @@
                           <td>
                             <span v-if="b.is_expired" class="wh-batch-flag wh-batch-flag--expired">Expired</span>
                             <span v-else-if="b.expires_soon" class="wh-batch-flag wh-batch-flag--soon">Expires soon</span>
+                          </td>
+                          <td v-if="adjustTargetWH" @click.stop>
+                            <button class="wh-adj-btn" @click="openBatchAdjustment(r, b)">
+                              <span v-html="icon('edit', 12)"></span> Adjust
+                            </button>
                           </td>
                         </tr>
                       </tbody>
@@ -497,8 +506,8 @@
       <div class="nim-dialog" style="width:480px">
         <div class="nim-dialog-header">
           <div>
-            <div style="font-size:15px;font-weight:700;color:#1A1D23">Adjust Stock</div>
-            <div style="font-size:12px;color:#868E96;margin-top:2px">{{ adjDrawer.warehouse }}</div>
+            <div style="font-size:15px;font-weight:700;color:#1A1D23">{{ adjDrawer.batch_no ? 'Adjust Batch Stock' : 'Adjust Stock' }}</div>
+            <div style="font-size:12px;color:#868E96;margin-top:2px">{{ adjDrawer.warehouse }}<span v-if="adjDrawer.batch_no"> · Batch {{ adjDrawer.batch_no }}</span></div>
           </div>
           <button class="nim-close" @click="adjDrawer.open=false">✕</button>
         </div>
@@ -508,6 +517,10 @@
             <SearchableSelect v-model="adjDrawer.item_code" :options="allItems"
               value-key="name" label-key="item_name" placeholder="Search item to add stock…" />
           </div>
+          <div v-if="adjDrawer.pick_item && adjDrawer.pickedHasBatch" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#b91c1c">
+            {{ adjDrawer.item_name }} is batch-tracked. This quick-add can't set a Batch No — use the
+            <strong>Opening Stock</strong> or <strong>Stock Entries</strong> page to bring in stock with a batch.
+          </div>
           <div v-if="adjDrawer.item_code" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:14px">
             <div style="width:40px;height:40px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0" v-html="icon('box',18)"></div>
             <div>
@@ -515,9 +528,13 @@
               <div style="font-size:11.5px;color:#6b7280;margin-top:2px;">{{ adjDrawer.item_code }}</div>
             </div>
             <div style="margin-left:auto;text-align:right">
-              <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">Current Qty</div>
+              <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.04em">{{ adjDrawer.batch_no ? 'Current Batch Qty' : 'Current Qty' }}</div>
               <div style="font-size:18px;font-weight:700;color:#2563eb;">{{ adjDrawer.current_qty }}</div>
             </div>
+          </div>
+          <div v-if="adjDrawer.batch_no" style="background:#faf5ff;border:1px solid #ede9fe;border-radius:8px;padding:10px 14px;font-size:12px;color:#6b21a8;display:flex;justify-content:space-between;align-items:center">
+            <span>Item total in this warehouse</span>
+            <span style="font-weight:700">{{ flt(adjDrawer.item_total_qty).toFixed(2) }}</span>
           </div>
           <div>
             <label class="nim-label">New Quantity <span style="color:#dc2626">*</span></label>
@@ -527,6 +544,9 @@
               <span :style="{color: adjDrawer.new_qty > adjDrawer.current_qty ? '#16a34a' : adjDrawer.new_qty < adjDrawer.current_qty ? '#dc2626' : '#6b7280', fontWeight:600}">
                 {{ adjDrawer.new_qty > adjDrawer.current_qty ? `+${(adjDrawer.new_qty - adjDrawer.current_qty).toFixed(3)} increase` :
                    adjDrawer.new_qty < adjDrawer.current_qty ? `${(adjDrawer.new_qty - adjDrawer.current_qty).toFixed(3)} decrease` : 'No change' }}
+              </span>
+              <span v-if="adjDrawer.batch_no" style="color:#9ca3af;margin-left:6px">
+                — item total will become {{ (flt(adjDrawer.item_total_qty) + (flt(adjDrawer.new_qty) - flt(adjDrawer.current_qty))).toFixed(2) }}
               </span>
             </div>
           </div>
@@ -550,7 +570,7 @@
         <div class="nim-dialog-footer">
           <button class="nim-btn nim-btn-ghost" @click="adjDrawer.open=false">Cancel</button>
           <button class="nim-btn" style="background:#2563eb;color:#fff;border-color:#2563eb"
-            :disabled="adjDrawer.saving || !adjDrawer.item_code || adjDrawer.new_qty==='' || adjDrawer.new_qty===null || !adjDrawer.reason"
+            :disabled="adjDrawer.saving || !adjDrawer.item_code || adjDrawer.new_qty==='' || adjDrawer.new_qty===null || !adjDrawer.reason || (adjDrawer.pick_item && adjDrawer.pickedHasBatch)"
             @click="submitAdjustment">
             {{ adjDrawer.saving ? 'Saving…' : 'Save Adjustment' }}
           </button>
@@ -738,6 +758,7 @@ const adjDrawer = reactive({
   open: false, saving: false, pick_item: false,
   item_code: "", item_name: "", warehouse: "",
   current_qty: 0, new_qty: "", reason: "", notes: "",
+  batch_no: "", item_total_qty: 0, pickedHasBatch: false,
 });
 const showDrawer     = ref(false);
 const showTransfer   = ref(false);
@@ -792,6 +813,20 @@ const childWarehouses = computed(() => {
     result = result.filter((w) => (w.warehouse_type || "Stores") === filterType.value);
   }
   return result;
+});
+
+// The specific leaf warehouse to adjust stock against. Adjustment always
+// needs one concrete warehouse (you can't post stock to a group, and "All"
+// scope can span several leaves so we can't guess which one a batch's stock
+// is really sitting in) — EXCEPT the very common case where the selected
+// group has exactly one leaf underneath it, in which case "All" and "that
+// one warehouse" mean the same thing, so we resolve it automatically rather
+// than forcing an extra click.
+const adjustTargetWH = computed(() => {
+  if (selectedChild.value && !selectedChild.value.is_group) return selectedChild.value;
+  const leaves = childWarehouses.value.filter((w) => !w.is_group);
+  if (!selectedChild.value && leaves.length === 1) return leaves[0];
+  return null;
 });
 
 const whStats = computed(() => {
@@ -857,7 +892,7 @@ function fmtBatchDate(d) {
 }
 
 async function loadItems() {
-  try { allItems.value = await apiList("Item", { fields: ["name","item_name"], limit: 500, order: "item_name asc" }) || []; }
+  try { allItems.value = await apiList("Item", { fields: ["name","item_name","has_batch_no"], limit: 500, order: "item_name asc" }) || []; }
   catch {}
 }
 
@@ -877,47 +912,94 @@ function openNewAdjustment(wh) {
     item_code: "", item_name: "",
     warehouse: wh?.name || "",
     current_qty: 0, new_qty: "", reason: "Opening Stock", notes: "",
+    batch_no: "", item_total_qty: 0, pickedHasBatch: false,
   });
 }
 
 function openAdjustment(row) {
+  if (row.has_batch_no) {
+    // Batch-tracked items can't be adjusted as one lump qty — the backend
+    // requires a Batch No on every movement for these items, and blindly
+    // picking one would break the "sum of batches == item total" guarantee.
+    // Point the person at the per-batch Adjust buttons instead.
+    expandedRows.value = { ...expandedRows.value, [row.item_code]: true };
+    toast(`${row.item_name || row.item_code} is batch-tracked — adjust individual batches below instead of the item total.`, "error");
+    return;
+  }
   Object.assign(adjDrawer, {
     open: true, saving: false, pick_item: false,
     item_code:   row.item_code,
     item_name:   row.item_name || row.item_code,
-    warehouse:   selectedChild.value?.name || selectedWH.value?.name || "",
+    warehouse:   adjustTargetWH.value?.name || "",
     current_qty: flt(row.actual_qty),
     new_qty:     flt(row.actual_qty),
     reason:      "", notes: "",
+    batch_no: "", item_total_qty: 0,
+  });
+}
+
+function openBatchAdjustment(row, batch) {
+  // Batch adjustments only make sense against a specific leaf warehouse
+  // (never a warehouse group), same restriction the row-level Adjust
+  // button already enforces via v-if="adjustTargetWH".
+  Object.assign(adjDrawer, {
+    open: true, saving: false, pick_item: false,
+    item_code:   row.item_code,
+    item_name:   row.item_name || row.item_code,
+    warehouse:   adjustTargetWH.value?.name || "",
+    current_qty: flt(batch.qty),
+    new_qty:     flt(batch.qty),
+    reason:      "", notes: "",
+    batch_no:    batch.batch_no,
+    item_total_qty: flt(row.actual_qty),
   });
 }
 
 // When an item is picked in "Add Stock" mode, fill its name and current qty
 // (best-effort from the currently loaded stock; defaults to 0 for a new item).
+// Also flag batch-tracked items — this quick-add flow can't post stock
+// without a Batch No, so it needs to steer the person to the batch-aware
+// Stock Entries / Opening Stock page instead of letting the save fail.
 watch(() => adjDrawer.item_code, (code) => {
   if (!adjDrawer.pick_item || !code) return;
   const it = allItems.value.find((i) => i.name === code);
   adjDrawer.item_name = it?.item_name || code;
+  adjDrawer.pickedHasBatch = !!it?.has_batch_no;
   const row = stockItems.value.find((r) => r.item_code === code);
   adjDrawer.current_qty = row ? flt(row.actual_qty) : 0;
 });
 
 async function submitAdjustment() {
+  if (adjDrawer.pick_item && adjDrawer.pickedHasBatch) {
+    return toast(`${adjDrawer.item_name} is batch-tracked — add its opening stock from the Opening Stock or Stock Entries page so a Batch No can be set.`, "error");
+  }
   if (adjDrawer.new_qty === "" || adjDrawer.new_qty === null) return toast("New quantity is required", "error");
   if (!adjDrawer.reason) return toast("Please select a reason", "error");
   if (!adjDrawer.item_code) return toast("Item is required", "error");
   adjDrawer.saving = true;
   try {
-    await apiPOST("zoho_books_clone.api.inventory.create_inventory_adjustment", {
-      item_code: adjDrawer.item_code,
-      warehouse: adjDrawer.warehouse,
-      new_qty:   adjDrawer.new_qty,
-      reason:    adjDrawer.reason,
-      notes:     adjDrawer.notes || "",
-    });
-    toast(`Stock adjusted — ${adjDrawer.item_code} set to ${adjDrawer.new_qty}`, "success");
+    if (adjDrawer.batch_no) {
+      await apiPOST("zoho_books_clone.api.inventory.create_batch_adjustment", {
+        item_code: adjDrawer.item_code,
+        warehouse: adjDrawer.warehouse,
+        batch_no:  adjDrawer.batch_no,
+        new_qty:   adjDrawer.new_qty,
+        reason:    adjDrawer.reason,
+        notes:     adjDrawer.notes || "",
+      });
+      toast(`Batch adjusted — ${adjDrawer.batch_no} set to ${adjDrawer.new_qty}`, "success");
+    } else {
+      await apiPOST("zoho_books_clone.api.inventory.create_inventory_adjustment", {
+        item_code: adjDrawer.item_code,
+        warehouse: adjDrawer.warehouse,
+        new_qty:   adjDrawer.new_qty,
+        reason:    adjDrawer.reason,
+        notes:     adjDrawer.notes || "",
+      });
+      toast(`Stock adjusted — ${adjDrawer.item_code} set to ${adjDrawer.new_qty}`, "success");
+    }
     adjDrawer.open = false;
-    if (selectedWH.value) await loadStockForWarehouse(selectedWH.value.name);
+    if (selectedWH.value) await loadStockForWarehouse(selectedChild.value?.name || selectedWH.value.name);
   } catch (e) {
     toast(e.message || "Adjustment failed", "error");
   } finally {

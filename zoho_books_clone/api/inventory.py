@@ -414,6 +414,122 @@ def create_inventory_adjustment():
     }
 
 
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def create_batch_adjustment():
+    """
+    Batch-level counterpart to create_inventory_adjustment: correct the qty of
+    a single batch within a warehouse (e.g. after a physical count finds a
+    specific batch's on-hand quantity differs from the ledger).
+
+    Posts the +/- delta as a 'Stock Adjustment' Stock Entry carrying the
+    batch_no, exactly like a normal batch-tracked movement. That means it goes
+    through the same controller path as every other Stock Entry:
+      - Stock Ledger Entry is created for item+warehouse+batch (_make_sle)
+      - Batch.batch_qty is adjusted by the same delta (_adjust_batch_qty)
+      - Bin.actual_qty for the item is adjusted by the same delta (_sync_bin)
+      - GL entries are posted for the delta value (_post_gl_entries)
+    Since the delta is applied identically to the batch and to the item's
+    overall Bin qty, SUM(batch qty) for the item always stays equal to the
+    item's total actual_qty — this adjustment can't drift the two apart, and
+    it never touches accounting outside the normal Stock Entry GL posting.
+    """
+    from frappe.utils import today as frappe_today
+    fd = frappe.form_dict
+    item_code = (fd.get("item_code") or "").strip()
+    warehouse = (fd.get("warehouse") or "").strip()
+    batch_no  = (fd.get("batch_no") or "").strip()
+    reason    = (fd.get("reason") or "").strip()
+    notes     = (fd.get("notes") or "").strip()
+    adj_account = (fd.get("adjustment_account") or "").strip()
+    posting_date = fd.get("posting_date") or frappe_today()
+
+    if not item_code:
+        frappe.throw(_("Item is required"))
+    if not warehouse:
+        frappe.throw(_("Warehouse is required"))
+    if not batch_no:
+        frappe.throw(_("Batch is required"))
+    if fd.get("new_qty") in (None, ""):
+        frappe.throw(_("New quantity is required"))
+
+    new_qty = flt(fd.get("new_qty"))
+    if new_qty < 0:
+        frappe.throw(_("New quantity cannot be negative"))
+
+    if not frappe.db.exists("Batch", batch_no):
+        frappe.throw(_("Batch {0} does not exist").format(batch_no))
+    batch_item = frappe.db.get_value("Batch", batch_no, "item")
+    if batch_item and batch_item != item_code:
+        frappe.throw(_("Batch {0} belongs to item {1}, not {2}").format(batch_no, batch_item, item_code))
+
+    company = _get_company(frappe.session.user)
+
+    # Current qty for THIS batch in THIS warehouse — read live off the ledger
+    # (same aggregation get_warehouse_batches uses) so the delta we post is
+    # relative to what the person is actually looking at on screen, not a
+    # possibly-stale Batch.batch_qty snapshot.
+    current_qty = flt(frappe.db.sql("""
+        SELECT SUM(actual_qty) FROM `tabStock Ledger Entry`
+        WHERE item_code=%s AND warehouse=%s AND batch_no=%s AND is_cancelled=0
+    """, (item_code, warehouse, batch_no))[0][0] or 0)
+
+    delta = new_qty - current_qty
+    if abs(delta) < 0.0000001:
+        frappe.throw(_("New quantity equals current batch quantity — nothing to adjust."))
+
+    bin_row = frappe.db.get_value(
+        "Bin", {"item_code": item_code, "warehouse": warehouse}, "valuation_rate",
+    )
+    rate = flt(bin_row)
+    if not rate:
+        item_rates = frappe.db.get_value(
+            "Item", item_code, ["standard_buying_rate", "standard_rate"], as_dict=True
+        ) or {}
+        rate = flt(item_rates.get("standard_buying_rate")) or flt(item_rates.get("standard_rate")) or 0
+
+    item_name = frappe.db.get_value("Item", item_code, "item_name") or item_code
+    remark = (reason + ((" — " + notes) if notes else "") if reason
+              else (notes or f"Batch stock adjustment for {item_code} / {batch_no}"))
+
+    se = frappe.get_doc({
+        "doctype":          "Stock Entry",
+        "stock_entry_type": "Stock Adjustment",
+        "posting_date":     posting_date,
+        "company":          company,
+        "remarks":          remark,
+        "adjustment_reason": reason or None,
+        "adjustment_account": adj_account or None,
+        "items": [{
+            "item_code":  item_code,
+            "item_name":  item_name,
+            "qty":        delta,
+            "basic_rate": rate,
+            "t_warehouse": warehouse,
+            "batch_no":   batch_no,
+        }],
+    })
+    se.name = "SEC-" + frappe.generate_hash(txt=f"{item_code}{batch_no}{frappe.utils.now()}", length=8).upper()
+    se.flags.ignore_permissions = True
+    se.flags.ignore_links = True
+    se.flags.ignore_mandatory = True
+    se.insert()
+    se.submit()
+    frappe.db.commit()
+
+    new_bin_qty = flt(frappe.db.get_value(
+        "Bin", {"item_code": item_code, "warehouse": warehouse}, "actual_qty",
+    ) or 0)
+
+    return {
+        "stock_entry": se.name,
+        "delta": delta,
+        "new_qty": new_qty,
+        "current_qty": current_qty,
+        "rate": rate,
+        "item_actual_qty": new_bin_qty,
+    }
+
+
 @frappe.whitelist(allow_guest=False)
 def get_inventory_adjustments(company=None):
     """List Stock-Adjustment entries (one row per entry, first item line)."""

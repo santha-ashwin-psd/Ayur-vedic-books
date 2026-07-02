@@ -10,7 +10,7 @@
 // in the sidebar but trigger a real navigation when clicked.
 
 export const NAV = [
-  { path: "/",                              label: "Dashboard",        icon: "grid",       module: null         },
+  { path: "/dashboard",                     label: "Dashboard",        icon: "grid",       module: null         },
 
   { section: "Sales" },
   { path: "/quotes",                        label: "Quotes",       icon: "quote",      module: "invoices"   },

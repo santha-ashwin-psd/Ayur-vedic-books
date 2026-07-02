@@ -77,13 +77,17 @@ import { session } from "./api/session.js";
 const routes = [
   {
     path: "/",
+    redirect: "/dashboard",
+  },
+  {
+    path: "/dashboard",
     name: "dashboard",
     component: Dashboard,
     meta: { module: null },
   },
   {
     path: "/books",
-    redirect: "/",
+    redirect: "/dashboard",
   },
   {
     path: "/home",
@@ -251,7 +255,7 @@ router.beforeEach((to) => {
   const { can } = usePermissions();
   if (to.meta?.module && !can(to.meta.module)) {
     useToast().error(`You don't have access to "${to.name || to.path}".`);
-    return { path: "/" };
+    return { path: "/dashboard" };
   }
   return true;
 });
